@@ -11,7 +11,7 @@
 ## 许可 / 联系
 
 - 开源协议：[LICENSE](LICENSE)
-- 项目作者 **棱花 Arris - lovely_小柒丫**
+- 项目作者： **棱花 Arris - lovely_小柒丫**
 
 ## 主要特性
 
@@ -33,7 +33,7 @@
 | **小 MOD 内部联动** | `arris` 命名空间下通过 `compFactory.CreateModAttr("arris")` 暴露的 3 个扩展接口，供其他 Arris 子 MOD 追加堆肥/配方/切片规则 |
 | **JEI 联动** | 可选 — 若安装外部 Arris JEI 子 MOD，则自动注册厨锅 / 砧板 / 煎锅 / 炉灶 4 类配方视图 |
 | **生物 AI 扩展** | 自定义马饲料 `arris:horse_feed`（加速 + 跳跃增益）、狗粮 `arris:dog_food`（加速 + 力量 + 抗性） |
-| **工具类** | 燧石刀、金刀、铁刀、钻石刀、下界合金刀（含末地前奏联动项） |
+| **工具类** | 燧石刀、金刀、铁刀、钻石刀、下界合金刀 |
 
 ---
 
@@ -84,7 +84,7 @@ arrisFarmersDelight/
 ## 技术亮点
 
 - **纯 Python 2.7** — 跟随网易脚本运行时，UTF-8 BOM-free + `# -*- coding: utf-8 -*-`，中文注释与游戏文本直接嵌入
-- **服务端 / 客户端严格分离** — RPC 通信通过 QuMod 的 `@Listen` / `@AllowCall` / `Call` 三元组完成
+- **服务端 / 客户端严格分离** — RPC 通信通过 QuMod 的 `@Listen` / `@AllowCall` / `Call` 完成
 - **tick 错峰优化** — 厨锅 `PosHash(pos) + tickCount) % STRIDE` 坐标加盐，N 个厨锅均摊到 STRIDE 个 tick，瞬时负载降到 1/STRIDE；煎锅 / 炉灶 相位错开
 - **厨锅配方 O(1) 查找** — `tuple(sorted(inputs))` 作为键的倒排索引，替代原始 O(recipes × variants × Counter) 扫描
 - **声音广播 + 客户端维度过滤** — 服务端 1 次广播代替 N 次 `CreateDimension` + 点对点 Call
