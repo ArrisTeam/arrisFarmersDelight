@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from .serverUtils.serverUtils import *
 
-@ListenServer("ServerPlaceBlockEntityEvent")
+@Listen("ServerPlaceBlockEntityEvent")
 def OnServerStoveCreate(args):
     blockName = args["blockName"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
     dimensionId = args["dimension"]
-    blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if blockName in StoveList:
         blockEntityData["cookingIndex"] = 0
         displayEntityDict = {}
@@ -15,7 +15,7 @@ def OnServerStoveCreate(args):
             displayEntityDict[str(index)] = None
         blockEntityData["displayEntityDict"] = displayEntityDict
 
-@ListenServer("ServerItemUseOnEvent")
+@Listen("ServerItemUseOnEvent")
 def OnServerStoveItemUse(args):
     # 玩家在对方块使用物品之前服务端抛出的事件
     itemDict = args["itemDict"]
@@ -29,14 +29,14 @@ def OnServerStoveItemUse(args):
     if blockName in StoveList:
         if SetPlayerUsedCD(playerId) is True:
             return
-        blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, (x, y, z))
+        blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, (x, y, z))
         if blockEntityData:
             if blockEntityData["cookingIndex"] >= 6:
                 blockEntityData["cookingIndex"] = 0
-            upBlockDict = ServerComp.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
+            upBlockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
             upBlockName = upBlockDict["name"]
             if upBlockName != "minecraft:air":
-                ServerComp.CreateGame(playerId).SetOneTipMessage(playerId, "炉灶上方有方块阻挡...")
+                compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "炉灶上方有方块阻挡...")
                 return
             cookingIndex = blockEntityData["cookingIndex"]
             displayEntityDict = blockEntityData["displayEntityDict"]
@@ -54,16 +54,16 @@ def OnServerStoveItemUse(args):
                 if itemName in ["arris:cutting_board", "arris:cooking_pot", "arris:skillet_item"]:
                     return
                 else:
-                    ServerComp.CreateGame(playerId).SetOneTipMessage(playerId, "这个貌似不能烹饪...")
+                    compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "这个貌似不能烹饪...")
 
-@ListenServer("ServerBlockEntityTickEvent")
+@Listen("ServerBlockEntityTickEvent")
 def OnStoveTick(args):
     if args["blockName"] not in StoveList:
         return
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if ServerComp.CreateTime(levelId).GetTime() % 20 == 0:
-        blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    if compFactory.CreateTime(levelId).GetTime() % 20 == 0:
+        blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if not blockEntityData:
             return
         for index in range(0, 6):
@@ -79,31 +79,31 @@ def OnStoveTick(args):
                         "count": 1,
                     }
                     blockEntityData[str(index)] = {"itemDict": None, "cookTimer": 7}
-                    ServerObj.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
+                    System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
                     entityId = displayEntityDict[str(index)]
-                    ServerObj.DestroyEntity(entityId)
+                    DestroyEntity(entityId)
                     displayEntityDict[str(index)] = None
                     blockEntityData["displayEntityDict"] = displayEntityDict
             if blockEntityData["cookingIndex"] >= 6:
                 blockEntityData["cookingIndex"] = 0
 
-@ListenServer("BlockRemoveServerEvent")
+@Listen("BlockRemoveServerEvent")
 def OnStoveRemove(args):
     # 方块在销毁时触发
     blockPos = (args["x"], args["y"], args["z"])
     blockName = args["fullName"]
     dimensionId = args["dimension"]
     if blockName in StoveList:
-        blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+        blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         for index in range(0, 6):
             data = blockEntityData[str(index)]
             itemDict = data["itemDict"]
             if itemDict:
-                ServerObj.CreateEngineItemEntity(itemDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+                System.CreateEngineItemEntity(itemDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
         displayEntityDict = blockEntityData["displayEntityDict"]
         if displayEntityDict:
             for i in displayEntityDict:
                 entityId = displayEntityDict[str(i)]
                 if not entityId:
                     continue
-                ServerObj.DestroyEntity(entityId)
+                DestroyEntity(entityId)

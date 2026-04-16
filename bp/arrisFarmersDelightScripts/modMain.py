@@ -1,26 +1,17 @@
 # -*- coding: utf-8 -*-
-from QingYunModLibs.ModInit.QingYunMod import *
-Mod = QingYunMod()
-Mod.InitMod("arrisFarmersDelightScripts")
+from .QuModLibs.QuMod import *
 
-serverSystem = [
-    "modServer.farmersDelightCommon",
-    "modServer.cookingPot",
-    "modServer.effect",
-    "modServer.ropeAndNet",
-    "modServer.farmCrop",
-    "modServer.platePackagedFood",
-    "modServer.skillet",
-    "modServer.cuttingBoard",
-    "modServer.stove"
-]
+MOD = EasyMod()
 
-clientSystem = [
-    "modClient.farmersDelightCommon",
-    "modClient.cookingPot"
-]
+MOD.Server("modServer.farmersDelightCommon")
+MOD.Server("modServer.cookingPot")
+MOD.Server("modServer.effect")
+MOD.Server("modServer.ropeAndNet")
+MOD.Server("modServer.farmCrop")
+MOD.Server("modServer.platePackagedFood")
+MOD.Server("modServer.skillet")
+MOD.Server("modServer.cuttingBoard")
+MOD.Server("modServer.stove")
 
-for sys in serverSystem:
-    Mod.ServerInit(sys)
-for sys in clientSystem:
-    Mod.ClientInit(sys)
+MOD.Client("modClient.farmersDelightCommon")
+MOD.Client("modClient.cookingPot")

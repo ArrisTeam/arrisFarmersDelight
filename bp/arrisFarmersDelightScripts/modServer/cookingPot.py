@@ -2,28 +2,28 @@
 from serverUtils.serverUtils import *
 import copy, time
 
-@ListenServer("ServerPlaceBlockEntityEvent")
+@Listen("ServerPlaceBlockEntityEvent")
 def OnServerCookingPotCreate(args):
     blockName = args["blockName"]
     if blockName != "arris:cooking_pot":
         return
     blockPos = (args["posX"], args["posY"], args["posZ"])
     dimensionId = args["dimension"]
-    blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
 
     blockEntityData["previewItemSlot"] = [{}]
     blockEntityData["timer"] = 10.0
 
-    blockDict = ServerComp.CreateBlockInfo(levelId).GetBlockNew((args["posX"], args["posY"] - 1, args["posZ"]), dimensionId)
+    blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((args["posX"], args["posY"] - 1, args["posZ"]), dimensionId)
     blockName = blockDict["name"]
     if blockName in ["minecraft:fire", "minecraft:campfire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"]:
         blockEntityData["shelfEnable"] = 1.0
     else:
         blockEntityData["shelfEnable"] = 0.0
     data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-    CreateTimer(0.1, CallAllClient, False, "SetEntityBlockMolang", data)
+    compFactory.CreateGame(levelId).AddTimer(0.1, Call, "*", "SetEntityBlockMolang", data)
 
     if blockName in CanProvideHeatBlockList:
         blockEntityData["heatEnable"] = True
@@ -32,9 +32,9 @@ def OnServerCookingPotCreate(args):
         blockEntityData["heatEnable"] = False
         blockEntityData["heatParticleEnable"] = 0.0
     data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-    CreateTimer(0.1, CallAllClient, False, "SetEntityBlockMolang", data)
+    compFactory.CreateGame(levelId).AddTimer(0.1, Call, "*", "SetEntityBlockMolang", data)
 
-@ListenServer("BlockNeighborChangedServerEvent")
+@Listen("BlockNeighborChangedServerEvent")
 def OnCookingPotNeighborChanged(args):
     blockName = args["blockName"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
@@ -42,7 +42,7 @@ def OnCookingPotNeighborChanged(args):
     neighborPos = (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"])
     if blockName != "arris:cooking_pot" or neighborPos != (args["posX"], args["posY"] - 1, args["posZ"]):
         return
-    blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
     neighborName = args["toBlockName"]
@@ -51,7 +51,7 @@ def OnCookingPotNeighborChanged(args):
     else:
         blockEntityData["shelfEnable"] = 0.0
     data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-    CallAllClient("SetEntityBlockMolang", data)
+    Call("*", "SetEntityBlockMolang", data)
 
     if neighborName in CanProvideHeatBlockList:
         blockEntityData["heatEnable"] = True
@@ -60,21 +60,21 @@ def OnCookingPotNeighborChanged(args):
         blockEntityData["heatEnable"] = False
         blockEntityData["heatParticleEnable"] = 0.0
     data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-    CallAllClient("SetEntityBlockMolang", data)
+    Call("*", "SetEntityBlockMolang", data)
 
-@ListenServer("ServerBlockEntityTickEvent")
+@Listen("ServerBlockEntityTickEvent")
 def OnCookingPotTick(args):
     if args["blockName"] != "arris:cooking_pot":
         return
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
     inputItemSlot = []
     num = 0
     for index in range(6):
-        itemDict = ServerComp.CreateItem(levelId).GetContainerItem(blockPos, index, dimensionId)
+        itemDict = compFactory.CreateItem(levelId).GetContainerItem(blockPos, index, dimensionId)
         if not itemDict:
             itemDict = {}
             num += 1
@@ -89,7 +89,7 @@ def OnCookingPotTick(args):
         previewItemSlot = blockEntityData["previewItemSlot"]
         itemName = resultItem["newItemName"]
         auxValue = resultItem["newAuxValue"]
-        basicInfo = ServerComp.CreateItem(levelId).GetItemBasicInfo(itemName, auxValue)
+        basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemName, auxValue)
         maxStackSize = basicInfo["maxStackSize"]
 
         if previewItemSlot[0] and previewItemSlot[0].get("count") >= maxStackSize:
@@ -102,13 +102,13 @@ def OnCookingPotTick(args):
                 if pushItemList:
                     for pushItem in pushItemList:
                         output = {"newItemName": pushItem[0], "newAuxValue": pushItem[1], "count": 1}
-                        ServerObj.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.0, args["posZ"] + 0.5))
+                        System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.0, args["posZ"] + 0.5))
 
                 for index, itemDict in enumerate(inputItemSlot):
                     if not itemDict:
                         continue
                     itemDict["count"] -= 1
-                    ServerComp.CreateItem(levelId).SpawnItemToContainer(itemDict, index, blockPos, dimensionId)
+                    compFactory.CreateItem(levelId).SpawnItemToContainer(itemDict, index, blockPos, dimensionId)
 
                 if not previewItemSlot[0]:
                     blockEntityData["previewItemSlot"] = [resultItem]
@@ -121,7 +121,7 @@ def OnCookingPotTick(args):
     else:
         blockEntityData["timer"] = 10.0
 
-@Call()
+@AllowCall
 def CookingPotAddFood(args):
     itemsDictMap = dict()
     playerId = args["playerId"]
@@ -132,11 +132,11 @@ def CookingPotAddFood(args):
 
     inputItemSlot = []
     for index in range(7):
-        itemDict = ServerComp.CreateItem(levelId).GetContainerItem(blockPos, index, dimensionId)
+        itemDict = compFactory.CreateItem(levelId).GetContainerItem(blockPos, index, dimensionId)
         if not itemDict:
             itemDict = {}
         inputItemSlot.append(itemDict)
-    playerAllItemList = ServerComp.CreateItem(playerId).GetPlayerAllItems(serverApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+    playerAllItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(serverApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
     for index in range(len(inputList)):
         if not inputItemSlot[index]:
             itemDict = copy.deepcopy(playerAllItemList[indexList[index]])
@@ -145,7 +145,7 @@ def CookingPotAddFood(args):
             inventoryDict = playerAllItemList[indexList[index]]
             inventoryDict["count"] -= 1
             if inventoryDict["count"] <= 0:
-                ServerComp.CreateItem(playerId).SetInvItemNum(indexList[index], 0)
+                compFactory.CreateItem(playerId).SetInvItemNum(indexList[index], 0)
                 playerAllItemList[indexList[index]] = None
             else:
                 playerAllItemList[indexList[index]] = inventoryDict
@@ -155,7 +155,7 @@ def CookingPotAddFood(args):
                 inventoryDict = playerAllItemList[indexList[index]]
                 inventoryDict["count"] -= 1
                 if inventoryDict["count"] <= 0:
-                    ServerComp.CreateItem(playerId).SetInvItemNum(indexList[index], 0)
+                    compFactory.CreateItem(playerId).SetInvItemNum(indexList[index], 0)
                     playerAllItemList[indexList[index]] = None
                 else:
                     playerAllItemList[indexList[index]] = inventoryDict
@@ -164,9 +164,9 @@ def CookingPotAddFood(args):
     for i in range(0, len(playerAllItemList)):
         itemsDictMap[(serverApi.GetMinecraftEnum().ItemPosType.INVENTORY, i)] = playerAllItemList[i]
     if itemsDictMap:
-        ServerComp.CreateItem(playerId).SetPlayerAllItems(itemsDictMap)
+        compFactory.CreateItem(playerId).SetPlayerAllItems(itemsDictMap)
 
     for index, itemDict in enumerate(inputItemSlot):
         if not itemDict:
             continue
-        ServerComp.CreateItem(levelId).SpawnItemToContainer(itemDict, index, blockPos, dimensionId)
+        compFactory.CreateItem(levelId).SpawnItemToContainer(itemDict, index, blockPos, dimensionId)

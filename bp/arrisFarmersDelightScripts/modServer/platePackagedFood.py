@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from serverUtils.serverUtils import *
 
-@ListenServer("ServerBlockUseEvent")
+@Listen("ServerBlockUseEvent")
 def OnServerPlatePackagedBlockUse(args):
     blockName = args["blockName"]
     x = args["x"]
@@ -13,7 +13,7 @@ def OnServerPlatePackagedBlockUse(args):
     if blockName in platePackagedFoodDict:
         if SetPlayerUsedCD(playerId) is True:
             return
-        handItemDict = ServerComp.CreateItem(playerId).GetPlayerItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, 0)
+        handItemDict = compFactory.CreateItem(playerId).GetPlayerItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, 0)
         if handItemDict is None:
             handItemDict = {}
         itemName = handItemDict.get("newItemName")
@@ -28,23 +28,23 @@ def OnServerPlatePackagedBlockUse(args):
                 "count": 1
             }
             if blockName[0:28] == "arris:rice_roll_medley_block":
-                ServerComp.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
-                blockStates = ServerComp.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
+                compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
+                blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
                 if blockStates:
                     blockStates["direction"] = blockAux
-                    ServerComp.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
+                    compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
-                ServerComp.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
+                compFactory.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
             elif itemName == "minecraft:bowl":
-                ServerComp.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
-                blockStates = ServerComp.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
+                compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
+                blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
                 if blockStates:
                     blockStates["direction"] = blockAux
-                    ServerComp.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
+                    compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
                 SetNotCreateItem(playerId, handItemDict)
-                ServerComp.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
+                compFactory.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
             else:
-                ServerComp.CreateGame(playerId).SetOneTipMessage(playerId, "你需要一个碗来食用它")
+                compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "你需要一个碗来食用它")
         else:
-            ServerComp.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)
+            compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)

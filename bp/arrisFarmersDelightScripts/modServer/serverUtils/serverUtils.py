@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from ...QingYunModLibs.ServerMod import *
-from ...QingYunModLibs.SystemApi import *
+from ...QuModLibs.Server import *
 from ...modCommon.modConfig import *
 from collections import Counter
 import math, random, copy
@@ -56,15 +55,15 @@ def ProbabilityFunc(probability):
 def ToAllPlayerPlaySound(dmId, pos, soundName):
     # 播放音效
     playerList = serverApi.GetPlayerList()
-    for playerId in playerList:
-        dimensionId = ServerComp.CreateDimension(playerId).GetEntityDimensionId()
+    for pid in playerList:
+        dimensionId = compFactory.CreateDimension(pid).GetEntityDimensionId()
         if dimensionId == dmId:
             data = {"soundName": soundName, "pos": pos}
-            CallClient("OnPlaySound", playerId, data)
+            Call(pid, "OnPlaySound", data)
 
 def IsFullBackpack(playerId):
     # 检测玩家背包是否已满
-    playerAllItems = ServerComp.CreateItem(playerId).GetPlayerAllItems(serverApi.GetMinecraftEnum().ItemPosType.INVENTORY)
+    playerAllItems = compFactory.CreateItem(playerId).GetPlayerAllItems(serverApi.GetMinecraftEnum().ItemPosType.INVENTORY)
     itemList = list(filter(None, playerAllItems))
     if len(itemList) >= 36:
         return True
@@ -73,25 +72,25 @@ def IsFullBackpack(playerId):
 
 def ResetPlayerUsedCD(playerId):
     # 重置CD
-    ServerComp.CreateModAttr(playerId).SetAttr("arrisUsedCD", False)
+    compFactory.CreateModAttr(playerId).SetAttr("arrisUsedCD", False)
 
 def SetPlayerUsedCD(playerId):
     # 设置CD
-    cd = ServerComp.CreateModAttr(playerId).GetAttr("arrisUsedCD")
+    cd = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCD")
     if cd is False:
-        ServerComp.CreateModAttr(playerId).SetAttr("arrisUsedCD", True)
-        ServerComp.CreateGame(levelId).AddTimer(0.2, ResetPlayerUsedCD, playerId)
-        CallClient("PlayAttackAnimationCommon", playerId, None)
+        compFactory.CreateModAttr(playerId).SetAttr("arrisUsedCD", True)
+        compFactory.CreateGame(levelId).AddTimer(0.2, ResetPlayerUsedCD, playerId)
+        Call(playerId, "PlayAttackAnimationCommon", None)
         return False
     else:
         return True
 
 def SetNotCreateItem(playerId, itemDict):
     # 在非创造模式下，扣除1个玩家手持物品
-    gameType = ServerComp.CreateGame(levelId).GetPlayerGameType(playerId)
+    gameType = compFactory.CreateGame(levelId).GetPlayerGameType(playerId)
     if gameType != 1:
         itemDict["count"] -= 1
-        ServerComp.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)
+        compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)
 
 def GetItemType(itemDict):
     # 获取物品类型
@@ -100,7 +99,7 @@ def GetItemType(itemDict):
         if itemName in platePackagedFoodDict:
             return "food"
         else:
-            basicInfo = ServerComp.CreateItem(levelId).GetItemBasicInfo(itemName)
+            basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemName)
             itemType = basicInfo["itemType"]
             return itemType
     else:
@@ -108,7 +107,7 @@ def GetItemType(itemDict):
 
 def DetectionExperimentalHoliday():
     # 检测是否为假日创造者模式
-    gameRules = ServerComp.CreateGame(levelId).GetGameRulesInfoServer()
+    gameRules = compFactory.CreateGame(levelId).GetGameRulesInfoServer()
     experimental_holiday = gameRules["option_info"]["experimental_holiday"]
     if experimental_holiday is True:
         return {0: 0, 4: 1, 8: 2, 12: 3}
@@ -177,15 +176,15 @@ def StoveDisplayEntity(itemDict, playerId, data):
         blockEntityData["cookingIndex"] = 0
     cookingIndex = blockEntityData["cookingIndex"]
     relativePos = posList[cookingIndex]
-    Id = ServerObj.CreateEngineEntityByTypeStr("arris:item_display", (x + relativePos[0], y + 0.953, z + relativePos[1]), entityFace[blockAux], dimensionId)
+    Id = System.CreateEngineEntityByTypeStr("arris:item_display", (x + relativePos[0], y + 0.953, z + relativePos[1]), entityFace[blockAux], dimensionId)
     displayEntityDict[str(cookingIndex)] = Id
-    ServerComp.CreateEntityEvent(Id).TriggerCustomEvent(Id, "arris:set_small")
+    compFactory.CreateEntityEvent(Id).TriggerCustomEvent(Id, "arris:set_small")
     blockEntityData["displayEntityDict"] = displayEntityDict
     blockEntityData[str(cookingIndex)] = {"itemDict": itemDict, "cookTimer": 7}
-    ServerComp.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)
+    compFactory.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)
 
     itemType = GetDisplayEntityCarriedItemType(itemDict)
-    ServerComp.CreateEntityDefinitions(Id).SetVariant(int(itemType))
+    compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
 
 def SkilletDisplayEntity(itemDict, playerId, data):
     count = itemDict["count"]
@@ -211,13 +210,13 @@ def SkilletDisplayEntity(itemDict, playerId, data):
         num = 0
     for i in range(0, num):
         step += 0.037
-        Id = ServerObj.CreateEngineEntityByTypeStr("arris:item_display", (x + random.uniform(0.43, 0.57), y + step, z + random.uniform(0.43, 0.57)), entityFace[blockAux], dimensionId)
+        Id = System.CreateEngineEntityByTypeStr("arris:item_display", (x + random.uniform(0.43, 0.57), y + step, z + random.uniform(0.43, 0.57)), entityFace[blockAux], dimensionId)
         displayEntityList.append(Id)
         displayDict = copy.deepcopy(itemDict)
         displayDict["count"] = 1
-        ServerComp.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, displayDict, 0)
+        compFactory.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, displayDict, 0)
         itemType = GetDisplayEntityCarriedItemType(displayDict)
-        ServerComp.CreateEntityDefinitions(Id).SetVariant(int(itemType))
+        compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
     blockEntityData["displayEntityList"] = displayEntityList
 
 def CuttingBoardDisplayEntity(itemDict, playerId, data):
@@ -227,19 +226,19 @@ def CuttingBoardDisplayEntity(itemDict, playerId, data):
     x, y, z = data["blockPos"]
     aux = DetectionExperimentalHoliday()
     blockAux = aux.get(blockAuxValue, blockAuxValue)
-    Id = ServerObj.CreateEngineEntityByTypeStr("arris:item_display", (x + 0.5, y, z + 0.5), entityFace[blockAux], dimensionId)
+    Id = System.CreateEngineEntityByTypeStr("arris:item_display", (x + 0.5, y, z + 0.5), entityFace[blockAux], dimensionId)
     displayDict = copy.deepcopy(itemDict)
-    ServerComp.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, displayDict, 0)
+    compFactory.CreateItem(Id).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, displayDict, 0)
     blockEntityData["displayEntityId"] = Id
     itemType = GetDisplayEntityCarriedItemType(itemDict)
-    basicInfo = ServerComp.CreateItem(levelId).GetItemBasicInfo(itemDict["newItemName"])
-    ServerComp.CreateEntityDefinitions(Id).SetVariant(int(itemType))
+    basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemDict["newItemName"])
+    compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
 
 def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
     # 检查厨锅内的容器是否符合并更新
     x, y, z = blockPos
     previewItemSlot = blockEntityData["previewItemSlot"][0]
-    vesselItemSlot = ServerComp.CreateItem(levelId).GetContainerItem(blockPos, 6, dimensionId)
+    vesselItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 6, dimensionId)
 
     for RecipeDict in CookingPotRecipeList:
         cookResult = RecipeDict["CookResult"]
@@ -253,9 +252,9 @@ def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
 
         if previewItemSlot and previewItemSlot.get("newItemName") == resultItemName:
             if not vessel:
-                basicInfo = ServerComp.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
+                basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
                 maxStackSize = basicInfo["maxStackSize"]
-                resultItemSlot = ServerComp.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
+                resultItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
                 if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
                     return
                 if resultItemSlot and resultItemSlot["count"] >= maxStackSize:
@@ -267,15 +266,15 @@ def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
                 else:
                     resultCount = previewItemCount + resultItemSlot[0]["count"]
                 itemDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                ServerComp.CreateItem(levelId).SpawnItemToContainer(itemDict, 7, (x,y,z), dimensionId)
-                CreateEntityServer("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+                compFactory.CreateItem(levelId).SpawnItemToContainer(itemDict, 7, (x,y,z), dimensionId)
+                System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
 
             elif vesselItemSlot and vesselDict.get("newItemName") == vesselItemSlot.get("newItemName"):
                 count = vesselItemSlot["count"] - previewItemSlot["count"]
 
-                basicInfo = ServerComp.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
+                basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
                 maxStackSize = basicInfo["maxStackSize"]
-                resultItemSlot = ServerComp.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
+                resultItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
                 if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
                     return
                 if resultItemSlot and resultItemSlot["count"] >= maxStackSize:
@@ -284,38 +283,38 @@ def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
                     previewItemCount = previewItemSlot["count"]
                     blockEntityData["previewItemSlot"] = [None]
                     vesselItemSlot["count"] = count
-                    ServerComp.CreateItem(levelId).SpawnItemToContainer(vesselItemSlot, 6, (x,y,z), dimensionId)
+                    compFactory.CreateItem(levelId).SpawnItemToContainer(vesselItemSlot, 6, (x,y,z), dimensionId)
 
                     if not resultItemSlot:
                         resultCount = previewItemCount
                     else:
                         resultCount = previewItemCount + resultItemSlot["count"]
                     resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                    ServerComp.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
+                    compFactory.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
                 else:
                     previewItemSlot["count"] = abs(count)
                     blockEntityData["previewItemSlot"] = [previewItemSlot]
 
-                    ServerComp.CreateItem(levelId).SpawnItemToContainer({}, 6, (x,y,z), dimensionId)
+                    compFactory.CreateItem(levelId).SpawnItemToContainer({}, 6, (x,y,z), dimensionId)
 
                     if not resultItemSlot:
                         resultCount = vesselItemSlot["count"]
                     else:
                         resultCount = abs(count) + resultItemSlot["count"]
                     resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                    ServerComp.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
+                    compFactory.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
 
-                CreateEntityServer("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+                System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
 
 def SetCarriedDurability(playerId, itemDict, dimensionId, pos):
     # 设置手持物品耐久-1
-    gameType = ServerComp.CreateGame(levelId).GetPlayerGameType(playerId)
+    gameType = compFactory.CreateGame(levelId).GetPlayerGameType(playerId)
     if gameType != 1:
         if GetItemType(itemDict) in ["", "block"]:
             return
         itemDict["durability"] -= 1
         if itemDict["durability"] <= 0:
             ToAllPlayerPlaySound(dimensionId, pos, "random.break")
-            ServerComp.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, None, 0)
+            compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, None, 0)
         else:
-            ServerComp.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)
+            compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, itemDict, 0)

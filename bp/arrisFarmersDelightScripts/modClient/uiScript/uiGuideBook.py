@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
-from ...QingYunModLibs.SystemApi import *
+from ...QuModLibs.Client import *
 from ...modCommon.guideBookConfig import config
 
 ScreenNode = clientApi.GetScreenNodeCls()
-playerId = clientApi.GetLocalPlayerId()
-levelId = clientApi.GetLevelId()
-
 ViewBinder = clientApi.GetViewBinderCls()
-compFactory = clientApi.GetEngineCompFactory()
 
 ROOT_PATH = "/variables_button_mappings_and_controls/safezone_screen_matrix/inner_matrix/safezone_screen_panel/root_screen_panel"
 TITLE_PATH = ROOT_PATH + "/stack_panel/content/title/text"

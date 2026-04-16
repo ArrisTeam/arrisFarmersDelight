@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-from ..QingYunModLibs.ClientMod import *
-from ..QingYunModLibs.SystemApi import *
+from ..QuModLibs.Client import *
 
 CustomUIScreenProxy = clientApi.GetUIScreenProxyCls()
-playerId = clientApi.GetLocalPlayerId()
-levelId = clientApi.GetLevelId()
 ViewBinder = clientApi.GetViewBinderCls()
 
 uiRootPanelPath = "variables_button_mappings_and_controls/safezone_screen_matrix/inner_matrix/safezone_screen_panel/root_screen_panel"
@@ -15,25 +12,25 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
     def __init__(self, screenName, screenNode):
         CustomUIScreenProxy.__init__(self, screenName, screenNode)
         self.screenNode = screenNode
-        self.cookingPotRecipeList = ClientComp.CreateModAttr(playerId).GetAttr("arrisCookingPotRecipeList")
+        self.cookingPotRecipeList = compFactory.CreateModAttr(playerId).GetAttr("arrisCookingPotRecipeList")
         self.foodRecipe = None # 配方面板UI实例
         self.foodRecipeList = None # 选择的食谱列表
         self.foodRecipeIndex = 0 # 选择的食谱索引
         self.RecipeList = self.cookingPotRecipeList
-        self.foodRecipeTimer = None
+        self.foodRecipeTimerRunning = False
         self.foodRecipeSearchDict = None
-        self.allItemList = ClientComp.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
 
     def OnCreate(self):
         self.foodRecipe = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/option_bg/stack_panel/scroll_panel/scroll_view").asScrollView().GetScrollViewContentControl()
-        CreateTimer(0.1, self.CookingPotInit, False)
+        compFactory.CreateGame(levelId).AddTimer(0.1, self.CookingPotInit)
 
     def OnTick(self):
-        self.allItemList = ClientComp.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
-        pos = ClientComp.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
+        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+        pos = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
         if not pos:
             return
-        blockEntityData = ClientComp.CreateBlockInfo(levelId).GetBlockEntityData(pos)
+        blockEntityData = compFactory.CreateBlockInfo(levelId).GetBlockEntityData(pos)
         if not blockEntityData:
             return
         heatEnable = blockEntityData["exData"]["heatEnable"]["__value__"]
@@ -70,6 +67,9 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.screenNode.UpdateScreen(True)
 
     def FoodRecipeTimerSwitch(self):
+        # 循环调度：只有在 foodRecipeTimerRunning 为 True 时才继续执行并重新排程
+        if not self.foodRecipeTimerRunning:
+            return
         if self.foodRecipeList:
             self.foodRecipeIndex += 1
             if self.foodRecipeIndex >= len(self.foodRecipeList):
@@ -86,6 +86,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
                 recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(i + 1))
                 itemRenderer = recipeItem.GetChildByName("item_renderer")
                 itemRenderer.SetVisible(False)
+        compFactory.CreateGame(levelId).AddTimer(1.0, self.FoodRecipeTimerSwitch)
 
     def SetPreviewItemSlot(self, itemDict):
         previewControl = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/preview/item")
@@ -131,10 +132,10 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         inputList = [index for index in range(len(indexList))]
         if not inputList:
             return
-        dimensionId = ClientComp.CreateGame(playerId).GetCurrentDimension()
-        pos = ClientComp.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
+        dimensionId = compFactory.CreateGame(playerId).GetCurrentDimension()
+        pos = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
         data = {"playerId": playerId, "blockPos": pos, "dimensionId": dimensionId, "inputList": inputList, "indexList": indexList}
-        CallServer("CookingPotAddFood", data)
+        Call("CookingPotAddFood", data)
 
     @ViewBinder.binding_collection(ViewBinder.BF_BindInt, "food_recipe_book", "#recipe_book_total_items")
     def FoodRecipeBook(self, args):
@@ -165,9 +166,10 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.foodRecipeList = recipeList
         self.foodRecipeIndex = 0
         self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/cookbook_bg/stack_panel/button_panel/add_food").SetVisible(True)
-        if self.foodRecipeTimer:
-            DestroyTimer(self.foodRecipeTimer)
-        self.foodRecipeTimer = CreateTimer(1.0, self.FoodRecipeTimerSwitch, True)
+        # 启动循环计时器（若之前已启动则会先被自身flag拦截）
+        if not self.foodRecipeTimerRunning:
+            self.foodRecipeTimerRunning = True
+            compFactory.CreateGame(levelId).AddTimer(1.0, self.FoodRecipeTimerSwitch)
 
         recipe = self.foodRecipeList[self.foodRecipeIndex]
         for index in range(6):
@@ -208,5 +210,5 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.screenNode.UpdateScreen(True)
 
     def OnDestroy(self):
-        if self.foodRecipeTimer:
-            DestroyTimer(self.foodRecipeTimer)
+        # 关闭界面时停掉循环调度，下一次 tick 时 FoodRecipeTimerSwitch 会自退出
+        self.foodRecipeTimerRunning = False

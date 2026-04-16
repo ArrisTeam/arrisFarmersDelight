@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from serverUtils.serverUtils import *
 
-@ListenServer("BlockNeighborChangedServerEvent")
+@Listen("BlockNeighborChangedServerEvent")
 def OnCuttingBoardNeighborChanged(args):
     blockName = args["blockName"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
@@ -11,16 +11,16 @@ def OnCuttingBoardNeighborChanged(args):
     if blockName == "arris:cutting_board":
         if neighborPos == (args["posX"], args["posY"] - 1, args["posZ"]):
             if neighborName == "minecraft:air":
-                ServerComp.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)
+                compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)
 
-@ListenServer("ServerItemUseOnEvent")
+@Listen("ServerItemUseOnEvent")
 def OnServerCuttingBoardItemUse(args):
     # 玩家在对方块使用物品之前服务端抛出的事件
     blockName = args["blockName"]
     if blockName == "arris:cutting_board":
         args["ret"] = True
 
-@ListenServer("ServerBlockUseEvent")
+@Listen("ServerBlockUseEvent")
 def OnServerCuttingBoardBlockUse(args):
     # 使用空手拿取砧板上的物品
     blockName = args["blockName"]
@@ -32,10 +32,10 @@ def OnServerCuttingBoardBlockUse(args):
         return
     if SetPlayerUsedCD(playerId) is True:
         return
-    blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+    blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    carriedDict = ServerComp.CreateItem(playerId).GetPlayerItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, 0, True)
+    carriedDict = compFactory.CreateItem(playerId).GetPlayerItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, 0, True)
     if carriedDict:
         itemType = GetItemType(carriedDict)
         displayEntityId = blockEntityData["displayEntityId"]
@@ -46,8 +46,8 @@ def OnServerCuttingBoardBlockUse(args):
                 return
             if carriedDict["newItemName"] in result["tool"]:
                 for resultDict in result["itemList"]:
-                    ServerObj.CreateEngineItemEntity(resultDict, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
-                ServerObj.DestroyEntity(displayEntityId)
+                    System.CreateEngineItemEntity(resultDict, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
+                DestroyEntity(displayEntityId)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "ambient.cutting_board.knife")
                 SetCarriedDurability(playerId, carriedDict, dimensionId, (x, y, z))
                 blockEntityData["cuttingDict"] = None
@@ -65,29 +65,29 @@ def OnServerCuttingBoardBlockUse(args):
                 data = {"blockEntityData": blockEntityData, "blockPos": (x, y, z), "blockAuxValue": args["aux"], "dimensionId": dimensionId}
                 CuttingBoardDisplayEntity(carriedDict, playerId, data)
             else:
-                ServerComp.CreateGame(playerId).SetOneTipMessage(playerId, "该物品无法放置在砧板上...")
+                compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "该物品无法放置在砧板上...")
     else:
         displayEntityId = blockEntityData["displayEntityId"]
         cuttingDict = blockEntityData["cuttingDict"]
         if cuttingDict:
-            ServerComp.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, cuttingDict, 0)
+            compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, cuttingDict, 0)
             ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
             blockEntityData["cuttingDict"] = None
         if displayEntityId:
-            ServerObj.DestroyEntity(displayEntityId)
+            DestroyEntity(displayEntityId)
             blockEntityData["displayEntityId"] = None
 
-@ListenServer("BlockRemoveServerEvent")
+@Listen("BlockRemoveServerEvent")
 def OnCuttingBoardRemove(args):
     # 砧板销毁时触发
     blockPos = (args["x"], args["y"], args["z"])
     blockName = args["fullName"]
     dimensionId = args["dimension"]
     if blockName == "arris:cutting_board":
-        blockEntityData = ServerComp.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+        blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         displayEntityId = blockEntityData["displayEntityId"]
         cuttingDict = blockEntityData["cuttingDict"]
         if displayEntityId:
-            ServerObj.DestroyEntity(displayEntityId)
+            DestroyEntity(displayEntityId)
         if cuttingDict:
-            ServerObj.CreateEngineItemEntity(cuttingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+            System.CreateEngineItemEntity(cuttingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))

@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-from ..QingYunModLibs.ClientMod import *
-from ..QingYunModLibs.SystemApi import *
+from ..QuModLibs.Client import *
 from ..modCommon.modConfig import *
 
-playerId = clientApi.GetLocalPlayerId()
 isJump = None
 isClickingBlock = ()
 
@@ -16,34 +14,34 @@ recipeDict = {
     "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0}
 }
 
-@Call(playerId)
+@AllowCall
 def OnPlaySound(args):
     soundName = args["soundName"]
     pos = args["pos"]
-    ClientComp.CreateCustomAudio(levelId).PlayCustomMusic(soundName, pos, 1, 1, False, None)
+    compFactory.CreateCustomAudio(levelId).PlayCustomMusic(soundName, pos, 1, 1, False, None)
 
-@Call(playerId)
+@AllowCall
 def PlayParticle(pos):
-    ClientComp.CreateParticleSystem(None).Create("minecraft:crop_growth_emitter", pos)
+    compFactory.CreateParticleSystem(None).Create("minecraft:crop_growth_emitter", pos)
 
-@Call(playerId)
+@AllowCall
 def SetEntityBlockMolang(args):
     pos = args["blockPos"]
     molang = args["molang"]
     name = args["name"]
-    ClientComp.CreateBlockInfo(levelId).SetEnableBlockEntityAnimations(pos, True)
-    ClientComp.CreateBlockInfo(levelId).SetBlockEntityMolangValue(pos, name, molang)
+    compFactory.CreateBlockInfo(levelId).SetEnableBlockEntityAnimations(pos, True)
+    compFactory.CreateBlockInfo(levelId).SetBlockEntityMolangValue(pos, name, molang)
 
-@Call(playerId)
+@AllowCall
 def PlayAttackAnimationCommon(args):
-    ClientComp.CreatePlayer(playerId).Swing()
+    compFactory.CreatePlayer(playerId).Swing()
 
-@ListenClient("LoadClientAddonScriptsAfter")
+@Listen("LoadClientAddonScriptsAfter")
 def LoadAddon(args):
-    ClientComp.CreateQueryVariable(levelId).Register('query.mod.item_display_mode', 0.0)
-    ClientComp.CreateQueryVariable(levelId).Register('query.mod.item_display_animation', 0.0)
+    compFactory.CreateQueryVariable(levelId).Register('query.mod.item_display_mode', 0.0)
+    compFactory.CreateQueryVariable(levelId).Register('query.mod.item_display_animation', 0.0)
 
-@ListenClient("UiInitFinished")
+@Listen("UiInitFinished")
 def UiGuideBookInit(args):
     clientApi.RegisterUI("arris", "farmerDelightGuideBook", uiGuideBookPath, uiGuideBookScreen)
     from ..compat.jei.cutting_board import RegisterCuttingBoardRecipes
@@ -55,22 +53,22 @@ def UiGuideBookInit(args):
     from ..compat.jei.stove import RegisterStoveRecipes
     RegisterStoveRecipes()
 
-@ListenClient("ClientItemTryUseEvent")
+@Listen("ClientItemTryUseEvent")
 def OnClientItemTryUse(args):
     itemDict = args["itemDict"]
     if itemDict["newItemName"] == "arris:farmer_delight_guide_book":
-        ClientComp.CreateCustomAudio(levelId).PlayCustomMusic("item.book.page_turn", (1, 1, 1), 1, 1, False, playerId)
+        compFactory.CreateCustomAudio(levelId).PlayCustomMusic("item.book.page_turn", (1, 1, 1), 1, 1, False, playerId)
         clientApi.PushScreen("arris", "farmerDelightGuideBook")
 
-@ListenClient("ActorAcquiredItemClientEvent")
+@Listen("ActorAcquiredItemClientEvent")
 def OnActorAcquiredItem(args):
     itemDict = args["itemDict"]
     acquireMethod = args["acquireMethod"]
     if acquireMethod == 2:
         itemName = itemDict["newItemName"]
         if itemName in recipeDict:
-            dimensionId = ClientComp.CreateGame(levelId).GetCurrentDimension()
-            playerPos = ClientComp.CreatePos(playerId).GetFootPos()
+            dimensionId = compFactory.CreateGame(levelId).GetCurrentDimension()
+            playerPos = compFactory.CreatePos(playerId).GetFootPos()
             giveItemDict = recipeDict[itemName]
             data = {
                 "itemDict": giveItemDict,
@@ -78,27 +76,27 @@ def OnActorAcquiredItem(args):
                 "dimensionId": dimensionId,
                 "playerPos": playerPos
             }
-            CallServer("PlayerShapedRecipe", data)
+            Call("PlayerShapedRecipe", data)
 
-@ListenClient("ClientJumpButtonPressDownEvent")
+@Listen("ClientJumpButtonPressDownEvent")
 def ClientJumpButtonPressDown(args):
     global isJump
     isJump = True
     data = {"playerId": playerId, "isJump": isJump}
-    CallServer("SetPlayerIsJumpExtra", data)
+    Call("SetPlayerIsJumpExtra", data)
 
-@ListenClient("ClientJumpButtonReleaseEvent")
+@Listen("ClientJumpButtonReleaseEvent")
 def ClientJumpButtonRelease(args):
     global isJump
     isJump = False
     data = {"playerId": playerId, "isJump": isJump}
-    CallServer("SetPlayerIsJumpExtra", data)
+    Call("SetPlayerIsJumpExtra", data)
 
-@ListenClient("ModBlockEntityLoadedClientEvent")
+@Listen("ModBlockEntityLoadedClientEvent")
 def OnBlockEntityLoaded(args):
     blockPos = (args["posX"], args["posY"], args["posZ"])
     blockName = args["blockName"]
-    comp = ClientComp.CreateBlockInfo(levelId)
+    comp = compFactory.CreateBlockInfo(levelId)
     blockEntityData = comp.GetBlockEntityData(blockPos)
     if not blockEntityData:
         return
