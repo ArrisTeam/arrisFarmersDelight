@@ -195,11 +195,6 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.screenNode.GetBaseUIControl(cookRecipePanel + "/food_title/title").asLabel().SetText(recipeText)
 
     def CookingPotInit(self):
-        vessel = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/cookingpotContainerGrid/cookingpot_grid_item7")
-        vessel.SetPosition((75, 38))
-        result = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/cookingpotContainerGrid/cookingpot_grid_item8")
-        result.SetPosition((108, 38))
-
         previewItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/preview/item/item_renderer")
         previewItem.SetVisible(False)
         vesselItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/vessel/item_renderer")

@@ -1,31 +1,30 @@
 {
   "modules": [
     {
-      "type": "data",
-      "uuid": "9d3f0eb8-e72d-4bc8-bdc6-6e1f63c87548",
+      "type": "resources",
+      "uuid": "f50d62e1-0f44-43d6-9986-ea7a4bc90c03",
       "version": [
         0,
         0,
-        8
+        9
       ],
       "description": ""
     }
   ],
   "header": {
-    "uuid": "505808ce-de88-43d4-9014-3f5fbebb8f2f",
+    "uuid": "f8cb5080-cacd-4586-bbd3-0d0ab23b5c1c",
     "version": [
       0,
       0,
-      8
+      9
     ],
     "description": "",
-    "name": "behavior_pack",
+    "name": "resource_pack",
     "min_engine_version": [
       1,
       18,
       0
     ]
   },
-  "dependencies": [],
-  "format_version": 1
+  "format_version": 2
 }

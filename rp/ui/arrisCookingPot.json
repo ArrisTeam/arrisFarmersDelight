@@ -1,19 +1,10 @@
 {
     "arrisCookingPotMain@common.inventory_screen_common": {
         "$close_on_player_hurt|default": true,
-        "close_on_player_hurt": "$close_on_player_hurt",
-        "variables": [
-            {
-                "$screen_background_alpha": 0.4,
-                "$screen_bg_content": "common.screen_background",
-                "$screen_content": "arrisCookingPot.arrisCookingPotPanel",
-                "requires": "$desktop_screen"
-            },
-            {
-                "$screen_content": "arrisCookingPot.arrisCookingPotPanel",
-                "requires": "$pocket_screen"
-            }
-        ]
+        "$screen_background_alpha": 0.4,
+        "$screen_bg_content": "common.screen_background",
+        "$screen_content": "arrisCookingPot.arrisCookingPotPanel",
+        "close_on_player_hurt": "$close_on_player_hurt"
     },
     "arrisCookingPotPanel": {
         "type": "panel",
@@ -86,10 +77,42 @@
                                                                             }
                                                                         },
                                                                         {
-                                                                            "inventory_panel_bottom_half_with_label@common.inventory_panel_bottom_half_with_label": {}
-                                                                        },
-                                                                        {
-                                                                            "hotbar_grid@common.hotbar_grid_template": {}
+                                                                            "inventory_panel": {
+                                                                                "type": "panel",
+                                                                                "variables": [
+                                                                                    {
+                                                                                        "requires": "$desktop_screen",
+                                                                                        "$player_inventory_panel": "arrisCookingPot.desktop_player_inventory_panel"
+                                                                                    },
+                                                                                    {
+                                                                                        "requires": "$pocket_screen",
+                                                                                        "$player_inventory_panel": "arrisCookingPot.pocket_player_inventory_panel"
+                                                                                    }
+                                                                                ],
+                                                                                "anchor_from": "bottom_middle",
+                                                                                "anchor_to": "bottom_middle",
+                                                                                "size": [
+                                                                                    "100%+0px",
+                                                                                    "100%c+0px"
+                                                                                ],
+                                                                                "controls": [
+                                                                                    {
+                                                                                        "inventory_label@section_heading_label": {
+                                                                                            "anchor_from": "top_left",
+                                                                                            "anchor_to": "top_left",
+                                                                                            "layer": 2,
+                                                                                            "offset": [
+                                                                                                7,
+                                                                                                -5
+                                                                                            ],
+                                                                                            "text": "container.inventory"
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "player_inventory_panel@$player_inventory_panel": {}
+                                                                                    }
+                                                                                ]
+                                                                            }
                                                                         }
                                                                     ]
                                                                 }
@@ -629,6 +652,7 @@
     },
     "arrisCookingPotTopHalf": {
         "type": "panel",
+        "$item_collection_name": "netease_container",
         "anchor_from": "top_left",
         "anchor_to": "top_left",
         "offset": [
@@ -644,7 +668,7 @@
                 "title@arrisCookingPot.cookingpot_container_label": {
                     "offset": [
                         7,
-                        -1
+                        -2
                     ]
                 }
             },
@@ -660,24 +684,6 @@
                         58.0
                     ],
                     "controls": [
-                        {
-                            "spoon": {
-                                "type": "image",
-                                "offset": [
-                                    32.0,
-                                    20.0
-                                ],
-                                "size": [
-                                    14.0,
-                                    14.0
-                                ],
-                                "layer": 1,
-                                "clip_direction": "left",
-                                "clip_ratio": 0.0,
-                                "texture": "textures/ui/spoon",
-                                "controls": []
-                            }
-                        },
                         {
                             "arrow": {
                                 "type": "image",
@@ -815,14 +821,121 @@
                             }
                         },
                         {
-                            "cookingpotContainerGrid@arrisCookingPot.cookingpot_container_grid": {
-                                "anchor_from": "left_middle",
-                                "anchor_to": "left_middle",
-                                "grid_rescaling_type": "horizontal",
-                                "maximum_grid_items": 8,
+                            "input_items1": {
+                                "type": "stack_panel",
                                 "offset": [
-                                    19,
-                                    0
+                                    -41.0,
+                                    -18.0
+                                ],
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "cookingpot_grid_item1@common.container_item": {
+                                            "collection_index": 0
+                                        }
+                                    },
+                                    {
+                                        "cookingpot_grid_item2@common.container_item": {
+                                            "collection_index": 1
+                                        }
+                                    },
+                                    {
+                                        "cookingpot_grid_item3@common.container_item": {
+                                            "collection_index": 2
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "input_items2": {
+                                "type": "stack_panel",
+                                "offset": [
+                                    -41.0,
+                                    0.0
+                                ],
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "cookingpot_grid_item1@common.container_item": {
+                                            "collection_index": 3
+                                        }
+                                    },
+                                    {
+                                        "cookingpot_grid_item2@common.container_item": {
+                                            "collection_index": 4
+                                        }
+                                    },
+                                    {
+                                        "cookingpot_grid_item3@common.container_item": {
+                                            "collection_index": 5
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "output_items": {
+                                "type": "stack_panel",
+                                "offset": [
+                                    31.0,
+                                    20.0
+                                ],
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "cookingpot_grid_item7@common.container_item": {
+                                            "collection_index": 6
+                                        }
+                                    },
+                                    {
+                                        "spoon": {
+                                            "type": "panel",
+                                            "size": [
+                                                "100%c+4px",
+                                                "100%c+6px"
+                                            ],
+                                            "controls": [
+                                                {
+                                                    "spoon": {
+                                                        "type": "image",
+                                                        "size": [
+                                                            14.0,
+                                                            14.0
+                                                        ],
+                                                        "layer": 1,
+                                                        "clip_direction": "left",
+                                                        "clip_ratio": 0.0,
+                                                        "texture": "textures/ui/spoon",
+                                                        "controls": []
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "cookingpot_grid_item8@common.container_item": {
+                                            "collection_index": 7
+                                        }
+                                    }
                                 ]
                             }
                         }
@@ -839,7 +952,7 @@
             54.0,
             "100.0%c"
         ],
-        "collection_name": "netease_container",
+        "collection_name": "$item_collection_name",
         "grid_item_template": "arrisCookingPot.cookingpot_grid_item",
         "grid_rescaling_type": "horizontal",
         "maximum_grid_items": 7
@@ -860,28 +973,50 @@
         "color": "$title_text_color",
         "text": "$container_title"
     },
-    "cookingpot_drop_container_grid": {
-        "type": "grid",
-        "anchor_from": "top_left",
-        "anchor_to": "top_left",
+    "desktop_player_inventory_panel": {
+        "type": "panel",
         "size": [
-            "100%c+0px",
-            "100.0%c"
+            "100%+0px",
+            "100%c+3px"
         ],
-        "collection_name": "netease_ui_container",
-        "grid_dimensions": [
-            9,
-            2
-        ],
-        "grid_item_template": "arrisCookingPot.cookingpot_drop_grid_item",
-        "grid_rescaling_type": "horizontal",
-        "maximum_grid_items": 1
-    },
-    "cookingpot_drop_grid_item@common.container_item": {
-        "$item_collection_name": "netease_ui_container"
-    },
-    "cookingpot_grid_item@common.container_item": {
-        "$item_collection_name": "netease_container"
+        "layer": 1,
+        "controls": [
+            {
+                "inventory_grid": {
+                    "type": "grid",
+                    "anchor_from": "top_middle",
+                    "anchor_to": "top_middle",
+                    "offset": [
+                        0,
+                        0.0
+                    ],
+                    "size": [
+                        "100%c+0px",
+                        "100%c+0px"
+                    ],
+                    "layer": 1,
+                    "collection_name": "inventory_items",
+                    "grid_dimensions": [
+                        9,
+                        3
+                    ],
+                    "grid_item_template": "common.grid_item_for_inventory"
+                }
+            },
+            {
+                "hotbar_grid@common.hotbar_grid_template": {
+                    "layer": 1,
+                    "offset": [
+                        0,
+                        0
+                    ],
+                    "size": [
+                        "100%c+0px",
+                        "100%c+0px"
+                    ]
+                }
+            }
+        ]
     },
     "foodRecipe@common.button": {
         "type": "button",
@@ -953,6 +1088,231 @@
         ]
     },
     "namespace": "arrisCookingPot",
+    "pocket_player_inventory_panel": {
+        "type": "panel",
+        "size": [
+            "100%+0px",
+            "100%c+3px"
+        ],
+        "layer": 1,
+        "controls": [
+            {
+                "inventory_items_panel": {
+                    "type": "stack_panel",
+                    "$item_collection_name": "combined_hotbar_and_inventory_items",
+                    "anchor_from": "top_middle",
+                    "anchor_to": "top_middle",
+                    "size": [
+                        "100%cm+0px",
+                        "100%c+0px"
+                    ],
+                    "layer": 1,
+                    "controls": [
+                        {
+                            "inventory_items1": {
+                                "type": "stack_panel",
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "slot1@common.container_item": {
+                                            "collection_index": 9
+                                        }
+                                    },
+                                    {
+                                        "slot2@common.container_item": {
+                                            "collection_index": 10
+                                        }
+                                    },
+                                    {
+                                        "slot3@common.container_item": {
+                                            "collection_index": 11
+                                        }
+                                    },
+                                    {
+                                        "slot4@common.container_item": {
+                                            "collection_index": 12
+                                        }
+                                    },
+                                    {
+                                        "slot5@common.container_item": {
+                                            "collection_index": 13
+                                        }
+                                    },
+                                    {
+                                        "slot6@common.container_item": {
+                                            "collection_index": 14
+                                        }
+                                    },
+                                    {
+                                        "slot7@common.container_item": {
+                                            "collection_index": 15
+                                        }
+                                    },
+                                    {
+                                        "slot8@common.container_item": {
+                                            "collection_index": 16
+                                        }
+                                    },
+                                    {
+                                        "slot9@common.container_item": {
+                                            "collection_index": 17
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "inventory_items2": {
+                                "type": "stack_panel",
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "slot1@common.container_item": {
+                                            "collection_index": 18
+                                        }
+                                    },
+                                    {
+                                        "slot2@common.container_item": {
+                                            "collection_index": 19
+                                        }
+                                    },
+                                    {
+                                        "slot3@common.container_item": {
+                                            "collection_index": 20
+                                        }
+                                    },
+                                    {
+                                        "slot4@common.container_item": {
+                                            "collection_index": 21
+                                        }
+                                    },
+                                    {
+                                        "slot5@common.container_item": {
+                                            "collection_index": 22
+                                        }
+                                    },
+                                    {
+                                        "slot6@common.container_item": {
+                                            "collection_index": 23
+                                        }
+                                    },
+                                    {
+                                        "slot7@common.container_item": {
+                                            "collection_index": 24
+                                        }
+                                    },
+                                    {
+                                        "slot8@common.container_item": {
+                                            "collection_index": 25
+                                        }
+                                    },
+                                    {
+                                        "slot9@common.container_item": {
+                                            "collection_index": 26
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "inventory_items3": {
+                                "type": "stack_panel",
+                                "size": [
+                                    "100%c+0px",
+                                    "100%cm+0px"
+                                ],
+                                "layer": 1,
+                                "collection_name": "$item_collection_name",
+                                "orientation": "horizontal",
+                                "controls": [
+                                    {
+                                        "slot1@common.container_item": {
+                                            "collection_index": 27
+                                        }
+                                    },
+                                    {
+                                        "slot2@common.container_item": {
+                                            "collection_index": 28
+                                        }
+                                    },
+                                    {
+                                        "slot3@common.container_item": {
+                                            "collection_index": 29
+                                        }
+                                    },
+                                    {
+                                        "slot4@common.container_item": {
+                                            "collection_index": 30
+                                        }
+                                    },
+                                    {
+                                        "slot5@common.container_item": {
+                                            "collection_index": 31
+                                        }
+                                    },
+                                    {
+                                        "slot6@common.container_item": {
+                                            "collection_index": 32
+                                        }
+                                    },
+                                    {
+                                        "slot7@common.container_item": {
+                                            "collection_index": 33
+                                        }
+                                    },
+                                    {
+                                        "slot8@common.container_item": {
+                                            "collection_index": 34
+                                        }
+                                    },
+                                    {
+                                        "slot9@common.container_item": {
+                                            "collection_index": 35
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "hotbar_grid": {
+                    "type": "grid",
+                    "$item_collection_name": "combined_hotbar_and_inventory_items",
+                    "anchor_from": "bottom_middle",
+                    "anchor_to": "bottom_middle",
+                    "offset": [
+                        0,
+                        0.0
+                    ],
+                    "size": [
+                        "100%c+0px",
+                        "100%c+0px"
+                    ],
+                    "layer": 1,
+                    "collection_name": "$item_collection_name",
+                    "grid_dimensions": [
+                        9,
+                        1
+                    ],
+                    "grid_item_template": "common.container_item"
+                }
+            }
+        ]
+    },
     "recipeItem": {
         "type": "image",
         "size": [
