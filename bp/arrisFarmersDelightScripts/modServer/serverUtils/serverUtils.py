@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from ...QuModLibs.Server import *
 from ...modCommon.modConfig import *
-from collections import Counter
 import math, random, copy
 
 entityFace = {
@@ -10,6 +9,15 @@ entityFace = {
     2: (0, 90),
     3: (0, 180)
 }
+
+# 厨锅/煎锅/炉灶 tick 错峰常量。越大瞬时工作量越低但响应相位越粗。
+# 厨锅是 20Hz 的 tick_event、timer 步长 0.05/tick * 20 tick/s = 1.0/s；若 STRIDE=4 则步长需要×4 补偿，一锅的实际 tick 频率仍然 5Hz 足够跟上 UI。
+COOKING_POT_TICK_STRIDE = 4
+
+def PosHash(pos):
+    # 整型坐标哈希（三维离散化）；用于 tick 错峰加盐，让不同坐标的方块实体落在不同 tick 上
+    x, y, z = int(pos[0]), int(pos[1]), int(pos[2])
+    return (x * 73856093 ^ y * 19349663 ^ z * 83492791) & 0x7FFFFFFF
 
 def FromAngleGetBlockAux(x1, y1, x2, y2):
     # 计算两点直接的角度并返回特殊值
@@ -41,25 +49,16 @@ def clickBlockFace(x, y, z):
 
 def ProbabilityFunc(probability):
     # 以 probability % 的概率返回True否则返回False
-    randomList = []
-    for i in range(probability):
-        randomList.append(1)
-    for x in range(100 - probability):
-        randomList.append(0)
-    extract = random.choice(randomList)
-    if extract == 1:
-        return True
-    else:
+    if probability <= 0:
         return False
+    if probability >= 100:
+        return True
+    return random.randint(1, 100) <= probability
 
 def ToAllPlayerPlaySound(dmId, pos, soundName):
-    # 播放音效
-    playerList = serverApi.GetPlayerList()
-    for pid in playerList:
-        dimensionId = compFactory.CreateDimension(pid).GetEntityDimensionId()
-        if dimensionId == dmId:
-            data = {"soundName": soundName, "pos": pos}
-            Call(pid, "OnPlaySound", data)
+    # 播放音效 — 单次广播给全体客户端，由客户端本地检查维度过滤，
+    # 避免在服务端每人创建 CreateDimension 组件做维度查询
+    Call("*", "OnPlaySound", {"soundName": soundName, "pos": pos, "dimensionId": dmId})
 
 def IsFullBackpack(playerId):
     # 检测玩家背包是否已满
@@ -116,19 +115,21 @@ def DetectionExperimentalHoliday():
 
 def CheckCookingPotRecipe(inputItemSlot):
     # 检查厨锅内的物品是否符合配方
-    inputItemList = list()
+    # 通过预先构建的 _cookingPotRecipeIndex 做 O(1) 字典查找，
+    # 替代原来遍历 CookingPotRecipeList × variants + Counter 比较的 O(n*m) 方案。
+    inputItemList = []
     for itemDict in inputItemSlot:
         if itemDict != {}:
-            tupleRecipe = (itemDict["newItemName"], itemDict["newAuxValue"])
-            inputItemList.append(tupleRecipe)
-    for RecipeDict in CookingPotRecipeList:
-        for recipe in RecipeDict["Recipe"]:
-            if Counter(recipe) == Counter(inputItemList):
-                resultItem = {"newItemName": RecipeDict["CookResult"][0], "newAuxValue": RecipeDict["CookResult"][1], "count": 1}
-                pushItemList = RecipeDict.get("PushItem")
-                data = (resultItem, pushItemList)
-                return data
-    return None, None
+            inputItemList.append((itemDict["newItemName"], itemDict["newAuxValue"]))
+    if not inputItemList:
+        return None, None
+    key = tuple(sorted(inputItemList))
+    hit = LookupCookingPotRecipe(key)
+    if not hit:
+        return None, None
+    cookResult, pushItemList = hit
+    resultItem = {"newItemName": cookResult[0], "newAuxValue": cookResult[1], "count": 1}
+    return resultItem, pushItemList
 
 def GetDisplayEntityCarriedItemType(itemDict):
     if itemDict:
@@ -238,6 +239,9 @@ def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
     # 检查厨锅内的容器是否符合并更新
     x, y, z = blockPos
     previewItemSlot = blockEntityData["previewItemSlot"][0]
+    # 前置短路：预览槽为空时不可能有成品待出料，跳过整段配方扫描
+    if not previewItemSlot:
+        return
     vesselItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 6, dimensionId)
 
     for RecipeDict in CookingPotRecipeList:

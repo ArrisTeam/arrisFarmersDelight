@@ -142,7 +142,8 @@ def OnSkilletTick(args):
         return
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if compFactory.CreateTime(levelId).GetTime() % 20 == 0:
+    # 1Hz 采样 + 坐标相位错开：每个煎锅每秒仍然 tick 1 次，但不同坐标落在不同 tick 上
+    if (compFactory.CreateTime(levelId).GetTime() + PosHash(blockPos)) % 20 == 0:
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if not blockEntityData:
             return

@@ -116,6 +116,16 @@ itemChangeBlockDict = {
     "arris:sweet_berry_cheesecake_item": "arris:sweet_berry_cheesecake",
     "arris:chocolate_pie_item": "arris:chocolate_pie",
 }
+# "合成后还给玩家的空容器"映射：获得 key 物品时 → 返还 value 空容器
+# 服务端 PlayerShapedRecipe 的白名单：客户端不能再指定任意 itemDict
+shapedRecipeContainerDict = {
+    "arris:wheat_dough": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
+    "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
+    "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
+    "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
+    "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
+    "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
+}
 # 派列表
 pieList = [
     "arris:apple_pie",
@@ -155,8 +165,8 @@ WildCropDict = {
     "arris:wild_tomatoes": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:dirt_with_roots", "minecraft:farmland", "minecraft:podzol", "minecraft:mycelium", "minecraft:mud"],
     "arris:wild_potatoes": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:dirt_with_roots", "minecraft:farmland", "minecraft:podzol", "minecraft:mycelium", "minecraft:mud"]
 }
-# 原版所有负面效果
-negativeEffect = [
+# 原版所有负面效果 (frozenset for O(1) lookup — 本 mod 内部使用，不对外暴露于扩展接口)
+negativeEffect = frozenset([
     "slowness",
     "mining_fatigue",
     "instant_damage",
@@ -166,7 +176,7 @@ negativeEffect = [
     "weakness",
     "wither",
     "poison",
-    "fatal_poison"
+    "fatal_poison",
     "wither",
     "levitation",
     "darkness",
@@ -174,7 +184,7 @@ negativeEffect = [
     "weaving",
     "oozing",
     "infested"
-]
+])
 # 盘装食物
 platePackagedFoodDict = {
     "arris:roast_chicken_block_stage0": {"target": "arris:roast_chicken_block_stage1", "item": "arris:roast_chicken"},
@@ -968,6 +978,37 @@ wolfComponentsDict = {
     "minecraft:behavior.beg": '{"priority":9,"look_distance":8,"look_time":[2,4],"items":["arris:dog_food","bone","porkchop","cooked_porkchop","chicken","cooked_chicken","beef","cooked_beef","rotten_flesh","muttonraw","muttoncooked","rabbit","cooked_rabbit"]}',
 }
 
+# ---------------- 厨锅配方索引 ----------------
+# 为 CheckCookingPotRecipe 提供 O(1) 查找，避免每 tick 遍历 CookingPotRecipeList × variants 做 Counter 比较。
+# key: tuple(sorted((itemName, auxValue), ...)) —— 将一组输入排序成可哈希的唯一键
+# value: (cookResultTuple, pushItemList)
+_cookingPotRecipeIndex = {}
+
+def BuildCookingPotRecipeIndex():
+    """
+    重建厨锅配方索引。每次 CookingPotRecipeList 被修改后调用。
+    遇到键冲突时保留先插入的那条，以维持与原 O(n) 实现"首个匹配获胜"一致的语义。
+    """
+    _cookingPotRecipeIndex.clear()
+    for recipeDict in CookingPotRecipeList:
+        cookResult = recipeDict["CookResult"]
+        pushItemList = recipeDict.get("PushItem", [])
+        for variant in recipeDict["Recipe"]:
+            key = tuple(sorted(variant))
+            if key not in _cookingPotRecipeIndex:
+                _cookingPotRecipeIndex[key] = (cookResult, pushItemList)
+
+def LookupCookingPotRecipe(inputKey):
+    """
+    根据排序后的输入键查找配方。inputKey: tuple(sorted([(name, aux), ...])).
+    返回 (cookResultTuple, pushItemList) 或 None。
+    """
+    return _cookingPotRecipeIndex.get(inputKey)
+
+# 首次构建（在模块加载时）
+BuildCookingPotRecipeIndex()
+
+
 def ArrisFarmersDelightInterface(target, element=None):
     """
     向配置字典或列表内添加元素
@@ -994,6 +1035,9 @@ def ArrisFarmersDelightInterface(target, element=None):
             globalVar[target] += element
     elif targetType == "dict" and elementType == "dict":
         globalVar[target].update(element)
+    # 若外部修改的是厨锅配方表，则同步重建索引
+    if target == "CookingPotRecipeList":
+        BuildCookingPotRecipeIndex()
     return globalVar[target]
 
 def ArrisFarmersDelightObtain(target):
@@ -1024,6 +1068,6 @@ def AddCookingPotRecipe(name, recipe):
     for recipeDict in CookingPotRecipeList:
         if recipeDict["CookResult"][0] == name:
             recipeDict["Recipe"].append(recipe)
+            BuildCookingPotRecipeIndex()
             return recipeDict["Recipe"]
-        else:
-            return False
+    return False

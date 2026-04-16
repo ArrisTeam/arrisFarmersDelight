@@ -2,9 +2,14 @@
 from serverUtils.serverUtils import *
 
 @AllowCall
-def SetPlayerIsJumpExtra(data):
-    playerId = data["playerId"]
-    isJump = data["isJump"]
+@InjectHttpPlayerId
+def SetPlayerIsJumpExtra(playerId, data):
+    # 安全加固：playerId 由服务端从 HTTP 上下文注入，不再信任客户端传入
+    if not playerId:
+        return
+    isJump = data.get("isJump") if isinstance(data, dict) else None
+    if isJump is None:
+        return
     compFactory.CreateExtraData(playerId).SetExtraData("isJump", isJump)
 
 @Listen("OnEntityInsideBlockServerEvent")

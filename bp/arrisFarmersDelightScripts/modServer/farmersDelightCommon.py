@@ -167,7 +167,6 @@ def OnServerItemUseCommon(args):
 def OnDestroyBlockCommon(args):
     # 当方块已经被玩家破坏时触发该事件
     blockName = args["fullName"]
-    print blockName
     if blockName in ["minecraft:fern", "minecraft:large_fern", "minecraft:short_grass", "minecraft:tall_grass", "arris:sandy_shrub", "arris:rich_soil_wheat7", "arris:rice_upper_crop_stage3", "arris:rice_supporting"]:
         dimensionId = args["dimensionId"]
         playerId = args["playerId"]
@@ -272,8 +271,28 @@ def OnDamageCommon(args):
             compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, {}, 0)
 
 @AllowCall
-def PlayerShapedRecipe(args):
-    itemDict = args["itemDict"]
-    dimensionId = args["dimensionId"]
-    playerPos = args["playerPos"]
+@InjectHttpPlayerId
+def PlayerShapedRecipe(playerId, args):
+    # 安全加固：
+    # 1. playerId 由服务端从 HTTP 上下文注入（不再信任客户端传入）
+    # 2. 客户端只传触发物品名 itemName，服务端从白名单 shapedRecipeContainerDict 反查要返还的空容器
+    # 3. dimension / pos 由服务端本地读取，而非客户端传入
+    # 4. count 强制为 1
+    triggerItemName = args.get("triggerItemName") if isinstance(args, dict) else None
+    if not triggerItemName:
+        return
+    containerTemplate = shapedRecipeContainerDict.get(triggerItemName)
+    if not containerTemplate:
+        return
+    if not playerId:
+        return
+    itemDict = {
+        "itemName": containerTemplate["itemName"],
+        "count": 1,
+        "auxValue": containerTemplate.get("auxValue", 0),
+    }
+    dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
+    playerPos = compFactory.CreatePos(playerId).GetFootPos()
+    if playerPos is None:
+        return
     System.CreateEngineItemEntity(itemDict, dimensionId, playerPos)

@@ -19,14 +19,15 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.RecipeList = self.cookingPotRecipeList
         self.foodRecipeTimerRunning = False
         self.foodRecipeSearchDict = None
-        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+        # 背包列表现在仅在 "Add Food" 按钮点击时按需拉取，OnTick 不再维护
+        self.allItemList = None
 
     def OnCreate(self):
         self.foodRecipe = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/option_bg/stack_panel/scroll_panel/scroll_view").asScrollView().GetScrollViewContentControl()
         compFactory.CreateGame(levelId).AddTimer(0.1, self.CookingPotInit)
 
     def OnTick(self):
-        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+        # OnTick 不再每帧拉背包（36 格 × 20Hz），背包快照改为按 "Add Food" 按钮点击时按需读取
         pos = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
         if not pos:
             return
@@ -107,6 +108,8 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
 
     @ViewBinder.binding(ViewBinder.BF_ButtonClickUp, "#arrisCookingPotAddFood")
     def CookingPotAddFood(self, args):
+        # 点击时即时拉一次最新背包，避免每 tick 拉 36 格的浪费
+        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
         flag = False
         indexList = []
         allItemList = []

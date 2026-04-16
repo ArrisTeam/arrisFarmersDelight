@@ -68,6 +68,10 @@ def OnCookingPotTick(args):
         return
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
+    # 坐标加盐错峰：N 个厨锅分散到 COOKING_POT_TICK_STRIDE 个不同 tick 上，瞬时工作量降为 1/STRIDE
+    tickCount = compFactory.CreateTime(levelId).GetTime()
+    if (tickCount + PosHash(blockPos)) % COOKING_POT_TICK_STRIDE != 0:
+        return
     blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
@@ -95,8 +99,9 @@ def OnCookingPotTick(args):
         if previewItemSlot[0] and previewItemSlot[0].get("count") >= maxStackSize:
             return
         if not previewItemSlot[0] or resultItem["newItemName"] == previewItemSlot[0].get("newItemName"):
-            blockEntityData["timer"] -= 0.05
-            if blockEntityData["timer"] <= 0.05:
+            # 错峰后本 handler 每 STRIDE tick 才跑一次，步长需按 STRIDE 倍补偿以保持总烹饪时长 10s
+            blockEntityData["timer"] -= 0.05 * COOKING_POT_TICK_STRIDE
+            if blockEntityData["timer"] <= 0.05 * COOKING_POT_TICK_STRIDE:
                 blockEntityData["timer"] = 10.0
 
                 if pushItemList:

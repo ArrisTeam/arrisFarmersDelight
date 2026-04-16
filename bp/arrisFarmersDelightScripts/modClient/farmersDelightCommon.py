@@ -5,17 +5,12 @@ from ..modCommon.modConfig import *
 isJump = None
 isClickingBlock = ()
 
-recipeDict = {
-    "arris:wheat_dough": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
-    "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
-    "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
-    "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
-    "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
-    "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0}
-}
-
 @AllowCall
 def OnPlaySound(args):
+    # 服务端现在广播给所有玩家，这里按维度本地过滤，跨维度的声音本端直接丢弃
+    dmId = args.get("dimensionId")
+    if dmId is not None and dmId != compFactory.CreateGame(levelId).GetCurrentDimension():
+        return
     soundName = args["soundName"]
     pos = args["pos"]
     compFactory.CreateCustomAudio(levelId).PlayCustomMusic(soundName, pos, 1, 1, False, None)
@@ -66,31 +61,22 @@ def OnActorAcquiredItem(args):
     acquireMethod = args["acquireMethod"]
     if acquireMethod == 2:
         itemName = itemDict["newItemName"]
-        if itemName in recipeDict:
-            dimensionId = compFactory.CreateGame(levelId).GetCurrentDimension()
-            playerPos = compFactory.CreatePos(playerId).GetFootPos()
-            giveItemDict = recipeDict[itemName]
-            data = {
-                "itemDict": giveItemDict,
-                "playerId": playerId,
-                "dimensionId": dimensionId,
-                "playerPos": playerPos
-            }
-            Call("PlayerShapedRecipe", data)
+        if itemName in shapedRecipeContainerDict:
+            # 只把触发物品名传给服务端；playerId / 维度 / 坐标 / 容器物品 均由服务端自行确定，防止伪造
+            Call("PlayerShapedRecipe", {"triggerItemName": itemName})
 
 @Listen("ClientJumpButtonPressDownEvent")
 def ClientJumpButtonPressDown(args):
     global isJump
     isJump = True
-    data = {"playerId": playerId, "isJump": isJump}
-    Call("SetPlayerIsJumpExtra", data)
+    # playerId 由服务端通过 @InjectHttpPlayerId 注入，客户端不再传
+    Call("SetPlayerIsJumpExtra", {"isJump": isJump})
 
 @Listen("ClientJumpButtonReleaseEvent")
 def ClientJumpButtonRelease(args):
     global isJump
     isJump = False
-    data = {"playerId": playerId, "isJump": isJump}
-    Call("SetPlayerIsJumpExtra", data)
+    Call("SetPlayerIsJumpExtra", {"isJump": isJump})
 
 @Listen("ModBlockEntityLoadedClientEvent")
 def OnBlockEntityLoaded(args):
