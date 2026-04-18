@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from QuClientApi.ui.screenNode import ScreenNode as BaseScreenNode
+
 from mod.client.ui.screenNode import ScreenNode
 import mod.client.extraClientApi as clientApi
 from Util import (
@@ -13,7 +13,6 @@ from Util import (
 from Client import ListenForEvent, UnListenForEvent
 from types import MethodType
 from functools import wraps
-lambda: "By Zero123"
 
 __all__ = [
     "ScreenNodeWrapper", "EasyScreenNodeCls", "ESNC"
@@ -21,7 +20,7 @@ __all__ = [
 
 _BASE_SCREEN_NODE_CLS = ScreenNode
 
-class ScreenNodeWrapper(_BASE_SCREEN_NODE_CLS, QDRAIIEnv, BaseScreenNode):
+class ScreenNodeWrapper(_BASE_SCREEN_NODE_CLS, QDRAIIEnv):
     """ 封装界面节点类 按类隔离命名空间与Key名 """
     # 若需要更加复杂的功能支持, 请使用: Modules/UI/EnhancedUI.py
     _AUTO_REGISTER_UI_MAP = {}
@@ -186,7 +185,7 @@ class QuGridObject(object):
         if self.DelayUpdate:
             self.uiNode.UpdateScreen(True)
 
-class EasyScreenNodeCls(BaseScreenNode):
+class EasyScreenNodeCls(ScreenNode):
     """ 简易界面类 可继承并开发 """
     UiName = "Ui_"+RandomUid()              # Ui名字 默认随机
     UiDef = None                            # 用来标识json ui的命名空间和界面名 如 zeroui.main

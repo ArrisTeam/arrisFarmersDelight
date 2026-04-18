@@ -23,7 +23,6 @@ class EasyListener:
         self._callQueue = []    # type: list[CallObjData]
         self._emptyContext = EmptyContext()
         self._QCustomAPI = {}   # type: dict[str, function]
-        self._pendingRpcCalls = []  # type: list[dict]
     
     def regCustomApi(self, apiName="", func=lambda: None):
         """ 注册自定义API """
@@ -45,31 +44,10 @@ class EasyListener:
     def _systemCallListener(self, args={}):
         """ 系统call机制监听器(接收消息处理) """
         api = args["api"]
-        if api not in self._QCustomAPI:
-            self._pendingRpcCalls.append(args)
-            return
         ag = EasyListener._unPackRefArgs(args["args"])
         kwargs = EasyListener._unPackRefDictArgs(args["kw"])
         self._systemCallListenerHook(args)
         return self.localCall(api, *ag, **kwargs)
-
-    def _flushPendingRpcCalls(self):
-        """ 回放模块加载前缓冲的 RPC 调用 """
-        if not self._pendingRpcCalls:
-            return
-        pending = self._pendingRpcCalls
-        self._pendingRpcCalls = []
-        for args in pending:
-            api = args["api"]
-            if api not in self._QCustomAPI:
-                continue
-            try:
-                ag = EasyListener._unPackRefArgs(args["args"])
-                kwargs = EasyListener._unPackRefDictArgs(args["kw"])
-                self._systemCallListenerHook(args)
-                self.localCall(api, *ag, **kwargs)
-            except Exception as e:
-                print("[EasyListener] Flush pending RPC error: {} ({})".format(api, e))
     
     def _systemCallListenerHook(self, _={}):
         pass

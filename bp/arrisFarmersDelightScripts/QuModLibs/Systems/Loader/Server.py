@@ -16,8 +16,7 @@ engineSpaceName, engineSystemName = serverApi.GetEngineNamespace(), serverApi.Ge
 
 def serverImportModule(filePath):
     """ 服务端文件导入 """
-    parts = filePath.split(".")
-    return __builtins__["__import__"](filePath, fromlist=[parts[-1]])
+    return serverApi.ImportModule(filePath)
 
 class LoaderSystem(ServerSystem, EasyListener):
     """ QuMod加载器系统
@@ -63,11 +62,6 @@ class LoaderSystem(ServerSystem, EasyListener):
     def __init__(self, namespace, systemName):
         ServerSystem.__init__(self, namespace, systemName)
         EasyListener.__init__(self)
-        # DelModModules按前缀del sys.modules清理模块, 延迟GC导致模块__dict__被清空
-        # 按相同前缀持有所有mod模块引用, 生命周期与实例绑定, 阻止GC析构
-        _sys = __builtins__["__import__"]("sys")
-        _p = __name__.split(".")[0]
-        self._modRefs = {k: v for k, v in list(_sys.modules.items()) if v is not None and k.startswith(_p)}
         RuntimeService._serverStarting = True
         self.namespace = namespace
         self.systemName = systemName
@@ -201,8 +195,6 @@ class LoaderSystem(ServerSystem, EasyListener):
                 continue
             # if not systemName: systemName = uuid4().hex
         self._regInitState = True
-        # 回放模块加载前缓冲的 RPC 调用
-        self._flushPendingRpcCalls()
         # 加载Finish事件
         for funcObj in RuntimeService._serverLoadFinish:
             TRY_EXEC_FUN(funcObj)

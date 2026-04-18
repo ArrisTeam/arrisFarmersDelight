@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from Util import SystemSide
-lambda: "By Zero123"
 
 IsServerUser = False
 ModDirName = SystemSide.__module__.split(".")[0]

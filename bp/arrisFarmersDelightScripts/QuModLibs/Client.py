@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # 客户端端基本功能模块 为减缓IO开销 常用的功能均放置在该文件 其他功能按需导入使用
-from Math import Vec3, Vec2, QBox3D
 from Util import (
     Unknown,
     InitOperation,
@@ -8,22 +7,17 @@ from Util import (
     _eventsRedirect,
     ObjectConversion as __ObjectConversion
 )
-if 1 > 2:
-    # 阻止补全库被真正import降低运行时开销
-    import QuClientApi.extraClientApi as extraClientApi
-    from QuClientApi.Events import Events as _EventsPrompt
 import mod.client.extraClientApi as __extraClientApi
 import IN as __IN
 from IN import ModDirName
 IsServerUser = __IN.IsServerUser
 """ 客户端常量_是否为房主 """
-clientApi = __extraClientApi                        # type: extraClientApi
+clientApi = __extraClientApi                        
 TickEvent = "OnScriptTickClient"
-System = clientApi.GetSystem("Minecraft","game")    # type: extraClientApi
+System = clientApi.GetSystem("Minecraft","game")    
 levelId = clientApi.GetLevelId()
-playerId = clientApi.GetLocalPlayerId()
-compFactory = clientApi.GetEngineCompFactory()
-Events = _eventsRedirect                            # type: type[_EventsPrompt]
+playerId = clientApi.GetLocalPlayerId() 
+Events = _eventsRedirect                            
 
 def regModLoadFinishHandler(func):
     """ 注册Mod加载完毕后触发的Handler """
@@ -110,203 +104,6 @@ def LocalCall(funcName="", *args, **kwargs):
     """ 本地调用 执行当前端@AllowCall|@CallBackKey("...")的方法 """
     return _loaderSystem.localCall(funcName, *args, **kwargs)
 
-class Entity(object):
-    __slots__ = ("entityId","PropertySettingsDic",)
-    ErrorSet = "[Error]: 不支持的属性设置"
-
-    class Type:
-        PLAYER = "minecraft:player"
-
-    class HealthComp(object):
-        """ 生命值组件 """
-        def __init__(self,entityId):
-            # type: (str) -> None
-            self.entityId = entityId
-            self.PropertySettingsDic = {}
-
-        def __setattr__(self, Name, Value):
-            """ 属性设置处理 """
-            if Name in Entity.__slots__:
-                return object.__setattr__(self, Name, Value)
-            elif Name in self.PropertySettingsDic:
-                Fun = self.PropertySettingsDic[Name]
-                return Fun(Value)
-            else:
-                print(Entity.ErrorSet)
-                return None
-            
-        @property
-        def Value(self):
-            # type: () -> int
-            comp = clientApi.GetEngineCompFactory().CreateAttr(self.entityId)
-            return comp.GetAttrValue(0)
-        @property
-        def Max(self):
-            # type: () -> int
-            comp = clientApi.GetEngineCompFactory().CreateAttr(self.entityId)
-            return comp.GetAttrMaxValue(0)
-
-    def __init__(self, entityId):
-        # type: (str) -> None
-        self.entityId = entityId
-        self.PropertySettingsDic = {}
-
-    def __setattr__(self, Name, Value):
-        """ 属性设置处理 """
-        if Name in Entity.__slots__:
-            return object.__setattr__(self, Name, Value)
-        elif Name in self.PropertySettingsDic:
-            Fun = self.PropertySettingsDic[Name]
-            return Fun(Value)
-        else:
-            print(Entity.ErrorSet)
-            return None
-
-    @property
-    def Health(self):
-        # type: () -> Entity.HealthComp
-        """ 实体生命值属性 """
-        return self.__class__.HealthComp(self.entityId)
-    
-    @property
-    def Pos(self):
-        # type: () -> tuple[float,float,float] | None
-        return clientApi.GetEngineCompFactory().CreatePos(self.entityId).GetPos()
-
-    @property
-    def Vec3Pos(self):
-        # type: () -> Vec3 | None
-        pos = self.Pos
-        if pos == None:
-            return None
-        return Vec3.tupleToVec(pos)
-
-    @property
-    def Vec3FootPos(self):
-        # type: () -> Vec3 | None
-        pos = self.FootPos
-        if pos == None:
-            return None
-        return Vec3.tupleToVec(pos)
-
-    @property
-    def FootPos(self):
-        # type: () -> tuple[float,float,float] | None
-        return clientApi.GetEngineCompFactory().CreatePos(self.entityId).GetFootPos()
-
-    @property
-    def Vec2Rot(self):
-        # type: () -> Vec2 | None
-        rot = self.Rot
-        if rot == None:
-            return None
-        return Vec2.tupleToVec(rot)
-
-    @property
-    def Rot(self):
-        # type: () -> tuple[float,float] | None
-        return clientApi.GetEngineCompFactory().CreateRot(self.entityId).GetRot()
-    
-    @property
-    def DirFromRot(self):
-        # type: () -> tuple[float,float,float] | None
-        return clientApi.GetDirFromRot(self.Rot)
-
-    @property
-    def Vec3DirFromRot(self):
-        # type: () -> Vec3 | None
-        rot = self.DirFromRot
-        if round == None:
-            return None
-        return Vec3.tupleToVec(rot)
-
-    def checkSubstantive(self):
-        # type: () -> bool
-        """ 检查实体是否具有实质性(非物品/抛掷物) """
-        entityTypeEnum = clientApi.GetMinecraftEnum().EntityType
-        comp = clientApi.GetEngineCompFactory().CreateEngineType(self.entityId)
-        entityType = comp.GetEngineType()
-        if entityType & entityTypeEnum.Projectile == entityTypeEnum.Projectile or entityType & entityTypeEnum.ItemEntity == entityTypeEnum.ItemEntity:
-            return False
-        return True
-
-    def convertToWorldVec3(self, absVec):
-        # type: (Vec3) -> Vec3
-        """ 基于当前实体转换一个相对向量到世界向量 """
-        axis = Vec3(0, 1, 0)
-        f = self.getBodyDirVec3()
-        l = f.copy().rotateVector(axis, -90)
-        worldVec3 = f.multiplyOf(absVec.z).addVec(l.multiplyOf(absVec.x))
-        if worldVec3.getLength() > 0.0:
-            worldVec3.convertToUnitVector()
-            worldVec3.multiplyOf(Vec3(absVec.x, 0.0, absVec.z).getLength())
-        worldVec3.y = absVec.y
-        return worldVec3
-
-    def getBodyDirVec3(self):
-        # type: () -> Vec3
-        """ 获取基于Body方向的单位向量 """
-        vc = self.Vec3DirFromRot
-        vc.y = 0.0
-        if vc.getLength() > 0.0:
-            vc.convertToUnitVector()
-        return vc
-
-    def EntityPointDistance(self, otherEntity="", errorValue=0.0):
-        # type: (str, float) -> float
-        """ 获取与另外一个实体对应的脚部中心点距离(若实体异常将返回errorValue) """
-        myPos = clientApi.GetEngineCompFactory().CreatePos(self.entityId).GetPos()
-        otherPos = clientApi.GetEngineCompFactory().CreatePos(otherEntity).GetPos()
-        if myPos == None or otherPos == None:
-            return errorValue
-        return Vec3.tupleToVec(myPos).vectorSubtraction(Vec3.tupleToVec(otherPos)).getLength()
-
-    def SetRuntimeAttr(self, attrName, value):
-        """ 设置运行时属性数据(根据MOD隔离) """
-        comp = clientApi.GetEngineCompFactory().CreateModAttr(self.entityId)
-        return comp.SetAttr("{}_{}".format(ModDirName, attrName), value)
-
-    def GetRuntimeAttr(self, attrName, nullValue=None):
-        """ 获取运行时属性数据(根据MOD隔离) """
-        comp = clientApi.GetEngineCompFactory().CreateModAttr(self.entityId)
-        return comp.GetAttr("{}_{}".format(ModDirName, attrName), nullValue)
-
-    def getBox3D(self, useBodyRot=False):
-        # type: (bool) -> QBox3D
-        """ 获取该实体的三维空间盒对象 """
-        footPos = self.FootPos
-        if not footPos:
-            return QBox3D.createNullBox3D()
-        comp = clientApi.GetEngineCompFactory().CreateCollisionBox(self.entityId)
-        sx, sy = comp.GetSize()
-        x, y, z = footPos
-        return QBox3D(Vec3(sx, sy, sx), Vec3(x, y + sy * 0.5, z), None, rotationAngle = 0 if not useBodyRot else self.Rot[1])
-
-    @property
-    def Identifier(self):
-        # type: () -> str
-        return clientApi.GetEngineCompFactory().CreateEngineType(self.entityId).GetEngineTypeStr()
-    
-    def GetMoLang(self, Query):
-        # type: (str) -> float
-        """ 获取 实体节点(仅支持原版Molang) """
-        comp = clientApi.GetEngineCompFactory().CreateQueryVariable(self.entityId)
-        return comp.GetMolangValue(Query)
-    
-    def GetQuery(self, Query):
-        # type: (str) -> float
-        """ 获取实体Query节点 支持原版Molang和自定义Query """
-        if Query.lower().startswith("query.mod."):
-            return clientApi.GetEngineCompFactory().CreateQueryVariable(self.entityId).Get(Query)
-        else:
-            return self.GetMoLang(Query)
-    
-    def SetQuery(self, Query, Value):
-        # type: (str,float) -> bool
-        """ 设置实体Query节点 仅支持自定义Query """
-        comp = clientApi.GetEngineCompFactory().CreateQueryVariable(self.entityId)
-        return comp.Set(Query, Value)
-
 # ======= QuMod提供的一些基于原版API的组件 =======
 @CallBackKey("__DelCallBackKey__")
 def __DelCallBackKey(key=""):
@@ -316,9 +113,8 @@ class QuObjectConversion(__ObjectConversion):
     @staticmethod
     def getClsWithPath(path):
         # type: (str) -> object
-        from ..Api.InternalModules import importModule
         lastPos = path.rfind(".")
-        impObj = importModule(path[:lastPos])
+        impObj = clientApi.ImportModule((path[:lastPos]))
         return getattr(impObj, path[lastPos+1:])
 
 class QuDataStorage:

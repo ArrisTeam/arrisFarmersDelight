@@ -2,30 +2,39 @@
   "modules": [
     {
       "type": "data",
-      "uuid": "1f2f43d1-5b8a-4ce7-a41a-8e772d0173df",
+      "uuid": "c8f0a8c1-0f92-4ea6-8e8e-905412cc83d5",
       "version": [
+        1,
         0,
-        0,
-        9
+        0
       ],
-      "description": ""
+      "description": "棱花Arris-农夫乐事"
     }
   ],
   "header": {
-    "uuid": "5cf077c0-1759-41b2-b9c4-581bfddda05c",
+    "uuid": "0bbb87d8-42a4-4799-95ca-169996955cb9",
     "version": [
+      1,
       0,
-      0,
-      9
+      0
     ],
-    "description": "",
-    "name": "behavior_pack",
+    "description": "棱花Arris-农夫乐事",
+    "name": "棱花Arris-农夫乐事",
     "min_engine_version": [
       1,
-      18,
+      21,
       0
     ]
   },
-  "dependencies": [],
-  "format_version": 2
+  "format_version": 2,
+  "dependencies": [
+    {
+      "uuid": "3ca4eaf4-0177-4d9b-ab1f-bf863a9976fa",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
 }

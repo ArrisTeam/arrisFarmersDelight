@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from functools import wraps
 from threading import Thread, Lock
-from Information import Version
 from time import time
 import pickle as _pickle
 
@@ -189,27 +188,6 @@ def InitOperation(fun):
     except Exception as e:
         print("[Error] " + str(e))
     return fun
-
-class Math:
-    """ 简易数学运算类 """
-    @staticmethod
-    def pointDistance(point1, point2):
-        # type: (tuple, tuple) -> float
-        """ 两点距离计算 """
-        x1, y1, z1 = point1
-        x2, y2, z2 = point2
-        result = ((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)**0.5
-        return result
-
-    @staticmethod
-    def getUnitVector(vector):
-        # type: (tuple[int|float]) -> tuple[int|float]
-        """ 获取向量的单位向量 """
-        length = (sum(i ** 2 for i in vector)) ** 0.5
-        if length == 0:
-            return vector
-        unitVector = tuple((i / length) for i in vector)
-        return unitVector
 
 class ObjectConversion:
     """ 对象转换工具类 By Zero123
