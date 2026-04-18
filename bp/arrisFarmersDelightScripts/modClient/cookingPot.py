@@ -2,7 +2,7 @@
 from ..QuModLibs.Client import *
 
 NativeScreenManager = clientApi.GetNativeScreenManagerCls()
-NativeScreenManager.instance().RegisterScreenProxy("arrisCookingPot.arrisCookingPotMain", "arrisFarmersDelightScripts.proxys.arrisCookingPotProxy.arrisCookingPotProxy")
+NativeScreenManager.instance().RegisterScreenProxy("arrisCookingPot.arris_cooking_pot_screen", "arrisFarmersDelightScripts.proxys.arrisCookingPotProxy.arrisCookingPotProxy")
 
 @Listen("ClientBlockUseEvent")
 def OnClientBlockUsed(args):

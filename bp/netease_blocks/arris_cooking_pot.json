@@ -4,7 +4,7 @@
         "components": {
             "netease:block_container": {
 				"custom_description": "厨锅",
-				"screen_name": "arrisCookingPot.arrisCookingPotMain",
+				"screen_name": "arrisCookingPot.arris_cooking_pot_screen",
 				"container_size": 8
 			},
             "minecraft:block_light_absorption": {

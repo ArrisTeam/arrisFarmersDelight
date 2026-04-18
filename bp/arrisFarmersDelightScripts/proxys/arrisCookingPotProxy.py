@@ -6,7 +6,8 @@ ViewBinder = clientApi.GetViewBinderCls()
 
 uiRootPanelPath = "variables_button_mappings_and_controls/safezone_screen_matrix/inner_matrix/safezone_screen_panel/root_screen_panel"
 cookRecipePanel = uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/cookbook_bg/stack_panel"
-cookingPotFireIcon = uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/heat/fire"
+
+cookingPotTopHalf = uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/cooking_pot_top_half"
 
 class arrisCookingPotProxy(CustomUIScreenProxy):
     def __init__(self, screenName, screenNode):
@@ -36,9 +37,9 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
             return
         heatEnable = blockEntityData["exData"]["heatEnable"]["__value__"]
         if not heatEnable:
-            self.screenNode.GetBaseUIControl(cookingPotFireIcon).SetVisible(False)
+            self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/heat/fire").SetVisible(False)
         else:
-            self.screenNode.GetBaseUIControl(cookingPotFireIcon).SetVisible(True)
+            self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/heat/fire").SetVisible(True)
         previewItemSlot = blockEntityData["exData"]["previewItemSlot"][0]
         if previewItemSlot and "newItemName" in previewItemSlot:
             itemDict = {
@@ -50,7 +51,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
             itemDict = {}
         self.SetPreviewItemSlot(itemDict)
         timer = blockEntityData["exData"]["timer"]
-        arrowControl = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/arrow")
+        arrowControl = self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/arrow")
         if timer and arrowControl:
             progress = arrowControl.GetChildByName("progress")
             progress.asImage().SetSpriteClipRatio(timer["__value__"] / 10.0)
@@ -77,20 +78,20 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
                 self.foodRecipeIndex = 0
             recipe = self.foodRecipeList[self.foodRecipeIndex]
             for index in range(len(recipe)):
-                recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(index + 1))
+                recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1))
                 itemRenderer = recipeItem.GetChildByName("item_renderer")
                 itemRenderer.SetVisible(True)
                 result = itemRenderer.asItemRenderer().SetUiItem(recipe[index][0], recipe[index][1])
                 if result is False:
                     itemRenderer.asItemRenderer().SetUiItem("minecraft:barrier", 0)
             for i in range(len(recipe), 6):
-                recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(i + 1))
+                recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(i + 1))
                 itemRenderer = recipeItem.GetChildByName("item_renderer")
                 itemRenderer.SetVisible(False)
         compFactory.CreateGame(levelId).AddTimer(1.0, self.FoodRecipeTimerSwitch)
 
     def SetPreviewItemSlot(self, itemDict):
-        previewControl = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/bg/arris_cooking_pot_top_half/cooking_pot/preview/item")
+        previewControl = self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/preview/item")
         if not itemDict:
             previewControl.GetChildByName("item_renderer").SetVisible(False)
             previewControl.GetChildByName("stack_count_label").asLabel().SetText("")
@@ -150,7 +151,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
             return False
         recipeDict = self.RecipeList[index]
         cookResult = recipeDict["CookResult"]
-        itemRenderer = self.foodRecipe.GetChildByPath("/foodRecipe{}/item_renderer".format(index + 1))
+        itemRenderer = self.foodRecipe.GetChildByPath("/food_recipe{}/item_renderer".format(index + 1))
         if not itemRenderer:
             return False
         result = itemRenderer.asItemRenderer().SetUiItem(cookResult[0], cookResult[1])
@@ -176,10 +177,10 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
 
         recipe = self.foodRecipeList[self.foodRecipeIndex]
         for index in range(6):
-            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(index + 1)).GetChildByName("item_renderer")
+            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1)).GetChildByName("item_renderer")
             recipeItem.SetVisible(False)
         for index in range(len(recipe)):
-            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(index + 1))
+            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1))
             itemRenderer = recipeItem.GetChildByName("item_renderer")
             itemRenderer.SetVisible(True)
             result = itemRenderer.asItemRenderer().SetUiItem(recipe[index][0], recipe[index][1])
@@ -206,7 +207,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         vesselItem.SetVisible(False)
         self.screenNode.GetBaseUIControl(cookRecipePanel + "/food_title/title").asLabel().SetText("请选择食谱")
         for index in range(6):
-            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipeItem{}".format(index + 1))
+            recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1))
             itemRenderer = recipeItem.GetChildByName("item_renderer")
             itemRenderer.SetVisible(False)
 

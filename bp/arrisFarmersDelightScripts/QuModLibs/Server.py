@@ -11,7 +11,8 @@ import mod.server.extraServerApi as __extraServerApi
 serverApi = __extraServerApi                        
 TickEvent = "OnScriptTickServer"
 levelId = serverApi.GetLevelId()
-System = serverApi.GetSystem("Minecraft","game")    
+compFactory = serverApi.GetEngineCompFactory()
+System = serverApi.GetSystem("Minecraft","game")
 Events = _eventsRedirect                            
 
 def getOwnerPlayerId():

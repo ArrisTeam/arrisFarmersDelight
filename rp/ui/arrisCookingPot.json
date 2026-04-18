@@ -1,12 +1,12 @@
 {
-    "arrisCookingPotMain@common.inventory_screen_common": {
+    "arris_cooking_pot_screen@common.inventory_screen_common": {
         "$close_on_player_hurt|default": true,
         "$screen_background_alpha": 0.4,
         "$screen_bg_content": "common.screen_background",
-        "$screen_content": "arrisCookingPot.arrisCookingPotPanel",
+        "$screen_content": "arrisCookingPot.cooking_pot_panel",
         "close_on_player_hurt": "$close_on_player_hurt"
     },
-    "arrisCookingPotPanel": {
+    "cooking_pot_panel": {
         "type": "panel",
         "controls": [
             {
@@ -69,7 +69,7 @@
                                                                     "texture": "textures/ui/dialog_background_opaque",
                                                                     "controls": [
                                                                         {
-                                                                            "arris_cooking_pot_top_half@arrisCookingPot.arrisCookingPotTopHalf": {
+                                                                            "cooking_pot_top_half@arrisCookingPot.cooking_pot_top_half": {
                                                                                 "offset": [
                                                                                     0,
                                                                                     7
@@ -391,7 +391,7 @@
                                                                                                             3,
                                                                                                             2
                                                                                                         ],
-                                                                                                        "grid_item_template": "arrisCookingPot.recipeItem"
+                                                                                                        "grid_item_template": "arrisCookingPot.recipe_item"
                                                                                                     }
                                                                                                 },
                                                                                                 {
@@ -481,7 +481,7 @@
                                                                                                     }
                                                                                                 },
                                                                                                 {
-                                                                                                    "vessel@arrisCookingPot.recipeItem": {
+                                                                                                    "vessel@arrisCookingPot.recipe_item": {
                                                                                                         "offset": [
                                                                                                             -25,
                                                                                                             30
@@ -650,7 +650,7 @@
             }
         ]
     },
-    "arrisCookingPotTopHalf": {
+    "cooking_pot_top_half": {
         "type": "panel",
         "$item_collection_name": "netease_container",
         "anchor_from": "top_left",
@@ -1018,7 +1018,7 @@
             }
         ]
     },
-    "foodRecipe@common.button": {
+    "food_recipe@common.button": {
         "type": "button",
         "$control_alpha": 1.0,
         "$default_texture": "textures/ui/recipe_book_item_bg",
@@ -1313,7 +1313,7 @@
             }
         ]
     },
-    "recipeItem": {
+    "recipe_item": {
         "type": "image",
         "size": [
             18.0,
@@ -1345,7 +1345,7 @@
         "type": "grid",
         "$binding_condition|default": "visible",
         "$grid_item_precache_count|default": 0,
-        "$grid_item_template|default": "arrisCookingPot.foodRecipe",
+        "$grid_item_template|default": "arrisCookingPot.food_recipe",
         "anchor_from": "top_left",
         "anchor_to": "top_left",
         "size": [

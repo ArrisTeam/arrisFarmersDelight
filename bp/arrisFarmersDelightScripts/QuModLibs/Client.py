@@ -16,7 +16,8 @@ clientApi = __extraClientApi
 TickEvent = "OnScriptTickClient"
 System = clientApi.GetSystem("Minecraft","game")    
 levelId = clientApi.GetLevelId()
-playerId = clientApi.GetLocalPlayerId() 
+playerId = clientApi.GetLocalPlayerId()
+compFactory = clientApi.GetEngineCompFactory()
 Events = _eventsRedirect                            
 
 def regModLoadFinishHandler(func):
