@@ -13,5 +13,8 @@ MOD.Server("modServer.skillet")
 MOD.Server("modServer.cuttingBoard")
 MOD.Server("modServer.stove")
 
+# 跨 MOD 联动（若对方副包未装则静默 no-op）
+MOD.Server("compat.create.createCompat")
+
 MOD.Client("modClient.farmersDelightCommon")
 MOD.Client("modClient.cookingPot")
