@@ -5,13 +5,9 @@
             "identifier": "arris:beef_patty"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "arris:minced_beef"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:beef_patty"
         },
         "tags": [

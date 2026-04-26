@@ -5,13 +5,9 @@
             "identifier": "arris:cooked_cod_slice"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "arris:cod_slice"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:cooked_cod_slice"
         },
         "tags": [

@@ -5,13 +5,9 @@
             "identifier": "arris:cooked_mutton_chops"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "arris:mutton_chops"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:cooked_mutton_chops"
         },
         "tags": [

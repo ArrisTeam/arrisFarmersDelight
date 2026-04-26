@@ -5,13 +5,9 @@
             "identifier": "arris:fried_egg"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "minecraft:egg"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:fried_egg"
         },
         "tags": [

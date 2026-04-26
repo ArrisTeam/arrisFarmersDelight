@@ -5,13 +5,9 @@
             "identifier": "arris:smoked_ham"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "arris:ham"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:smoked_ham"
         },
         "tags": [

@@ -5,13 +5,9 @@
             "identifier": "arris:cooked_chicken_cuts"
         },
         "input": {
-            "count": 1,
-            "data": 0,
             "item": "arris:chicken_cuts"
         },
         "output": {
-            "count": 1,
-            "data": 0,
             "item": "arris:cooked_chicken_cuts"
         },
         "tags": [
