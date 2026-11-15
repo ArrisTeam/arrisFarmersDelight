@@ -6,8 +6,8 @@
                     "functions": [
                         {
                             "count": {
-                                "max": 3,
-                                "min": 4
+                                "max": 4,
+                                "min": 3
                             },
                             "function": "set_count"
                         }
