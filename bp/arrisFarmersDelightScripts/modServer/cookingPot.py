@@ -78,8 +78,15 @@ def OnCookingPotTick(args):
         return
     resultItem, pushItemList = CheckCookingPotRecipe(inputItemSlot)
 
+    if blockEntityData["timer"] is None:
+        # /setblock、结构等方式放出的厨锅没有走放置事件，这里补默认值
+        blockEntityData["timer"] = 10.0
+    if blockEntityData["heatEnable"] is None:
+        belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
+        belowName = compFactory.CreateBlockInfo(levelId).GetBlockNew(belowPos, dimensionId)["name"]
+        UpdateCookingPotHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName)
     if blockEntityData["heatEnable"] and resultItem:
-        previewItemSlot = blockEntityData["previewItemSlot"]
+        previewItemSlot = blockEntityData["previewItemSlot"] or [{}]
         itemName = resultItem["newItemName"]
         auxValue = resultItem["newAuxValue"]
         basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemName, auxValue)

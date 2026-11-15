@@ -59,7 +59,7 @@ def OnServerBlockUseCommon(args):
             return
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if blockEntityData:
-            blockEntityData["blockStatus"] += 1
+            blockEntityData["blockStatus"] = (blockEntityData["blockStatus"] or 0.0) + 1
             blockStatus = blockEntityData["blockStatus"]
             data = {"name": "variable.mod_pie", "blockPos": blockPos, "molang": blockStatus}
             ToAllPlayerPlaySound(dimensionId, blockPos, "random.eat")
@@ -126,9 +126,9 @@ def OnServerItemUseCommon(args):
         face = args["face"]
         faceDict = clickBlockFace(x, y, z)
         pos = faceDict[face]
-        blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((pos[0], pos[1] - 1, pos[2]), dimensionId)
-        blockName = blockDict["name"]
-        if blockName not in WildCropDict[itemName]:
+        # 注意别覆盖外层的 blockName（下面还要用它判断是否点在展示框 / 砧板上）
+        groundName = compFactory.CreateBlockInfo(levelId).GetBlockNew((pos[0], pos[1] - 1, pos[2]), dimensionId)["name"]
+        if groundName not in WildCropDict[itemName]:
             args["ret"] = True
         if itemName == "arris:wild_rice":
             # 单独判断野生稻米的放置条件

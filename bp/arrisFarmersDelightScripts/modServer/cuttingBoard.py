@@ -88,6 +88,8 @@ def OnCuttingBoardRemove(args):
     dimensionId = args["dimension"]
     if blockName == "arris:cutting_board":
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+        if not blockEntityData:
+            return
         displayEntityId = blockEntityData["displayEntityId"]
         cuttingDict = blockEntityData["cuttingDict"]
         if displayEntityId:

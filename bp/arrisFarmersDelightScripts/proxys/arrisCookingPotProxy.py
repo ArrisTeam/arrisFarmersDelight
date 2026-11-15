@@ -22,6 +22,9 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.foodRecipeSearchDict = None
         # 背包列表现在仅在 "Add Food" 按钮点击时按需拉取，OnTick 不再维护
         self.allItemList = None
+        # OnTick 每帧用到的组件只建一次
+        self.modAttrComp = compFactory.CreateModAttr(playerId)
+        self.blockInfoComp = compFactory.CreateBlockInfo(levelId)
 
     def OnCreate(self):
         self.foodRecipe = self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/option_bg/stack_panel/scroll_panel/scroll_view").asScrollView().GetScrollViewContentControl()
@@ -29,18 +32,21 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
 
     def OnTick(self):
         # OnTick 不再每帧拉背包（36 格 × 20Hz），背包快照改为按 "Add Food" 按钮点击时按需读取
-        pos = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
+        pos = self.modAttrComp.GetAttr("arrisUsedCookingPotPos")
         if not pos:
             return
-        blockEntityData = compFactory.CreateBlockInfo(levelId).GetBlockEntityData(pos)
+        blockEntityData = self.blockInfoComp.GetBlockEntityData(pos)
         if not blockEntityData:
             return
-        heatEnable = blockEntityData["exData"]["heatEnable"]["__value__"]
-        if not heatEnable:
-            self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/heat/fire").SetVisible(False)
-        else:
-            self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/heat/fire").SetVisible(True)
-        previewItemSlot = blockEntityData["exData"]["previewItemSlot"][0]
+        # /setblock、结构放出的厨锅可能缺键，逐个判空（每帧都会跑，报错会刷屏）
+        exData = blockEntityData.get("exData") or {}
+        heatData = exData.get("heatEnable")
+        heatEnable = heatData["__value__"] if heatData else False
+        fireControl = self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/heat/fire")
+        if fireControl:
+            fireControl.SetVisible(bool(heatEnable))
+        previewList = exData.get("previewItemSlot") or [None]
+        previewItemSlot = previewList[0] if previewList else None
         if previewItemSlot and "newItemName" in previewItemSlot:
             itemDict = {
                 "newItemName": previewItemSlot.get("newItemName", {}).get("__value__"),
@@ -50,7 +56,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         else:
             itemDict = {}
         self.SetPreviewItemSlot(itemDict)
-        timer = blockEntityData["exData"]["timer"]
+        timer = exData.get("timer")
         arrowControl = self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/arrow")
         if timer and arrowControl:
             progress = arrowControl.GetChildByName("progress")

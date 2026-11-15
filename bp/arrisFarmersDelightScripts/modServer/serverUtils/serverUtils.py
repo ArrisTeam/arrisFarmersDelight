@@ -144,14 +144,19 @@ def IsKnife(itemName):
     itemTags = compFactory.CreateItem(levelId).GetItemTags(itemName)
     return "arris:knife" in (itemTags or [])
 
+_holidayAuxMap = []
+
 def DetectionExperimentalHoliday():
-    # 检测是否为假日创造者模式
-    gameRules = compFactory.CreateGame(levelId).GetGameRulesInfoServer()
-    experimental_holiday = gameRules["option_info"]["experimental_holiday"]
-    if experimental_holiday is True:
-        return {0: 0, 4: 1, 8: 2, 12: 3}
-    else:
-        return {0: 0, 1: 1, 2: 2, 3: 3}
+    # 检测是否为假日创造者模式。实验性玩法只能在建档时设定，查一次后缓存；
+    # 新版本里可能没有 experimental_holiday 这一项，按"未开启"处理
+    if not _holidayAuxMap:
+        gameRules = compFactory.CreateGame(levelId).GetGameRulesInfoServer() or {}
+        optionInfo = gameRules.get("option_info") or {}
+        if optionInfo.get("experimental_holiday") is True:
+            _holidayAuxMap.append({0: 0, 4: 1, 8: 2, 12: 3})
+        else:
+            _holidayAuxMap.append({0: 0, 1: 1, 2: 2, 3: 3})
+    return _holidayAuxMap[0]
 
 def CheckCookingPotRecipe(inputItemSlot):
     # 检查厨锅内的物品是否符合配方
@@ -335,6 +340,8 @@ def SetCarriedDurability(playerId, itemDict, dimensionId, pos):
     gameType = compFactory.CreateGame(levelId).GetPlayerGameType(playerId)
     if gameType != 1:
         if GetItemType(itemDict) in ["", "block"]:
+            return
+        if itemDict.get("durability") is None:
             return
         itemDict["durability"] -= 1
         if itemDict["durability"] <= 0:

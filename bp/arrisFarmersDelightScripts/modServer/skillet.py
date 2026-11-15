@@ -172,6 +172,8 @@ def OnSkilletRemove(args):
     dimensionId = args["dimension"]
     if blockName == "arris:skillet":
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
+        if not blockEntityData:
+            return
         displayEntityList = blockEntityData["displayEntityList"]
         cookingDict = blockEntityData["cookingDict"]
         if displayEntityList:

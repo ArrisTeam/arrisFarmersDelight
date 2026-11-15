@@ -35,8 +35,10 @@ def OnMobGriefingBlockRope(args):
     blockName = args["blockName"]
     if blockName == "minecraft:farmland":
         dimensionId = args["dimensionId"]
-        x, y, z = compFactory.CreatePos(entityId).GetPos()
-        upBlockName = compFactory.CreateBlockInfo(levelId).GetBlockNew((x // 1, (y // 1), z // 1), dimensionId)["name"]
+        pos = compFactory.CreatePos(entityId).GetPos()
+        if pos is None:
+            return
+        upBlockName = compFactory.CreateBlockInfo(levelId).GetBlockNew(BlockPosFloor(pos), dimensionId)["name"]
         if upBlockName in canClimbList:
             args["cancel"] = True
 
@@ -101,8 +103,10 @@ def OnFallDamageInClimb(args):
     identifier = compFactory.CreateEngineType(entityId).GetEngineTypeStr()
     if identifier == "minecraft:player":
         if args["cause"] == "fall":
-            x, y, z = compFactory.CreatePos(entityId).GetPos()
+            pos = compFactory.CreatePos(entityId).GetPos()
+            if pos is None:
+                return
             dimensionId = compFactory.CreateDimension(entityId).GetEntityDimensionId()
-            blockName = compFactory.CreateBlockInfo(levelId).GetBlockNew((x // 1, (y // 1), z // 1), dimensionId)["name"]
+            blockName = compFactory.CreateBlockInfo(levelId).GetBlockNew(BlockPosFloor(pos), dimensionId)["name"]
             if blockName in canClimbList:
                 args["damage"] = 0

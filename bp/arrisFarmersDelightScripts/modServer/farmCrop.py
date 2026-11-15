@@ -119,8 +119,8 @@ def OnBlockRandomTick(args):
 
     elif blockName in ["arris:red_mushroom_colony", "arris:brown_mushroom_colony"]:
         blockStates = compFactory.CreateBlockState(levelId).GetBlockStates((x, y, z), dimensionId)
-        growth = blockStates["arris:growth"]
-        if growth < 7:
+        growth = blockStates.get("arris:growth") if blockStates else None
+        if growth is not None and growth < 7:
             blockStates["arris:growth"] += 1
             compFactory.CreateBlockState(levelId).SetBlockStates((x, y, z), blockStates, dimensionId)
 

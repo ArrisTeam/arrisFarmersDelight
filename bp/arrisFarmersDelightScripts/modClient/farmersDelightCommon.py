@@ -78,17 +78,21 @@ def OnBlockEntityLoaded(args):
     blockEntityData = comp.GetBlockEntityData(blockPos)
     if not blockEntityData:
         return
+    # 客户端拿到的是 NBT 形式：exData 下每个值包成 {"__type__": ..., "__value__": ...}；
+    # /setblock、结构放出的方块可能缺键，逐个判空
+    exData = blockEntityData.get("exData") or {}
     if blockName in ["arris:skillet", "arris:cooking_pot"]:
         comp.SetEnableBlockEntityAnimations(blockPos, True)
-        heatParticleEnableData = blockEntityData["exData"].get("heatParticleEnable")
+        heatParticleEnableData = exData.get("heatParticleEnable")
         if heatParticleEnableData:
             blockHeatValue = heatParticleEnableData["__value__"]
             comp.SetBlockEntityMolangValue(blockPos, "variable.mod_heat", blockHeatValue)
-        shelfEnableData = blockEntityData["exData"].get("shelfEnable")
+        shelfEnableData = exData.get("shelfEnable")
         if shelfEnableData:
             blockShelfEnable = shelfEnableData["__value__"]
             comp.SetBlockEntityMolangValue(blockPos, "variable.mod_shelf", blockShelfEnable)
     elif blockName in ["arris:apple_pie", "arris:chocolate_pie", "arris:sweet_berry_cheesecake"]:
-        blockPieStatus = blockEntityData["exData"]["blockStatus"]["__value__"]
+        pieStatusData = exData.get("blockStatus")
+        blockPieStatus = pieStatusData["__value__"] if pieStatusData else 0.0
         comp.SetEnableBlockEntityAnimations(blockPos, True)
         comp.SetBlockEntityMolangValue(blockPos, "variable.mod_pie", blockPieStatus)
