@@ -14,10 +14,12 @@ def SetPlayerIsJumpExtra(playerId, data):
 
 @Listen("OnEntityInsideBlockServerEvent")
 def OnEntityInsideBlockServer(args):
-    # 攀爬绳子
+    # 攀爬绳子（只有玩家能爬；生物、掉落物进到绳子里不处理）
     blockName = args["blockName"]
     entityId = args["entityId"]
     if blockName in canClimbList:
+        if compFactory.CreateEngineType(entityId).GetEngineTypeStr() != "minecraft:player":
+            return
         isJump = compFactory.CreateExtraData(entityId).GetExtraData("isJump")
         if isJump is True:
             compFactory.CreateActorMotion(entityId).SetPlayerMotion((0, 0.15, 0))

@@ -34,7 +34,8 @@ def OnServerSkilletBlockUse(args):
                     ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
             else:
                 if carriedDict["newItemName"] in ["arris:spatula", "arris:cutting_board", "arris:cooking_pot", "arris:skillet_item"]:
-                    args["ret"] = True
+                    # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
+                    args["cancel"] = True
                 else:
                     compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "这个貌似不可以进行烹饪...")
         else:
@@ -89,23 +90,22 @@ def OnSkilletNeighborChanged(args):
     if blockName == "arris:skillet" and neighborPos == (args["posX"], args["posY"] - 1, args["posZ"]):
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if blockEntityData:
-            neighborName = args["toBlockName"]
-            if neighborName in ["minecraft:campfire", "minecraft:fire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"]:
-                blockEntityData["shelfEnable"] = 1.0
-            else:
-                blockEntityData["shelfEnable"] = 0.0
-            data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-            Call("*", "SetEntityBlockMolang", data)
+            # 营火点燃 / 熄灭时名字不变，这里每次都重新读状态
+            UpdateSkilletHeat(blockEntityData, blockPos, neighborPos, dimensionId, args["toBlockName"])
 
-            if neighborName in CanProvideHeatBlockList:
-                blockEntityData["heatEnable"] = True
-                blockEntityData["heatParticleEnable"] = 1.0
-            else:
-                blockEntityData["heatEnable"] = False
-                blockEntityData["heatParticleEnable"] = 0.0
-                blockEntityData["cookTimer"] = 7
-            data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-            Call("*", "SetEntityBlockMolang", data)
+def UpdateSkilletHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName):
+    # 根据下方方块刷新"架子"和"加热"两个状态，并同步给客户端的方块实体 molang
+    blockEntityData["shelfEnable"] = 1.0 if belowName in ShelfBlockSet else 0.0
+    data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
+    Call("*", "SetEntityBlockMolang", data)
+    heat = IsHeatSource(belowPos, dimensionId, belowName)
+    blockEntityData["heatEnable"] = heat
+    blockEntityData["heatParticleEnable"] = 1.0 if heat else 0.0
+    if not heat:
+        blockEntityData["cookTimer"] = 7
+    data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
+    Call("*", "SetEntityBlockMolang", data)
+    return heat
 
 @Listen("ServerPlaceBlockEntityEvent")
 def OnServerSkilletCreate(args):
@@ -116,25 +116,10 @@ def OnServerSkilletCreate(args):
         ToAllPlayerPlaySound(dimensionId, blockPos, "dig.stone")
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if blockEntityData:
-            blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((args["posX"], args["posY"] - 1, args["posZ"]), dimensionId)
-            blockName = blockDict["name"]
+            belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
+            blockName = compFactory.CreateBlockInfo(levelId).GetBlockNew(belowPos, dimensionId)["name"]
             blockEntityData["cookTimer"] = 7
-            if blockName in ["minecraft:campfire", "minecraft:fire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"]:
-                blockEntityData["shelfEnable"] = 1.0
-            else:
-                blockEntityData["shelfEnable"] = 0.0
-            data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-            Call("*", "SetEntityBlockMolang", data)
-
-            if blockName in CanProvideHeatBlockList:
-                blockEntityData["heatEnable"] = True
-                blockEntityData["heatParticleEnable"] = 1.0
-            else:
-                blockEntityData["heatEnable"] = False
-                blockEntityData["heatParticleEnable"] = 0.0
-                blockEntityData["cookTimer"] = 7
-            data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-            Call("*", "SetEntityBlockMolang", data)
+            UpdateSkilletHeat(blockEntityData, blockPos, belowPos, dimensionId, blockName)
 
 @Listen("ServerBlockEntityTickEvent")
 def OnSkilletTick(args):

@@ -1,19 +1,32 @@
 # -*- coding: utf-8 -*-
 from .serverUtils.serverUtils import *
 
+STOVE_SLOTS = 6
+
+def InitStoveData(blockEntityData):
+    # 炉灶 6 个烤位的默认数据；/setblock、结构放出的炉灶没走放置事件，用到时补上
+    blockEntityData["cookingIndex"] = 0
+    displayEntityDict = {}
+    for index in range(0, STOVE_SLOTS):
+        blockEntityData[str(index)] = {"itemDict": None, "cookTimer": 7}
+        displayEntityDict[str(index)] = None
+    blockEntityData["displayEntityDict"] = displayEntityDict
+
+def EnsureStoveData(blockEntityData):
+    if blockEntityData["displayEntityDict"] is None:
+        InitStoveData(blockEntityData)
+
 @Listen("ServerPlaceBlockEntityEvent")
 def OnServerStoveCreate(args):
     blockName = args["blockName"]
+    if blockName not in StoveList:
+        return
     blockPos = (args["posX"], args["posY"], args["posZ"])
     dimensionId = args["dimension"]
     blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
-    if blockName in StoveList:
-        blockEntityData["cookingIndex"] = 0
-        displayEntityDict = {}
-        for index in range(0, 6):
-            blockEntityData[str(index)] = {"itemDict": None, "cookTimer": 7}
-            displayEntityDict[str(index)] = None
-        blockEntityData["displayEntityDict"] = displayEntityDict
+    if not blockEntityData:
+        return
+    InitStoveData(blockEntityData)
 
 @Listen("ServerItemUseOnEvent")
 def OnServerStoveItemUse(args):
@@ -31,25 +44,32 @@ def OnServerStoveItemUse(args):
             return
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, (x, y, z))
         if blockEntityData:
-            if blockEntityData["cookingIndex"] >= 6:
-                blockEntityData["cookingIndex"] = 0
+            EnsureStoveData(blockEntityData)
             upBlockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
             upBlockName = upBlockDict["name"]
             if upBlockName != "minecraft:air":
                 compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "炉灶上方有方块阻挡...")
                 return
-            cookingIndex = blockEntityData["cookingIndex"]
+            # 从 cookingIndex 开始找第一个空烤位（旧实现只看 cookingIndex 那一格，占着就放不进去）
             displayEntityDict = blockEntityData["displayEntityDict"]
-            if displayEntityDict[str(cookingIndex)]:
+            start = blockEntityData["cookingIndex"] or 0
+            freeIndex = None
+            for offset in range(STOVE_SLOTS):
+                index = (start + offset) % STOVE_SLOTS
+                slotData = blockEntityData[str(index)]
+                if not displayEntityDict.get(str(index)) and not (slotData and slotData.get("itemDict")):
+                    freeIndex = index
+                    break
+            if freeIndex is None:
                 return
             if itemDict["newItemName"] in CanCookedFoodDict:
-                index = blockEntityData["cookingIndex"]
-                blockEntityData[str(index)] = {"itemDict": itemDict, "cookTimer": 7}
+                blockEntityData["cookingIndex"] = freeIndex
+                blockEntityData[str(freeIndex)] = {"itemDict": itemDict, "cookTimer": 7}
                 SetNotCreateItem(playerId, itemDict)
                 data = {"blockEntityData": blockEntityData, "blockPos": (x, y, z), "blockAuxValue": args["blockAuxValue"], "dimensionId": dimensionId}
                 StoveDisplayEntity(itemDict, playerId, data)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
-                blockEntityData["cookingIndex"] += 1
+                blockEntityData["cookingIndex"] = (freeIndex + 1) % STOVE_SLOTS
             else:
                 if itemName in ["arris:cutting_board", "arris:cooking_pot", "arris:skillet_item"]:
                     return
@@ -67,26 +87,30 @@ def OnStoveTick(args):
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
         if not blockEntityData:
             return
-        for index in range(0, 6):
+        EnsureStoveData(blockEntityData)
+        for index in range(0, STOVE_SLOTS):
             data = blockEntityData[str(index)]
             displayEntityDict = blockEntityData["displayEntityDict"]
-            if data["itemDict"]:
-                data["cookTimer"] -= 1
+            if data and data.get("itemDict"):
+                data["cookTimer"] = (data.get("cookTimer") or 7) - 1
                 blockEntityData[str(index)] = data
                 if data["cookTimer"] <= 0:
-                    output = {
-                        "itemName": CanCookedFoodDict[data["itemDict"]["newItemName"]],
-                        "auxValue": data["itemDict"]["newAuxValue"],
-                        "count": 1,
-                    }
+                    rawDict = data["itemDict"]
+                    cookedName = CanCookedFoodDict.get(rawDict["newItemName"])
+                    if cookedName:
+                        output = {"itemName": cookedName, "auxValue": rawDict.get("newAuxValue", 0), "count": 1}
+                    else:
+                        # 配方被附属包移除了：原样退回生食，别让它卡在烤位上
+                        output = rawDict
                     blockEntityData[str(index)] = {"itemDict": None, "cookTimer": 7}
                     System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
-                    entityId = displayEntityDict[str(index)]
-                    DestroyEntity(entityId)
+                    entityId = displayEntityDict.get(str(index))
+                    if entityId:
+                        DestroyEntity(entityId)
                     displayEntityDict[str(index)] = None
                     blockEntityData["displayEntityDict"] = displayEntityDict
-            if blockEntityData["cookingIndex"] >= 6:
-                blockEntityData["cookingIndex"] = 0
+        if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
+            blockEntityData["cookingIndex"] = 0
 
 @Listen("BlockRemoveServerEvent")
 def OnStoveRemove(args):
@@ -96,9 +120,11 @@ def OnStoveRemove(args):
     dimensionId = args["dimension"]
     if blockName in StoveList:
         blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
-        for index in range(0, 6):
+        if not blockEntityData:
+            return
+        for index in range(0, STOVE_SLOTS):
             data = blockEntityData[str(index)]
-            itemDict = data["itemDict"]
+            itemDict = data.get("itemDict") if data else None
             if itemDict:
                 System.CreateEngineItemEntity(itemDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
         displayEntityDict = blockEntityData["displayEntityDict"]

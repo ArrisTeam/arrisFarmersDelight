@@ -16,23 +16,26 @@ def OnServerCookingPotCreate(args):
     blockEntityData["previewItemSlot"] = [{}]
     blockEntityData["timer"] = 10.0
 
-    blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((args["posX"], args["posY"] - 1, args["posZ"]), dimensionId)
-    blockName = blockDict["name"]
-    if blockName in ["minecraft:fire", "minecraft:campfire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"]:
+    belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
+    blockName = compFactory.CreateBlockInfo(levelId).GetBlockNew(belowPos, dimensionId)["name"]
+    UpdateCookingPotHeat(blockEntityData, blockPos, belowPos, dimensionId, blockName, delay=0.1)
+
+def UpdateCookingPotHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName, delay=0.0):
+    # 根据下方方块刷新"架子"和"加热"两个状态，并同步给客户端的方块实体 molang
+    if belowName in ShelfBlockSet:
         blockEntityData["shelfEnable"] = 1.0
     else:
         blockEntityData["shelfEnable"] = 0.0
-    data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-    compFactory.CreateGame(levelId).AddTimer(0.1, Call, "*", "SetEntityBlockMolang", data)
-
-    if blockName in CanProvideHeatBlockList:
-        blockEntityData["heatEnable"] = True
-        blockEntityData["heatParticleEnable"] = 1.0
-    else:
-        blockEntityData["heatEnable"] = False
-        blockEntityData["heatParticleEnable"] = 0.0
-    data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-    compFactory.CreateGame(levelId).AddTimer(0.1, Call, "*", "SetEntityBlockMolang", data)
+    heat = IsHeatSource(belowPos, dimensionId, belowName)
+    blockEntityData["heatEnable"] = heat
+    blockEntityData["heatParticleEnable"] = 1.0 if heat else 0.0
+    for name, value in (("variable.mod_shelf", blockEntityData["shelfEnable"]), ("variable.mod_heat", blockEntityData["heatParticleEnable"])):
+        data = {"molang": value, "blockPos": blockPos, "name": name}
+        if delay > 0:
+            compFactory.CreateGame(levelId).AddTimer(delay, Call, "*", "SetEntityBlockMolang", data)
+        else:
+            Call("*", "SetEntityBlockMolang", data)
+    return heat
 
 @Listen("BlockNeighborChangedServerEvent")
 def OnCookingPotNeighborChanged(args):
@@ -45,22 +48,8 @@ def OnCookingPotNeighborChanged(args):
     blockEntityData = compFactory.CreateBlockEntityData(levelId).GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    neighborName = args["toBlockName"]
-    if neighborName in ["minecraft:campfire", "minecraft:fire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"]:
-        blockEntityData["shelfEnable"] = 1.0
-    else:
-        blockEntityData["shelfEnable"] = 0.0
-    data = {"molang": blockEntityData["shelfEnable"], "blockPos": blockPos, "name": "variable.mod_shelf"}
-    Call("*", "SetEntityBlockMolang", data)
-
-    if neighborName in CanProvideHeatBlockList:
-        blockEntityData["heatEnable"] = True
-        blockEntityData["heatParticleEnable"] = 1.0
-    else:
-        blockEntityData["heatEnable"] = False
-        blockEntityData["heatParticleEnable"] = 0.0
-    data = {"molang": blockEntityData["heatParticleEnable"], "blockPos": blockPos, "name": "variable.mod_heat"}
-    Call("*", "SetEntityBlockMolang", data)
+    # 营火点燃 / 熄灭时名字不变，这里每次都重新读状态
+    UpdateCookingPotHeat(blockEntityData, blockPos, neighborPos, dimensionId, args["toBlockName"])
 
 @Listen("ServerBlockEntityTickEvent")
 def OnCookingPotTick(args):

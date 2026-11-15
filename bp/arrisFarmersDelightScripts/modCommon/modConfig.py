@@ -268,6 +268,10 @@ cropsDict = {
     "arris:rich_soil_potatoes1": "arris:rich_soil_potatoes2",
     "arris:rich_soil_potatoes2": "arris:rich_soil_potatoes3",
     "arris:rich_soil_potatoes3": "",
+    # 火把花种在沃土耕地上：方块定义里开了随机刻，但之前漏登记在这里，永远长不大
+    "arris:rich_soil_torchflower0": "arris:rich_soil_torchflower1",
+    "arris:rich_soil_torchflower1": "arris:rich_soil_torchflower2",
+    "arris:rich_soil_torchflower2": "",
     "arris:rice_stage0": "arris:rice_stage1",
     "arris:rice_stage1": "arris:rice_stage2",
     "arris:rice_stage2": "arris:rice_stage3",

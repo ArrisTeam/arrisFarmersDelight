@@ -61,7 +61,8 @@ def OnBlockRandomTick(args):
                 if blockDict["name"] == "minecraft:air":
                     comp.SetBlockNew((x, y, z), {"name": "arris:rice_supporting"}, 0, dimensionId, False, False)
                     comp.SetBlockNew((x, y + 1, z), {"name": "arris:rice_upper_crop_stage0"}, 0, dimensionId, False, False)
-            else:
+            elif cropsDict[blockName]:
+                # 成熟阶段（以及沃土）在 cropsDict 里映射到空字符串，不再往下长
                 comp.SetBlockNew((x, y, z), {"name": cropsDict[blockName]}, 0, dimensionId, False, False)
 
     if blockName == "arris:rich_soil_farmland":
@@ -152,27 +153,7 @@ def OnServerItemUse(args):
     elif itemName == "minecraft:bone_meal":
         if SetPlayerUsedCD(playerId) is True:
             return
-        data = {
-            "blockName": blockName,
-            "playerId": playerId,
-            "itemDict": itemDict,
-            "dimensionId": dimensionId,
-            "blockPos": (x, y, z)
-        }
-        blockStates = compFactory.CreateBlockState(levelId).GetBlockStates((x, y, z), dimensionId)
-        if blockStates:
-            growth = blockStates.get("arris:growth")
-            if growth is not None and growth < 7:
-                blockStates["arris:growth"] += random.randint(2, 4)
-                if blockStates["arris:growth"] >= 7:
-                    blockStates["arris:growth"] = 7
-                compFactory.CreateBlockState(levelId).SetBlockStates((x, y, z), blockStates, dimensionId)
-                Call("*", "PlayParticle",(x + 0.5, y + 0.5, z + 0.5))
-                ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 0.5, z + 0.5), "item.bone_meal.use")
-                SetNotCreateItem(playerId, itemDict)
-
-        if blockName in cropsDict:
-            CropAccelerateTheRipening(data)
+        ApplyBoneMeal(playerId, itemDict, blockName, (x, y, z), dimensionId)
 
     elif face == 1 and blockName in ["arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2", "arris:organic_compost_stage3", "arris:rich_soil"]:
         if itemName == "minecraft:brown_mushroom":
@@ -237,7 +218,7 @@ def OnServerBlockUse(args):
     dimensionId = args["dimensionId"]
     playerId = args["playerId"]
     carriedDict = compFactory.CreateItem(playerId).GetPlayerItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, 0)
-    if blockName == "arris:budding_tomatoes_stage6":
+    if blockName == "arris:budding_tomatoes_stage6" or blockName == "arris:tomatoes_vine_stage3":
         if SetPlayerUsedCD(playerId) is True:
             return
         blockPos = (x + 0.5, y, z + 0.5)
@@ -245,36 +226,16 @@ def OnServerBlockUse(args):
             carriedDict = {}
         itemName = carriedDict.get("newItemName")
         if itemName == "minecraft:bone_meal":
-            blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
-            if blockDict["name"] == "arris:rope":
-                ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "item.bone_meal.use")
-                Call("*", "PlayParticle",(x + 0.5, y + 1, z + 0.5))
+            # 和 ServerItemUseOnEvent 那条路径共用：谁先触发谁处理（冷却挡住另一条）
+            ApplyBoneMeal(playerId, carriedDict, blockName, (x, y, z), dimensionId)
         else:
             count = random.randint(1, 2)
             System.CreateEngineItemEntity({"itemName": "arris:tomato", "count": count}, dimensionId, blockPos)
             ToAllPlayerPlaySound(dimensionId, blockPos, "block.sweet_berry_bush.pick")
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": "arris:budding_tomatoes_stage3"}, 0, dimensionId, False, False)
-        args["ret"] = True
-
-    elif blockName == "arris:tomatoes_vine_stage3":
-        if SetPlayerUsedCD(playerId) is True:
-            return
-        blockPos = (x + 0.5, y, z + 0.5)
-        if carriedDict is None:
-            carriedDict = {}
-        itemName = carriedDict.get("newItemName")
-        if itemName == "minecraft:bone_meal":
-            blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
-            if blockDict["name"] == "arris:rope":
-                ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "item.bone_meal.use")
-                Call("*", "PlayParticle",(x + 0.5, y + 1, z + 0.5))
-                compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y + 1, z), {"name": "arris:tomatoes_vine_stage0"}, 0, dimensionId, False, False)
-        else:
-            count = random.randint(1, 2)
-            System.CreateEngineItemEntity({"itemName": "arris:tomato", "count": count}, dimensionId, blockPos)
-            ToAllPlayerPlaySound(dimensionId, blockPos, "block.sweet_berry_bush.pick")
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": "arris:tomatoes_vine_stage0"}, 0, dimensionId, False, False)
-        args["ret"] = True
+            nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
+            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": nextName}, 0, dimensionId, False, False)
+        # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
+        args["cancel"] = True
 
     elif blockName == "arris:cabbages_stage7":
         if SetPlayerUsedCD(playerId) is True:
@@ -284,144 +245,91 @@ def OnServerBlockUse(args):
         System.CreateEngineItemEntity({"itemName": "arris:cabbage_leaf", "count": count}, dimensionId, blockPos)
         ToAllPlayerPlaySound(dimensionId, blockPos, "block.sweet_berry_bush.pick")
         compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": "arris:cabbages_stage3"}, 0, dimensionId, False, False)
-        args["ret"] = True
+        args["cancel"] = True
 
     elif blockName == "arris:rice_stage3":
         if SetPlayerUsedCD(playerId) is True:
             return
         if carriedDict is None:
             return
-        itemName = carriedDict.get("newItemName")
-        if itemName == "minecraft:bone_meal":
-            blockDict = compFactory.CreateBlockInfo(levelId).GetBlockNew((x, y + 1, z), dimensionId)
-            if blockDict["name"] == "minecraft:air":
-                ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "item.bone_meal.use")
-                Call("*", "PlayParticle",(x + 0.5, y + 1, z + 0.5))
-                compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y + 1, z), {"name": "arris:rice_upper_crop_stage0"}, 0, dimensionId, False, False)
+        if carriedDict.get("newItemName") == "minecraft:bone_meal":
+            ApplyBoneMeal(playerId, carriedDict, blockName, (x, y, z), dimensionId)
+
+def _BoneMealEffect(dimensionId, pos):
+    ToAllPlayerPlaySound(dimensionId, pos, "item.bone_meal.use")
+    Call("*", "PlayParticle", pos)
+
+def ApplyBoneMeal(playerId, itemDict, blockName, blockPos, dimensionId):
+    # 对本模组作物使用骨粉。只有真的长了才扣骨粉；返回是否生效
+    x, y, z = blockPos
+    comp = compFactory.CreateBlockInfo(levelId)
+    if blockName in ("arris:budding_tomatoes_stage6", "arris:tomatoes_vine_stage3"):
+        # 成熟的番茄：上方有绳子时沿绳子长出一节藤
+        if comp.GetBlockNew((x, y + 1, z), dimensionId)["name"] != "arris:rope":
+            return False
+        comp.SetBlockNew((x, y + 1, z), {"name": "arris:tomatoes_vine_stage0"}, 0, dimensionId, False, False)
+        _BoneMealEffect(dimensionId, (x + 0.5, y + 1, z + 0.5))
+        SetNotCreateItem(playerId, itemDict)
+        return True
+    if blockName == "arris:rice_stage3":
+        # 成熟的稻苗：上方是空气时长出稻穗，与随机刻长穗的结果一致（下半变为 rice_supporting）
+        if comp.GetBlockNew((x, y + 1, z), dimensionId)["name"] != "minecraft:air":
+            return False
+        comp.SetBlockNew((x, y, z), {"name": "arris:rice_supporting"}, 0, dimensionId, False, False)
+        comp.SetBlockNew((x, y + 1, z), {"name": "arris:rice_upper_crop_stage0"}, 0, dimensionId, False, False)
+        _BoneMealEffect(dimensionId, (x + 0.5, y + 1, z + 0.5))
+        SetNotCreateItem(playerId, itemDict)
+        return True
+    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
+    growth = blockStates.get("arris:growth") if blockStates else None
+    if growth is not None and growth < 7:
+        blockStates["arris:growth"] = min(7, growth + random.randint(2, 4))
+        compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
+        _BoneMealEffect(dimensionId, (x + 0.5, y + 0.5, z + 0.5))
+        SetNotCreateItem(playerId, itemDict)
+        return True
+    if blockName in cropsDict:
+        data = {"blockName": blockName, "playerId": playerId, "itemDict": itemDict, "dimensionId": dimensionId, "blockPos": blockPos}
+        return CropAccelerateTheRipening(data)
+    return False
+
+# 可催熟作物：方块名前缀（去掉末尾阶段数字）→ 最大阶段
+CropMaxStageDict = {
+    "arris:cabbages_stage": 7,
+    "arris:budding_tomatoes_stage": 6,
+    "arris:tomatoes_vine_stage": 3,
+    "arris:onions_stage": 3,
+    "arris:rich_soil_wheat": 7,
+    "arris:rich_soil_beetroot": 3,
+    "arris:rich_soil_carrots": 3,
+    "arris:rich_soil_potatoes": 3,
+    "arris:rice_stage": 3,
+    "arris:rice_upper_crop_stage": 3,
+    "arris:rich_soil_torchflower": 2,
+}
 
 def CropAccelerateTheRipening(data, mode=None):
-    # 作物催熟
+    # 作物催熟：骨粉一次长 2-3 级，湿润沃土耕地每次随机刻额外长 1 级。
+    # 已成熟或不认识的方块不处理、不扣骨粉；返回是否长了
     blockName = data["blockName"]
     playerId = data["playerId"]
     itemDict = data["itemDict"]
     dimensionId = data["dimensionId"]
     x, y, z = data["blockPos"]
-    stage = int(blockName[-1])
-    num = random.randint(2, 3)
-    if mode == "rich_soil_farmland":
-        num = 1
+    prefix, stageText = blockName[:-1], blockName[-1:]
+    maxStage = CropMaxStageDict.get(prefix)
+    if maxStage is None or not stageText.isdigit():
+        return False
+    stage = int(stageText)
+    if stage >= maxStage:
+        return False
+    num = 1 if mode == "rich_soil_farmland" else random.randint(2, 3)
+    stage = min(maxStage, stage + num)
+    compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": prefix + str(stage)}, 0, dimensionId, False, False)
+    _BoneMealEffect(dimensionId, (x + 0.5, y, z + 0.5))
     if playerId:
         SetNotCreateItem(playerId, itemDict)
-
-    if blockName[:-1] == "arris:cabbages_stage":
-        if stage < 7:
-            stage += num
-            if stage > 7:
-                stage = 7
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:budding_tomatoes_stage":
-        if stage < 6:
-            stage += num
-            if stage >= 6:
-                stage = 6
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:tomatoes_vine_stage":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:onions_stage":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rich_soil_wheat":
-        if stage < 7:
-            stage += num
-            if stage >= 7:
-                stage = 7
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rich_soil_beetroot":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rich_soil_carrots":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rich_soil_potatoes":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rice_stage":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rice_upper_crop_stage":
-        if stage < 3:
-            stage += num
-            if stage >= 3:
-                stage = 3
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
-
-    elif blockName[:-1] == "arris:rich_soil_torchflower":
-        if stage < 2:
-            stage += num
-            if stage >= 2:
-                stage = 2
-            blockName = blockName[:-1] + str(stage)
-            compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": blockName}, 0, dimensionId, False, False)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), "item.bone_meal.use")
-            Call("*", "PlayParticle",(x + 0.5, y, z + 0.5))
+    return True
 
 @Listen("DestroyBlockEvent")
 def OnDestroyBlock(args):
