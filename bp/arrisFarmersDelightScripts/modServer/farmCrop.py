@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from serverUtils.serverUtils import *
 import random
+from ..Shared.Rules import CropGrowth
 
 @Listen("BlockNeighborChangedServerEvent")
 def OnBlockNeighborChanged(args):
@@ -293,42 +294,21 @@ def ApplyBoneMeal(playerId, itemDict, blockName, blockPos, dimensionId):
         return CropAccelerateTheRipening(data)
     return False
 
-# 可催熟作物：方块名前缀（去掉末尾阶段数字）→ 最大阶段
-CropMaxStageDict = {
-    "arris:cabbages_stage": 7,
-    "arris:budding_tomatoes_stage": 6,
-    "arris:tomatoes_vine_stage": 3,
-    "arris:onions_stage": 3,
-    "arris:rich_soil_wheat": 7,
-    "arris:rich_soil_beetroot": 3,
-    "arris:rich_soil_carrots": 3,
-    "arris:rich_soil_potatoes": 3,
-    "arris:rice_stage": 3,
-    "arris:rice_upper_crop_stage": 3,
-    "arris:rich_soil_torchflower": 2,
-}
-
 def CropAccelerateTheRipening(data, mode=None):
-    # 作物催熟：骨粉一次长 2-3 级，湿润沃土耕地每次随机刻额外长 1 级。
+    # 作物催熟：骨粉一次长 2-3 级，湿润沃土耕地每次随机刻额外长 1 级（阶段表见 Shared/Rules/CropGrowth）。
     # 已成熟或不认识的方块不处理、不扣骨粉；返回是否长了
     blockName = data["blockName"]
     playerId = data["playerId"]
-    itemDict = data["itemDict"]
     dimensionId = data["dimensionId"]
     x, y, z = data["blockPos"]
-    prefix, stageText = blockName[:-1], blockName[-1:]
-    maxStage = CropMaxStageDict.get(prefix)
-    if maxStage is None or not stageText.isdigit():
+    steps = 1 if mode == "rich_soil_farmland" else random.randint(2, 3)
+    newName = CropGrowth.grownName(blockName, steps)
+    if newName is None:
         return False
-    stage = int(stageText)
-    if stage >= maxStage:
-        return False
-    num = 1 if mode == "rich_soil_farmland" else random.randint(2, 3)
-    stage = min(maxStage, stage + num)
-    compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": prefix + str(stage)}, 0, dimensionId, False, False)
+    compFactory.CreateBlockInfo(levelId).SetBlockNew((x, y, z), {"name": newName}, 0, dimensionId, False, False)
     _BoneMealEffect(dimensionId, (x + 0.5, y, z + 0.5))
     if playerId:
-        SetNotCreateItem(playerId, itemDict)
+        SetNotCreateItem(playerId, data["itemDict"])
     return True
 
 @Listen("DestroyBlockEvent")

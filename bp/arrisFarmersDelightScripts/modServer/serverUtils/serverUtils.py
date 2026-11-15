@@ -4,58 +4,17 @@ from ...QuModLibs.Server import *
 compFactory = serverApi.GetEngineCompFactory()
 from ...modCommon.modConfig import *
 import math, random, copy
-
-entityFace = {
-    0: (0, -90),
-    1: (0, 0),
-    2: (0, 90),
-    3: (0, 180)
-}
+from ...Shared.Rules.Placement import ENTITY_FACE as entityFace  # noqa: F401
+from ...Shared.Rules.Placement import auxFromAngle as FromAngleGetBlockAux  # noqa: F401
+from ...Shared.Rules.Placement import placePositions as clickBlockFace  # noqa: F401
+from ...Shared.Rules.Placement import holidayAuxMap
+from ...Shared.Rules.Ticks import posHash as PosHash  # noqa: F401
+from ...Shared.Rules.Ticks import probability as ProbabilityFunc  # noqa: F401
+from ...Shared.Rules import CookingPot as CookingPotRules
 
 # 厨锅/煎锅/炉灶 tick 错峰常量。越大瞬时工作量越低但响应相位越粗。
 # 厨锅是 20Hz 的 tick_event、timer 步长 0.05/tick * 20 tick/s = 1.0/s；若 STRIDE=4 则步长需要×4 补偿，一锅的实际 tick 频率仍然 5Hz 足够跟上 UI。
 COOKING_POT_TICK_STRIDE = 4
-
-def PosHash(pos):
-    # 整型坐标哈希（三维离散化）；用于 tick 错峰加盐，让不同坐标的方块实体落在不同 tick 上
-    x, y, z = int(pos[0]), int(pos[1]), int(pos[2])
-    return (x * 73856093 ^ y * 19349663 ^ z * 83492791) & 0x7FFFFFFF
-
-def FromAngleGetBlockAux(x1, y1, x2, y2):
-    # 计算两点直接的角度并返回特殊值
-    dx = x2 - x1
-    dy = y2 - y1
-    radian = math.atan2(dy, dx)
-    angle = math.degrees(radian)
-    if -45 < angle < 45:
-        aux = 3
-    elif 45 < angle < 135:
-        aux = 0
-    elif 135 < angle < 180 or -180 < angle < -135:
-        aux = 1
-    else:
-        aux = 2
-    return aux
-
-def clickBlockFace(x, y, z):
-    # 根据点击方块的坐标来判断应该放置方块的坐标
-    placePos = {
-        0: (x, y - 1, z), # Down
-        1: (x, y + 1, z), # Up
-        2: (x, y, z - 1), # North
-        3: (x, y, z + 1), # South
-        4: (x - 1, y, z),  # West
-        5: (x + 1, y, z)  # East
-    }
-    return placePos
-
-def ProbabilityFunc(probability):
-    # 以 probability % 的概率返回True否则返回False
-    if probability <= 0:
-        return False
-    if probability >= 100:
-        return True
-    return random.randint(1, 100) <= probability
 
 def BlockPosFloor(pos):
     # 实体浮点坐标 → 所在方块的整数坐标（负坐标也要向下取整，不能用 int()）
@@ -154,29 +113,12 @@ def DetectionExperimentalHoliday():
     if not _holidayAuxMap:
         gameRules = compFactory.CreateGame(levelId).GetGameRulesInfoServer() or {}
         optionInfo = gameRules.get("option_info") or {}
-        if optionInfo.get("experimental_holiday") is True:
-            _holidayAuxMap.append({0: 0, 4: 1, 8: 2, 12: 3})
-        else:
-            _holidayAuxMap.append({0: 0, 1: 1, 2: 2, 3: 3})
+        _holidayAuxMap.append(holidayAuxMap(optionInfo.get("experimental_holiday") is True))
     return _holidayAuxMap[0]
 
 def CheckCookingPotRecipe(inputItemSlot):
-    # 检查厨锅内的物品是否符合配方
-    # 通过预先构建的 _cookingPotRecipeIndex 做 O(1) 字典查找，
-    # 替代原来遍历 CookingPotRecipeList × variants + Counter 比较的 O(n*m) 方案。
-    inputItemList = []
-    for itemDict in inputItemSlot:
-        if itemDict != {}:
-            inputItemList.append((itemDict["newItemName"], itemDict["newAuxValue"]))
-    if not inputItemList:
-        return None, None
-    key = tuple(sorted(inputItemList))
-    hit = LookupCookingPotRecipe(key)
-    if not hit:
-        return None, None
-    cookResult, pushItemList = hit
-    resultItem = {"newItemName": cookResult[0], "newAuxValue": cookResult[1], "count": 1}
-    return resultItem, pushItemList
+    # 检查厨锅内的物品是否符合配方：返回 (成品 itemDict, 余料列表)，不匹配为 (None, None)
+    return CookingPotRules.matchRecipe(inputItemSlot)
 
 def GetDisplayEntityCarriedItemType(itemDict):
     if itemDict:
@@ -279,20 +221,8 @@ def CuttingBoardDisplayEntity(itemDict, playerId, data):
     basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemDict["newItemName"])
     compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
 
-def FindCookingPotRecipeByResult(resultItemName):
-    # 按成品名找第一条厨锅配方（与旧实现"首个匹配获胜"一致）
-    for recipeDict in CookingPotRecipeList:
-        if recipeDict["CookResult"][0] == resultItemName:
-            return recipeDict
-    return None
-
-def CookingPotTransferAmount(previewCount, resultCount, maxStackSize, vesselCount=None):
-    # 预览槽 → 产出槽这一次能转移多少份：
-    # 不超过待出料数、产出槽剩余堆叠空间；需要容器时还不超过容器数
-    amount = min(previewCount, maxStackSize - resultCount)
-    if vesselCount is not None:
-        amount = min(amount, vesselCount)
-    return max(0, amount)
+FindCookingPotRecipeByResult = CookingPotRules.findRecipeByResult
+CookingPotTransferAmount = CookingPotRules.transferAmount
 
 def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
     # 把预览槽里煮好的成品转移到产出槽（7 号格）；需要容器的成品同时消耗容器格（6 号格）里等量的容器
