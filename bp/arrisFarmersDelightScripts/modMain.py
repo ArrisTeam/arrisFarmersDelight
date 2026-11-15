@@ -11,3 +11,6 @@ MOD.Client("Client.ModClient")
 # 跨模组联动（对方未安装时静默不做任何事）
 MOD.Server("Compat.Create.CreateRecipes")
 MOD.Client("Compat.Jei.JeiClient")
+# 场景交互前置（arrisDiegesis）：亲手做菜的站点；前置没装时不做任何事
+MOD.Server("Compat.Diegesis.ServerBoot")
+MOD.Client("Compat.Diegesis.ClientBoot")

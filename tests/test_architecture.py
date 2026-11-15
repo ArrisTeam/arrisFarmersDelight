@@ -37,6 +37,11 @@ PACKS = {
             "Api": {"forbid": {"Server", "Client", "Compat", "QuModLibs"}, "engine": False},
             "Server": {"forbid": {"Client", "Compat"}, "engine": True},
             "Client": {"forbid": {"Server", "Compat"}, "engine": True},
+            # 联动模块按端分：服务端的不碰 Client/，客户端的不碰 Server/
+            "Compat/Diegesis/BoardLogic.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/ServerBoot.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/BoardView.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True},
         },
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},
         "endpoints": [("server", "CookingPotAddFood"), ("client", "OnPlaySound")],

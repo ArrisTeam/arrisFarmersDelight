@@ -8,6 +8,7 @@
     return T.mcdk_test_collect()      # 约 15 秒后再调：取异步用例的结果，并清理测试方块
 测试区域在第一个玩家脚下往 +x / +z 偏 6 格的地方，会把那里的方块换成测试方块，结束时换回空气。
 """
+import math
 import time
 
 from ..EventRegistry import handlerNames
@@ -110,6 +111,44 @@ def caseSkillet(playerId, base):
                    heat=data["heatEnable"] if data else None)
 
 
+def _inventoryCount(playerId, itemName):
+    items = compFactory.CreateItem(playerId).GetPlayerAllItems(ItemPosType.INVENTORY, False) or []
+    return sum(item["count"] for item in items if item and item.get("newItemName") == itemName)
+
+
+def _custom(name, data=None):
+    return {"type": "custom", "name": name, "data": data or {}}
+
+
+def caseCuttingBoardStation(playerId, base):
+    """场景交互前置在场时：开站 -> 放 3 块生牛肉 -> 手持铁刀切 1 刀 -> 6 块碎牛肉进背包、板清空 -> 关站。
+    直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径），前置没装则跳过。"""
+    started = time.time()
+    runtime = serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime")
+    manager = runtime.getManager() if runtime is not None else None
+    if manager is None:
+        return _result("cutting_board_station", True, started, skipped="diegesis not installed")
+    fx, fy, fz = compFactory.CreatePos(playerId).GetFootPos()
+    x, y, z, dim = int(math.floor(fx)) + 2, int(math.floor(fy)), int(math.floor(fz)), base[3]
+    _set((x, y - 1, z), "minecraft:stone", dim)
+    _set((x, y, z), "arris:cutting_board", dim)
+    pos = [x, y, z]
+    before = _inventoryCount(playerId, "arris:minced_beef")
+    _carry(playerId, "minecraft:beef", 3)
+    opened = manager.open(playerId, pos)
+    placed = manager.action(playerId, pos, _custom("place"))
+    data = GetBlockEntityData(dim, (x, y, z))
+    onBoard = data["cuttingDict"]["count"] if data and data["cuttingDict"] else 0
+    _carry(playerId, "arris:iron_knife")
+    cut = manager.action(playerId, pos, _custom("use", {"mark": 0}))
+    gained = _inventoryCount(playerId, "arris:minced_beef") - before
+    cleared = bool(data) and not data["cuttingDict"] and not data["displayEntityId"]
+    closed = manager.close(playerId, "self test")
+    ok = opened and placed and onBoard == 3 and cut and gained == 6 and cleared and closed
+    return _result("cutting_board_station", ok, started, opened=opened, placed=placed, onBoard=onBoard, cut=cut,
+                   gained=gained, cleared=cleared, closed=closed)
+
+
 def caseCookingPot(playerId, base):
     started = time.time()
     x, y, z, dim = base[0], base[1], base[2] + 3, base[3]
@@ -132,7 +171,7 @@ def mcdk_test_run():
         return {"ok": False, "error": "no player"}
     base = _base(playerId)
     results = [caseRegistryOrder(), caseLegacyModAttr()]
-    for case in (caseBoneMeal, caseCuttingBoard, caseSkillet, caseCookingPot):
+    for case in (caseBoneMeal, caseCuttingBoard, caseCuttingBoardStation, caseSkillet, caseCookingPot):
         try:
             results.append(case(playerId, base))
         except Exception as e:  # noqa: BLE001 - 测试边界：把异常作为失败结果返回
