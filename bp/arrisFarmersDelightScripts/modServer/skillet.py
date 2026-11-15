@@ -148,35 +148,36 @@ def OnSkilletTick(args):
         if not blockEntityData:
             return
         if blockEntityData["heatEnable"] is True:
-            if not blockEntityData["cookingDict"]:
+            cookingDict = blockEntityData["cookingDict"]
+            if not cookingDict or cookingDict.get("newItemName") not in CanCookedFoodDict:
                 return
+            if blockEntityData["cookTimer"] is None:
+                blockEntityData["cookTimer"] = 7
             blockEntityData["cookTimer"] -= 1.0
             if blockEntityData["cookTimer"] <= 1.0:
-                cookingDict = blockEntityData["cookingDict"]
-                cookingDict["count"] -= 1
-                count = cookingDict["count"]
-                displayEntityList = blockEntityData["displayEntityList"]
-                if count == 0: index = 0
-                elif count == 1: index = 1
-                elif 2 <= count <= 16: index = 2
-                elif 17 <= count <= 32: index = 3
-                elif 33 <= count <= 48: index = 4
-                else: index = 0
-                try:
-                    entityId = displayEntityList[index]
-                    DestroyEntity(entityId)
-                except IndexError:
-                    pass
+                oldCount = cookingDict["count"]
+                cookingDict["count"] = oldCount - 1
+                displayEntityList = list(blockEntityData["displayEntityList"] or [])
+                # 数量变少后多出来的那几层展示实体删掉（从最上层开始）
+                keep = SkilletDisplayCount(cookingDict["count"])
+                while len(displayEntityList) > keep:
+                    DestroyEntity(displayEntityList.pop())
                 blockEntityData["cookTimer"] = 7
                 output = {
                     "itemName": CanCookedFoodDict[cookingDict["newItemName"]],
-                    "auxValue": cookingDict["newAuxValue"],
+                    "auxValue": cookingDict.get("newAuxValue", 0),
                     "count": 1,
                 }
                 System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 0.3, args["posZ"] + 0.5))
                 if cookingDict["count"] <= 0:
+                    for entityId in displayEntityList:
+                        DestroyEntity(entityId)
                     blockEntityData["displayEntityList"] = None
                     blockEntityData["cookingDict"] = None
+                else:
+                    # 改了嵌套字典必须整体回写：只改取回来的字典，区块卸载后数量会恢复原样（刷熟食）
+                    blockEntityData["cookingDict"] = cookingDict
+                    blockEntityData["displayEntityList"] = displayEntityList
 
 @Listen("BlockRemoveServerEvent")
 def OnSkilletRemove(args):

@@ -110,35 +110,46 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
     @ViewBinder.binding(ViewBinder.BF_ButtonClickUp, "#arrisCookingPotAddFood")
     def CookingPotAddFood(self, args):
         # 点击时即时拉一次最新背包，避免每 tick 拉 36 格的浪费
-        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
-        flag = False
-        indexList = []
-        allItemList = []
-        for i in range(len(self.allItemList)):
-            itemDict = self.allItemList[i]
-            if not itemDict:
-                allItemList.append(None)
-                continue
-            allItemList.append((itemDict["newItemName"], itemDict["newAuxValue"]))
-        for recipe in self.foodRecipeList:
-            for recipeItem in recipe:
-                inputSlot = (recipeItem[0], recipeItem[1])
-                if inputSlot in allItemList:
-                    indexList.append(allItemList.index(inputSlot))
-            if len(indexList) != len(recipe):
-                indexList = []
-            else:
-                flag = True
-            if flag is True:
-                if len(indexList) != len(recipe):
-                    return
-                break
-        inputList = [index for index in range(len(indexList))]
-        if not inputList:
+        if not self.foodRecipeList:
             return
-        dimensionId = compFactory.CreateGame(playerId).GetCurrentDimension()
+        self.allItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(clientApi.GetMinecraftEnum().ItemPosType.INVENTORY, True)
+        slotKeys = []
+        slotCounts = []
+        for itemDict in self.allItemList:
+            if itemDict:
+                slotKeys.append((itemDict["newItemName"], itemDict["newAuxValue"]))
+                slotCounts.append(itemDict["count"])
+            else:
+                slotKeys.append(None)
+                slotCounts.append(0)
+        # 依次试每个配方变体：每种食材找一格还有剩余的背包物品。
+        # 同一配方里同种食材出现两次时会扣同一格两次，所以要按剩余数量记账，否则数量不够也会被选上
+        indexList = []
+        for recipe in self.foodRecipeList:
+            left = list(slotCounts)
+            picks = []
+            for recipeItem in recipe:
+                key = (recipeItem[0], recipeItem[1])
+                pick = None
+                for i in range(len(slotKeys)):
+                    if slotKeys[i] == key and left[i] > 0:
+                        pick = i
+                        break
+                if pick is None:
+                    picks = None
+                    break
+                left[pick] -= 1
+                picks.append(pick)
+            if picks:
+                indexList = picks
+                break
+        if not indexList:
+            return
         pos = compFactory.CreateModAttr(playerId).GetAttr("arrisUsedCookingPotPos")
-        data = {"playerId": playerId, "blockPos": pos, "dimensionId": dimensionId, "inputList": inputList, "indexList": indexList}
+        if not pos:
+            return
+        # 玩家和维度由服务端自己确定；这里只说"把背包第几格放进厨锅"
+        data = {"blockPos": pos, "indexList": indexList}
         Call("CookingPotAddFood", data)
 
     @ViewBinder.binding_collection(ViewBinder.BF_BindInt, "food_recipe_book", "#recipe_book_total_items")

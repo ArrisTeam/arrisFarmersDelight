@@ -228,7 +228,7 @@ def PlayerFeedEntityServerCommon(args):
         comp.AddEffectToEntity("strength", 300, 0, True)
         comp.AddEffectToEntity("resistance", 300, 0, True)
         playerId = args["playerId"]
-        compFactory.CreateItem(playerId).SpawnItemToPlayerInv({"itemName": "minecraft:bowl", 'count': 1}, playerId)
+        GiveOrDropItem(playerId, {"itemName": "minecraft:bowl", 'count': 1})
     elif itemDict["newItemName"] == "arris:horse_feed":
         comp.AddEffectToEntity("speed", 300, 1, True)
         comp.AddEffectToEntity("jump_boost", 300, 0, True)
@@ -270,29 +270,27 @@ def OnDamageCommon(args):
             compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "§7物品展示实体 §a删除成功!")
             compFactory.CreateItem(playerId).SetEntityItem(serverApi.GetMinecraftEnum().ItemPosType.CARRIED, {}, 0)
 
-@AllowCall
-@InjectHttpPlayerId
-def PlayerShapedRecipe(playerId, args):
-    # 安全加固：
-    # 1. playerId 由服务端从 HTTP 上下文注入（不再信任客户端传入）
-    # 2. 客户端只传触发物品名 itemName，服务端从白名单 shapedRecipeContainerDict 反查要返还的空容器
-    # 3. dimension / pos 由服务端本地读取，而非客户端传入
-    # 4. count 强制为 1
-    triggerItemName = args.get("triggerItemName") if isinstance(args, dict) else None
-    if not triggerItemName:
-        return
-    containerTemplate = shapedRecipeContainerDict.get(triggerItemName)
+@Listen("CraftItemOutputChangeServerEvent")
+def OnCraftReturnContainer(args):
+    # 合成后返还空容器（桶、玻璃瓶、碗）。
+    # 以前由客户端在 ActorAcquiredItemClientEvent 里调 RPC 通知服务端，服务端无从确认真的合成过，
+    # 反复调用就能无限刷容器；改为监听服务端的合成产出事件，客户端不再参与。
+    itemDict = args.get("itemDict") or {}
+    itemName = itemDict.get("newItemName") or itemDict.get("itemName")
+    containerTemplate = shapedRecipeContainerDict.get(itemName)
     if not containerTemplate:
         return
-    if not playerId:
-        return
-    itemDict = {
+    playerId = args["playerId"]
+    # 一次取出可能是多份（例如蜂蜜曲奇一份 8 个）：按每份产出数折算，至少 1 个
+    perCraft = containerTemplate.get("perCraft", 1)
+    containerCount = max(1, itemDict.get("count", 1) // perCraft)
+    returnDict = {
         "itemName": containerTemplate["itemName"],
-        "count": 1,
+        "count": containerCount,
         "auxValue": containerTemplate.get("auxValue", 0),
     }
     dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
     playerPos = compFactory.CreatePos(playerId).GetFootPos()
     if playerPos is None:
         return
-    System.CreateEngineItemEntity(itemDict, dimensionId, playerPos)
+    System.CreateEngineItemEntity(returnDict, dimensionId, playerPos)

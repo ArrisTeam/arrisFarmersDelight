@@ -34,7 +34,7 @@ def OnServerPlatePackagedBlockUse(args):
                     blockStates["direction"] = blockAux
                     compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
-                compFactory.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
+                GiveOrDropItem(playerId, itemDict, dimensionId)
             elif itemName == "minecraft:bowl":
                 compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
                 blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
@@ -43,7 +43,7 @@ def OnServerPlatePackagedBlockUse(args):
                     compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
                 ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
                 SetNotCreateItem(playerId, handItemDict)
-                compFactory.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId)
+                GiveOrDropItem(playerId, itemDict, dimensionId)
             else:
                 compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "你需要一个碗来食用它")
         else:

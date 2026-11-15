@@ -55,6 +55,39 @@ def ProbabilityFunc(probability):
         return True
     return random.randint(1, 100) <= probability
 
+def BlockPosFloor(pos):
+    # 实体浮点坐标 → 所在方块的整数坐标（负坐标也要向下取整，不能用 int()）
+    return (int(math.floor(pos[0])), int(math.floor(pos[1])), int(math.floor(pos[2])))
+
+# 厨锅 / 煎锅放在这些方块上时显示支架模型
+ShelfBlockSet = frozenset(["minecraft:fire", "minecraft:campfire", "minecraft:soul_fire", "minecraft:soul_campfire", "minecraft:lava", "minecraft:flowing_lava"])
+
+# 营火类方块熄灭时名字不变，只是 extinguished 状态为 True
+_CAMPFIRE_BLOCKS = frozenset(["minecraft:campfire", "minecraft:soul_campfire"])
+
+def IsHeatSource(blockPos, dimensionId, blockName=None):
+    # 判断某个位置的方块能否为厨锅 / 煎锅提供热量（营火需要是点燃状态）
+    if blockName is None:
+        blockName = compFactory.CreateBlockInfo(levelId).GetBlockNew(blockPos, dimensionId)["name"]
+    if blockName not in CanProvideHeatBlockList:
+        return False
+    if blockName in _CAMPFIRE_BLOCKS:
+        states = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
+        if states and states.get("extinguished") is True:
+            return False
+    return True
+
+def GiveOrDropItem(playerId, itemDict, dimensionId=None):
+    # 给玩家物品；背包放不下时掉在玩家脚下，避免 SpawnItemToPlayerInv 失败后物品凭空消失
+    if compFactory.CreateItem(playerId).SpawnItemToPlayerInv(itemDict, playerId):
+        return True
+    if dimensionId is None:
+        dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
+    pos = compFactory.CreatePos(playerId).GetFootPos()
+    if pos is not None:
+        System.CreateEngineItemEntity(itemDict, dimensionId, pos)
+    return False
+
 def ToAllPlayerPlaySound(dmId, pos, soundName):
     # 播放音效 — 单次广播给全体客户端，由客户端本地检查维度过滤，
     # 避免在服务端每人创建 CreateDimension 组件做维度查询
@@ -194,6 +227,14 @@ def StoveDisplayEntity(itemDict, playerId, data):
     itemType = GetDisplayEntityCarriedItemType(itemDict)
     compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
 
+def SkilletDisplayCount(count):
+    # 煎锅上叠放的展示实体个数：1 个物品 1 层，2-16 两层，之后每 16 个加一层，最多 5 层
+    if count <= 0:
+        return 0
+    if count == 1:
+        return 1
+    return min(5, 2 + (count - 1) // 16)
+
 def SkilletDisplayEntity(itemDict, playerId, data):
     count = itemDict["count"]
     blockEntityData = data["blockEntityData"]
@@ -204,18 +245,7 @@ def SkilletDisplayEntity(itemDict, playerId, data):
     aux = DetectionExperimentalHoliday()
     blockAux = aux.get(blockAuxValue, blockAuxValue)
     step = -0.037
-    if count == 1:
-        num = 1
-    elif 2 <= count <= 16:
-        num = 2
-    elif 17 <= count <= 32:
-        num = 3
-    elif 33 <= count <= 48:
-        num = 4
-    elif 49 <= count <= 64:
-        num = 5
-    else:
-        num = 0
+    num = SkilletDisplayCount(count)
     for i in range(0, num):
         step += 0.037
         Id = System.CreateEngineEntityByTypeStr("arris:item_display", (x + random.uniform(0.43, 0.57), y + step, z + random.uniform(0.43, 0.57)), entityFace[blockAux], dimensionId)
@@ -242,80 +272,63 @@ def CuttingBoardDisplayEntity(itemDict, playerId, data):
     basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(itemDict["newItemName"])
     compFactory.CreateEntityDefinitions(Id).SetVariant(int(itemType))
 
+def FindCookingPotRecipeByResult(resultItemName):
+    # 按成品名找第一条厨锅配方（与旧实现"首个匹配获胜"一致）
+    for recipeDict in CookingPotRecipeList:
+        if recipeDict["CookResult"][0] == resultItemName:
+            return recipeDict
+    return None
+
+def CookingPotTransferAmount(previewCount, resultCount, maxStackSize, vesselCount=None):
+    # 预览槽 → 产出槽这一次能转移多少份：
+    # 不超过待出料数、产出槽剩余堆叠空间；需要容器时还不超过容器数
+    amount = min(previewCount, maxStackSize - resultCount)
+    if vesselCount is not None:
+        amount = min(amount, vesselCount)
+    return max(0, amount)
+
 def CheckCookingPotVessel(blockEntityData, blockPos, dimensionId):
-    # 检查厨锅内的容器是否符合并更新
+    # 把预览槽里煮好的成品转移到产出槽（7 号格）；需要容器的成品同时消耗容器格（6 号格）里等量的容器
     x, y, z = blockPos
-    previewItemSlot = blockEntityData["previewItemSlot"][0]
-    # 前置短路：预览槽为空时不可能有成品待出料，跳过整段配方扫描
-    if not previewItemSlot:
+    previewList = blockEntityData["previewItemSlot"] or [{}]
+    previewItemSlot = previewList[0]
+    # 前置短路：预览槽为空时不可能有成品待出料
+    if not previewItemSlot or not previewItemSlot.get("newItemName"):
         return
-    vesselItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 6, dimensionId)
+    resultItemName = previewItemSlot["newItemName"]
+    resultAuxValue = previewItemSlot.get("newAuxValue", 0)
+    recipeDict = FindCookingPotRecipeByResult(resultItemName)
+    if recipeDict is None:
+        return
+    itemComp = compFactory.CreateItem(levelId)
+    resultItemSlot = itemComp.GetContainerItem(blockPos, 7, dimensionId)
+    if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
+        return
+    resultCount = resultItemSlot["count"] if resultItemSlot else 0
+    maxStackSize = itemComp.GetItemBasicInfo(resultItemName, resultAuxValue)["maxStackSize"]
 
-    for RecipeDict in CookingPotRecipeList:
-        cookResult = RecipeDict["CookResult"]
-        vessel = RecipeDict.get("Vessel")
-        resultItemName = cookResult[0]
-        resultAuxValue = cookResult[1]
-        if vessel:
-            vesselDict = {"newItemName": vessel[0], "newAuxValue": vessel[1]}
-        else:
-            vesselDict = {}
+    vessel = recipeDict.get("Vessel")
+    vesselItemSlot = None
+    if vessel:
+        vesselItemSlot = itemComp.GetContainerItem(blockPos, 6, dimensionId)
+        # 只比较物品名（与旧实现一致）
+        if not vesselItemSlot or vesselItemSlot.get("newItemName") != vessel[0]:
+            return
+    amount = CookingPotTransferAmount(previewItemSlot["count"], resultCount, maxStackSize,
+                                      vesselItemSlot["count"] if vesselItemSlot else None)
+    if amount <= 0:
+        return
 
-        if previewItemSlot and previewItemSlot.get("newItemName") == resultItemName:
-            if not vessel:
-                basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
-                maxStackSize = basicInfo["maxStackSize"]
-                resultItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
-                if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
-                    return
-                if resultItemSlot and resultItemSlot["count"] >= maxStackSize:
-                    return
-                previewItemCount = previewItemSlot["count"]
-                blockEntityData["previewItemSlot"] = [None]
-                if not resultItemSlot:
-                    resultCount = previewItemCount
-                else:
-                    resultCount = previewItemCount + resultItemSlot[0]["count"]
-                itemDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                compFactory.CreateItem(levelId).SpawnItemToContainer(itemDict, 7, (x,y,z), dimensionId)
-                System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+    if vesselItemSlot:
+        vesselItemSlot["count"] -= amount
+        itemComp.SpawnItemToContainer(vesselItemSlot if vesselItemSlot["count"] > 0 else {}, 6, blockPos, dimensionId)
+    resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount + amount, "enchantData": []}
+    itemComp.SpawnItemToContainer(resultDict, 7, blockPos, dimensionId)
 
-            elif vesselItemSlot and vesselDict.get("newItemName") == vesselItemSlot.get("newItemName"):
-                count = vesselItemSlot["count"] - previewItemSlot["count"]
-
-                basicInfo = compFactory.CreateItem(levelId).GetItemBasicInfo(resultItemName, resultAuxValue)
-                maxStackSize = basicInfo["maxStackSize"]
-                resultItemSlot = compFactory.CreateItem(levelId).GetContainerItem(blockPos, 7, dimensionId)
-                if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
-                    return
-                if resultItemSlot and resultItemSlot["count"] >= maxStackSize:
-                    return
-                if count >= 0:
-                    previewItemCount = previewItemSlot["count"]
-                    blockEntityData["previewItemSlot"] = [None]
-                    vesselItemSlot["count"] = count
-                    compFactory.CreateItem(levelId).SpawnItemToContainer(vesselItemSlot, 6, (x,y,z), dimensionId)
-
-                    if not resultItemSlot:
-                        resultCount = previewItemCount
-                    else:
-                        resultCount = previewItemCount + resultItemSlot["count"]
-                    resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                    compFactory.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
-                else:
-                    previewItemSlot["count"] = abs(count)
-                    blockEntityData["previewItemSlot"] = [previewItemSlot]
-
-                    compFactory.CreateItem(levelId).SpawnItemToContainer({}, 6, (x,y,z), dimensionId)
-
-                    if not resultItemSlot:
-                        resultCount = vesselItemSlot["count"]
-                    else:
-                        resultCount = abs(count) + resultItemSlot["count"]
-                    resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount, "enchantData": []}
-                    compFactory.CreateItem(levelId).SpawnItemToContainer(resultDict, 7, (x,y,z), dimensionId)
-
-                System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+    previewItemSlot["count"] -= amount
+    # 改了嵌套字典必须整体回写，否则区块卸载后恢复原值
+    blockEntityData["previewItemSlot"] = [previewItemSlot] if previewItemSlot["count"] > 0 else [{}]
+    System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
 
 def SetCarriedDurability(playerId, itemDict, dimensionId, pos):
     # 设置手持物品耐久-1

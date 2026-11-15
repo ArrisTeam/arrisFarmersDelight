@@ -55,15 +55,7 @@ def OnClientItemTryUse(args):
         compFactory.CreateCustomAudio(levelId).PlayCustomMusic("item.book.page_turn", (1, 1, 1), 1, 1, False, playerId)
         clientApi.PushScreen("arris", "farmerDelightGuideBook")
 
-@Listen("ActorAcquiredItemClientEvent")
-def OnActorAcquiredItem(args):
-    itemDict = args["itemDict"]
-    acquireMethod = args["acquireMethod"]
-    if acquireMethod == 2:
-        itemName = itemDict["newItemName"]
-        if itemName in shapedRecipeContainerDict:
-            # 只把触发物品名传给服务端；playerId / 维度 / 坐标 / 容器物品 均由服务端自行确定，防止伪造
-            Call("PlayerShapedRecipe", {"triggerItemName": itemName})
+# 合成后返还空容器已改由服务端 CraftItemOutputChangeServerEvent 处理，客户端不再参与
 
 @Listen("ClientJumpButtonPressDownEvent")
 def ClientJumpButtonPressDown(args):

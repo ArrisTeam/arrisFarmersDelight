@@ -117,12 +117,13 @@ itemChangeBlockDict = {
     "arris:sweet_berry_cheesecake_item": "arris:sweet_berry_cheesecake",
     "arris:chocolate_pie_item": "arris:chocolate_pie",
 }
-# "合成后还给玩家的空容器"映射：获得 key 物品时 → 返还 value 空容器
-# 服务端 PlayerShapedRecipe 的白名单：客户端不能再指定任意 itemDict
+# "合成后还给玩家的空容器"映射：从合成栏取出 key 物品时 → 返还 value 空容器
+# 由服务端 CraftItemOutputChangeServerEvent 发放；perCraft 是配方一份的产出数（缺省 1），
+# 一次取出 N 个时按 N // perCraft 份返还
 shapedRecipeContainerDict = {
     "arris:wheat_dough": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
-    "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
-    "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
+    "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0, "perCraft": 4},
+    "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0, "perCraft": 8},
     "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
     "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
     "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
