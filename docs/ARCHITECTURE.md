@@ -3,11 +3,13 @@
 行为包脚本根：`bp/arrisFarmersDelightScripts/`（Python 2.7，网易 ModSDK + QuModLibs）。
 
 ```
-modMain.py              入口：MOD.Server("Server.ModServer") / MOD.Client("Client.ModClient") + 两个联动入口
+modMain.py              入口：MOD.Server("Server.ModServer") / MOD.Client("Client.ModClient") + 各联动入口
 QuModLibs/              框架（arrisCreate kit 的加固精简版），只读，不改
 Shared/                 双端共用；不导入引擎、QuModLibs、Server、Client —— 离线可测
   Data/                 纯数据表：Cooking  Cutting  CookingPotRecipes  Farming  Food  Blocks  Effects  Mobs  GuideBook
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
+                        CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
+    HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
 Server/                 服务端
@@ -25,6 +27,8 @@ Client/                 客户端
 Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）
   Create/               机械动力配方（未安装则不做任何事）
+  Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
+                        BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；未安装则不做任何事
 ```
 
 ## 分层与导入规则（tests/test_architecture.py 守着）
@@ -32,6 +36,7 @@ Compat/
 - `Shared/` 不导入引擎模块（`mod.*`）、`QuModLibs`、`Server`、`Client`、`Compat`、`Api`。
 - `Api/` 只导入 `Shared/`。
 - `Server/` 与 `Client/` 互不导入，也不导入 `Compat/`；联动模块在 `modMain.py` 里单独登记。
+  联动模块按端分：服务端的（如 `Compat/Diegesis/BoardLogic.py`）不导入 `Client/`，客户端的反之。
 - 一律显式导入，不用星号导入（`modMain.py` 的 QuMod 模板除外）。
 - 不出现 `import sys`、`__import__`、`namedtuple`、`eval` / `exec`、`pickle.loads`（网易机审与安全规则）。
 - 每个相对导入都要解析到真实模块；层级写错只有引擎加载时才报错，还会连累整条导入链。
@@ -89,3 +94,10 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 
 `tests/` 只测不依赖引擎的部分（`Shared/`、`Api/`、`Server/EventRegistry.py`）和静态结构；
 与引擎交互的部分用 Strata 的 `script_inspect` / `script_run`（沙箱加载、按剧本驱动事件）和游戏内实测。
+
+- `fdtest.py`：农夫乐事包的导入与用例收集；`test_handson_*.py` 是 HoD 规则内核的测试。
+- 场景交互前置包（`diegesisBp/arrisDiegesisScripts/`）的测试也在这里：`dgtest.py`（导入 + 假的引擎端口 FakeWorld）、
+  `dgkit.py` / `dgfixtures.py`（内核测试的断言与站点夹具），`test_diegesis_*.py`。`test_architecture.py` 同时守两个包。
+- 游戏内自检：`Server/Debug/McdkSelfTest.py`（`mcdk_test_run()` / 约 15 秒后 `mcdk_test_collect()`），含切菜板站点用例
+  （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。
+- 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
