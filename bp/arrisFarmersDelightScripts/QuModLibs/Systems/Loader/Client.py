@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import mod.client.extraClientApi as clientApi
-from ...Util import errorPrint, TRY_EXEC_FUN, getObjectPathName
+from ...Util import errorPrint, TRY_EXEC_FUN, getObjectPathName, ImportModule
 from ...IN import RuntimeService
 from SharedRes import (
     CallObjData,
@@ -13,10 +13,6 @@ from SharedRes import (
 lambda: "By Zero123"
 ClientSystem = clientApi.GetClientSystemCls()
 engineSpaceName, engineSystemName = clientApi.GetEngineNamespace(), clientApi.GetEngineSystemName()
-
-def clientImportModule(filePath):
-    """ 客户端文件导入 """
-    return clientApi.ImportModule(filePath)
 
 class LoaderSystem(ClientSystem, EasyListener):
     """ QuMod加载器系统
@@ -38,7 +34,7 @@ class LoaderSystem(ClientSystem, EasyListener):
     @staticmethod
     def dyImportModule(modulePath):
         if not modulePath in LoaderSystem._DY_IMP_CACHE:
-            LoaderSystem._DY_IMP_CACHE[modulePath] = clientImportModule(modulePath)
+            LoaderSystem._DY_IMP_CACHE[modulePath] = ImportModule(modulePath)
         return LoaderSystem._DY_IMP_CACHE[modulePath]
 
     @staticmethod
@@ -169,7 +165,7 @@ class LoaderSystem(ClientSystem, EasyListener):
         for path, _ in self._systemList:
             sysObj = None
             try:
-                sysObj = clientImportModule(path)
+                sysObj = ImportModule(path)
                 if sysObj == None:
                     errorPrint("[客户端] 系统文件加载失败(API异常): {}".format(path))
                     continue

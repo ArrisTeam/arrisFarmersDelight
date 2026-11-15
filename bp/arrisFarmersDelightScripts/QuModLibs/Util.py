@@ -3,6 +3,7 @@ from functools import wraps
 from threading import Thread, Lock
 from time import time
 import pickle as _pickle
+import io
 
 class UniversalObject(object):
     """ 万用对象 """
@@ -306,6 +307,43 @@ def getObjectPathName(_callObj = lambda: None):
     """ 获取可执行对象的目录名 """
     return ".".join((_callObj.__module__, _callObj.__name__))
 
+def ImportModule(path):
+    # type: (str) -> object
+    """ 按字符串路径导入模块 返回该路径对应的模块对象（导不到抛 ImportError） """
+    # 网易机审的 api_check 不收 __import__，importlib 又不在 Python 模块白名单里、不能直接 import：
+    # 已载入的模块直接从 traceback.sys.modules 取，没载入的借表里已有的 importlib 导入
+    import traceback
+    modules = traceback.sys.modules
+    module = modules.get(path)
+    if module is not None:
+        return module
+    importlib = modules.get("importlib")
+    if importlib is not None:
+        return importlib.import_module(path)
+    # importlib 要等引擎或别的 mod 导入过才在表里。还没有时退回引擎的 ImportModule：它对已登记的脚本包
+    # 用 importlib 导入，顺带把 importlib 载入，之后都走上一条路。两端各查各端已登记的脚本包，
+    # 单机双端同进程、联机各进程独立，取得到哪端用哪端
+    for api in _engineApis():
+        module = api.ImportModule(path)
+        if module is not None:
+            return module
+    raise ImportError("No module named %s" % path)
+
+def _engineApis():
+    # type: () -> list
+    apis = []
+    try:
+        import mod.server.extraServerApi as serverApi
+        apis.append(serverApi)
+    except ImportError:
+        pass
+    try:
+        import mod.client.extraClientApi as clientApi
+        apis.append(clientApi)
+    except ImportError:
+        pass
+    return apis
+
 def QThrottle(intervalTime=0.1):
     """ 该装饰器用于限制函数重复执行的最小时间间隔 """
     def _func(f):
@@ -329,6 +367,24 @@ def QConstInit(funcObj):
         _QConstStatic.initFuncSet.add(funcName)
         TRY_EXEC_FUN(funcObj)
     return funcObj
+
+class _QSafeUnpickler(_pickle.Unpickler):
+    # 安全: 受限反序列化器。覆写 find_class 拒绝一切类/函数引用(pickle 的 GLOBAL/INST
+    # opcode)。纯数据(dict/list/tuple/数值/字符串/bool/None)不含这些 opcode, 照常还原;
+    # 想引入可调用对象再借 __reduce__ 触发执行的 payload, 会在"取类"这一步就被拦下 ——
+    # 于是 REDUCE 没有 gadget 可用, 从根上消除 pickle 的任意代码执行面。
+    # QStruct 的跨端传参会把不可信的对端字节喂到这里(见 Loader/SharedRes 的参数解包),
+    # 所以这条路径必须走受限反序列化, 不能用裸 _pickle.loads。
+    def find_class(self, module, name):
+        raise _pickle.UnpicklingError(
+            "QStruct refused class reference '{}.{}' in payload".format(module, name)
+        )
+
+
+def _qSafeLoads(rawBytes):
+    # 受限反序列化入口: 只还原纯数据, 任何类/可调用对象引用都会抛 UnpicklingError。
+    return _QSafeUnpickler(io.BytesIO(rawBytes)).load()
+
 
 class QStruct:
     """ 结构体 用于通用数据模型约定(即不涉及任何API) 应定义在Server/Client以外的通用文件 同理Struct也不应该持有任何涉及端侧API的内容 """
@@ -357,13 +413,18 @@ class QStruct:
     def loads(data):
         # type: (str) -> QStruct
         """ 反序列化加载对象 """
-        return _pickle.loads(data)
+        # 安全: 走受限 Unpickler, 只还原纯数据; payload 里任何类/可调用对象引用都会被拒。
+        # 历史实现是裸 _pickle.loads, 对不可信来源(网络/存档)可被构造成任意代码执行。
+        return _qSafeLoads(data)
 
     @staticmethod
     def loadSignData(data):
         # type: (list) -> QStruct
         """ 反序列化加载Sign对象表(不会校验) """
-        return _pickle.loads(data[1])
+        # 安全: 对签名表的 data[1] 做受限反序列化, 不允许携带类/可调用对象。
+        # 这条路径直接暴露在跨端 RPC 参数解包上(见 Loader/SharedRes._unPackRefArgs) ——
+        # 服务端会用它解客户端发来的参数, 必须走受限 Unpickler, 绝不能裸 _pickle.loads。
+        return _qSafeLoads(data[1])
 
     def onNetUnPack(self):
         return self

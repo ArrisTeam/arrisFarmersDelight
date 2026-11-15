@@ -3,6 +3,7 @@ from Util import (
     Unknown,
     InitOperation,
     errorPrint,
+    ImportModule,
     _eventsRedirect,
     ObjectConversion as __ObjectConversion,
 )
@@ -11,8 +12,7 @@ import mod.server.extraServerApi as __extraServerApi
 serverApi = __extraServerApi                        
 TickEvent = "OnScriptTickServer"
 levelId = serverApi.GetLevelId()
-compFactory = serverApi.GetEngineCompFactory()
-System = serverApi.GetSystem("Minecraft","game")
+System = serverApi.GetSystem("Minecraft","game")    
 Events = _eventsRedirect                            
 
 def getOwnerPlayerId():
@@ -161,20 +161,40 @@ def TaskProcessCreate(obj):
     return obj.clone()
 
 # ================== 客户端请求实现 ==================
+# 安全：下面三个键是任何客户端都能调用的内置通道。客户端可以改包，载荷里的玩家 ID 与目标都不可信：
+#   - __Client.Request__：回包只投递给发起请求的玩家本人（引擎注入的调用者 ID），不用载荷里的玩家 ID；
+#   - __CALL.CLIENT__（借服务端之手调任意玩家的客户端端点）一律拒绝；
+#   - __calls__（一包多调）限制条数，批里不许再套这三个内置键（嵌套会递归放大）。
+try:
+    _STRING_TYPES = (basestring,)  # noqa: F821
+except NameError:
+    _STRING_TYPES = (str,)
+
+_RELAY_KEYS = ("__Client.Request__", "__CALL.CLIENT__", "__calls__")
+MAX_BATCH_CALLS = 256
+
+def _isCallSpec(key, args, kwargs):
+    # type: (object, object, object) -> bool
+    return isinstance(key, _STRING_TYPES) and key not in _RELAY_KEYS \
+        and isinstance(args, (list, tuple)) and isinstance(kwargs, dict)
+
 @CallBackKey("__Client.Request__")
 def __ClientRequest(PlayerId, Key, Args, Kwargs, BackKey):
+    caller = _loaderSystem.httpPlayerId
+    if caller is None or not _isCallSpec(Key, Args, Kwargs) or not isinstance(BackKey, _STRING_TYPES):
+        errorPrint("rejected __Client.Request__ from {}: malformed arguments".format(caller))
+        return
     try:
         BackData = LocalCall(Key, *Args, **Kwargs)
     except Exception as e:
-        Call(PlayerId, "__DelCallBackKey__", Key)
+        Call(caller, "__DelCallBackKey__", BackKey)
         raise e
-    Call(PlayerId, BackKey, BackData)
+    Call(caller, BackKey, BackData)
 
 @CallBackKey("__CALL.CLIENT__")
-def __CallCLIENT(playerIdData, Key, Args, Kwargs):
-    if isinstance(playerIdData, list):
-        return MultiClientsCall(playerIdData, Key, *Args, **Kwargs)
-    return Call(playerIdData, Key, *Args, **Kwargs)
+def __CallCLIENT(*_args, **_kwargs):
+    errorPrint("rejected __CALL.CLIENT__ from {}: clients may not call other clients through the server".format(
+        _loaderSystem.httpPlayerId))
 # ================== 客户端请求实现 ==================
 
 class QuObjectConversion(__ObjectConversion):
@@ -182,7 +202,7 @@ class QuObjectConversion(__ObjectConversion):
     def getClsWithPath(path):
         # type: (str) -> object
         lastPos = path.rfind(".")
-        impObj = serverApi.ImportModule((path[:lastPos]))
+        impObj = ImportModule(path[:lastPos])
         return getattr(impObj, path[lastPos+1:])
 
 class QuDataStorage:
@@ -269,7 +289,13 @@ class QuDataStorage:
 def QUMOD_SERVER_CALLS_(datLis):
     # type: (list[tuple]) -> None
     """ 内置的多callData处理请求 """
-    for key, args, kwargs in datLis:
+    if not isinstance(datLis, (list, tuple)) or len(datLis) > MAX_BATCH_CALLS:
+        errorPrint("rejected __calls__ from {}: not a list or more than {} calls".format(_loaderSystem.httpPlayerId, MAX_BATCH_CALLS))
+        return
+    for entry in datLis:
+        if not isinstance(entry, (list, tuple)) or len(entry) != 3 or not _isCallSpec(*entry):
+            continue
+        key, args, kwargs = entry
         try:
             LocalCall(key, *args, **kwargs)
         except Exception as e:

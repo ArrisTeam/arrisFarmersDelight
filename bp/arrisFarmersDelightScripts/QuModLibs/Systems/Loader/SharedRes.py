@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from uuid import uuid4
 from ...IN import ModDirName
-from ...Util import QStruct
+from ...Util import QStruct, errorPrint
 
 class CallObjData:
     def __init__(self, callObj, args = tuple(), kwargs = {}):
@@ -53,12 +53,29 @@ class EasyListener:
         pass
 
     @staticmethod
+    def _safeUnpackSigned(v):
+        # 安全: 这里是跨端 RPC 参数解包, v 来自不可信的对端(服务端在此解客户端发来的
+        # 参数)。历史实现直接 QStruct.loadSignData(v).onNetUnPack(), 即对网络字节做
+        # pickle.loads, 可被伪造成任意代码执行。现在改为受限反序列化: 只还原纯数据,
+        # 携带类/可调用对象的伪造 payload 会抛异常 -> 丢弃该参数并告警, 绝不执行。
+        # 注: 正常流量根本不进这里 —— 只有被 isSignData 判为签名表的参数才会走到,
+        # 而本项目不经此机制传对象, 合法参数都是原样透传的纯数据(dict/list/基本类型)。
+        try:
+            obj = QStruct.loadSignData(v)
+        except Exception as e:
+            errorPrint("[EasyListener] 拒绝可疑的网络签名数据(疑似伪造): {}".format(e))
+            return None
+        if isinstance(obj, QStruct):
+            return obj.onNetUnPack()
+        return obj
+
+    @staticmethod
     def _unPackRefArgs(data):
         # type: (list) -> list
         """ Ref解包Args数据 """
         for i, v in enumerate(data):
             if QStruct.isSignData(v):
-                data[i] = QStruct.loadSignData(v).onNetUnPack()
+                data[i] = EasyListener._safeUnpackSigned(v)
         return data
 
     @staticmethod
@@ -67,7 +84,7 @@ class EasyListener:
         """ Ref解包Dict Args数据 """
         for k, v in data.items():
             if QStruct.isSignData(v):
-                data[k] = QStruct.loadSignData(v).onNetUnPack()
+                data[k] = EasyListener._safeUnpackSigned(v)
         return data
 
     @staticmethod

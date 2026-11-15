@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from ...QuModLibs.Server import *
+# 加固版 QuModLibs 不再导出 compFactory，由本模组自己取；各服务端模块经 serverUtils 的 * 导入拿到
+compFactory = serverApi.GetEngineCompFactory()
 from ...modCommon.modConfig import *
 import math, random, copy
 

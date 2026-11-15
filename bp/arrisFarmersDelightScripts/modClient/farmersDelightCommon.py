@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from ..QuModLibs.Client import *
+# 加固版 QuModLibs 不再导出 compFactory，由本模组自己取
+compFactory = clientApi.GetEngineCompFactory()
 from ..modCommon.modConfig import *
 
 isJump = None

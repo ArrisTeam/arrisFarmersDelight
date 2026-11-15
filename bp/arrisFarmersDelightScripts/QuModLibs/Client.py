@@ -4,6 +4,7 @@ from Util import (
     Unknown,
     InitOperation,
     errorPrint,
+    ImportModule,
     _eventsRedirect,
     ObjectConversion as __ObjectConversion
 )
@@ -16,8 +17,7 @@ clientApi = __extraClientApi
 TickEvent = "OnScriptTickClient"
 System = clientApi.GetSystem("Minecraft","game")    
 levelId = clientApi.GetLevelId()
-playerId = clientApi.GetLocalPlayerId()
-compFactory = clientApi.GetEngineCompFactory()
+playerId = clientApi.GetLocalPlayerId() 
 Events = _eventsRedirect                            
 
 def regModLoadFinishHandler(func):
@@ -115,7 +115,7 @@ class QuObjectConversion(__ObjectConversion):
     def getClsWithPath(path):
         # type: (str) -> object
         lastPos = path.rfind(".")
-        impObj = clientApi.ImportModule((path[:lastPos]))
+        impObj = ImportModule(path[:lastPos])
         return getattr(impObj, path[lastPos+1:])
 
 class QuDataStorage:
