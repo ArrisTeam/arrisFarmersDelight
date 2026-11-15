@@ -22,6 +22,7 @@ from . import Stove  # noqa: F401
 from . import CuttingBoard  # noqa: F401
 from . import ItemToBlock  # noqa: F401
 from . import Crops  # noqa: F401
+from . import BoneMeal  # noqa: F401
 from . import RichSoil  # noqa: F401
 from . import WildCrops  # noqa: F401
 from . import FoodBlocks  # noqa: F401

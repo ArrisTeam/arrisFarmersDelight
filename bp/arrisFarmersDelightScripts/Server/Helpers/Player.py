@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Player - 玩家相关的小工具：交互冷却、扣物品、扣耐久、给物品（服务端）"""
-from .Engine import compFactory, levelId, System, Call, ItemPosType, SetCarriedItem
+from .Engine import compFactory, levelId, System, Call, SetCarriedItem
 from .Fx import ToAllPlayerPlaySound
 from .Items import GetItemType
 

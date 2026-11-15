@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from ...QuModLibs.Client import *
-# 加固版 QuModLibs 不再导出 compFactory，由本模组自己取
-compFactory = clientApi.GetEngineCompFactory()
-from ...modCommon.modConfig import *
+"""Registry - JEI 联动的公共部分：取 arrisJei 的注册表、物品悬停文本（客户端）
+
+未安装 arrisJei 时 GetJeiApiModule() 返回 None，各注册函数直接返回。
+"""
+from ...Client.Engine import clientApi, compFactory, levelId
 
 def GetJeiApiModule():
     jeiApiModule = clientApi.ImportModule("arrisJeiScripts.api.jei")

@@ -5,7 +5,7 @@ from .Helpers.Engine import compFactory, levelId, GetBlockName
 from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerGrowthParticle
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, SetCarriedDurability
-from .Crops import CropAccelerateTheRipening
+from .BoneMeal import CropAccelerateTheRipening
 from ..Shared.Data.Farming import cropsDict
 
 RICH_SOIL = "arris:rich_soil"

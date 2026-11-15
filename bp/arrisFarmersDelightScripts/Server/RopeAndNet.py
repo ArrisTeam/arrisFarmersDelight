@@ -2,7 +2,7 @@
 """RopeAndNet - 绳子攀爬、绳子敲钟、安全网弹跳、爬绳时免摔落伤害与不踩坏耕地（服务端）"""
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetEngineTypeStr
+from .Helpers.Engine import compFactory, System, GetBlockName, GetEngineTypeStr
 from .Helpers.Player import SetPlayerUsedCD
 from ..Shared.Data.Blocks import canClimbList
 import math

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from .jei import *
+from .Registry import GetJeiApiModule, SetHoverText
+from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 
 def RegisterCookingPotRecipes():
     registry = GetJeiApiModule()

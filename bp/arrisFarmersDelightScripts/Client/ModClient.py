@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""ModClient - 客户端入口：导入各客户端模块（导入即登记），注册 query 变量、指南书界面与 JEI 配方（客户端）
+"""ModClient - 客户端入口：导入各客户端模块（导入即登记），注册 query 变量与指南书界面（客户端）
+
+JEI 联动在 Compat/Jei/JeiClient.py，单独登记。
 
 客户端的引擎事件少且互不重叠，各模块直接用 @Listen，不需要事件注册表。
 """
@@ -26,12 +28,3 @@ def OnLoadClientAddonScriptsAfter(args):
 @Listen("UiInitFinished")
 def OnUiInitFinished(args):
     clientApi.RegisterUI("arris", "farmerDelightGuideBook", uiGuideBookPath, uiGuideBookScreen)
-    # JEI 联动：未安装 arrisJei 时各注册函数直接返回
-    from ..compat.jei.cutting_board import RegisterCuttingBoardRecipes
-    from ..compat.jei.cooking_pot import RegisterCookingPotRecipes
-    from ..compat.jei.skillet import RegisterSkilletRecipes
-    from ..compat.jei.stove import RegisterStoveRecipes
-    RegisterCuttingBoardRecipes()
-    RegisterCookingPotRecipes()
-    RegisterSkilletRecipes()
-    RegisterStoveRecipes()

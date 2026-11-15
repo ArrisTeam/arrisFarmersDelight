@@ -11,7 +11,7 @@
 模组照常运行，不影响任何其它功能。
 """
 
-from ...QuModLibs.Server import *
+from ...QuModLibs.Server import serverApi, Listen
 
 _REGISTERED = False
 
