@@ -70,9 +70,15 @@ def _useWithItem(args, blockEntityData, carriedDict, blockPos, dimensionId, play
         if itemName in result["tool"] or isToolType or IsKnife(itemName):
             for resultDict in result["itemList"]:
                 System.CreateEngineItemEntity(resultDict, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
-            DestroyEntity(displayEntityId)
             ToAllPlayerPlaySound(dimensionId, blockPos, "ambient.cutting_board.knife")
             SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
+            # 站点模式能在板上放一叠：经典玩法一次切一件，切完最后一件才清空
+            left = (cuttingDict.get("count") or 1) - 1
+            if left > 0:
+                cuttingDict["count"] = left
+                blockEntityData["cuttingDict"] = cuttingDict
+                return
+            DestroyEntity(displayEntityId)
             blockEntityData["cuttingDict"] = None
             blockEntityData["displayEntityId"] = None
         return
