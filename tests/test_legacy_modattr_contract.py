@@ -15,7 +15,8 @@ from __future__ import print_function
 import fdtest
 
 # 契约函数所在模块（服务端在导入时把它们 SetAttr 到 ModAttr("arris")）
-CONTRACT = fdtest.load("modCommon.modConfig")
+CONTRACT = fdtest.load("Api.LegacyModAttr")
+POT_RULES = fdtest.load("Shared.Rules.CookingPot")
 interface = CONTRACT.ArrisFarmersDelightInterface
 obtain = CONTRACT.ArrisFarmersDelightObtain
 addRecipe = CONTRACT.AddCookingPotRecipe
@@ -100,11 +101,11 @@ def testCookingPotRecipeAppendAndIndex():
     result = interface("CookingPotRecipeList", recipe)
     try:
         assert result is recipes and recipes[-1] is recipe and len(recipes) == before + 1
-        hit = CONTRACT.LookupCookingPotRecipe(tuple(sorted([("test:b", 0), ("test:a", 0)])))
+        hit = POT_RULES.lookupRecipe(tuple(sorted([("test:b", 0), ("test:a", 0)])))
         assert hit is not None and hit[0] == ("test:soup", 0), "追加配方后必须重建索引"
     finally:
         recipes.remove(recipe)
-        CONTRACT.BuildCookingPotRecipeIndex()
+        POT_RULES.rebuildIndex()
 
 
 def testCookingPotRecipeRejectsMoreThanSixIngredients():
@@ -125,11 +126,11 @@ def testAddCookingPotRecipeVariant():
     result = addRecipe("minecraft:mushroom_stew", variant)
     try:
         assert result is stew["Recipe"] and stew["Recipe"][-1] == variant
-        hit = CONTRACT.LookupCookingPotRecipe(tuple(sorted(variant)))
+        hit = POT_RULES.lookupRecipe(tuple(sorted(variant)))
         assert hit is not None and hit[0] == ("minecraft:mushroom_stew", 0)
     finally:
         stew["Recipe"].remove(variant)
-        CONTRACT.BuildCookingPotRecipeIndex()
+        POT_RULES.rebuildIndex()
     assert addRecipe("test:unknown_dish", variant) is False
     assert addRecipe("minecraft:mushroom_stew", [("test:x", 0)] * 7) is False
     assert addRecipe("", variant) is False
