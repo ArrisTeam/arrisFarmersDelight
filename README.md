@@ -41,38 +41,28 @@
 
 ```
 arrisFarmersDelight/
-├── bp/                                      # 行为包 (UUID 5cf077c0-…)
-│   ├── arrisFarmersDelightScripts/          # Python 2.7 脚本根目录
-│   │   ├── modMain.py                       # 入口：EasyMod 注册所有服务端/客户端模块
-│   │   ├── modServer/                       # 服务端：9 个功能模块 + 公共工具
-│   │   │   ├── farmersDelightCommon.py      #   通用事件 + 堆肥桶 + 派进食
-│   │   │   ├── cookingPot.py                #   厨锅 tick、配方匹配、容器处理
-│   │   │   ├── skillet.py                   #   煎锅
-│   │   │   ├── stove.py                     #   炉灶
-│   │   │   ├── cuttingBoard.py              #   砧板
-│   │   │   ├── farmCrop.py                  #   农作物 + 野生作物 + 肥沃耕地
-│   │   │   ├── platePackagedFood.py         #   盘装食物多阶段进食
-│   │   │   ├── ropeAndNet.py                #   攀爬/安全网
-│   │   │   ├── effect.py                    #   食物效果处理
-│   │   │   └── serverUtils/serverUtils.py   #   服务端公共工具（PosHash、概率、容器扫描、配方查询等）
-│   │   ├── modClient/                       # 客户端：入口事件 + 引导书 UI
-│   │   ├── modCommon/                       # 共享配置（modConfig.py 是游戏数据的唯一源）
-│   │   ├── proxys/                          # 客户端 UI ScreenProxy（厨锅交互 UI 的逻辑）
-│   │   ├── compat/jei/                      # JEI 联动（可选）
-│   │   └── QuModLibs/                       # 框架（第三方，请勿修改）
+├── bp/                                      # 行为包 (UUID 0bbb87d8-…)
+│   ├── arrisFarmersDelightScripts/          # Python 2.7 脚本根目录（结构说明见 docs/ARCHITECTURE.md）
+│   │   ├── modMain.py                       # 入口：登记服务端、客户端与联动入口
+│   │   ├── Shared/                          # 双端共用、不依赖引擎：Data/ 数据表、Rules/ 纯规则
+│   │   ├── Api/                             # 对外联动接口（linkage.md）
+│   │   ├── Server/                          # 服务端：ModServer 入口 + EventRegistry + 各玩法模块 + Helpers/
+│   │   ├── Client/                          # 客户端：ModClient 入口、客户端端点、Ui/（厨锅界面、指南书）
+│   │   ├── Compat/                          # 联动：Jei/、Create/（对方未安装时不做任何事）
+│   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 89 个自定义方块 JSON
 │   ├── netease_items_beh/                   # 98 个物品行为 JSON
 │   ├── recipes/                             # 122 个合成配方 JSON
 │   ├── netease_tab/                         # 创造栏分类
 │   ├── netease_features/ netease_feature_rules/  # 世界生成（野生作物、蘑菇群落等）
 │   ├── loot_tables/ entities/ netease_effects/    # 掉落表、实体定义、自定义药水效果
-│   └── pack_manifest.json
-├── rp/                                      # 资源包 (UUID f8cb5080-…)
+│   └── manifest.json
+├── rp/                                      # 资源包 (UUID 497a11b2-…)
 │   ├── models/ textures/ animations/        # 模型、贴图、动画
 │   ├── entity/ render_controllers/ animation_controllers/  # 实体客户端定义
 │   ├── ui/                                  # 4 个自定义 UI：厨锅、引导书、JEI 视图
 │   ├── particles/ sounds/ fonts/            # 特效 / 音效 / 字体
-│   └── pack_manifest.json
+│   └── manifest.json
 ├── img/                                     # README 配图
 ├── CLAUDE.md                                # 项目开发指南（面向 AI / 新贡献者）
 ├── .planning/OPTIMIZATION_PLAN.md           # 性能优化计划存档

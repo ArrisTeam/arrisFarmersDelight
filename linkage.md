@@ -41,7 +41,7 @@ def FarmersDelight(self, args):
 
 ### ArrisFarmersDelightInterface
 
-向农夫乐事主包配置文件 `modConfig.py` 中的字典或列表添加元素。
+向农夫乐事主包的配置表（`bp/arrisFarmersDelightScripts/Shared/Data/` 下各文件）中的字典或列表添加元素。
 
 | 参数名    | 数据类型                | 说明                             |
 | --------- | ----------------------- | -------------------------------- |
@@ -89,11 +89,11 @@ def FarmersDelight(self, args):
 备注：
 
 - 本示例仅演示添加厨锅烹饪配方。
-- 还可以向其他变量添加元素，详细格式请查看 `modConfig.py`。
+- 还可以向其他变量添加元素，可用的变量名见 `Api/LegacyModAttr.py` 的白名单，格式见 `Shared/Data/` 下对应的文件。
 
 ### ArrisFarmersDelightObtain
 
-获取 `modConfig.py` 中的配置字典或列表。
+获取主包配置表中的字典或列表（返回的就是配置对象本身，修改会直接生效）。
 
 | 参数名   | 数据类型 | 说明               |
 | -------- | -------- | ------------------ |
@@ -159,5 +159,7 @@ def FarmersDelight(self, args):
 | `CuttingBoardDict`        | `dict`   | 可在砧板上切的物品、输出物品及工具列表 |
 | `ComposterItemDict`       | `dict`   | 可堆肥的物品和堆肥成功概率             |
 | `CookingPotRecipeList`    | `list`   | 厨锅配方                               |
+| `StoveList`               | `list`   | 会烤食物的炉灶方块（点燃状态）         |
+| `knifeList`               | `list`   | 小刀列表（砧板配方的刀具条目引用它）   |
 
-各配置项的详细格式请查看 `modConfig.py`。
+各配置项的详细格式请查看 `bp/arrisFarmersDelightScripts/Shared/Data/` 下对应的文件（`Cooking.py`、`Cutting.py`、`Farming.py`、`CookingPotRecipes.py` 等）。
