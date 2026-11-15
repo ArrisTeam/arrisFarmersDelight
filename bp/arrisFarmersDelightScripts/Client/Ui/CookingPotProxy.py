@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from ..QuModLibs.Client import *
-# 加固版 QuModLibs 不再导出 compFactory，由本模组自己取
-compFactory = clientApi.GetEngineCompFactory()
+"""CookingPotProxy - 厨锅自定义容器界面的代理：配方书、预览槽、进度箭头（客户端）"""
+from ...QuModLibs.Client import Call
+from ..Engine import clientApi, compFactory, levelId, playerId
 
 CustomUIScreenProxy = clientApi.GetUIScreenProxyCls()
 ViewBinder = clientApi.GetViewBinderCls()

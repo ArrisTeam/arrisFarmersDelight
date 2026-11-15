@@ -9,5 +9,4 @@ MOD.Server("Server.ModServer")
 # 跨 MOD 联动（若对方副包未装则静默 no-op）
 MOD.Server("compat.create.createCompat")
 
-MOD.Client("modClient.farmersDelightCommon")
-MOD.Client("modClient.cookingPot")
+MOD.Client("Client.ModClient")

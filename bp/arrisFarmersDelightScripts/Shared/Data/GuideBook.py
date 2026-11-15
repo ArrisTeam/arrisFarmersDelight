@@ -2,7 +2,7 @@
 """GuideBook - 农夫乐事指南书的分页内容（双端，纯数据）
 """
 # 指南书界面的注册信息（客户端在 UiInitFinished 里 RegisterUI 时用）
-uiGuideBookPath = "arrisFarmersDelightScripts.modClient.uiScript.uiGuideBook.guideBook"
+uiGuideBookPath = "arrisFarmersDelightScripts.Client.Ui.GuideBook.guideBook"
 uiGuideBookScreen = "guideBook.main"
 
 

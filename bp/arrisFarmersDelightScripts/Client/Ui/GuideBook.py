@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-from ...QuModLibs.Client import *
-# 加固版 QuModLibs 不再导出 compFactory，由本模组自己取
-compFactory = clientApi.GetEngineCompFactory()
-from ...modCommon.guideBookConfig import config
+"""GuideBook - 农夫乐事指南书界面（客户端）"""
+from ..Engine import clientApi, compFactory, levelId
+from ...Shared.Data.GuideBook import config
 
 ScreenNode = clientApi.GetScreenNodeCls()
 ViewBinder = clientApi.GetViewBinderCls()
