@@ -6,8 +6,9 @@
 | 原项目 | 许可 | 移植到 |
 |---|---|---|
 | [Hands-On Delight](https://github.com/Pocky-l/handson-delight) | MIT，Copyright (c) 2026 Pocky | `bp/arrisFarmersDelightScripts/Shared/Rules/HandsOn/`、`tests/test_handson_*.py` |
+| [Diegesis](https://github.com/Pocky-l/diegesis) | MIT，Copyright (c) 2026 Pocky | `diegesisBp/arrisDiegesisScripts/Shared/`（Protocol.py 除外）、`tests/dgkit.py`、`tests/dgfixtures.py` 与内核的 `tests/test_diegesis_*.py` |
 
-许可原文：
+两者的许可原文相同：
 
 ```text
 MIT License
