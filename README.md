@@ -53,7 +53,7 @@ arrisFarmersDelight/
 │   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 89 个自定义方块 JSON
 │   ├── netease_items_beh/                   # 98 个物品行为 JSON
-│   ├── recipes/                             # 122 个合成配方 JSON
+│   ├── recipes/                             # 165 个合成配方 JSON
 │   ├── netease_tab/                         # 创造栏分类
 │   ├── netease_features/ netease_feature_rules/  # 世界生成（野生作物、蘑菇群落等）
 │   ├── loot_tables/ entities/ netease_effects/    # 掉落表、实体定义、自定义药水效果
