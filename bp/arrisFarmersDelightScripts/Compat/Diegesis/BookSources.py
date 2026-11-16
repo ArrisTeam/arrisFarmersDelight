@@ -5,7 +5,7 @@
 锅、砧板摆盘的菜能从背包放料（书上再点一下选中的那道菜）：发 bookFill {"key", "sets"}，服务端 PotLogic / BoardLogic 交给 BookFill.py；
 切的、煎锅、炉灶的书只看（HoD 一样）。前置包太旧、视图没有 book 接口时什么都不做。
 """
-from ...Shared.Rules import GrillStation, PotStation
+from ...Shared.Rules import GrillStation, PanStation, PotStation
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.HandsOn import PotBonus
 
@@ -86,8 +86,7 @@ class PanSource(_Source):
         return Books.panPages()
 
     def inStation(self):
-        item = self.view.data.get("item")
-        return [item] if item else []
+        return [item for item in self.view.state.getItems(PanStation.GROUP_PAN) if item]
 
     def current(self):
         return Books.cookCurrent(self.inStation())

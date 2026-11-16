@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+"""PanFx - 煎锅场景用的粒子和声音：把 PanShow 攒下的事件放出来（客户端）
+
+粒子的"在哪、多快、多大、什么色"照 HoD 的 SkilletBehavior / HandsOnDelightClient.registerParticles：
+    oil_pop   油泡（Diegesis 的 bubble + bubble_pop 帧，染 E6F7C27A，0.25-0.5 秒）   -> arris_diegesis:bubble_pop
+    fat       油星（原版 drip_fall，染 FFE7A8，小，重力 75）                        -> arris_diegesis:droplet
+    pan_smoke 贴锅面熟了冒的烟（steam 帧，染 58C8C6C2，1.8-2.6 像素，活 1.6-2.4 秒）-> arris_diegesis:steam
+    steam / glint / dust                                                           -> 前置包同名的
+    heat      热锅上的热浪（HoD 的 heat 四帧，染 48FFFFFF）                         -> arris:pan_heat（rp/particles/arris_pan_heat.json）
+位置的抖动、速度的抖动照 Diegesis 的 SceneParticles.spawn（位置每轴 gauss * spread，速度每轴 gauss * max(0.3, |v| * 0.25)）。
+声音名 -> 基岩版的声音：煎锅自己的两条沿用 FD 的声音定义（自带 20 倍 / 2 倍的音量，这里除回去，和厨锅同一个做法），其余是原版的
+（挂灯 block.lantern.*、捡东西 random.pop、岩浆噗 liquid.lavapop、营火噼啪 block.campfire.crackle、蛋壳 block.turtle_egg.crack）。
+"""
+import math
+import random
+
+from . import PotFx
+from ...Shared.Rules import PanModelMath
+from ...Shared.Rules.HandsOn.PotServeMath import rotateY
+
+SOUNDS = {
+    "sizzle": ("ambient.skillet.sizzle", 0.05), "add_food": ("ambient.skillet.addfood", 0.5),
+    "lantern_step": ("block.lantern.step", 1.0), "lantern_place": ("block.lantern.place", 1.0), "lantern_hit": ("block.lantern.hit", 1.0),
+    "item_pickup": ("random.pop", 1.0), "lava_pop": ("liquid.lavapop", 1.0), "campfire_crackle": ("block.campfire.crackle", 1.0),
+    "egg_crack": ("block.turtle_egg.crack", 1.0),
+}
+HEAT = "arris:pan_heat"
+STYLES = {      # 样式 -> (粒子, 缺省色 ARGB, 大小倍数, 活多久（秒）的范围，None 用粒子自己的)
+    "oil_pop": (PotFx.BUBBLE_POP, 0xE6F7C27A, 1.0, (0.25, 0.5)),
+    "fat": (PotFx.DROPLET, 0xFFFFE7A8, 0.33, (0.3, 0.6)),
+    "pan_smoke": (PotFx.STEAM, 0x58C8C6C2, 3.0, (1.6, 2.4)),
+    "steam": (PotFx.STEAM, 0x50FFFFFF, 1.0, None),
+    "glint": (PotFx.GLINT, 0xFFFFFFFF, 1.0, None),
+    "dust": ("arris_diegesis:dust", 0x99C0B090, 1.0, None),
+    "heat": (HEAT, 0x48FFFFFF, 3.5, (0.8, 1.3)),
+}
+
+
+def _gauss(spread):
+    return random.gauss(0.0, 1.0) * spread
+
+
+class PanFx(object):
+    def __init__(self, pos, facing):
+        self.pos = (int(pos[0]), int(pos[1]), int(pos[2]))
+        self.facing = facing
+
+    def world(self, point):
+        return PanModelMath.worldPoint(self.facing, self.pos, point)
+
+    def play(self, events, near=True):
+        """放这一阵攒下的事件；离得远（near 为假）就一概不放。"""
+        if not near:
+            return
+        for event in events:
+            if event["type"] == "sound":
+                self.sound(event["name"], event["volume"], event["pitch"])
+            elif event["type"] == "particle":
+                self.particle(event)
+
+    def sound(self, name, volume, pitch):
+        found = SOUNDS.get(name)
+        if found is not None:
+            PotFx.sound(found[0], self.world((8.0, 2.0, 8.0)), min(1.0, volume * found[1]), pitch)
+
+    def particle(self, event):
+        found = STYLES.get(event["style"])
+        if found is None:
+            return
+        identifier, defaultColor, scale, life = found
+        argb = event["color"] or defaultColor
+        rgb, alpha = argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0
+        velocity = event["vel"]
+        jitter = max(0.3, math.sqrt(velocity[0] ** 2 + velocity[1] ** 2 + velocity[2] ** 2) * 0.25)
+        for _ in range(int(event["count"])):
+            at = tuple(event["pos"][i] + _gauss(event["spread"]) for i in range(3))
+            speed = (velocity[0] + _gauss(jitter), velocity[1] + _gauss(jitter), velocity[2] + _gauss(jitter))
+            vx, vz = rotateY((speed[0], 0.0, speed[2]), PanModelMath.worldYaw(self.facing))[::2]
+            PotFx.particle(identifier, self.world(at), color=rgb, alpha=alpha, scale=scale, count=1,
+                           life=random.uniform(*life) if life else None, velocity=(vx, speed[1], vz))

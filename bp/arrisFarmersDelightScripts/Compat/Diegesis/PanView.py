@@ -1,150 +1,195 @@
 # -*- coding: utf-8 -*-
-"""PanView - 煎锅站点的客户端表现：俯看锅里、锅里的食物、颠锅时食物跳起来转半圈落回、底部物品栏抽屉（客户端）
+"""PanView - 煎锅站点里本人的那一层：抓锅柄颠锅、点食物、拿着东西点锅放进去、底部托盘（客户端）
 
-对应 Hands-On Delight：client/SkilletBehavior.java 的简化版（锅不动，颠锅时食物跳起来转半圈落回锅里）：
-- 在锅上按住往上一甩 = 颠锅翻面（toss，力度看甩多远，手势见 PanGesture.py）；点一下 = 取出（take）；
-- 点底部抽屉的格子 = 把快捷栏那叠放进锅（place）；顶部徽章显示锅里的东西和贴锅这面的进度，底部一行提示说下一步做什么。
-开站期间本客户端不画 Client/BlockItems 那份（hide），由这里画能跳起来的食物；关站时还原。
+对应 Hands-On Delight：client/SkilletBehavior.java 的 onEvent / stroked / onItemClick 和 scenes/skillet.json（机位、碰撞盒、work_plane、托盘）。
+锅里的画面（食物怎么落进来、颠起来翻面、油星热气、锅柄描边、声音）是谁都看得见的世界场景（PanScene.py），这里只把本人的手交给它，
+并照 JE 的规矩把点击变成动作：
+- 机位照场景文件：相机 (8, 40, 50) 看 (8, 1, 14)、视野 34 度，在锅柄那一侧（锅柄朝方块的朝向，不管开站的人站在哪边：Orientation.BLOCK）；
+  0.4 秒飞入，窗口窄时保住左右两边；chrome = java：没有提示行、没有抽屉，托盘代替；
+- 锅柄（handle 的碰撞盒，strokes）：按住 = 锅拎起来一点，往上猛提到每秒 30 像素以上就颠（力度到 110 像素每秒满），点一下（不到 0.35 秒）轻轻颠一下；
+  光标放上去、或食物等着翻面时锅柄描一圈亮边（hover outline）；
+- 锅里的食物（food 的碰撞盒）：点一下（左键）颠一下，熟了、或点右键：全拿回背包；
+- 手上拿着东西（托盘里拿起一叠，或开站这一下就拿着）点锅的任何地方（mouth / food / handle 的碰撞盒）：放进去，左键整叠、右键一个，
+  放不进的那一件弹开（服务端判，回 refused）；托盘里 Shift 点是库的 QUICK_MOVE，整叠进锅；
+- 托盘只列煎得了的东西（usable）；食谱书照旧挂（BookSources），只看。
+坐标：HoD 的场景坐标（锅柄朝 +z）经 PanModelMath 换到世界，再经 view.toStation 到站点像素，所以随方块朝向转。
 """
 import math
 
-from .PanGesture import PanGesture
-from . import BookSources
-from ...Client import BlockItems
+from . import BookSources, PanScenes
+from ...Client.Engine import clientApi, compFactory, levelId
+from ...Shared.Rules import PanModelMath as Math
 from ...Shared.Rules import PanStation as Rules
 
-CAMERA = {"pos": (8.0, 19.0, -2.5), "target": (8.0, 1.5, 7.5), "fov": 50.0}
-MIDDLE = 8.0
-FLOOR_Y = 1.85                    # 食物躺在锅底（1.5 像素）上
-FOOD_SCALE = 0.8
-PIECES = ((0.0, 0.0), (-2.2, 1.6), (2.0, -1.8))   # 最多画 3 块（离锅心的 dx, dz）
-PAN_BOX = ((2.0, 0.0, 2.0), (14.0, 5.0, 14.0))
-HOP_SECONDS = 0.55
-HOP_HEIGHT = 7.0
-HINT_SECONDS = 0.25
-FLASH_SECONDS = 2.5
-HINTS = {
-    "not_food": "这个不能煎",
-    "other_food": "锅里已经有别的东西：先点一下取出来",
-    "full": "锅里放不下了（最多 16 个）",
-}
+CAMERA = dict(Math.SCENE_CAMERA, keepWidth=16.0 / 9.0)
+FLIGHT_SECONDS = 0.4
+SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
+START_SPREAD, START_BOTTOM = 0.05, 0.97                # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
+MIN_API_VERSION = 2                                    # 托盘、光标栈随状态同步
 
 
 class PanViewMixin(object):
     """和前置包的 StationBehavior 拼成表现类（register 里用 type() 组装）。self.api 是前置包的 Api.Client。"""
 
-    camera = CAMERA
+    flightSeconds = FLIGHT_SECONDS
+    chrome = "java"
+    workPlane, carryLift, carrySize = 4.0, 2.5, 4.5      # skillet.json 的 work_plane；carrySize 是 Diegesis 的缺省（没有槽节点就不改）
 
     def __init__(self, view):
         super(PanViewMixin, self).__init__(view)
-        self.pieces, self.pieceKey = [], None
-        self.gesture = PanGesture()
-        self.clock = self.hintLeft = 0.0
-        self.hop = None                   # (开始时刻, 力度)
-        self.flash, self.shown = None, None
+        block = compFactory.CreateBlockInfo(levelId).GetBlock(view.pos)
+        self.facing = Math.facingOf(block[1] if block else 0)
+        self.scene = None
+        self.hover = None
+        self.ray = None                      # 光标此刻的射线（站点空间）
+        self.stroking = False
+        self.strokeButton = 0
+        self._cam = None
+
+    # ---------------------------------------------------------------- 机位与坐标
+
+    @property
+    def camera(self):
+        """场景文件的机位（锅柄那一侧）换成这次开站的站点空间（站点空间随玩家站的那一侧转，所以要经世界算）。"""
+        yaw = self.view.yaw
+        if self._cam is None or self._cam[0] != yaw:
+            pos, target = (self._toStation(CAMERA[key]) for key in ("pos", "target"))
+            self._cam = (yaw, {"pos": pos, "target": target, "fov": CAMERA["fov"], "keepWidth": CAMERA["keepWidth"]})
+        return self._cam[1]
+
+    def _toStation(self, point):
+        """场景坐标 -> 站点像素。"""
+        return self.view.toStation(*Math.worldPoint(self.facing, self.view.pos, point))
+
+    def _toScene(self, point):
+        """站点像素 -> 场景坐标。"""
+        return Math.scenePoint(self.facing, self.view.pos, *self.view.toWorld(point[0], point[1], point[2]))
+
+    def _box(self, key, box):
+        a, b = self._toStation(box[0]), self._toStation(box[1])
+        return self.api.box(key, tuple(min(a[i], b[i]) for i in range(3)), tuple(max(a[i], b[i]) for i in range(3)))
+
+    def _screenOn(self, x, y, height):
+        """屏幕上一点（占屏的几分之几）落在场景里高度 height 的水平面上的哪一点（场景坐标）；算不出 None。"""
+        size = compFactory.CreateGame(levelId).GetScreenSize()
+        ray = self.view.rayAt((size[0] * x, size[1] * y)) if size else None
+        point = self.api.Geometry.planeAtHeight(ray, height) if ray is not None else None
+        return self._toScene(point) if point is not None else None
+
+    def _startsOf(self, height, index, count):
+        """一次放进 count 件：第 index 件从屏幕底边的哪一点起飞，相对屏幕中心那一点的偏移（FromPlayer.offset）。"""
+        start = self._screenOn(0.5 + (index - (count - 1) / 2.0) * START_SPREAD, START_BOTTOM, height)
+        middle = self._screenOn(0.5, 0.5, height)
+        return (0.0, 0.0) if start is None or middle is None else (start[0] - middle[0], start[2] - middle[2])
+
+    def _cursorAt(self, height):
+        point = self.api.Geometry.planeAtHeight(self.ray, height) if self.ray is not None else None
+        return self._toScene(point) if point is not None else None
+
+    def _strokeY(self, ray):
+        """光标射线和"过锅柄原点、正对镜头的竖直平面"的交点的高度（Diegesis 的 strokePoint）；平行时 None。"""
+        cam = self.camera
+        nx, nz = cam["target"][0] - cam["pos"][0], cam["target"][2] - cam["pos"][2]
+        length = math.hypot(nx, nz)
+        if length < 1.0e-9:
+            return None
+        nx, nz = nx / length, nz / length
+        ox, oy, oz, dx, dy, dz = ray
+        denom = dx * nx + dz * nz
+        if abs(denom) < 1.0e-6:
+            return None
+        base = self._toStation(Math.SCENE_PAN)
+        return oy + ((base[0] - ox) * nx + (base[2] - oz) * nz) / denom * dy
 
     # ---------------------------------------------------------------- 钩子
 
+    def usable(self, item):
+        return Rules.usable(item.get("newItemName"))
+
     def pickables(self):
-        return [self.api.box("pan", PAN_BOX[0], PAN_BOX[1])]
+        boxes = [self._box("handle", Math.HANDLE_BOX), self._box("food", Math.FOOD_BOX)]
+        if self.view.hand is not None:
+            boxes.insert(1, self._box("mouth", Math.MOUTH_BOX))          # 拿着东西时锅口也认（drop zone）
+        return boxes
 
     def onOpen(self):
-        BlockItems.hide(self.view.dimensionId, self.view.pos, True)
-        self._rebuild()
+        self.scene = PanScenes.ensure(self.view.dimensionId, self.view.pos)
+        if self.scene is not None:
+            self.scene.show.focused = True
+            self.scene.startsOf, self.scene.cursorAt = self._startsOf, self._cursorAt
         BookSources.attach(self.view, "pan")
 
     def onClose(self):
-        BlockItems.hide(self.view.dimensionId, self.view.pos, False)
+        scene, self.scene = self.scene, None
+        if scene is not None:
+            scene.show.close()
+            scene.show.focused, scene.hovered = False, False
+            scene.startsOf = scene.cursorAt = None
+        self.stroking = False
 
     def onState(self, changes):
-        if changes.data:
-            self._rebuild()
-            BookSources.refresh(self.view)
-
-    def onEffect(self, name, data):
-        if name == "drawer":
-            self.view.drawer(data.get("items") or [])
-        elif name == "tossed":
-            self.hop = (self.clock, float(data.get("strength") or 0.5))
-        elif name == "untossed":
-            self._flash("还在空中，等它落下再颠")
-        elif name == "fried":
-            self._flash("煎好了！点一下取出")
-        elif name == "hint":
-            self._flash(HINTS.get(data.get("key"), ""))
-
-    def onDrawer(self, index):
-        self.view.sendAction("place", {"slot": int(index)})
-
-    def onPointer(self, event):
-        if event.kind == "down":
-            if event.hit is not None:
-                self.gesture.press(event.screen, self.clock)
-        elif event.kind == "move":
-            force = self.gesture.move(event.screen, self.clock)
-            if force is not None:
-                self.view.sendAction("toss", {"strength": round(force, 2)})
-        elif event.kind == "up":
-            if self.gesture.release(event.screen, self.clock) and self.view.data.get("item"):
-                self.view.sendAction("take")
+        BookSources.refresh(self.view)
 
     def frame(self, dt):
-        self.clock += dt
-        if self.hop is not None:
-            self._place()
-        self.hintLeft -= dt
-        if self.hintLeft <= 0.0:
-            self.hintLeft = HINT_SECONDS
-            self._showHint()
+        scene = self.scene
+        if scene is None:
+            return
+        scene.hovered = self.stroking or (self.hover == "handle" and self.view.hand is None)
+        if self.stroking and self.ray is not None:
+            y = self._strokeY(self.ray)
+            if y is not None:
+                scene.show.strokeMove(y)
+        self._flush()
 
-    # ---------------------------------------------------------------- 画
+    def _flush(self):
+        """场景里本人的手要告诉服务端的动作（颠、取）发出去。"""
+        for name, data in self.scene.show.takeActions():
+            self.view.sendAction(name, data)
 
-    def _rebuild(self):
-        """锅里换了东西（或数量跨过 1、2、3）就换道具。"""
-        data, props = self.view.data, self.view.props
-        item = data.get("item") or {}
-        count = min(len(PIECES), int(item.get("count") or 0)) if item.get("newItemName") else 0
-        key = (item.get("newItemName"), item.get("newAuxValue") or 0, count)
-        if key != self.pieceKey:
-            for prop in self.pieces:
-                props.remove(prop)
-            one = {"newItemName": item.get("newItemName"), "newAuxValue": item.get("newAuxValue") or 0, "count": 1}
-            self.pieces = [props.item(one, (MIDDLE + dx, FLOOR_Y, MIDDLE + dz), flat=True, scale=FOOD_SCALE)
-                           for dx, dz in PIECES[:count]]
-            self.pieceKey = key
-        self._place()
-        self.hintLeft = 0.0
+    # ---------------------------------------------------------------- 指针
 
-    def _place(self):
-        """食物躺在锅里；颠锅时整锅跳起来、在空中转半圈落回。"""
-        lift, spin = 0.0, 0.0
-        if self.hop is not None:
-            progress = (self.clock - self.hop[0]) / HOP_SECONDS
-            if progress >= 1.0:
-                self.hop = None
-            else:
-                lift = HOP_HEIGHT * (0.4 + 0.6 * self.hop[1]) * 4.0 * progress * (1.0 - progress)
-                spin = math.pi * progress
-        for index, prop in enumerate(self.pieces):
-            dx, dz = PIECES[index]
-            angle = index * 1.3 + spin
-            prop.move(center=(MIDDLE + dx, FLOOR_Y + index * 0.05 + lift, MIDDLE + dz), along=(math.cos(angle), math.sin(angle)))
+    def onPointer(self, event):
+        scene = self.scene
+        if scene is None:
+            return False
+        key = event.hit.node.key if event.hit is not None else None
+        if event.kind == "move":
+            self.hover, self.ray = key, event.ray
+            return False
+        if event.kind == "up":
+            if not self.stroking or event.button != self.strokeButton:
+                return False
+            self.stroking = False
+            scene.show.strokeEnd()
+            self._flush()
+            return True
+        self.ray = event.ray
+        if self.view.hand is not None:
+            return self._withStack(event, key)
+        if key == "handle" and not event.quick:       # Shift 点穿过锅柄（strokes）去够后面的
+            y = self._strokeY(event.ray) if event.ray is not None else None
+            self.stroking, self.strokeButton = True, event.button
+            scene.show.strokeStart(0.0 if y is None else y)
+            return True
+        if key in ("handle", "food"):
+            scene.show.clickFood(event.button)
+            self._flush()
+            return True
+        return False
 
-    def _flash(self, text):
-        self.flash = (text, self.clock + FLASH_SECONDS)
-        self.hintLeft = 0.0
-
-    def _showHint(self):
-        flashing = self.flash is not None and self.clock < self.flash[1]
-        text = self.flash[0] if flashing else Rules.statusText(self.view.data)
-        if text != self.shown:
-            self.shown = text
-            self.view.hint(text)
-        self.view.badge(Rules.badgeOf(self.view.data))
+    def _withStack(self, event, key):
+        """手上拿着东西点锅的任何一处：放进去（onItemClick）；点在别处不处理，右键由内核把手上的放回背包。"""
+        if key is None:
+            return False
+        self.view.sendAction("place", {"one": event.button == 1})
+        return True
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
+    if getattr(api, "API_VERSION", 0) < MIN_API_VERSION:
+        return None
     behaviorClass = type("SkilletBehavior", (PanViewMixin, api.StationBehavior), {"api": api})
-    api.registerBehavior(Rules.STATION_ID, Rules.PAN_BLOCKS, behaviorClass)
+    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    api.registerBehavior(Rules.STATION_ID, Rules.PAN_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass

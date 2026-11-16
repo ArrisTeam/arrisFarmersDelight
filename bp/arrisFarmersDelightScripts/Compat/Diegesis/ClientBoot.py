@@ -4,7 +4,7 @@
 单独在 modMain 里登记，Client/ 不导入 Compat/。前置包没装时 ImportModule 返回 None，什么都不做。
 """
 from ...QuModLibs.Client import Listen, clientApi
-from . import BoardView, GrillView, PanView, PotScenes, PotView
+from . import BoardView, GrillView, PanScenes, PanView, PotScenes, PotView
 from ...Shared.Data.BrothColors import BrothColors
 
 API_MODULE = "arrisDiegesisScripts.Api.Client"
@@ -20,5 +20,6 @@ def OnLoadClientAddonScriptsAfter(args=None):
         if api.API_VERSION >= POT_API_VERSION:
             PotView.register(api)
             PotScenes.enable(BrothColors.get)     # 厨锅从此按 HoD 的样子画：开盖、汤面、漂着的料（谁都看得见）
-        PanView.register(api)
+            if PanView.register(api) is not None:
+                PanScenes.enable()                # 煎锅从此按 HoD 的样子画：食物落进来、颠锅翻面、油星热气（谁都看得见）
         GrillView.register(api)
