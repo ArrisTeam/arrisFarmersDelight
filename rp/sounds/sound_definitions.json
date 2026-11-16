@@ -115,6 +115,120 @@
                "weight" : 10
             }
          ]
+      },
+      "handson.pot.body" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/body",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
+      },
+      "handson.pot.stir" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/stir",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
+      },
+      "handson.pot.plop" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/plop1",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/plop2",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/plop3",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
+      },
+      "handson.pot.burst" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/burst1",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/burst2",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/burst3",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
+      },
+      "handson.pot.blub" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/blub1",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/blub2",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/blub3",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/blub4",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
+      },
+      "handson.pot.scoop" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/scoop1",
+               "volume" : 1.0,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/handson/pot/scoop2",
+               "volume" : 1.0,
+               "weight" : 10
+            }
+         ]
       }
    }
 }
