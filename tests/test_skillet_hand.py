@@ -4,6 +4,7 @@
 
 JE：主手煎锅、副手食物，玩家着火或脚下 3x3x3 里有热源；按住 6 秒（火焰附加 I 4 秒、II 起 3 秒）做好一件；松手什么都不发生；
 副手没有食物提示"用另一只手拿着原料！"，头泡在水里提示"在水里可没法煎啊……"。
+JE 两只手都认；基岩版生肉放不进副手（实测），常用的是反过来拿：煎锅放副手、原料拿主手——文件末尾几个用例测这种拿法。
 """
 from __future__ import print_function
 
@@ -179,7 +180,7 @@ def testUnderwaterShowsTheUnderwaterTipAndDoesNotStart():
     assert "p1" in SkilletHand._sessions
 
 
-def testOnlyTheMainHandSkilletStarts():
+def testNoSkilletInEitherHandDoesNothing():
     _setUp(skillet={"newItemName": "minecraft:stick", "newAuxValue": 0, "count": 1})
     _press()
     assert not SkilletHand._sessions and _tips() == []
@@ -257,6 +258,69 @@ def testEveryCampfireRecipeCanBeCookedInHand():
         _advance(24)
         assert _cooked() == [(cooked, 1)], raw
         assert world.offhand["p1"] is None
+
+
+# ---- 反过来拿：煎锅在副手、原料在主手（基岩版的常用拿法） ----
+
+def _setUpMirrored(food=BEEF, fireAspect=0):
+    _setUp(skillet=food if food else {"newItemName": "minecraft:air", "newAuxValue": 0, "count": 0}, food=SKILLET)
+    if not food:
+        world.players["p1"]["hand"] = None
+    if fireAspect:
+        world.offhand["p1"]["enchantData"] = [(13, fireAspect)]
+
+
+def testSkilletInTheOffHandCooksWhatTheMainHandHolds():
+    _setUpMirrored()
+    _press()
+    assert "p1" in SkilletHand._sessions and _tips() == []
+    _advance(23)
+    assert _cooked() == [] and world.players["p1"]["hand"]["count"] == 3
+    _advance(1)
+    assert _cooked() == [("minecraft:cooked_beef", 1)]
+    assert world.players["p1"]["hand"] == dict(BEEF, count=2), "原料从主手拿走一件"
+    assert world.offhand["p1"]["newItemName"] == "arris:skillet_item" and world.offhand["p1"]["durability"] == 200
+
+
+def testTheOffHandSkilletsFireAspectCounts():
+    _setUpMirrored(fireAspect=2)
+    _press()
+    _advance(11)
+    assert _cooked() == []
+    _advance(1)
+    assert _cooked() == [("minecraft:cooked_beef", 1)], "副手那把煎锅的火焰附加 II：3 秒"
+
+
+def testTheLastPieceEmptiesTheMainHand():
+    _setUpMirrored(food={"newItemName": "minecraft:chicken", "newAuxValue": 0, "count": 1})
+    _press()
+    _advance(24)
+    assert _cooked() == [("minecraft:cooked_chicken", 1)] and world.players["p1"]["hand"] is None
+    assert world.offhand["p1"]["newItemName"] == "arris:skillet_item"
+
+
+def testOffHandSkilletWithNothingToCookShowsTheTip():
+    _setUpMirrored(food={"newItemName": "minecraft:stick", "newAuxValue": 0, "count": 1})
+    _press()
+    assert _tips() == ["用另一只手拿着原料！"] and not SkilletHand._sessions
+    _setUpMirrored(food=None)
+    _press()
+    assert _tips() == ["用另一只手拿着原料！"] and not SkilletHand._sessions
+
+
+def testPuttingTheOffHandSkilletAwayStopsIt():
+    _setUpMirrored()
+    _press()
+    _advance(8)
+    world.offhand["p1"] = None
+    _advance(40)
+    assert _cooked() == [] and world.players["p1"]["hand"]["count"] == 3 and not SkilletHand._sessions
+
+
+def testTheMainHandSkilletWinsWhenBothHandsHoldOne():
+    _setUp(food=SKILLET)                     # 两只手都是煎锅：按 JE 先试主手，另一只手（副手的煎锅）不是原料
+    _press()
+    assert _tips() == ["用另一只手拿着原料！"] and not SkilletHand._sessions
 
 
 if __name__ == "__main__":

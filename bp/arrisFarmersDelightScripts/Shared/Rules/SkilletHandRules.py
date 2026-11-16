@@ -4,12 +4,34 @@
 JE 的手持烹饪靠"按住使用"（startUsingItem，用满 getUseDuration 刻才算做好，中途松手什么都不发生）。基岩版没有这样的服务端事件，
 所以由客户端报告右键的按住：按下时报一次、按住期间每 HOLD_BEAT 秒报一次、松开报一次（Client/Input.py 的 HoldReporter）；
 服务端按最后一次"按着"的时间判断还按不按着（HoldTracker），太久没消息就当松手了（掉线、开界面时没发松开事件）。
+
+哪只手拿煎锅（skilletHand）：JE 的 SkilletItem.use 两只手都认——煎锅在哪只手，原料就在另一只手。基岩版的副手只收引擎允许的那几种物品
+（盾、图腾、地图、箭……），生肉放不进去（实测 SetEntityItem(OFFHAND, 生牛肉) 返回 False），所以这边常用的是反过来拿：
+煎锅放副手（物品 JSON 开了 netease:allow_offhand）、原料拿主手。这时在热源旁按住右键是煎不是吃（JE 里饿着的时候主手的食物会先被吃掉，
+这里改成有热源就煎——不然基岩版饿着就没法手持煎东西了；由客户端 Client/Input.py 在 ClientItemTryUseEvent 里取消"吃"）。
 """
 TICKS_PER_SECOND = 20
 HOLD_BEAT = 0.2
 HOLD_TIMEOUT = 0.8
 # JE onUseTick：每刻 1/50 的概率播一声滋滋
 SIZZLE_PER_TICK = 1.0 / 50
+
+
+MAIN, OFF = "main", "off"
+
+
+def skilletHand(mainName, offName, skilletName):
+    """煎锅在哪只手：MAIN / OFF（主手优先，JE 先试主手的物品）；两只手都没拿返回 None。原料在另一只手。"""
+    if mainName == skilletName:
+        return MAIN
+    if offName == skilletName:
+        return OFF
+    return None
+
+
+def cooksInsteadOfEating(mainName, offName, skilletName, cookable, nearHeat):
+    """主手这件东西右键时该不该取消"吃"、改成煎：副手是煎锅、主手是有营火配方的原料、身边有热源。"""
+    return skilletHand(mainName, offName, skilletName) == OFF and bool(cookable) and bool(nearHeat)
 
 
 def sizzleChance(seconds):
@@ -20,7 +42,7 @@ def sizzleChance(seconds):
 class HoldReporter(object):
     """客户端的右键按住上报：决定什么时候给服务端发 held。每个方法返回要发的值（True 按着 / False 松开），None 是什么都不用发。
 
-    只在主手拿着煎锅时报告（别的物品用不着）；按住期间手里换了东西，到下一次该报告时报一次松开。
+    只在手里（主手或副手）拿着煎锅时报告（别的物品用不着）；按住期间手里换了东西，到下一次该报告时报一次松开。
     tick 每帧都会调，carrying 传个函数，到点了才去问手里拿的什么（客户端的引擎调用不用每帧都跑）。
     """
 

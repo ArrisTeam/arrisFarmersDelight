@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Input - 跳跃键（爬绳往上）、指南书物品、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开（客户端）"""
+"""Input - 跳跃键（爬绳往上）、指南书物品、对着方块拿原版南瓜派不吃、手里有煎锅时右键的按住 / 松开（客户端）"""
 import time
 
 from ..QuModLibs.Client import Listen, Call
 from .Engine import clientApi, compFactory, levelId, playerId
 from ..Shared.Data import Food
+from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
 from ..Shared.Rules.Placement import eatsPumpkinPie
-from ..Shared.Rules.SkilletHandRules import HoldReporter
-from ..Shared.Rules.SkilletRules import SKILLET_ITEM
+from ..Shared.Rules.SkilletHandRules import HoldReporter, cooksInsteadOfEating, skilletHand
+from ..Shared.Rules.SkilletRules import SKILLET_ITEM, nearHeat
 
 GUIDE_BOOK_ITEM = "arris:farmer_delight_guide_book"
-# 手持煎锅烹饪要知道右键有没有按住，服务端没有"按住"的事件：主手拿着煎锅时由这里报告（规则见 SkilletHandRules.HoldReporter）
+# 手持煎锅烹饪要知道右键有没有按住，服务端没有"按住"的事件：主手或副手拿着煎锅时由这里报告（规则见 SkilletHandRules.HoldReporter）
 _skilletHold = HoldReporter()
 
 
@@ -38,11 +39,28 @@ def OnClientItemTryUse(args):
         sneaking = compFactory.CreatePlayer(playerId).isSneaking()
         if not eatsPumpkinPie(aimsAtBlock, sneaking, Food.PUMPKIN_PIE_SNEAK_TO_PLACE):
             args["cancel"] = True
+    elif cooksInsteadOfEating(itemName, _offhandName(), SKILLET_ITEM, itemName in CanCookedFoodDict, _nearHeat()):
+        # 副手煎锅、主手原料、身边有热源：这一下是手持煎（Server/SkilletHand.py），不是吃
+        args["cancel"] = True
+
+
+def _offhandName():
+    item = compFactory.CreateItem(playerId).GetOffhandItem()
+    return item.get("newItemName") if item else None
+
+
+def _nearHeat():
+    """身边 3x3x3 里有没有热源方块（和服务端同一条规则；客户端读不到"着火"，那种情况只由服务端认）。"""
+    footPos = compFactory.CreatePos(playerId).GetFootPos()
+    if not footPos:
+        return False
+    blockInfo = compFactory.CreateBlockInfo(levelId)
+    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], CanProvideHeatBlockList)
 
 
 def _carryingSkillet():
     item = compFactory.CreateItem(playerId).GetCarriedItem()
-    return bool(item) and item.get("newItemName") == SKILLET_ITEM
+    return skilletHand(item.get("newItemName") if item else None, _offhandName(), SKILLET_ITEM) is not None
 
 
 def _reportSkilletHold(held):

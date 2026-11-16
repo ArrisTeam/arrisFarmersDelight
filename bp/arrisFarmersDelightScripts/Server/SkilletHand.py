@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""SkilletHand - 手持煎锅烹饪：主手煎锅、副手食物，在热源旁按住右键，煎好一件（服务端）
+"""SkilletHand - 手持煎锅烹饪：一只手煎锅、另一只手原料，在热源旁按住右键，煎好一件（服务端）
 
 JE SkilletItem.use / getUseDuration / onUseTick / releaseUsing / finishUsingItem：
-- 主手煎锅，玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块，营火熄没熄不管；食物要有营火配方，即 CanCookedFoodDict）；
+- 一只手煎锅、另一只手原料（JE 两只手都认；基岩版生肉放不进副手，常用的是煎锅放副手、原料拿主手，见 SkilletHandRules.skilletHand），
+  玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块，营火熄没熄不管；食物要有营火配方，即 CanCookedFoodDict）；
 - 煎一件的时间 = SkilletBlock.getSkilletCookingTime(营火配方 600 刻, 这把煎锅的火焰附加)：6 / 4 / 3 秒；
-- 副手没有能煎的食物：提示"用另一只手拿着原料！"；头泡在水里：提示"在水里可没法煎啊……"（潜行时不提示：潜行右键方块是放煎锅，
+- 另一只手没有能煎的食物：提示"用另一只手拿着原料！"；头泡在水里：提示"在水里可没法煎啊……"（潜行时不提示：潜行右键方块是放煎锅，
   那一下 JE 不走 use()，总不能每放一次煎锅都冒一句）；
 - 按住期间每刻 1/50 的概率响一声滋滋（JE 是本地声音，只有自己听得到）；
-- 松手什么都不发生。JE 把那一件放回背包；这里食物到做好那一刻才从副手拿走，所以掉线、死亡、换物品都不会丢东西；
-- 做好：副手少 1 件（创造模式也扣，JE 就是这样）、成品进背包（满了掉在脚下）、煎锅不磨损；
+- 松手什么都不发生。JE 把那一件放回背包；这里食物到做好那一刻才从拿原料的那只手拿走，所以掉线、死亡、换物品都不会丢东西；
+- 做好：原料少 1 件（创造模式也扣，JE 就是这样）、成品进背包（满了掉在脚下）、煎锅不磨损；
   按住不放就接着煎下一件（JE 里按住右键会每 4 刻重新使用一次，这里是客户端下一次"按着"的报告）。
 客户端的"按着 / 松开"报告由 Server/SkilletHold.py 收下，调这里的 onHeld / onRelease。
 """
@@ -51,6 +52,17 @@ def _offhand(playerId):
     return compFactory.CreateItem(playerId).GetPlayerItem(ItemPosType.OFFHAND, 0, True)
 
 
+def _hands(playerId):
+    """(煎锅那件物品, 原料那只手里的物品, 原料在哪只手的 ItemPosType)；两只手都没拿煎锅返回 None。"""
+    main, off = GetCarriedItem(playerId, True), _offhand(playerId)
+    side = Hand.skilletHand(main and main["newItemName"], off and off["newItemName"], Rules.SKILLET_ITEM)
+    if side == Hand.MAIN:
+        return main, off, ItemPosType.OFFHAND
+    if side == Hand.OFF:
+        return off, main, ItemPosType.CARRIED
+    return None
+
+
 def _underWater(footPos, dimensionId):
     """JE player.isUnderWater()：眼睛所在那一格有水。"""
     eye = (int(math.floor(footPos[0])), int(math.floor(footPos[1] + EYE_HEIGHT)), int(math.floor(footPos[2])))
@@ -59,15 +71,15 @@ def _underWater(footPos, dimensionId):
 
 
 def _begin(playerId, now):
-    held = GetCarriedItem(playerId, True)
-    if not held or held["newItemName"] != Rules.SKILLET_ITEM:
+    hands = _hands(playerId)
+    if hands is None:
         return
+    held, food = hands[0], hands[1]
     dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
     footPos = compFactory.CreatePos(playerId).GetFootPos()
     onFire = bool(compFactory.CreateAttr(playerId).IsEntityOnFire())
     if not Rules.nearHeat(footPos, lambda pos: GetBlockName(pos, dimensionId), CanProvideHeatBlockList, onFire):
         return
-    food = _offhand(playerId)
     result = CanCookedFoodDict.get(food["newItemName"]) if food else None
     quiet = compFactory.CreatePlayer(playerId).isSneaking() is True
     if result is None:
@@ -88,8 +100,7 @@ def _step(playerId):
     if session is None:
         return
     now = _now()
-    held = GetCarriedItem(playerId) if _holds.held(playerId, now) else None
-    if not held or held["newItemName"] != Rules.SKILLET_ITEM:
+    if not _holds.held(playerId, now) or _hands(playerId) is None:
         del _sessions[playerId]                 # JE releaseUsing：松手 / 手里换了东西，什么都不做
         return
     if random.random() < Hand.sizzleChance(STEP):
@@ -107,10 +118,11 @@ def _sizzle(playerId):
 
 
 def _finish(playerId, session):
-    """JE finishUsingItem：成品给玩家。食物这时才从副手拿走一件（副手换了别的东西就什么都不做）。"""
-    food = _offhand(playerId)
+    """JE finishUsingItem：成品给玩家。食物这时才从拿原料的那只手拿走一件（那只手换了别的东西就什么都不做）。"""
+    hands = _hands(playerId)
+    food = hands[1] if hands else None
     if not food or food["newItemName"] != session.food:
         return
     food["count"] -= 1
-    compFactory.CreateItem(playerId).SetEntityItem(ItemPosType.OFFHAND, food if food["count"] > 0 else None, 0)
+    compFactory.CreateItem(playerId).SetEntityItem(hands[2], food if food["count"] > 0 else None, 0)
     GiveOrDropItem(playerId, {"itemName": session.result, "auxValue": 0, "count": 1})

@@ -5,6 +5,9 @@
             "minecraft:max_damage": 250,
             "minecraft:max_stack_size": 1,
             "minecraft:use_duration": 20.0,
+            "netease:allow_offhand": {
+                "value": true
+            },
             "netease:customtips": {
                 "value": "§8§o潜行可放置§r%enchanting%%attack_damage%"
             },

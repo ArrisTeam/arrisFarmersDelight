@@ -60,5 +60,23 @@ def testReporterReleasesWhenTheSkilletLeavesTheHand():
     assert reporter.tick(1.0, lambda: False) is None and reporter.tick(1.0, lambda: True) is None
 
 
+def testTheSkilletCanBeInEitherHand():
+    skillet = "arris:skillet_item"
+    assert Hand.skilletHand(skillet, "minecraft:beef", skillet) == Hand.MAIN
+    assert Hand.skilletHand("minecraft:beef", skillet, skillet) == Hand.OFF
+    assert Hand.skilletHand(skillet, skillet, skillet) == Hand.MAIN, "JE 先试主手"
+    assert Hand.skilletHand("minecraft:beef", None, skillet) is None and Hand.skilletHand(None, None, skillet) is None
+
+
+def testEatingGivesWayToCookingOnlyWithAnOffHandSkilletNearHeat():
+    skillet = "arris:skillet_item"
+    cooks = Hand.cooksInsteadOfEating
+    assert cooks("minecraft:beef", skillet, skillet, True, True)
+    assert not cooks("minecraft:beef", skillet, skillet, True, False), "身边没热源：照常吃"
+    assert not cooks("minecraft:bread", skillet, skillet, False, True), "没有营火配方的食物：照常吃"
+    assert not cooks("minecraft:beef", None, skillet, True, True), "副手没煎锅"
+    assert not cooks(skillet, "minecraft:beef", skillet, True, True), "煎锅在主手：主手这件不是食物，用不着取消"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

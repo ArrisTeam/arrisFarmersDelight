@@ -59,6 +59,8 @@ def testSkilletItemIsDeclaredAsAnIronTierWeapon():
     assert weapon["type"] == "sword"
     assert weapon["enchantment"] == 14                               # Tiers.IRON.getEnchantmentValue()
     assert weapon["level"] == 2                                      # 网易文档：level 2 = 铁砧用铁锭修；JE getRepairIngredient = 铁锭
+    # 基岩版生肉放不进副手，手持烹饪常用"煎锅放副手、原料拿主手"（SkilletHandRules.skilletHand）：煎锅得能进副手
+    assert item["netease:allow_offhand"] == {"value": True}
 
 
 def testSkilletAttackDamageIsTheJeModifier():
