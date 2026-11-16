@@ -48,3 +48,11 @@ def placePositions(x, y, z):
 def holidayAuxMap(experimentalHoliday):
     """方块 aux → 朝向 0-3 的映射表；experimentalHoliday 为是否开启了假日创造者实验玩法。"""
     return _HOLIDAY_AUX if experimentalHoliday else _PLAIN_AUX
+
+
+def placesPumpkinPie(sneaking, sneakToPlace):
+    """原版南瓜派对方块使用时，是不是放成方块（JE PlacePumpkinPieMixin.usePumpkinPie）。
+
+    配置 enablePumpkinPieSneakToPlace 为假（JE 缺省）：一律放；为真：只有潜行才放，不潜行照常吃。
+    """
+    return bool(sneaking) if sneakToPlace else True

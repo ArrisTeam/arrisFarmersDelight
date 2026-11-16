@@ -36,6 +36,15 @@ def testEntityFaceCoversAllFourDirections():
     assert sorted(Placement.ENTITY_FACE) == [0, 1, 2, 3]
 
 
+def testPumpkinPieIsPlacedUnlessTheConfigAsksForSneaking():
+    # JE PlacePumpkinPieMixin：enablePumpkinPieSneakToPlace 缺省 false，一律放成方块；为 true 时只有潜行才放，不潜行照常吃
+    assert Placement.placesPumpkinPie(False, False) is True
+    assert Placement.placesPumpkinPie(True, False) is True
+    assert Placement.placesPumpkinPie(False, True) is False
+    assert Placement.placesPumpkinPie(True, True) is True
+    assert Placement.placesPumpkinPie(None, True) is False, "读不到潜行状态按没潜行"
+
+
 def _run(pacer, key, start, seconds, step=0.05):
     """按 20 刻 / 秒喂 pacer，返回放行的时刻。"""
     fired = []
