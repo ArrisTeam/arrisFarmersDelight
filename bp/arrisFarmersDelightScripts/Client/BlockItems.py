@@ -5,7 +5,7 @@
 （Server/Helpers/BlockItems.py -> 本模块的 OnBlockItems），方块实体在本端加载时按方块实体数据自己补一次；
 摆法在 Shared/Rules/BlockDisplay.py，姿态换算在 Shared/Rules/ItemPose.py。掉落物是纯客户端渲染，每个客户端各画各的。
 加载事件可能重复触发、服务端 SetBlockNew 放的方块客户端不发加载事件（机械动力的实机记录）：渲染一律先清后画（幂等），
-内容一律以广播为准。
+内容一律以广播为准。站点自己画某个方块上的东西时（煎锅站点要让食物翻面）用 hide 让本端先不画，还原时按最后一份内容重画。
 """
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import compFactory, levelId, unwrapDeep, blockEntityExData
@@ -15,6 +15,8 @@ from ..Shared.Rules import BlockDisplay, ItemPose
 BOARD_BLOCKS = ("arris:cutting_board",)
 SKILLET_BLOCKS = ("arris:skillet",)
 _shown = {}        # (维度, 坐标) -> [掉落物 id]
+_last = {}         # (维度, 坐标) -> (kind, items)：最后一份内容
+_hidden = set()    # 站点在画、本端不画的方块
 _itemTypes = {}    # (名字, aux) -> 物品类型
 
 
@@ -49,13 +51,27 @@ def clear(dimensionId, pos):
 def clearAll():
     for key in list(_shown):
         clear(key[0], key[1])
+    _last.clear()
+
+
+def hide(dimensionId, pos, hidden):
+    """hidden=True：本端不画这个方块上的东西（内容照常记着）；False：按最后一份内容重画。"""
+    key = (dimensionId, (int(pos[0]), int(pos[1]), int(pos[2])))
+    if hidden:
+        _hidden.add(key)
+        clear(key[0], key[1])
+    elif key in _hidden:
+        _hidden.discard(key)
+        if key in _last:
+            show(key[0], key[1], _last[key][0], _last[key][1])
 
 
 def show(dimensionId, pos, kind, items):
     """按摆法画出这个方块上的物品（先清掉旧的）。"""
     pos = (int(pos[0]), int(pos[1]), int(pos[2]))
     clear(dimensionId, pos)
-    if dimensionId != _currentDimension():
+    _last[(dimensionId, pos)] = (kind, items)
+    if dimensionId != _currentDimension() or (dimensionId, pos) in _hidden:
         return
     itemComp = compFactory.CreateItem(levelId)
     shown = []
@@ -97,7 +113,9 @@ def OnBlockEntityLoaded(args):
 
 @Listen("ModBlockEntityRemoveClientEvent")
 def OnBlockEntityRemoved(args):
-    clear(args["dimensionId"], (args["posX"], args["posY"], args["posZ"]))
+    pos = (args["posX"], args["posY"], args["posZ"])
+    clear(args["dimensionId"], pos)
+    _last.pop((args["dimensionId"], pos), None)
 
 
 @Listen("DimensionChangeClientEvent")
