@@ -25,9 +25,14 @@ def _typeOf(item):
 
 
 def testABoardShowsOneItemAndTheRightPose():
-    food, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 5)}, _typeOf, (1, 64, 1))
+    food, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 1)}, _typeOf, (1, 64, 1))
     assert food.flat and food.item["count"] == 1 and food.center[0] == 0.5 and food.center[2] == 0.5
     assert BD.BOARD_TOP < food.center[1] < BD.BOARD_TOP + 0.05, "食物平躺在板面上"
+    pile = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 5)}, _typeOf, (1, 64, 1))
+    assert len(pile) == 2 and pile[1].center[1] - pile[0].center[1] > 0.03, "一叠不止一个：底下再垫一张，上面那张抬高 0.65 像素"
+    assert pile[0].direction != pile[1].direction, "底下那张转个角度"
+    moved = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 1)}, _typeOf, (1, 64, 1), offset=(-1.5 / 16.0, 0.0))
+    assert abs(moved[0].center[0] - (0.5 - 1.5 / 16.0)) < 1e-9 and moved[0].center[2] == 0.5, "挪到板底座中间"
     block, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:oak_log")}, _typeOf, (1, 64, 1))
     assert not block.flat, "方块类立在板上"
     tool, = BD.layout(BD.KIND_BOARD, {"0": _item("arris:iron_knife")}, _typeOf, (1, 64, 1))

@@ -10,7 +10,8 @@
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import compFactory, levelId, unwrapDeep, blockEntityExData
 from ..Shared.Data.Cooking import StoveList
-from ..Shared.Rules import BlockDisplay, ItemPose
+from ..Shared.Rules import BlockDisplay, ItemPose, PotModelMath
+from ..Shared.Rules.HandsOn import BoardScene
 
 BOARD_BLOCKS = ("arris:cutting_board",)
 SKILLET_BLOCKS = ("arris:skillet",)
@@ -40,6 +41,13 @@ def _itemType(item):
         info = compFactory.CreateItem(levelId).GetItemBasicInfo(key[0], key[1]) or {}
         _itemTypes[key] = info.get("itemType") or ""
     return _itemTypes[key]
+
+
+def _boardOffset(pos):
+    """板底座中间离方块中心的量（方块分数）：FD 的板底座 x 1..12、柄在旁边，中心在方块自己坐标的 (6.5, 8)，随方块朝向转。"""
+    block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
+    dx, dz = PotModelMath.localToWorld(PotModelMath.facingOf(block[1] if block else 0), BoardScene.BASE_X - 8.0, BoardScene.BASE_Z - 8.0)
+    return (dx / 16.0, dz / 16.0)
 
 
 def clear(dimensionId, pos):
@@ -75,7 +83,8 @@ def show(dimensionId, pos, kind, items):
         return
     itemComp = compFactory.CreateItem(levelId)
     shown = []
-    for placement in BlockDisplay.layout(kind, items, _itemType, pos):
+    offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
+    for placement in BlockDisplay.layout(kind, items, _itemType, pos, offset):
         center = (pos[0] + placement.center[0], pos[1] + placement.center[1], pos[2] + placement.center[2])
         if placement.flat:
             matrix = ItemPose.flatMatrix(placement.direction[0], placement.direction[1])

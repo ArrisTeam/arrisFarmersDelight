@@ -3,14 +3,16 @@
 
 取代旧版的 arris:item_display 服务端实体：服务端只广播"这个方块上有什么"，各客户端按这里的摆法用客户端掉落物画
 （与机械动力的置物台、传送带同一种做法）。坐标是方块内的格（原点在方块西北下角），方向是世界的 (dx, dz)。
-- 砧板：一件。食物平躺在板面中央；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。
+- 砧板：一件。食物平躺在板的底座中间（FD 的板底座 x 1..12，柄在旁边：offset 是从方块中心挪过去的量，随方块朝向由调用方算）、一叠不止一个时底下
+  再垫一张；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。大小、层的偏转偏移都和砧板站点里本人看到的一样（HandsOn/BoardScene），
+  开站、关站时板上的东西不跳。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
 - 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物。
 - 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。
 """
 import math
 
-from .HandsOn import StoveLayout
+from .HandsOn import BoardScene, StoveLayout
 from .Ticks import posHash
 
 KIND_BOARD = "board"
@@ -25,12 +27,13 @@ STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六�
 TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 FOOD_SCALE = 1.2
-BLOCK_SCALE = 1.0
-TOOL_SCALE = 1.0
+BLOCK_SCALE = BoardScene.itemScale(True)     # HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西
+BOARD_FOOD_SCALE = BoardScene.itemScale()    # 板上等着切的东西 10 像素
+CARVED_SCALE = BoardScene.scaleOf(BoardScene.CARVED_SCALE * 16.0)
+PILE_TURN = 17.0                              # 一叠的底下那张转的角度（scene 里 pile 节点的 rotation）
 SKILLET_SCALE = 1.0
 STOVE_SCALE = StoveLayout.SIZE / 8.0         # 一件 5 像素宽（贴图缩放 1 时边长 8 像素）
 TOOL_ROLL = 135.0          # 竖立的工具在贴图平面内顺时针转 135 度：刀尖朝下（实机标定）
-TOOL_DEPTH = 0.32          # 工具视觉中心离板面多高：刀尖略扎进板里
 
 
 class Placement(object):
@@ -75,16 +78,23 @@ def _jitter(seed, index, span):
     return (value / 65535.0 * 2.0 - 1.0) * span
 
 
-def boardLayout(item, itemType):
+def boardLayout(item, itemType, offset=(0.0, 0.0)):
+    """板上等着切的东西 / 做好的菜 / 插着的工具。offset 是从方块中心挪到板底座中间的量（方块分数，x 往东 z 往南）。"""
     if not isItem(item):
         return []
     shown = _single(item)
+    cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if itemType == "block":
-        return [Placement(shown, (0.5, BOARD_TOP + 0.125 * BLOCK_SCALE, 0.5), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
+        return [Placement(shown, (cx, BOARD_TOP + 0.125 * BLOCK_SCALE, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
     if itemType in TOOL_TYPES:
-        return [Placement(shown, (0.5, BOARD_TOP + TOOL_DEPTH * TOOL_SCALE, 0.5), False, (0.7071, -0.7071), TOOL_ROLL,
-                          TOOL_SCALE)]
-    return [Placement(shown, (0.5, BOARD_TOP + 0.02, 0.5), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
+        return [Placement(shown, (cx, (BoardScene.CARVED_Y + BoardScene.TOP) / 16.0, cz), False, (0.7071, -0.7071), TOOL_ROLL,
+                          CARVED_SCALE)]
+    flat = [Placement(shown, (cx, BOARD_TOP + 0.02 + BoardScene.pileLift(item.get("count", 1) or 1) / 16.0, cz), True, (1.0, 0.0), 0.0,
+                      BOARD_FOOD_SCALE)]
+    if (item.get("count", 1) or 1) > 1:
+        angle = math.radians(PILE_TURN)
+        flat.insert(0, Placement(shown, (cx, BOARD_TOP + 0.02, cz), True, (math.cos(angle), math.sin(angle)), 0.0, BOARD_FOOD_SCALE))
+    return flat
 
 
 DISH_LAYERS = 9                # 砧板摆盘最多几层（HandsOn/Assembly.MOST_LAYERS）
@@ -95,16 +105,18 @@ def layerKey(index):
     return "L%d" % index
 
 
-def boardDishLayout(layers, dish, seed):
-    """砧板摆盘：做好的菜平躺在中间；还在摆时一层层叠起来，每层略转一点、略偏一点，看得出是一摞。"""
+def boardDishLayout(layers, dish, seed, offset=(0.0, 0.0)):
+    """砧板摆盘：做好的菜平躺在中间；还在摆时一层层叠起来，每层的偏转偏移照 HoD（layer 号的固定函数，和站点里一样）。"""
+    cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if isItem(dish):
-        return [Placement(_single(dish), (0.5, BOARD_TOP + 0.02, 0.5), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
+        return [Placement(_single(dish), (cx, BOARD_TOP + 0.02, cz), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
     placements = []
     for index, layer in enumerate(item for item in layers if isItem(item)):
-        angle = 0.5 * index + _jitter(seed, index, 0.25)
-        center = (0.5 + _jitter(seed, index * 2 + 7, 0.04), BOARD_TOP + 0.02 + index * LAYER_STEP,
-                  0.5 + _jitter(seed, index * 2 + 8, 0.04))
-        placements.append(Placement(_single(layer), center, True, (math.cos(angle), math.sin(angle)), 0.0, FOOD_SCALE))
+        pose = BoardScene.layerPose(index)
+        angle = math.radians(pose["turn"])
+        center = (cx + pose["x"] / 16.0, BOARD_TOP + 0.02 + pose["y"] / 16.0, cz + pose["z"] / 16.0)
+        placements.append(Placement(_single(layer), center, True, (math.cos(angle), math.sin(angle)), 0.0,
+                                    BoardScene.scaleOf(BoardScene.layerSize(index))))
     return placements
 
 
@@ -134,14 +146,15 @@ def stoveLayout(slots):
     return placements
 
 
-def layout(kind, items, itemTypeOf, pos):
-    """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标。"""
+def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0)):
+    """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标；
+    offset 只有砧板用：板底座中间离方块中心的量（方块分数）。"""
     if kind == KIND_BOARD:
         layers = [items.get(layerKey(index)) for index in range(DISH_LAYERS)]
         if isItem(items.get(DISH_KEY)) or any(isItem(layer) for layer in layers):
-            return boardDishLayout(layers, items.get(DISH_KEY), posHash(pos))
+            return boardDishLayout(layers, items.get(DISH_KEY), posHash(pos), offset)
         item = items.get("0")
-        return boardLayout(item, itemTypeOf(item)) if isItem(item) else []
+        return boardLayout(item, itemTypeOf(item), offset) if isItem(item) else []
     if kind == KIND_SKILLET:
         return skilletLayout(items.get("0"), posHash(pos))
     if kind == KIND_STOVE:

@@ -146,6 +146,18 @@ def testTheBoardsCenterFollowsTheBlocksFacing():
     assert all(abs(a - b) < 1e-6 for a, b in zip(behavior.center(), (6.5, 8.0))), "朝北：(6.5, 8)"
 
 
+def testTheBlockItemsOffsetPutsTheFoodWhereTheStationDrawsIt():
+    """没开站时 Client/BlockItems 画的板上东西，和开站后本端画的在同一个点（开站、关站不跳）。"""
+    behavior, view, api = C.station()
+    for aux in (0, 1, 2, 3):
+        C.engine.block = ("arris:cutting_board", aux)
+        cx, cz = behavior.center()
+        world = view.toWorld(cx, 0.0, cz)
+        offset = C.BlockItems._boardOffset(C.STATION_POS)
+        assert abs(world[0] - (C.STATION_POS[0] + 0.5 + offset[0])) < 1e-6, aux
+        assert abs(world[2] - (C.STATION_POS[2] + 0.5 + offset[1])) < 1e-6, aux
+
+
 def testLayersAreStackedEachWithItsOwnTurnAndTheFirstIsTheBigOne():
     layers = [C.item("minecraft:bread", 2), C.item("arris:beef_patty", 2), C.item("arris:tomato", 2)]
     behavior, view = _open(layers=layers)
