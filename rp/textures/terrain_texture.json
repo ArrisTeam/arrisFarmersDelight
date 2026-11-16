@@ -28,6 +28,9 @@
         "arris:basket": {
             "textures": "textures/blocks/basket"
         },
+        "arris:wooden_basket": {
+            "textures": "textures/blocks/wooden_basket"
+        },
         "arris:beetroot_crate_side": {
             "textures": "textures/blocks/beetroot_crate_side"
         },

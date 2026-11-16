@@ -1,0 +1,181 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:block": {
+        "components": {
+            "minecraft:block_light_absorption": {
+                "value": 0
+            },
+            "minecraft:block_light_emission": {
+                "emission": 0
+            },
+            "minecraft:destroy_time": {
+                "value": 1.5
+            },
+            "minecraft:explosion_resistance": {
+                "value": 1.5
+            },
+            "minecraft:map_color": {
+                "color": "#595300"
+            },
+            "netease:connection": {
+                "blocks": []
+            },
+            "netease:aabb": {
+                "clip": [
+                    {
+                        "max": [
+                            1.0,
+                            0.125,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            0.125
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            0.125,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.875,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.875
+                        ]
+                    }
+                ],
+                "collision": [
+                    {
+                        "max": [
+                            1.0,
+                            0.125,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            0.125
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            0.125,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.875,
+                            0.125,
+                            0.0
+                        ]
+                    },
+                    {
+                        "max": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ],
+                        "min": [
+                            0.0,
+                            0.125,
+                            0.875
+                        ]
+                    }
+                ]
+            },
+            "netease:block_chest": {
+                "can_be_blocked": false,
+                "can_pair": false,
+                "chest_capacity": 3,
+                "custom_description": "篮子",
+                "is_shulker_box": false,
+                "mute": true
+            },
+            "netease:face_directional": {
+                "type": "direction"
+            },
+            "netease:on_entity_inside": {
+                "send_python_event": true
+            },
+            "netease:render_layer": {
+                "value": "blend"
+            },
+            "netease:solid": {
+                "value": false
+            },
+            "netease:tier": {
+                "destroy_special": false,
+                "digger": "hatchet",
+                "level": 0
+            }
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:wooden_basket",
+            "register_to_creative_menu": true
+        }
+    }
+}

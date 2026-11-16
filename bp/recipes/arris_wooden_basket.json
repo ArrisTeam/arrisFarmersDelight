@@ -1,0 +1,41 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:wooden_basket"
+        },
+        "key": {
+            "F": {
+                "data": 0,
+                "item": "arris:canvas"
+            },
+            "G": {
+                "data": 0,
+                "item": "minecraft:stick"
+            }
+        },
+        "pattern": [
+            "G G",
+            "F F",
+            "GFG"
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:wooden_basket"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:canvas"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:stick"
+            }
+        ]
+    }
+}

@@ -36,6 +36,11 @@
         "sound": "scaffolding",
         "textures": "arris:basket"
     },
+    "arris:wooden_basket": {
+        "netease_model": "arris:wooden_basket",
+        "sound": "wood",
+        "textures": "arris:wooden_basket"
+    },
     "arris:beetroot_crate": {
         "sound": "wood",
         "textures": {

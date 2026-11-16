@@ -141,6 +141,12 @@ config = {
             "namespace": "arris:basket",
             "auxValue": 0,
             "content": "会自动收进落在里面的物品"
+        },
+        {
+            "title": "木篮",
+            "namespace": "arris:wooden_basket",
+            "auxValue": 0,
+            "content": "会自动收进落在里面的物品"
         }
     ],
     "植物": [

@@ -106,6 +106,7 @@ CuttingBoardDict = {
     ("minecraft:cherry_wood", 0): {"itemList": [{"itemName": "minecraft:stripped_cherry_wood", "count": 1}, {"itemName": "arris:tree_bark", "count": 1}], "tool": axeList, "item_type": "axe"},
     ("minecraft:bamboo_block", 0): {"itemList": [{"itemName": "minecraft:stripped_bamboo_block", "count": 1}, {"itemName": "arris:straw", "count": 1}], "tool": axeList, "item_type": "axe"},
     ("arris:basket", 0): {"itemList": [{"itemName": "arris:canvas", "count": 1}, {"itemName": "minecraft:bamboo", "count": 1}], "tool": axeList, "item_type": "axe"},
+    ("arris:wooden_basket", 0): {"itemList": [{"itemName": "arris:canvas", "count": 1}, {"itemName": "minecraft:stick", "count": 1}], "tool": axeList, "item_type": "axe"},
     ("minecraft:clay", 0): {"itemList": [{"itemName": "minecraft:clay_ball", "count": 4}], "tool": shovelList, "item_type": "shovel"},
     ("minecraft:gravel", 0): {"itemList": [{"itemName": "minecraft:gravel", "count": 1}, {"itemName": "minecraft:flint", "count": 1, "chance": 0.1}], "tool": shovelList, "item_type": "shovel"},
     ("minecraft:amethyst_block", 0): {"itemList": [{"itemName": "minecraft:amethyst_shard", "count": 4}], "tool": pickaxeList, "item_type": "pickaxe"},
