@@ -28,6 +28,7 @@ def testEveryRecipeGetsOneToThreeMarksAndAKnownStroke():
 
 def testTheLayoutFollowsTheFood():
     assert Rules.styleOf("arris:apple_pie_item") == Cutting.STYLE_WEDGES
+    assert Rules.styleOf("minecraft:pumpkin_pie") == Cutting.STYLE_WEDGES, "HoD 的 cut_in_wedges 标签里有原版南瓜派"
     assert Rules.styleOf("minecraft:cake") == Cutting.STYLE_WEDGES
     assert Rules.styleOf("arris:wheat_dough") == Cutting.STYLE_STRIPS
     assert Rules.styleOf("arris:kelp_roll") == Cutting.STYLE_STRAIGHT

@@ -54,6 +54,7 @@ CuttingBoardDict = {
     ("arris:wheat_dough", 0): {"itemList": [{"itemName": "arris:raw_pasta", "count": 1}], "tool": knifeList},
     ("arris:apple_pie_item", 0): {"itemList": [{"itemName": "arris:apple_pie_slice", "count": 4}], "tool": knifeList},
     ("arris:chocolate_pie_item", 0): {"itemList": [{"itemName": "arris:chocolate_pie_slice", "count": 4}], "tool": knifeList},
+    ("minecraft:pumpkin_pie", 0): {"itemList": [{"itemName": "arris:pumpkin_pie_slice", "count": 4}], "tool": knifeList},
     ("arris:kelp_roll", 0): {"itemList": [{"itemName": "arris:kelp_roll_slice", "count": 3}], "tool": knifeList},
     ("arris:sweet_berry_cheesecake_item", 0): {"itemList": [{"itemName": "arris:sweet_berry_cheesecake_slice", "count": 4}], "tool": knifeList},
     ("arris:rice_panicle", 0): {"itemList": [{"itemName": "arris:rice", "count": 1}, {"itemName": "arris:straw", "count": 1}], "tool": knifeList},
