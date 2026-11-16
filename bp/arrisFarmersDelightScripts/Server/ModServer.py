@@ -33,6 +33,7 @@ from . import FoodEffects  # noqa: F401
 from . import Livestock  # noqa: F401
 from . import Tools  # noqa: F401
 from . import KnifeSlicing  # noqa: F401
+from . import ChestLoot  # noqa: F401
 from . import DisplayGuard  # noqa: F401
 
 
@@ -140,6 +141,12 @@ def _onAddEntity(args):
 @Listen("EntityDieLoottableServerEvent")
 def _onEntityDieLoottable(args):
     dispatch("EntityDieLoottableServerEvent", args)
+
+
+@Listen("OnContainerFillLoottableServerEvent")
+def _onContainerFillLoottable(args):
+    # 战利品箱第一次被打开、按战利品表生成物品时；匹配键由处理函数从 args["loottable"] 里取
+    dispatch("OnContainerFillLoottableServerEvent", args)
 
 
 @Listen("PlayerAttackEntityEvent")
