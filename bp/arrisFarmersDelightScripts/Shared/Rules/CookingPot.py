@@ -3,21 +3,16 @@
 
 配方匹配：一锅里每个非空输入格算一件食材（同一格叠了多个也只算一件，与 Java 版一致）。
 把各格的 (物品名, aux) 排序后作为键查索引，O(1)；CookingPotRecipeList 被修改后要调用 rebuildIndex()。
-出锅一份：成品 CookCount 个（JE 的配方结果数量，饺子 2 个），吐出 PushItem 加上用掉的料自带的空容器（JE 里配料的
-合成剩余物：奶桶剩桶、奶瓶剩玻璃瓶；配方的 PushItem 里已经写了的不重复给）。
+出锅一份：成品 CookCount 个（JE 的配方结果数量，饺子 2 个），吐出 PushItem 加上用掉的料剩下的空容器（JE 的
+CookingPotBlockEntity：配料的合成剩余物，再加 INGREDIENT_REMAINDER_OVERRIDES，表在 Shared/Data/Remainders.py——
+奶桶剩桶、奶瓶剩玻璃瓶、番茄酱剩碗……；配方的 PushItem 里已经写了的不重复给）。
 另有两份给厨锅站点用的索引（Shared/Rules/PotStation.py）：每种写法各种料占几格、哪些物品是食材。
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
+from ..Data.Remainders import potRemainderOf
 
 DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
 DEFAULT_EXPERIENCE = 1.0     # JE 的厨锅配方缺省经验
-# 配料用掉后剩下的容器（JE 的 craftRemainder）
-REMAINDERS = {
-    ("minecraft:milk_bucket", 0): ("minecraft:bucket", 0),
-    ("minecraft:water_bucket", 0): ("minecraft:bucket", 0),
-    ("arris:milk_bottle", 0): ("minecraft:glass_bottle", 0),
-    ("minecraft:honey_bottle", 0): ("minecraft:glass_bottle", 0),
-}
 _recipeIndex = {}
 _cookSeconds = {}            # 成品名 -> 一份煮多久（秒），按配方表顺序先到先得
 _experience = {}             # 成品名 -> 盛出一个给多少经验（JE 按煮了几份给，一份出几个时平分到每个）
@@ -30,9 +25,10 @@ def pushItemsOf(variant, declared):
     pushed = list(declared or [])
     spare = list(pushed)
     for entry in variant:
-        left = REMAINDERS.get((entry[0], entry[1]))
-        if left is None:
+        name = potRemainderOf(entry[0])
+        if name is None:
             continue
+        left = (name, 0)
         if left in spare:
             spare.remove(left)
         else:

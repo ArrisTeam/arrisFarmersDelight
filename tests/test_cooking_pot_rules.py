@@ -111,6 +111,11 @@ def testUsedUpContainersComeBack():
     variant = [("arris:milk_bottle", 0), ("test:x", 0)]
     assert Rules.pushItemsOf(variant, [("minecraft:glass_bottle", 0)]) == [("minecraft:glass_bottle", 0)], "下游写过的不重复给"
     assert Rules.pushItemsOf(variant, [("test:y", 0)]) == [("test:y", 0), ("minecraft:glass_bottle", 0)]
+    # JE 的番茄酱自带合成剩余物（碗）：肉丸意面、鱼肉炖用掉番茄酱要吐一只碗
+    assert _match("arris:minced_beef", "arris:raw_pasta", "arris:tomato_sauce")[1] == [("minecraft:bowl", 0)]
+    # 原版的炖菜 / 药水本身没有合成剩余物，厨锅另外认（JE 的 INGREDIENT_REMAINDER_OVERRIDES）
+    assert Rules.pushItemsOf([("minecraft:mushroom_stew", 0), ("minecraft:potion", 3)], []) == [
+        ("minecraft:bowl", 0), ("minecraft:glass_bottle", 0)]
 
 
 def testExperienceFollowsJava():
