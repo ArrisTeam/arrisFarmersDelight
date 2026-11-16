@@ -3,7 +3,7 @@
 
 对应 Hands-On Delight：client/StoveBehavior.java 的简化版：
 - 点一下烤位上的食物 = 翻面（turn）；烤好的点一下 = 取下（take）；点底部抽屉的格子 = 每个空烤位摆一件（place）；
-- 该翻面的那件（贴灶台那面熟了、上面还生）前面画一道金色虚线；底部一行提示说下一步做什么。
+- 该翻面的那件（贴灶台那面熟了、上面还生）远端画一道金色虚线（近端那排的会被底部抽屉挡住，实机）；底部一行提示说下一步做什么。
 烤位按方块里的固定位置（Shared/Rules/BlockDisplay.STOVE_SLOTS）换到站点空间，从哪边打开都对得上。
 开站期间本客户端不画 Client/BlockItems 那份（hide），关站时还原。
 """
@@ -125,7 +125,7 @@ class GrillViewMixin(object):
             waits, mark = Rules.waitsToTurn(slot), self.marks.get(place)
             if waits and mark is None:
                 x, y, z = self._center(place)
-                self.marks[place] = props.line((x - MARK_HALF, y - 0.2, z - HALF), (x + MARK_HALF, y - 0.2, z - HALF), hot=True)
+                self.marks[place] = props.line((x - MARK_HALF, y - 0.2, z + HALF), (x + MARK_HALF, y - 0.2, z + HALF), hot=True)
             elif not waits and mark is not None:
                 props.remove(mark)
                 del self.marks[place]
