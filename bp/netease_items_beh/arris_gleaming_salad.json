@@ -1,0 +1,30 @@
+{
+    "format_version": "1.10",
+    "minecraft:item": {
+        "components": {
+            "minecraft:food": {
+                "effects": [
+                    {
+                        "amplifier": 0,
+                        "chance": 1.0,
+                        "duration": 300,
+                        "name": "arris:nourishment"
+                    }
+                ],
+                "nutrition": 14,
+                "saturation_modifier": 0.75,
+                "using_converts_to": "minecraft:bowl"
+            },
+            "netease:customtips": {
+                "value": "§9滋养 (05:00)"
+            },
+            "minecraft:max_stack_size": 16,
+            "minecraft:use_duration": 32
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:gleaming_salad",
+            "register_to_create_menu": true
+        }
+    }
+}

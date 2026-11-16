@@ -44,6 +44,7 @@ FoodColors = {
     'arris:fried_egg': 0xD19E40,
     'arris:fried_rice': 0x997422,
     'arris:fruit_salad': 0x8C441C,
+    'arris:gleaming_salad': 0x8F7734,
     'arris:glow_berry_custard': 0xBAA177,
     'arris:golden_knife': 0xB18D20,
     'arris:grilled_salmon': 0xA35229,

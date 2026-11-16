@@ -165,6 +165,7 @@ tile.arris:shepherds_pie_block_stage2.name=牧羊人派
 tile.arris:shepherds_pie_block_stage3.name=牧羊人派
 tile.arris:shepherds_pie_block_leftover.name=牧羊人派
 item.arris:shepherds_pie.name=盘装牧羊人派
+item.arris:gleaming_salad.name=碗装闪亮沙拉
 tile.arris:safety_net.name=安全网
 tile.arris:tatami.name=榻榻米方块
 tile.arris:tatami_half_mat.name=短榻榻米垫

@@ -95,6 +95,7 @@ FOODS = {
     "stuffed_pumpkin": (14, 0.75, 32, "bowl", False, 16),
     "honey_glazed_ham": (14, 0.75, 32, "bowl", False, 16),
     "shepherds_pie": (14, 0.75, 32, "bowl", False, 16),
+    "gleaming_salad": (14, 0.75, 32, "bowl", False, 16),
     "dog_food": (4, 0.2, 32, "bowl", False, 16),
 }
 
@@ -115,7 +116,8 @@ _give([(NOURISHMENT, 60, 0, 1.0)], "bone_broth", "bacon_and_eggs", "ratatouille"
 _give([(NOURISHMENT, 180, 0, 1.0)], "onion_soup", "cookbeef_stew", "vegetable_soup", "fish_stew", "chicken_soup", "fried_rice",
       "steak_and_potatoes", "pasta_with_meatballs", "pasta_with_mutton_chop", "mushroom_rice", "grilled_salmon")
 _give([(NOURISHMENT, 300, 0, 1.0)], "pumpkin_soup", "baked_cod_stew", "noodle_soup", "roasted_mutton_chops",
-      "vegetable_noodles", "squid_ink_pasta", "roast_chicken", "stuffed_pumpkin", "honey_glazed_ham", "shepherds_pie")
+      "vegetable_noodles", "squid_ink_pasta", "roast_chicken", "stuffed_pumpkin", "honey_glazed_ham", "shepherds_pie",
+      "gleaming_salad")
 _give([("hunger", 30, 0, 0.3)], "wheat_dough", "raw_pasta", "chicken_cuts")
 _give([("nausea", 12, 0, 0.3)], "nether_salad")
 _give([("regeneration", 5, 0, 1.0)], "fruit_salad", "mixed_salad")

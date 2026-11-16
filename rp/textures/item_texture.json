@@ -124,6 +124,9 @@
         "arris:fruit_salad": {
             "textures": "textures/items/fruit_salad"
         },
+        "arris:gleaming_salad": {
+            "textures": "textures/items/gleaming_salad"
+        },
         "arris:glow_berry_custard": {
             "textures": "textures/items/glow_berry_custard"
         },
