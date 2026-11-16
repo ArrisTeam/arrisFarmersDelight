@@ -82,7 +82,7 @@ class GrillLogicMixin(object):
         if data is None:
             return False
         EnsureStoveData(data)            # /setblock、结构放出的炉灶没走放置事件
-        self.hand = HandGrill.handOf(self.station.dimensionId, self.station.pos)
+        self.hand = HandGrill.handOf(self.station.dimensionId, self.station.pos, data)
         if not self.station.users:
             del self.hand.just[:]        # 没人在时烤好的那几件早就过去了：不要等人开站才叮一声
         self._layHeld(playerId)

@@ -10,8 +10,8 @@ from .Mth import roundInt
 
 RAW_EGG = 0xC8E6E2D8         # 蛋打开了、蛋清还透亮时的颜色：有点透明、发灰（KitchenLooks.java:25）
 SHELL = 0xFFEAD9B8           # 蛋壳碎片的颜色（27 行）
-SEARED = 0xFFB8875C          # 肉和鱼朝上那面烤过的焦色（StoveBehavior.java:46，SkilletBehavior 用同一个）
-SEAR = 0.7                   # 烤到全熟时朝上那面染到目标色的几成（47 行）
+SEARED = 0xFFB8875C          # 肉和鱼朝上那面烤过的焦色（StoveBehavior.java:46，SkilletBehavior.java:45 同值）
+SEAR = 0.7                   # 烤到全熟时朝上那面染到目标色的几成（StoveBehavior.java:47，SkilletBehavior.java:46 同值）
 
 
 def mix(start, end, amount):

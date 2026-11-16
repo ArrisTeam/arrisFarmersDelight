@@ -3,7 +3,8 @@
 
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
-炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻；右键放上去的照这里每件 30 秒烤好弹出。
+炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
+右键放上去的照这里每件 30 秒烤好弹出。
 站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
 """
 import time
@@ -109,8 +110,10 @@ def OnStoveTick(args):
     if not blockEntityData:
         return
     EnsureStoveData(blockEntityData)
-    hand = HandGrill.peek(dimensionId, blockPos)
+    hand = HandGrill.peek(dimensionId, blockPos) or HandGrill.restore(dimensionId, blockPos, blockEntityData)
     handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP) if hand is not None else (set(), False)
+    if hand is not None:
+        HandGrill.save(hand, blockEntityData)
     for index in range(STOVE_SLOTS):
         data = blockEntityData[str(index)]
         if index in handled or not (data and data.get("itemDict")):

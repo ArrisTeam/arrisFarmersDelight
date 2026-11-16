@@ -137,6 +137,31 @@ class Grill(object):
         self.turn(place, now)
         return True
 
+    def saved(self):
+        """存档的样子（Grill.save，100-116 行）：每个位置是不是手放的、两面烤到哪，三个长度等于位置数的列表（整数 0/1、浮点、浮点）。"""
+        return {"byHand": [1 if flag else 0 for flag in self._byHand], "down": [float(v) for v in self._down],
+                "up": [float(v) for v in self._up]}
+
+    def load(self, saved):
+        """读回 saved() 写的东西（Grill.load，118-126 行）：缺的、坏的当没有，进度夹进 0..1；不碰 turnedAt。返回读到了没有。"""
+        if not isinstance(saved, dict):
+            return False
+        for key, target in (("byHand", self._byHand), ("down", self._down), ("up", self._up)):
+            values = saved.get(key)
+            for place in range(self.places):
+                try:
+                    value = values[place]
+                except (TypeError, IndexError, KeyError):
+                    value = 0
+                if key == "byHand":
+                    target[place] = bool(value)
+                else:
+                    try:
+                        target[place] = min(1.0, max(0.0, float(value)))
+                    except (TypeError, ValueError):
+                        target[place] = 0.0
+        return True
+
     def stateKey(self):
         key = 0
         for place in range(self.places):

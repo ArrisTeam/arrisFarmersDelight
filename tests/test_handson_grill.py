@@ -190,5 +190,24 @@ def testTheSyncStepIsSharedWithTheSkillet():
     assert G.syncStep(0.5) == 0.5 and G.syncStep(1.0) == 1.0 and G.STEPS == 16
 
 
+def testTheGrillIsSavedAndReadBackLikeJes():
+    """Grill.save / load（100-126 行）：每个位置是不是手放的、两面烤到哪；坏的、缺的当没有，进度夹进 0..1。"""
+    grill, laid = newTop(3)
+    advance(grill, 0, BEEF_SIDE + 0.5)
+    advance(grill, 1, BEEF_SIDE * 0.5)
+    saved = grill.saved()
+    assert saved["byHand"] == [1, 1, 1, 0, 0, 0] and saved["down"][0] == 1.0 and 0.4 < saved["down"][1] < 0.6 and saved["up"] == [0.0] * 6
+    fresh = G.Grill()
+    assert fresh.load(saved)
+    assert [fresh.byHand(place) for place in range(6)] == [True] * 3 + [False] * 3
+    assert fresh.waits(0) and not fresh.waits(1) and abs(fresh.down(1) - grill.down(1)) < 1e-12
+    assert fresh.turnedAt(0) < 0, "翻面的时间不存（JE 也不存）"
+    assert not fresh.load(None) and not fresh.load([1, 2]) and not fresh.load("x")
+    bad = G.Grill()
+    assert bad.load({"byHand": [1, "x"], "down": [5.0, -2.0, "soon", None], "up": "oops"})
+    assert [bad.down(place) for place in range(4)] == [1.0, 0.0, 0.0, 0.0] and [bad.up(place) for place in range(6)] == [0.0] * 6
+    assert bad.byHand(0) and bad.byHand(1) and not bad.byHand(2), "缺的当没有"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

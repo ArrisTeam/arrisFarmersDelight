@@ -2,13 +2,14 @@
 """HandGrill - 炉灶的手工烧烤：手放的每一件先烤贴灶台那面，熟了等厨师翻，两面都熟留在灶台上等人取（服务端）
 
 移植自 Hands-On Delight 的 station/StoveCooking.java；每个烤位的两面进度在 Shared/Rules/HandsOn/Grill.py。
-每个炉灶一份 StoveHand，只活在内存里，站点关了它还在；方块没了才删。手放 / 手翻过的烤位由这里烤，
-别的（FD 自己的右键放上去的）照旧由 Server/Stove.py 每件 30 秒烤好弹出来（JE：营火配方的 600 刻）。
+每个炉灶一份 StoveHand，站点关了它还在；方块没了才删。进度同时存在方块实体数据 handGrill 里（JE 的 Grill 存在炉灶自己的方块实体里），
+服务器重启后炉灶第一次 tick 接上。手放 / 手翻过的烤位由这里烤，别的（FD 自己的右键放上去的）照旧由 Server/Stove.py 每件 30 秒烤好弹出来（JE：营火配方的 600 刻）。
 """
 from ..Shared.Rules import GrillStation
 from ..Shared.Rules.HandsOn import Grill
 
 COOK_TIMER = 30                   # 与 Server/Stove.py 一致：烤位的 FD 计时（JE 的炉灶按营火配方 600 刻 = 30 秒）
+SAVE_KEY = "handGrill"            # 方块实体数据里存手放进度的键（JE 的 Grill 存在炉灶自己的方块实体里：重启后也在）
 
 
 class StoveHand(object):
@@ -17,17 +18,36 @@ class StoveHand(object):
         self.cook = None                 # 最后放料 / 翻面的玩家
         self.finished = 0                # 两面烤好的件数（累计）
         self.just = []                   # 刚烤好、还没报给站点的烤位序号（站点每刻取走：报"烤好了"、放蒸汽和闪光）
+        self.saved = self.grill.stateKey()   # 最后一次写进方块实体数据时的 Grill.stateKey()：变了才再写（空烤架不写）
 
 
 _hands = {}
 
 
-def handOf(dimensionId, blockPos):
+def handOf(dimensionId, blockPos, blockEntityData=None):
+    """这个炉灶的手工烧烤；还没有时新建，给了方块实体数据就把存下的进度读回来（服务器重启后第一次）。"""
     key = (dimensionId, tuple(blockPos))
     hand = _hands.get(key)
     if hand is None:
         hand = _hands[key] = StoveHand()
+        if blockEntityData is not None and hand.grill.load(blockEntityData[SAVE_KEY]):
+            hand.saved = hand.grill.stateKey()
     return hand
+
+
+def restore(dimensionId, blockPos, blockEntityData):
+    """服务器重启后炉灶第一次 tick：存下过手放的进度就接上，没有返回 None（用不着手工烧烤的炉灶不建对象）。"""
+    if blockEntityData is None or not blockEntityData[SAVE_KEY]:
+        return None
+    return handOf(dimensionId, blockPos, blockEntityData)
+
+
+def save(hand, blockEntityData):
+    """手放的进度写进方块实体数据（整体赋值才会存档）：只在变了（某件的进度走了 1/16 一格、手放的标记变了）时写。"""
+    key = hand.grill.stateKey()
+    if key != hand.saved:
+        hand.saved = key
+        blockEntityData[SAVE_KEY] = hand.grill.saved()
 
 
 def peek(dimensionId, blockPos):

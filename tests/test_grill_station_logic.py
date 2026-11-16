@@ -189,6 +189,39 @@ def testAPieceThatWasDoneWhileNobodyWatchedMakesNoNoiseWhenTheStationOpensLater(
     assert [name for name, _ in K.effects()] == [] and not [c for c in fake.calls if c[1] == "OnPlaySound"]
 
 
+def testTheHandGrillingIsSavedWithTheStoveAndPicksUpAfterARestart():
+    """JE 的 Grill 存在炉灶自己的方块实体里（StoveBlockEntityMixin）：重启后手放的进度还在，不会变成 FD 原样的件。"""
+    manager, data = K.setup()
+    fake.give("a", 3, BEEF, 2)
+    K.opened(manager)
+    K.do(manager, "a", K.click(K.inv(3), kind="QUICK_MOVE"))
+    K.step(SIDE + 0.5, manager=manager)
+    saved = data["handGrill"]
+    assert saved["byHand"] == [1, 1, 0, 0, 0, 0] and saved["down"][0] == 1.0 and saved["up"][0] == 0.0, "烤到一面熟了：存着"
+    manager.close("a")
+    K.HandGrill._hands.clear()                    # 重启：内存里的没了，方块实体数据还在
+    K.step(0.5)
+    grill = K.hand_of().grill
+    assert grill.byHand(0) and grill.byHand(1) and grill.waits(0) and grill.down(0) == 1.0, "第一次 tick 接上"
+    assert data["0"]["cookTimer"] == 30, "FD 的计时没动：没有被当成 FD 原样的件弹出去"
+    K.step(40.0)
+    assert K.names(data)[:2] == [BEEF, BEEF], "等着翻就一直等着翻，不会被 FD 弹出"
+    payload = K.opened(manager)
+    assert payload["state"]["data"]["down"][:2] == [1.0, 1.0] and payload["state"]["data"]["hand"][:2] == [True, True]
+    assert K.do(manager, "a", K.custom("turn", place=0))
+    K.step(SIDE + 0.5, manager=manager)
+    assert K.names(data)[0] == "minecraft:cooked_beef", "接着翻、接着烤"
+    assert data["handGrill"]["byHand"][2:] == [0, 0, 0, 0], "没碰过的位置不是手放的"
+
+
+def testAStoveNobodyHandGrilledOnWritesNothingExtra():
+    manager, data = K.setup()
+    data["1"] = {"itemDict": beef(), "cookTimer": 30}
+    K.opened(manager)
+    K.step(2.0, manager=manager)
+    assert data["handGrill"] is None, "没有手放的件：不写存档"
+
+
 def testTheProgressIsToldInThirtySecondsOfASide():
     manager, data = K.setup()
     fake.give("a", 3, BEEF, 1)

@@ -14,12 +14,12 @@ SIZE = 5.0                   # 一件画多宽，px：FD 自己的炉灶把东�
 FLIGHT = 0.3                 # 翻一次在空中的时间，秒（48 行）；点得比它再快 0.05 秒以内的一下不发
 AGAIN = FLIGHT + 0.05        # 同一件两次点翻面至少隔这么久（357 行）
 
-PIECE_AT = ((12.8, 11.2), (8.0, 11.2), (3.2, 11.2), (12.8, 4.8), (8.0, 4.8), (3.2, 4.8))     # stove.json 36-41：件的 (x, z)，px
+PIECE_AT = ((12.8, 11.2), (8.0, 11.2), (3.2, 11.2), (12.8, 4.8), (8.0, 4.8), (3.2, 4.8))     # stove.json 34-39：件的 (x, z)，px
 PIECE_BOX = ((-2.4, -0.2, -2.6), (2.4, 1.6, 2.6))        # 一件的命中盒，相对它自己的位置（stove.json 同行 collider）
-MOUTH_BOX = ((1.0, 15.8, 1.0), (15.0, 16.2, 15.0))       # 拿着东西时整个烤架面都是它（drop_zone "hand"，stove.json:25-28）
-GRILL_BOX = ((1.0, 15.8, 1.0), (15.0, 16.1, 15.0))       # 件旁边的点击（stove.json:29-32）：点上去什么也不发生
-CAMERA = {"pos": (8.0, 50.5, -21.0), "target": (8.0, 16.0, 8.0), "fov": 30.0}     # stove.json:9-13
-WORK_PLANE = 17.0            # 拿在手上的东西画在 work_plane + carry_lift（缺省 2.5）这个高度（stove.json:5）
+MOUTH_BOX = ((1.0, 15.8, 1.0), (15.0, 16.2, 15.0))       # 拿着东西时整个烤架面都是它（drop_zone "hand"，stove.json:25-29）
+GRILL_BOX = ((1.0, 15.8, 1.0), (15.0, 16.1, 15.0))       # 件旁边的点击（stove.json:30-33）：点上去什么也不发生
+CAMERA = {"pos": (8.0, 50.5, -21.0), "target": (8.0, 16.0, 8.0), "fov": 30.0}     # stove.json:6-10
+WORK_PLANE = 17.0            # 拿在手上的东西画在 work_plane + carry_lift（缺省 2.5）这个高度（stove.json:4）
 STEP = 1.0 / 32.0            # 服务端告诉客户端烤到哪了的粒度（StoveLogic.java:19）
 
 TAKE, TURN = "take", "turn"
