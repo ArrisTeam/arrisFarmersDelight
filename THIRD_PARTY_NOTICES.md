@@ -33,3 +33,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## 团队自有库（拷入）
+
+| 库 | 来源 | 拷到 |
+|---|---|---|
+| dolorContainer（容器界面库） | 团队自有，上游 `github.com/Dofes/dolorContainer`，拷入时的提交 `26c61b3`；上游仓库目前没有 LICENSE 文件 | `bp/arrisFarmersDelightScripts/dolorContainer/`、`dolorLayouts.py`（布局编译产物）、`rp/ui/dolor_*.json`、`tests/test_dolor_vendor.py` 等 |
+
+库文件由上游的 `tools/vendor.py` 原样拷入（`dolor.lock` 记录每个文件的哈希），本仓库不改动它们。

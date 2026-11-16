@@ -17,6 +17,7 @@ from .EventRegistry import dispatch
 from . import LegacyApi  # noqa: F401
 from . import PlayerSession  # noqa: F401
 from . import CookingPot  # noqa: F401
+from . import CookingPotHost  # noqa: F401
 from . import Skillet  # noqa: F401
 from . import Stove  # noqa: F401
 from . import CuttingBoard  # noqa: F401

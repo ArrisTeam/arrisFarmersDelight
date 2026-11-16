@@ -1,0 +1,6 @@
+{
+  "scriptRoot": "bp/arrisFarmersDelightScripts",
+  "resourcePack": "rp",
+  "menus": ["Shared.Menus.CookingPot"],
+  "layouts": ["layouts/*.json"]
+}
