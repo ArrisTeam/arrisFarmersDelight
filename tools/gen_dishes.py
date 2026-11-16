@@ -29,6 +29,7 @@ DISH_RESULTS = (
     "arris:roast_chicken_block_stage0",
     "arris:roasted_mutton_chops", "arris:salmon_roll", "arris:shepherds_pie_block_stage0", "arris:steak_and_potatoes",
     "arris:stuffed_potato", "arris:sweet_berry_cheesecake_item", "arris:sweet_berry_cookie", "arris:wheat_dough",
+    "minecraft:cake",                  # JE 的 cake_from_milk_bottle（奶瓶 3、糖 2、蛋、小麦 3）：蛋糕是 CakeBlock 的方块物品，算菜
 )
 
 

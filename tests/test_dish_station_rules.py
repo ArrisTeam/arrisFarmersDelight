@@ -24,11 +24,11 @@ def testTheTableIsUpToDateWithTheRecipes():
 
 def testTheBoardTakesJavasDishesAndLeavesTheRest():
     for name in ("arris:egg_sandwich", "arris:hamburger", "arris:wheat_dough", "arris:pie_crust", "arris:melon_juice",
-                 "arris:apple_pie_item", "minecraft:pumpkin_pie", "arris:roast_chicken_block_stage0"):
+                 "arris:apple_pie_item", "minecraft:pumpkin_pie", "arris:roast_chicken_block_stage0", "minecraft:cake"):
         assert Rules.isDishResult(name), name
     for name in ("arris:horse_feed", "arris:milk_bottle", "arris:tomato", "arris:cabbage", "arris:iron_knife"):
         assert not Rules.isDishResult(name), name
-    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 32
+    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 33, "JE 的 31 道 FD 菜 + 原版南瓜派 + 牛奶瓶蛋糕"
 
 
 def testBasesFollowTheKeywords():
@@ -39,6 +39,7 @@ def testBasesFollowTheKeywords():
     assert kinds["minecraft:pumpkin_pie"] == "crust", "HoD 的 pumpkin_pie_from_pie_crust 也从派皮摆起"
     assert kinds["arris:honey_cookie"] == "wheat", "蜂蜜瓶不算玻璃瓶"
     assert kinds["arris:melon_juice"] == "bottle"
+    assert kinds["minecraft:cake"] == "wheat", "JE 的 cake_from_milk_bottle 以小麦打底（BoardTests.everyFoodCraftComesToTheBoard）"
     assert Rules.isBase(BREAD) and Rules.isBase(("minecraft:bowl", 0)) and not Rules.isBase(TOMATO)
 
 
@@ -92,6 +93,10 @@ def testDishesGiveBackWhatJavaLeaves():
     assert roll["extras"] == [("minecraft:bowl", 0, 1)], "米饭的碗：无序配方也照 JE 的合成剩余物算"
     ham = next(dish for dish in Rules.dishes() if dish["result"][0] == "arris:honey_glazed_ham_block_stage0")
     assert ham["extras"] == [("minecraft:bowl", 0, 2), ("minecraft:glass_bottle", 0, 1)]
+    cakes = [dish for dish in Rules.dishes() if dish["result"][0] == "minecraft:cake"]
+    assert len(cakes) == 5 and all(len(dish["ingredients"]) == 9 for dish in cakes), "奶瓶 / 奶桶的五种凑法，每种 9 层"
+    assert sorted(dish["extras"] for dish in cakes if dish["ingredients"].count(bottle) == 3) == [[("minecraft:glass_bottle", 0, 3)]]
+    assert all(dish["ingredients"].count(milk) + dish["ingredients"].count(bottle) == 3 for dish in cakes)
     potato = [dish["extras"] for dish in Rules.dishes() if dish["result"][0] == "arris:stuffed_potato"]
     assert sorted(potato) == [[("minecraft:bucket", 0, 1)]] * 2 + [[("minecraft:glass_bottle", 0, 1)]] * 2
 
@@ -109,6 +114,11 @@ def testTheTableBlocksOnlyTheBoardRecipes():
     assert Rules.isDishCraft("arris:apple_pie_item", names(*["minecraft:wheat"] * 3 + ["minecraft:apple"] * 3
                                                            + ["minecraft:sugar"] * 2 + ["arris:pie_crust"]))
     assert Rules.isDishCraft("arris:wheat_dough", names("minecraft:wheat", "minecraft:water_bucket"))
+    cake = ["arris:milk_bottle"] * 3 + ["minecraft:sugar"] * 2 + ["minecraft:egg"] + ["minecraft:wheat"] * 3
+    assert Rules.isDishCraft("minecraft:cake", names(*cake)), "FD 的牛奶瓶蛋糕搬到砧板上"
+    assert not Rules.isDishCraft("minecraft:cake", names(*["arris:cake_slice"] * 7)), "切片拼回蛋糕留在工作台"
+    vanilla = ["minecraft:milk_bucket"] * 3 + ["minecraft:sugar"] * 2 + ["minecraft:egg"] + ["minecraft:wheat"] * 3
+    assert not Rules.isDishCraft("minecraft:cake", names(*vanilla)), "原版的三桶奶蛋糕不是 FD 的配方（HoD 只收 FD 命名空间），留在工作台"
     assert not Rules.isDishCraft("arris:milk_bottle", names("minecraft:milk_bucket", *["minecraft:glass_bottle"] * 4))
 
 
