@@ -46,6 +46,8 @@ class PotHands(object):
         """第 slot 格进来了一件不浮着的料：让一只手把它带到汤上方。"""
         scene = self.scene
         item = scene.look.items[slot] if scene.look is not None else None
+        if not item:
+            scene.tint.release(slot)
         if not item or slot in self.going:
             return
         name = item["newItemName"]
@@ -53,7 +55,7 @@ class PotHands(object):
         start = self._frame()[0](*self._startPoint(slot))
         color = 0xFF000000 | (PouredColors.get(name) or MainColors.get(name) or PotLiquid.FALLBACK)
         motion = PotServeHands.goesIn(kind, slot, start, scene.liquid.surfaceY(), RIM_TOP, random.random, name.endswith("_bucket"), color)
-        self.going[slot] = {"motion": motion, "kind": kind, "name": name, "props": {}, "rings": 0.0}
+        self.going[slot] = {"motion": motion, "kind": kind, "name": name, "props": {}, "rings": 0.0, "slot": slot}
 
     def _startPoint(self, slot):
         """手从哪来（锅自己的坐标；PotBehavior.java:786-790、859）：一次放好几件的，轮到的那一件从各自的出发点来（屏幕底边一字排开）；
@@ -92,7 +94,15 @@ class PotHands(object):
                     self._event(entry, event, dt, near)
                 self._drop(entry)
                 del self.going[slot]
+                if scene.tint.release(slot):      # 倒液体的手走完了还没报过流（不该发生）：别让水一直等着不染
+                    scene.recolour()
                 scene.drift.handDone(slot)        # 手忙着时又放进来的：再来一只
+
+    def stop(self, slot):
+        """这格空了（料被拿回去了）：手不再演，端着的东西收掉（PotBehavior.refresh 的 going[i].stop()）。"""
+        entry = self.going.pop(slot, None)
+        if entry is not None:
+            self._drop(entry)
 
     def clear(self):
         for entry in self.going.values():
@@ -152,7 +162,10 @@ class PotHands(object):
     def _event(self, entry, event, dt, near):
         scene, kind = self.scene, event["type"]
         _toFrame, toPot, toWorld = self._frame()
-        if kind == "ripple":
+        if kind == "flow":                    # 液体从手里开始流了（Pour 的 onFlow）：染水从这一刻起（不管近不近）
+            if scene.tint.release(entry["slot"]):
+                scene.recolour()
+        elif kind == "ripple":
             x, _y, z = toPot(event["x"], scene.liquid.surfaceY(), event["z"])
             scene.model.ripple(x, z, event["strength"])
         elif kind == "stream":

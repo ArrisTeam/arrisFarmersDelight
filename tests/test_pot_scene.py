@@ -8,6 +8,9 @@ import potclient as C
 world = C.world
 Scenes = C.load("Compat.Diegesis.PotScenes")
 BrothColors = C.load("Shared.Data.BrothColors")
+PotLiquid = C.load("Shared.Rules.HandsOn.PotLiquid")
+LiquidColor = C.load("Shared.Rules.HandsOn.PotLiquidColor")
+Tint = C.load("Shared.Rules.PotTint")
 POS = C.POS
 DT = 1.0 / 60.0
 
@@ -116,6 +119,82 @@ def testSeveralSinkersPutInTogetherEachComeFromTheirOwnPointAndTheFirstFromTheCu
     assert handsStart(scene, 2)[0::2] == (8.0 + 0.0, 8.0 + 6.0), handsStart(scene, 2)
     assert handsStart(scene, 3)[0::2] == (8.0 + 4.0, 8.0 + 6.0), handsStart(scene, 3)
     assert handsStart(scene, 1)[0::2] == (5.0, 11.0), "第一件的手从光标来"
+
+
+
+def targetOf(names, poured=()):
+    """锅里放着这些料（还没成菜）、进度 0 时汤面的目标色（PotBehavior.colour 的结果）。"""
+    return LiquidColor.brothTarget(PotLiquid.waterColor(), [Tint.colorOf(name) for name in names], False, 0.0, None, list(poured), 0)[0]
+
+
+MILK = BrothColors.PouredColors["minecraft:milk_bucket"]
+
+
+def testMilkTintsTheWaterOnlyOnceItStartsToFlowOutOfTheBucket():
+    # PotBehavior.java:1050-1060、833-834：倒的液体 waiting（手端着还没流）时不染水，Pour 的 onFlow 才 recolour
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 0.2)
+    scene.apply(C.look([("minecraft:carrot", 1), ("minecraft:milk_bucket", 1)], sunk=[1]))
+    names = ["minecraft:carrot", "minecraft:milk_bucket"]
+    carrying, flowing = targetOf(names), targetOf(names, [MILK])
+    assert carrying != flowing
+    seconds = 0.0
+    while 1 in scene.tint.waiting and seconds < 3.0:
+        assert scene.liquid.target == carrying, "手端着还没倒：汤色只带着料的颜色（奶桶本身算一件食物）"
+        run(scene, DT)
+        seconds += DT
+    assert abs(seconds - 0.5) < 0.1, "倒的手端过来 0.3 秒、倾 0.2 秒才开始流：%r" % seconds
+    assert scene.hands.going[1]["motion"].flowing and scene.liquid.target == flowing, "开始流的那一帧就按奶色重算"
+    run(scene, 2.0)
+    assert scene.liquid.target == flowing and scene.hands.going == {}
+
+
+def testAnEggNeverTintsTheWaterOnlyTheFoodColour():
+    # PotBehavior.java:1050：染水的只有 poured；蛋只走食物色（FoodColors.of(egg) = EGG）
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 0.2)
+    scene.apply(C.look([("minecraft:carrot", 1), ("minecraft:egg", 1)], sunk=[1]))
+    expected = targetOf(["minecraft:carrot", "minecraft:egg"])
+    assert scene.tint.waiting == set()
+    for _ in range(12):
+        assert scene.liquid.target == expected
+        run(scene, 0.25)
+    assert len(sounds("block.turtle_egg.crack")) == 1, "这期间手磕过蛋了"
+
+
+def testALiquidAlreadyInThePotWhenItIsFirstSeenTintsAtOnce():
+    scene = setup()
+    scene.apply(C.look([("minecraft:milk_bucket", 1)], sunk=[0]))
+    assert scene.tint.waiting == set() and scene.liquid.target == targetOf(["minecraft:milk_bucket"], [MILK])
+
+
+def testAnotherBottleStackedInTheSlotKeepsTheWaterTinted():
+    # JE 的 waiting 里有 !sunk[i]：这格里第一份倒进去了，再叠一份来倒时不会把已经染上的色收回去
+    scene = setup()
+    scene.apply(C.look([("arris:milk_bottle", 1)], sunk=[0]))
+    tinted = scene.liquid.target
+    scene.apply(C.look([("arris:milk_bottle", 2)], sunk=[0]))
+    run(scene, 0.1)
+    assert 0 in scene.hands.going, "第二瓶有自己的手"
+    for _ in range(10):
+        assert scene.liquid.target == tinted and scene.tint.waiting == set()
+        run(scene, 0.2)
+
+
+def testTakingTheLiquidBackWhileItIsBeingPouredStopsTheHandAndTheWait():
+    # PotBehavior.java:728-735：格子里换了东西，going[i].stop()
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 0.2)
+    scene.apply(C.look([("minecraft:carrot", 1), ("minecraft:milk_bucket", 1)], sunk=[1]))
+    run(scene, 0.2)
+    assert 1 in scene.hands.going and scene.tint.waiting == set([1])
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    assert scene.hands.going == {} and scene.tint.waiting == set()
+    assert scene.liquid.target == targetOf(["minecraft:carrot"])
+    assert [drop["item"]["newItemName"] for drop in world.drops.values()] == ["minecraft:carrot"], "手端着的桶也收掉了"
 
 
 if __name__ == "__main__":

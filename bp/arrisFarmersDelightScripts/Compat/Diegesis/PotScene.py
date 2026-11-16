@@ -17,9 +17,7 @@ from .PotHands import PotHands
 from .PotModel import PotModel
 from .PotSceneFx import SceneFx, play
 from ...Client.Engine import addDropItem, compFactory, levelId
-from ...Shared.Data.BrothColors import PouredColors
-from ...Shared.Data.FoodColors import FoodColors
-from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook
+from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook, PotTint
 from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
 
 SLOTS = PotLookState.SLOTS
@@ -28,10 +26,6 @@ INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
 CHECK_SECONDS = 0.5                         # 多久核对一次模型上的值还在不在（方块实体重建会清掉）
 AWAKE_SECONDS = 4.0                         # 没动静之后再跑这么久就歇着（等水位、勺子、颜色都落定）
 WATER = PotLiquid.waterColor()
-
-
-def _colorOf(item):
-    return FoodColors.get(item["newItemName"], PotLiquid.FALLBACK)
 
 
 class PotScene(object):
@@ -45,6 +39,7 @@ class PotScene(object):
         self.drift = PotDrift.PotDrift()
         self.fx = SceneFx(self)
         self.hands = PotHands(self)
+        self.tint = PotTint.Tint()            # 哪几格的液体还没开始流（还不染水）
         self.viewFrame = None                 # 开着站点的人的坐标换算（PotView 给）：手部动作朝着他那一边演
         self.look = None
         self.key = None
@@ -78,15 +73,24 @@ class PotScene(object):
             self.fx.batchDone([slot for slot in emptied if slot not in old.sunk])     # 煮掉的料：胀大、缩没、冒汽
         for slot in emptied:
             self.drift.clear(slot)
+            self.hands.stop(slot)             # 手上的东西被拿回去了：不再演（PotBehavior.refresh 的 going[i].stop()）
+            self.tint.release(slot)
         arrived = PotLookState.arrivedBetween(old, look)
         if arrived:
             starts = self.startsOf(len(arrived)) if self.startsOf is not None and len(arrived) > 1 else None
             self.drift.arrive(arrived, starts, [slot in look.sunk for slot in arrived])
+            for slot in arrived:
+                self.tint.put(slot, look.items[slot]["newItemName"])      # 倒的液体：从手里开始流才染水（recolour）
         for slot in PotLookState.grewBetween(old, look):         # 第二个蛋叠进第一个的格子：照样再来一只手
             self.drift.more(slot, slot in self.hands.going)
         self._retarget(PotLookState.progressAt(look, self.clock))
         if old is None:
             self.liquid.snap(self._amount())  # 刚看到这口锅：水不从锅底涨上来
+
+    def recolour(self):
+        """倒的液体开始流了（PotBehavior 的 onFlow -> recolour）：汤色按这一刻重算。"""
+        if self.look is not None:
+            self._retarget(PotLookState.progressAt(self.look, self.clock))
 
     def _amount(self):
         return PotLiquid.tankAmount(PotLookState.filledOf(self.look), PotLookState.servingsOf(self.look))
@@ -96,10 +100,8 @@ class PotScene(object):
         self.progress = progress
         dish = look.meal or look.dish
         broth = self.brothOf(dish["newItemName"]) if dish and self.brothOf else None
-        poured = [PouredColors[look.items[slot]["newItemName"]] for slot in sorted(look.sunk)
-                  if look.items[slot] is not None and look.items[slot]["newItemName"] in PouredColors]    # 倒进去的牛奶、打进去的蛋：染水
-        self.liquid.retarget(WATER, [_colorOf(item) for item in PotLookState.foodOf(look)], look.meal is not None, progress, broth,
-                             poured)
+        self.liquid.retarget(WATER, [PotTint.colorOf(item["newItemName"]) for item in PotLookState.foodOf(look)], look.meal is not None,
+                             progress, broth, self.tint.liquids(look.items, look.sunk))     # 倒出来的牛奶染水，蛋只算食物色
 
     def world(self, x, y, z):
         return PotModelMath.localPoint(self.facing, self.pos, x, y, z)
