@@ -10,21 +10,21 @@
     "enforce_survivability_rules": false,
     "enforce_placement_rules": false,
     "may_replace": [
-      "minecraft:air",
-      "minecraft:snow_layer"
+      "minecraft:air"
     ],
     "may_attach_to": {
       "auto_rotate": false,
       "min_sides_must_attach": 1,
       "bottom": [
-        "minecraft:sand",
-        "minecraft:grass",
         "minecraft:dirt",
-        "minecraft:dirt_with_roots",
-        "minecraft:farmland",
+        "minecraft:grass_block",
         "minecraft:podzol",
+        "minecraft:coarse_dirt",
         "minecraft:mycelium",
-        "minecraft:snow"
+        "minecraft:dirt_with_roots",
+        "minecraft:moss_block",
+        "minecraft:mud",
+        "minecraft:muddy_mangrove_roots"
       ]
     }
   }

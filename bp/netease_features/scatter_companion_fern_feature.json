@@ -1,0 +1,23 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:scatter_feature": {
+    "description": {
+      "identifier": "arris:scatter_companion_fern_feature"
+    },
+    "iterations": 64,
+    "x": {
+      "distribution": "triangle",
+      "extent": [ -6, 6 ]
+    },
+    "y": {
+      "distribution": "triangle",
+      "extent": [ -3, 3 ]
+    },
+    "z": {
+      "distribution": "triangle",
+      "extent": [ -6, 6 ]
+    },
+    "coordinate_eval_order": "zyx",
+    "places_feature": "arris:companion_fern_feature"
+  }
+}
