@@ -3,6 +3,8 @@
 
 煎锅物品放成方块的逻辑在 Server/ItemToBlock.py（与派共用一份）。
 """
+import time
+
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockEntityData, GetBlockName, GetCarriedItem, \
     SetCarriedItem, ShowTip
@@ -11,13 +13,15 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
-from ..Shared.Rules.Ticks import isStaggeredTick
+from ..Shared.Rules.Ticks import Pacer
 
 SKILLET = "arris:skillet"
 # 每件食物煎 6 秒：计时从 7 倒数到 1，1 Hz 采样
 COOK_TIMER = 7
 # 手里拿着这些物品点煎锅时拦截交互（不把它们当食物，也不在煎锅上放方块）
 _BLOCKED_ITEMS = ("arris:spatula", "arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
+# 每个煎锅每秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响）
+_pacer = Pacer(1.0)
 
 
 @registerHandler("ServerBlockUseEvent", match=SKILLET)
@@ -97,8 +101,7 @@ def OnServerSkilletCreate(args):
 def OnSkilletTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    # 1 Hz 采样 + 坐标相位错开：每个煎锅每秒仍然处理 1 次，但不同坐标落在不同 tick 上
-    if not isStaggeredTick(compFactory.CreateTime(levelId).GetTime(), blockPos, 20):
+    if not _pacer.due((dimensionId, blockPos), time.time()):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData or blockEntityData["heatEnable"] is not True:
@@ -135,6 +138,7 @@ def OnSkilletTick(args):
 def OnSkilletRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
+    _pacer.forget((dimensionId, blockPos))
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return

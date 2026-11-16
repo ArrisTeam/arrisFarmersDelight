@@ -36,17 +36,39 @@ def testEntityFaceCoversAllFourDirections():
     assert sorted(Placement.ENTITY_FACE) == [0, 1, 2, 3]
 
 
-def testStaggeredTicksSpreadEvenly():
-    stride = 4
-    hits = [0] * stride
-    for x in range(-20, 20):
-        for z in range(-20, 20):
-            for tick in range(stride):
-                if Ticks.isStaggeredTick(tick, (x, 64, z), stride):
-                    hits[tick] += 1
-    # 每个位置在一个周期里恰好轮到一次
-    assert sum(hits) == 40 * 40
-    assert min(hits) > 0
+def _run(pacer, key, start, seconds, step=0.05):
+    """按 20 刻 / 秒喂 pacer，返回放行的时刻。"""
+    fired = []
+    ticks = int(round(seconds / step))
+    for index in range(ticks + 1):
+        now = start + index * step
+        if pacer.due(key, now):
+            fired.append(now)
+    return fired
+
+
+def testThePacerFiresOncePerPeriodWhateverTheWorldTimeDoes():
+    """实机：/gamerule doDaylightCycle false 冻住世界时间后，旧的按世界时间错峰让煎锅、厨锅不工作。"""
+    pacer = Ticks.Pacer(1.0)
+    fired = _run(pacer, (0, (5, 64, 9)), 1000.0, 10.0)
+    assert 9 <= len(fired) <= 10
+    gaps = [b - a for a, b in zip(fired, fired[1:])]
+    assert all(abs(gap - 1.0) < 0.051 for gap in gaps), gaps
+
+
+def testThePacerStaggersPositionsAndNeverBursts():
+    pacer = Ticks.Pacer(1.0)
+    firsts = set()
+    for x in range(-10, 10):
+        key = (0, (x, 64, 3))
+        firsts.add(round(_run(pacer, key, 0.0, 2.0)[0] % 1.0, 2))
+    assert len(firsts) > 5, "不同位置落在不同相位上"
+    late = Ticks.Pacer(0.2)
+    key = (0, (1, 2, 3))
+    late.due(key, 0.0)
+    assert late.due(key, 60.0) and not late.due(key, 60.05), "落后很久只补一次，不连发"
+    late.forget(key)
+    assert len(late) == 0 and not late.due(key, 61.0), "方块没了再出现：重新错开相位"
 
 
 def testPosHashIsStableAndNonNegative():

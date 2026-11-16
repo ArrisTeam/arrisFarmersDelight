@@ -3,19 +3,23 @@
 
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
 """
+import time
+
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockEntityData, GetBlockName, ShowTip
 from .Helpers.DisplayEntity import StoveDisplayEntity
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
-from ..Shared.Rules.Ticks import isStaggeredTick
+from ..Shared.Rules.Ticks import Pacer
 
 STOVE_SLOTS = 6
 # 每个烤位 7 秒：计时从 7 倒数到 0，1 Hz 采样
 COOK_TIMER = 7
 # 拿着这些物品点炉灶时什么都不做（它们是要放到炉灶上的方块）
 _PASS_ITEMS = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
+# 每个炉灶每秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响）
+_pacer = Pacer(1.0)
 
 
 def InitStoveData(blockEntityData):
@@ -88,8 +92,7 @@ def OnServerStoveItemUse(args):
 def OnStoveTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    # 1 Hz 采样 + 坐标相位错开
-    if not isStaggeredTick(compFactory.CreateTime(levelId).GetTime(), blockPos, 20):
+    if not _pacer.due((dimensionId, blockPos), time.time()):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
@@ -123,6 +126,7 @@ def OnStoveTick(args):
 def OnStoveRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
+    _pacer.forget((dimensionId, blockPos))
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return

@@ -5,13 +5,14 @@
 容器格里有对应容器时再转到 7 号格。
 """
 import copy
+import time
 
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, System, ItemPosType, GetBlockEntityData, GetBlockName
 from .Helpers.Heat import RefreshHeat
 from ..Shared.Rules import CookingPot as CookingPotRules
-from ..Shared.Rules.Ticks import isStaggeredTick
+from ..Shared.Rules.Ticks import Pacer
 
 COOKING_POT = "arris:cooking_pot"
 INPUT_SLOTS = 6
@@ -19,9 +20,9 @@ VESSEL_SLOT = 6
 RESULT_SLOT = 7
 # 一份菜的烹饪时长（秒）
 COOK_SECONDS = 10.0
-# tick 错峰：每个厨锅每 STRIDE 个 tick 才处理一次（约 5 Hz），计时步长按 STRIDE 补偿
-TICK_STRIDE = 4
-TICK_STEP = 0.05 * TICK_STRIDE
+# 每个厨锅每 TICK_STEP 秒处理一次（约 5 Hz，真实时间节拍：不受 /time set、doDaylightCycle false 影响），计时按步长累加
+TICK_STEP = 0.2
+_pacer = Pacer(TICK_STEP)
 # 配方书"一键放入"时玩家离厨锅的最远距离（格）
 MAX_REACH = 8.0
 
@@ -96,7 +97,7 @@ def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
 def OnCookingPotTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if not isStaggeredTick(compFactory.CreateTime(levelId).GetTime(), blockPos, TICK_STRIDE):
+    if not _pacer.due((dimensionId, blockPos), time.time()):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
@@ -209,6 +210,7 @@ def OnCookingPotRemove(args):
     # 厨锅被破坏：预览槽里煮好还没装碗的成品存在方块实体数据里，不掉出来就会凭空消失
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
+    _pacer.forget((dimensionId, blockPos))
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
