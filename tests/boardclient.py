@@ -32,6 +32,7 @@ class FakeClientEngine(object):
         self.selected = 0
         self.offhand = None
         self.played = []
+        self.molang = {}                                  # 方块实体的 molang 变量（砧板的描边）
         self.block = ("arris:cutting_board", 2)          # direction 2 = 朝北
 
     # ---- 组件（工厂按需返回自己：下面这些方法就是组件的接口）
@@ -50,6 +51,13 @@ class FakeClientEngine(object):
 
     def GetBlock(self, pos):
         return self.block
+
+    def SetEnableBlockEntityAnimations(self, pos, enable):
+        return True
+
+    def SetBlockEntityMolangValue(self, pos, name, value):
+        self.molang[name] = value
+        return True
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, entityId):
         self.played.append((name, volume, pitch))
@@ -169,6 +177,7 @@ class FakeView(object):
         self.state, self.data, self.hand = FakeState(), {}, None
         self.props, self.ports = FakeProps(), FakePorts()
         self.sent, self.dust = [], []
+        self.input = "mouse"
 
     def sendAction(self, name, data=None):
         self.sent.append((name, data or {}))
@@ -197,6 +206,7 @@ class FakeApi(object):
     Geometry = Geometry
     ITEM_SPAN = 8.0
     Schema = KernelSchema
+    TOUCH = "touch"
 
     def __init__(self):
         self.registered = None

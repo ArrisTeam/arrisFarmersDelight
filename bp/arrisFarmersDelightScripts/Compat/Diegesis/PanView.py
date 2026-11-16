@@ -127,7 +127,7 @@ class PanViewMixin(object):
         scene, self.scene = self.scene, None
         if scene is not None:
             scene.show.close()
-            scene.show.focused, scene.hovered = False, False
+            scene.show.focused, scene.hovered, scene.offering = False, False, False
             scene.startsOf = scene.cursorAt = scene.strokeAt = None
         self.stroking = False
 
@@ -139,7 +139,18 @@ class PanViewMixin(object):
         if scene is None:
             return
         scene.hovered = self.stroking or (self.hover == "handle" and self.view.hand is None)
+        scene.offering = self._offering()
         self._flush()
+
+    def _offering(self):
+        """锅身描不描边：手上的东西放得进锅、光标在锅上（照厨锅的 pot.setOutlined；触屏没有悬停，拿着就描）。"""
+        if self.view.hand is None or self.view.fits(Rules.GROUP_PAN) is None:
+            return False
+        return self.hover is not None or self.view.input == self.api.TOUCH
+
+    def onLeave(self):
+        """触屏：一下点完、手指抬起，没有悬着的光标。"""
+        self.hover = None
 
     def _flush(self):
         """场景里本人的手要告诉服务端的动作（颠、取）发出去。"""

@@ -123,6 +123,25 @@
 					]
 				},
 				{
+					"name": "pan_glow",
+					"parent": "pot",
+					"pivot": [-8, 0, 8],
+					"cubes": [
+						{
+							"origin": [-15.08, 0.03, 0.92],
+							"size": [14.16, 4.05, 14.16],
+							"uv": {
+								"north": {"uv": [0, 0], "uv_size": [1, 1]},
+								"east": {"uv": [0, 0], "uv_size": [1, 1]},
+								"south": {"uv": [0, 0], "uv_size": [1, 1]},
+								"west": {"uv": [0, 0], "uv_size": [1, 1]},
+								"up": {"uv": [0, 0], "uv_size": [1, 1]},
+								"down": {"uv": [0, 0], "uv_size": [1, 1]}
+							}
+						}
+					]
+				},
+				{
 					"name": "shelf",
 					"pivot": [-8, 8, 8],
 					"cubes": [

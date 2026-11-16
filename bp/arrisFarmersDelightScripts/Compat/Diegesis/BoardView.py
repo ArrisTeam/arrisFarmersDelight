@@ -15,6 +15,7 @@ from . import BookSources
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
 from .BoardFx import KNOCK, BOUNCE, PICKUP, dustAt, flourAt, play
+from .BoardGlow import BoardGlow, placeable
 from .BoardInv import isKnife, offhand, selectedSlot, typeOf
 from ...Client import BlockItems
 from ...Client.Engine import clientApi, compFactory, levelId
@@ -43,6 +44,7 @@ class BoardViewMixin(object):
         self.cutter = None
         self.screen = None
         self.carriedHidden = False
+        self.glow, self.over = BoardGlow(view.pos), None      # 板的描边、光标底下是哪块（mouth / surface / None）
         self._usable = {}
 
     @property
@@ -128,6 +130,7 @@ class BoardViewMixin(object):
             self.draw.close()
         self.cutter = self.draw = None
         self.carriedHidden = False
+        self.glow.frame(0.0, False)
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
 
     def onState(self, changes):
@@ -143,6 +146,8 @@ class BoardViewMixin(object):
         self.draw.frame(dt)
         self.cutter.frame(dt, self.toolOf()[0])
         self.carriedHidden = self.cutter.drawn or self.draw.bouncing > 0.0
+        over = self.over == "mouth" or self.view.input == self.api.TOUCH       # 触屏没有悬停：拿着放得上的东西就描
+        self.glow.frame(dt, over and placeable(self.env, self.view.hand, self.board(), self.layers()))
         if self.cutter.pending.expire(self.cutter.clock):
             self.draw.refresh(self.board(), self.layers())
 
@@ -154,9 +159,9 @@ class BoardViewMixin(object):
         self.screen = event.screen
         if event.ray is not None:
             self.draw.cursor = event.ray
+        key = self.over = event.hit.node.key if event.hit is not None else None
         if event.kind != "down":
             return False
-        key = event.hit.node.key if event.hit is not None else None
         if self.view.hand is not None:
             return key == "mouth" and self._withStack(event)
         return key == "surface" and self._bareHand(event)

@@ -1,0 +1,40 @@
+{
+	"format_version": "1.8.0",
+	"render_controllers": {
+		"controller.render.arris_cutting_board": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.default"
+				}
+			],
+			"textures": [
+				"Texture.default"
+			],
+			"part_visibility": [
+				{
+					"board_glow": false
+				}
+			]
+		},
+		"controller.render.arris_cutting_board_glow": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.glow"
+				}
+			],
+			"textures": [
+				"Texture.glow"
+			],
+			"part_visibility": [
+				{
+					"*": false
+				},
+				{
+					"board_glow": "variable.mod_board_lit > 0.5"
+				}
+			]
+		}
+	}
+}

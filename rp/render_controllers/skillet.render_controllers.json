@@ -16,6 +16,9 @@
 					"handle_glow": false
 				},
 				{
+					"pan_glow": false
+				},
+				{
 					"oil_0": false
 				},
 				{
@@ -45,6 +48,9 @@
 				},
 				{
 					"handle_glow": "variable.mod_scene > 0.5 && variable.mod_handle_lit > 0.5"
+				},
+				{
+					"pan_glow": "variable.mod_scene > 0.5 && variable.mod_pan_lit > 0.5"
 				}
 			]
 		},

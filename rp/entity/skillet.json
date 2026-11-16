@@ -8,7 +8,7 @@
             },
             "materials": {
                 "default": "entity_alphatest",
-                "glow": "arris_pot_glow",
+                "glow": "arris_outline",
                 "oil": "entity_alphablend"
             },
             "animations": {
@@ -26,7 +26,7 @@
             },
             "textures": {
                 "default": "textures/entity/skillet_item",
-                "glow": "textures/entity/cooking_pot_glow",
+                "glow": "textures/entity/outline_solid",
                 "oil": "textures/handson/block/oil_film"
             },
             "scripts": {
@@ -38,6 +38,7 @@
                     "variable.mod_pan_y = 0.0;",
                     "variable.mod_pan_z = 0.0;",
                     "variable.mod_handle_lit = 0.0;",
+                    "variable.mod_pan_lit = 0.0;",
                     "variable.mod_oil_a = 0.0;",
                     "variable.mod_oil_x0 = 0.0;",
                     "variable.mod_oil_z0 = 0.0;",

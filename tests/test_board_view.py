@@ -122,6 +122,33 @@ def testTheStackHeldAsTheStationOpensIsPlacedByUseUnlessItIsATool():
     assert view.sent == [], "空手"
 
 
+def testTheBoardIsOutlinedWhileWhatIsCarriedCanBeLaidOnIt():
+    """手上这叠服务端会收、光标在板上：板描一圈亮边（variable.mod_board_lit）。工具、板不收的、光标不在板上都不描；触屏拿着就描。"""
+    behavior, view = _open(hand=C.item("arris:cabbage", 4))
+    lit = lambda: C.engine.molang.get("variable.mod_board_lit")       # noqa: E731
+    behavior.frame(0.02)
+    assert lit() == 0.0, "光标还没到板上"
+    behavior.onPointer(C.Event("move", "mouth", C.rayTo((8.0, 1.0, 8.0))))
+    behavior.frame(0.02)
+    assert lit() == 1.0, "卷心菜放得上空板"
+    view.hand = C.item(KNIFE)
+    behavior.frame(0.02)
+    assert lit() == 0.0, "刀是工具，不是往板上放的"
+    view.hand = C.item("arris:cabbage", 4)
+    view.state.board = C.item("minecraft:oak_log", 1)
+    behavior.frame(0.02)
+    assert lit() == 0.0, "板上有别的东西：这叠板不收"
+    view.state.board = None
+    behavior.onPointer(C.Event("move", None, C.rayTo((40.0, 1.0, 8.0))))
+    behavior.frame(0.02)
+    assert lit() == 0.0, "光标离开了板"
+    view.input = "touch"
+    behavior.frame(0.02)
+    assert lit() == 1.0, "触屏没有悬停：手上拿着放得上的东西就描"
+    behavior.onClose()
+    assert lit() == 0.0, "关站收掉"
+
+
 def testALoneItemIsDrawnFlatAndAPileGetsASecondOneUnderIt():
     behavior, view = _open(C.item("arris:cabbage", 1))
     _frames(behavior, 2)

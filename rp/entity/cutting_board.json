@@ -4,17 +4,25 @@
     "description": {
       "identifier": "arris:cutting_board",
       "materials": {
-        "default": "entity_alphatest"
+        "default": "entity_alphatest",
+        "glow": "arris_pot_glow"
       },
       "textures": {
-        "default": "textures/blocks/cutting_board"
+        "default": "textures/blocks/cutting_board",
+        "glow": "textures/entity/cooking_pot_glow"
       },
       "geometry": {
         "default": "geometry.cutting_board"
       },
       "render_controllers": [
-        "controller.render.default"
+        "controller.render.arris_cutting_board",
+        "controller.render.arris_cutting_board_glow"
       ],
+      "scripts": {
+        "initialize": [
+          "variable.mod_board_lit = 0.0;"
+        ]
+      },
       "enable_attachables": false
     }
   }

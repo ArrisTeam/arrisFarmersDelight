@@ -36,7 +36,9 @@ def initialized():
 
 def testTheBoneTreeIsPanOverEverythingThatMovesWithTheToss():
     named = bones()
-    assert set(named) == {"pan", "skillet", "handle", "handle_glow", "pot", "shelf", "oil_0", "oil_1", "oil_2", "oil_3"}
+    assert set(named) == {"pan", "skillet", "handle", "handle_glow", "pot", "pan_glow", "shelf", "oil_0", "oil_1", "oil_2", "oil_3"}
+    assert named["pan_glow"]["parent"] == "pot" and named["pan_glow"]["cubes"][0]["size"] == [14.16, 4.05, 14.16], \
+        "锅身的描边壳：外形（14x4x14）四周各大 0.08，底抬到台面上方一点（贴着台面的那条边才露得出来）"
     assert named["pan"].get("parent") is None and named["pan"]["pivot"] == [-8, 0, 8], "pan 骨骼的枢轴在锅心、锅底（锅被颠时绕它转）"
     assert named["skillet"]["parent"] == "pan" and named["skillet"]["rotation"] == [0, 180, 0], "原来的根骨骼挂在 pan 下，自己的转半圈不动"
     assert named["handle"]["parent"] == "skillet" and named["pot"]["parent"] == "skillet"
@@ -114,10 +116,11 @@ def testTheRenderControllersPointAtWhatTheEntityDeclares():
 
 def testTheMaterialsAndTexturesExist():
     description = entity()
-    assert description["materials"]["glow"] == "arris_pot_glow" and description["materials"]["oil"] == "entity_alphablend"
+    assert description["materials"]["glow"] == "arris_outline" and description["materials"]["oil"] == "entity_alphablend"
     with io.open(os.path.join(RP, "materials", "entity.material"), encoding="utf-8") as handle:
-        assert '"arris_pot_glow:entity_emissive"' in handle.read(), "描边的材质（只画反面）是厨锅那条"
-    for texture in ("textures/entity/skillet_item", "textures/entity/cooking_pot_glow"):
+        assert '"arris_outline:entity_alphablend"' in handle.read(),             "描边的材质（只画反面）：厨锅那条发光的（entity_emissive + 透明度 0 的贴图）在煎锅的模型上实机和 Strata 都不出图，煎锅用混合材质加不透明的贴图"
+    assert description["textures"]["glow"] == "textures/entity/outline_solid"
+    for texture in ("textures/entity/skillet_item", "textures/entity/outline_solid"):
         assert os.path.isfile(os.path.join(RP, texture + ".png")), texture
     assert description["textures"]["oil"] == "textures/handson/block/oil_film"
     assert os.path.isfile(os.path.join(DG, "textures", "handson", "block", "oil_film.png")), "油膜的图在前置包的资源里（HoD 的 block/oil_film）"

@@ -39,6 +39,7 @@ class PanScene(object):
         self.sinceCheck = 0.0
         self.props = {}                       # 节点名 -> [掉落物 id, (物品名, aux)]
         self.hovered = False                  # 光标在锅柄上（本人）
+        self.offering = False                 # 本人手上的东西放得进锅：锅身描边
         self.startsOf = None                  # startsOf(高度, 第几个, 共几个) -> (dx, dz)：从玩家屏幕底边飞来的起点相对中心的偏移
         self.cursorAt = None                  # cursorAt(高度) -> 场景坐标的点或 None
         self.strokeAt = None                  # strokeAt() -> 抓着锅柄时光标此刻在竖直平面上的高度，没抓着 None（每帧读，帧间隔和场景的钟同源）
@@ -118,7 +119,7 @@ class PanScene(object):
         pan = show.nodes["pan"]
         model.scene(True)
         model.pan(pan.rot[0], (pan.pos[0] - 8.0, pan.pos[1], pan.pos[2] - 8.0))
-        model.glow(show.handleOutlined(self.hovered))
+        model.glow(show.handleOutlined(self.hovered), self.offering)
         model.oil(show.oil.puddles())
         itemComp = compFactory.CreateItem(levelId)
         for name, node in show.nodes.items():

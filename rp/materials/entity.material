@@ -9,6 +9,9 @@
 		},
 		"arris_pot_glow:entity_emissive": {
 			"+states": [ "InvertCulling" ]
+		},
+		"arris_outline:entity_alphablend": {
+			"+states": [ "InvertCulling" ]
 		}
 	}
 }

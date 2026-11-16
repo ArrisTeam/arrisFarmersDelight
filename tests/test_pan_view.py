@@ -209,6 +209,28 @@ def testTheHandleIsOutlinedUnderTheCursorAndWhileStrokingButNotWithAStackInHand(
     assert behavior.scene.hovered is True, "按着的时候光标离开锅柄也一直描"
 
 
+def testThePanIsOutlinedWhileWhatIsCarriedFitsIntoIt():
+    """手上的东西放得进锅、光标在锅上：锅身描一圈亮边（scene.offering -> variable.mod_pan_lit）；放不进、手空着、光标不在锅上不描。"""
+    behavior, view = make()
+    view.hand = item("minecraft:beef", 3)
+    behavior.frame(DT)
+    assert behavior.scene.offering is False, "光标还没到锅上"
+    event(behavior, "move", (8.0, 1.0, 8.0), pressed=False)
+    behavior.frame(DT)
+    assert behavior.scene.offering is True
+    view.fitting = None
+    behavior.frame(DT)
+    assert behavior.scene.offering is False, "锅里是别的东西 / 满了：放不进"
+    view.fitting, view.hand = 0, None
+    behavior.frame(DT)
+    assert behavior.scene.offering is False, "手空着"
+    view.hand, view.input = item("minecraft:beef", 3), "touch"
+    behavior.onLeave()
+    behavior.frame(DT)
+    assert behavior.hover is None and behavior.scene.offering is True, "触屏没有悬停：拿着放得进的东西就描"
+    behavior.onClose()
+
+
 def testOpeningHangsTheSkilletBookAndClosingCleansUp():
     behavior, view = make()
     assert view.booked is not None and view.booked.__class__.__name__ == "PanSource"
