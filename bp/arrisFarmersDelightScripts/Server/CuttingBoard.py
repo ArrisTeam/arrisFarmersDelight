@@ -5,6 +5,7 @@
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 """
 from .EventRegistry import registerHandler
+from .Helpers import BoardDish
 from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
@@ -43,6 +44,8 @@ def OnServerCuttingBoardBlockUse(args):
     if not blockEntityData:
         return
     DropLegacyDisplays(blockEntityData)
+    if BoardDish.giveBack(playerId, dimensionId, blockPos, blockEntityData):
+        return                           # 站点摆到一半的菜：经典玩法右键先全还给玩家
     carriedDict = GetCarriedItem(playerId, True)
     if carriedDict:
         _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId)
@@ -106,4 +109,5 @@ def OnCuttingBoardRemove(args):
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
         System.CreateEngineItemEntity(cuttingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+    BoardDish.spill(dimensionId, blockPos, blockEntityData)
     PublishBoard(dimensionId, blockPos, None)

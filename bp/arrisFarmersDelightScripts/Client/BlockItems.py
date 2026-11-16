@@ -92,7 +92,11 @@ def show(dimensionId, pos, kind, items):
 
 def _itemsFromExData(kind, exData):
     if kind == BlockDisplay.KIND_BOARD:
-        return {"0": unwrapDeep(exData.get("cuttingDict"))}
+        items = {"0": unwrapDeep(exData.get("cuttingDict")), BlockDisplay.DISH_KEY: unwrapDeep(exData.get("dishDone"))}
+        layers = unwrapDeep(exData.get("dishLayers"))
+        for index, layer in enumerate(layers if isinstance(layers, list) else []):
+            items[BlockDisplay.layerKey(index)] = layer
+        return items
     if kind == BlockDisplay.KIND_SKILLET:
         return {"0": unwrapDeep(exData.get("cookingDict"))}
     items = {}

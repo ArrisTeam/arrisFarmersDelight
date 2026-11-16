@@ -7,7 +7,7 @@
 世界里残留的 arris:item_display 加载时由 Server/DisplayGuard.py 删掉。
 """
 from .Engine import Call, DestroyEntity
-from ...Shared.Rules.BlockDisplay import KIND_BOARD, KIND_SKILLET, KIND_STOVE, STOVE_SLOTS
+from ...Shared.Rules.BlockDisplay import DISH_KEY, KIND_BOARD, KIND_SKILLET, KIND_STOVE, STOVE_SLOTS, layerKey
 
 ENDPOINT = "OnBlockItems"
 _record = {"payloads": None}   # 自检时打开：记下发出的载荷
@@ -30,6 +30,14 @@ def Publish(dimensionId, blockPos, kind, items):
 
 def PublishBoard(dimensionId, blockPos, item):
     Publish(dimensionId, blockPos, KIND_BOARD, {"0": item})
+
+
+def PublishBoardDish(dimensionId, blockPos, layers, dish):
+    """砧板摆盘：层（底座在前）和做好的那叠；都没有就是清空。"""
+    items = {"0": None, DISH_KEY: dish}
+    for index, layer in enumerate(layers or []):
+        items[layerKey(index)] = layer
+    Publish(dimensionId, blockPos, KIND_BOARD, items)
 
 
 def PublishSkillet(dimensionId, blockPos, item):

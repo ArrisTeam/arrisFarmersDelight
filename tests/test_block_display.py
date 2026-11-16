@@ -83,5 +83,19 @@ def testTheFarmersDelightCopyOfThePoseMathMatchesTheCalibration():
         assert all(abs(rebuilt[i][j] - matrix[i][j]) < 1e-6 for i in range(3) for j in range(3))
 
 
+
+def testDishLayersStackOnTheBoardAndTheDishLiesAlone():
+    bread = {"newItemName": "minecraft:bread", "newAuxValue": 0, "count": 3}
+    egg = {"newItemName": "arris:fried_egg", "newAuxValue": 0, "count": 6}
+    items = {"0": None, BD.layerKey(0): bread, BD.layerKey(1): egg, BD.layerKey(2): egg}
+    placements = BD.layout(BD.KIND_BOARD, items, lambda item: "", (3, 64, 3))
+    assert len(placements) == 3 and all(p.flat for p in placements)
+    heights = [p.center[1] for p in placements]
+    assert heights == sorted(heights) and heights[2] - heights[0] > 0.05, "一层比一层高"
+    assert BD.layout(BD.KIND_BOARD, items, lambda item: "", (3, 64, 3))[1].center == placements[1].center, "同一块板每次一样"
+    dish = {"newItemName": "arris:egg_sandwich", "newAuxValue": 0, "count": 3}
+    done = BD.layout(BD.KIND_BOARD, dict(items, D=dish), lambda item: "", (3, 64, 3))
+    assert len(done) == 1 and done[0].item["newItemName"] == "arris:egg_sandwich"
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

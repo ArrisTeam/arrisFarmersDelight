@@ -6,7 +6,10 @@
 - 砧板：一件。食物平躺在板面中央；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
 - 炉灶：六个烤位（3 x 2），每格一件小号的平躺食物。
+- 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。
 """
+import math
+
 from .Ticks import posHash
 
 KIND_BOARD = "board"
@@ -83,6 +86,27 @@ def boardLayout(item, itemType):
     return [Placement(shown, (0.5, BOARD_TOP + 0.02, 0.5), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
 
 
+DISH_LAYERS = 9                # 砧板摆盘最多几层（HandsOn/Assembly.MOST_LAYERS）
+DISH_KEY = "D"                 # 做好的那叠在广播里的槽名；层是 "L0".."L8"
+
+
+def layerKey(index):
+    return "L%d" % index
+
+
+def boardDishLayout(layers, dish, seed):
+    """砧板摆盘：做好的菜平躺在中间；还在摆时一层层叠起来，每层略转一点、略偏一点，看得出是一摞。"""
+    if isItem(dish):
+        return [Placement(_single(dish), (0.5, BOARD_TOP + 0.02, 0.5), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
+    placements = []
+    for index, layer in enumerate(item for item in layers if isItem(item)):
+        angle = 0.5 * index + _jitter(seed, index, 0.25)
+        center = (0.5 + _jitter(seed, index * 2 + 7, 0.04), BOARD_TOP + 0.02 + index * LAYER_STEP,
+                  0.5 + _jitter(seed, index * 2 + 8, 0.04))
+        placements.append(Placement(_single(layer), center, True, (math.cos(angle), math.sin(angle)), 0.0, FOOD_SCALE))
+    return placements
+
+
 def skilletLayout(item, seed):
     if not isItem(item):
         return []
@@ -109,6 +133,9 @@ def stoveLayout(slots):
 def layout(kind, items, itemTypeOf, pos):
     """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标。"""
     if kind == KIND_BOARD:
+        layers = [items.get(layerKey(index)) for index in range(DISH_LAYERS)]
+        if isItem(items.get(DISH_KEY)) or any(isItem(layer) for layer in layers):
+            return boardDishLayout(layers, items.get(DISH_KEY), posHash(pos))
         item = items.get("0")
         return boardLayout(item, itemTypeOf(item)) if isItem(item) else []
     if kind == KIND_SKILLET:
