@@ -107,7 +107,7 @@ class Egg(object):
         show.nodes["piece_%d" % index].setVisible(False)
         self.hand, self.spill = show.nodes["hand_%d" % index], show.nodes["spill_%d" % index]
         self.hand.item = single(show.shown)
-        self.spill.item = show.openedLook(show.shown)
+        self.spill.item = show.openedLook(show.shown, 0.0)         # 蛋液刚打出来：JE 里它按 RAW_EGG 着色，就是第 0 档
         self.hand.size = EGG_SIZE
         self.spill.size = size(show.shownPieces)
         self.crack = Crack(start, rim, (8.0 + at[0], 0.0, 8.0 + at[1]), FLOOR + height(False, show.shownUnders), EGG_SIZE, size(show.shownPieces),

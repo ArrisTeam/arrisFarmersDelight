@@ -85,6 +85,9 @@ def testTheTopOfAPieceIsRawUntilItIsDone():
     assert K.shownName("minecraft:beef", "minecraft:cooked_beef", 0.99) == "minecraft:beef"
     assert K.shownName("minecraft:beef", "minecraft:cooked_beef", 1.0) == "minecraft:cooked_beef", "翻过来朝上那面是熟的：画熟的"
     assert K.shownName("minecraft:cooked_beef", "minecraft:cooked_beef", 0.0) == "minecraft:cooked_beef", "烤好的本来就是熟的"
+    assert K.shownName("minecraft:egg", "arris:fried_egg", 0.0, True) == "arris:egg_look_0", "FD 原样放上去的蛋：不连壳画，蛋清是灰的"
+    assert K.shownName("minecraft:egg", "arris:fried_egg", 0.5, True) == "arris:egg_look_1"
+    assert K.shownName("minecraft:egg", "arris:fried_egg", 1.0, True) == "arris:fried_egg"
 
 
 def testAPieceWaitsOnlyWhenItsUnderSideIsDoneAndItWasLaidByHand():

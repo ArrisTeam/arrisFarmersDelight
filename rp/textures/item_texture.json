@@ -103,6 +103,15 @@
         "arris:dumplings": {
             "textures": "textures/items/dumplings"
         },
+        "arris:egg_look_0": {
+            "textures": "textures/items/egg_look_0"
+        },
+        "arris:egg_look_1": {
+            "textures": "textures/items/egg_look_1"
+        },
+        "arris:egg_look_2": {
+            "textures": "textures/items/egg_look_2"
+        },
         "arris:egg_sandwich": {
             "textures": "textures/items/egg_sandwich"
         },

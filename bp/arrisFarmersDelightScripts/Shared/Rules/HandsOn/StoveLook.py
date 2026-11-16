@@ -9,6 +9,8 @@ JE 把朝上那面烤到哪画成"生的图染上焦色、熟了换成熟的图"
 """
 import math
 
+from .. import EggLook
+
 STEPS = 12                   # 朝上那面每烤 1/12 才重画一次（StoveBehavior.look，186-188）
 DONE = 100                   # look() 里"熟了"的那一档
 UNSEEN = -1                  # 还没画过 / 没有数据
@@ -28,8 +30,11 @@ def isTopDone(up):
     return up >= 1.0
 
 
-def shownName(rawName, cookedName, up):
-    """这一件该画哪张图的物品名：朝上那面熟了画熟的（cookedName，没有配方的就是它自己），否则画生的。"""
+def shownName(rawName, cookedName, up, cracked=False):
+    """这一件该画哪张图的物品名：朝上那面熟了画熟的（cookedName，没有配方的就是它自己），否则画生的。
+    蛋（cracked）不连壳画：生到快熟是蛋清从灰清成白的几张专用小图标（EggLook），熟了是煎蛋（KitchenLooks.opened + fryingTint）。"""
+    if cracked:
+        return EggLook.itemOf(up)
     return cookedName if isTopDone(up) else rawName
 
 

@@ -14,6 +14,7 @@ Java 里用节点（piece_N 上面的、under_N 垫在下面的、lift_N 走的�
 """
 from functools import partial
 
+from .. import EggLook
 from .Items import keyOf, make
 from .PanEffects import onEffect
 from .PanHeat import Heat
@@ -85,9 +86,10 @@ class PanShow(object):
         fried = self.rules.friedOf(raw["newItemName"])
         return single(raw) if fried is None else make(fried)
 
-    def openedLook(self, stack):
-        """生的那面画什么（KitchenLooks.opened）：蛋不连壳躺着，画煎蛋；别的原样。"""
-        return self.cookedOf(stack) if self.isCracked(stack) else single(stack)
+    def openedLook(self, stack, up=0.0):
+        """生的那面画什么（KitchenLooks.opened + fryingTint）：蛋不连壳躺着，画煎蛋，蛋清随朝上那面煎到 up 从半透明的灰清成白
+        （基岩版的掉落物没法着色，几档颜色烤进专用的小图标，见 Shared/Rules/EggLook.py）；别的原样。"""
+        return make(EggLook.itemOf(up)) if self.isCracked(stack) else single(stack)
 
     def isShownDone(self):
         return self.shown is not None and not self.rules.canFry(self.shown["newItemName"])
@@ -133,7 +135,7 @@ class PanShow(object):
         node.setVisible(visible and not self.waitingIn[PIECES + index if under else index])
         if not visible:
             return
-        node.item = self.cookedOf(self.shown) if self.shownUp >= 1.0 else self.openedLook(self.shown)
+        node.item = self.cookedOf(self.shown) if self.shownUp >= 1.0 else self.openedLook(self.shown, self.shownUp)
         node.size = size(self.shownPieces)
         if not self.landings.landing(index, under) and not (self.tossing() and node.moving):
             at = place(index, self.shownPieces)

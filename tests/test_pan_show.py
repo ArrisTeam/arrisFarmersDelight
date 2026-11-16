@@ -12,6 +12,7 @@ Show = fdtest.load("Shared.Rules.HandsOn.PanShow")
 Layout = fdtest.load("Shared.Rules.HandsOn.PanLayout")
 Land = fdtest.load("Shared.Rules.HandsOn.PanLand")
 Toss = fdtest.load("Shared.Rules.HandsOn.PanToss")
+EggLook = fdtest.load("Shared.Rules.EggLook")
 BEEF, COOKED, EGG, FRIED = "minecraft:beef", "minecraft:cooked_beef", "minecraft:egg", "arris:fried_egg"
 DT = 1.0 / 120.0
 
@@ -424,11 +425,11 @@ def testReleasingWithoutATossSetsThePanDown():
 def testEggsAreCrackedOnTheRimAndTheInsideDropsIn():
     show = make(heated=True)
     apply(show, EGG, 1)
-    assert show.nodes["piece_0"].item["newItemName"] == FRIED, "蛋从不连壳躺着：画煎蛋"
+    assert show.nodes["piece_0"].item["newItemName"] == EggLook.ITEMS[0], "蛋从不连壳躺着：画煎蛋，刚打进来蛋清还是灰的（RAW_EGG）"
     apply(show, EGG, 2)
     egg, inside, piece = show.nodes["hand_1"], show.nodes["spill_1"], show.nodes["piece_1"]
     assert show.cracking[1] is not None and not piece.visible and show.waitingIn[1], "新来的蛋先不露出那一块，一只手拿着敲"
-    assert egg.item["newItemName"] == EGG and egg.item["count"] == 1 and inside.item["newItemName"] == FRIED
+    assert egg.item["newItemName"] == EGG and egg.item["count"] == 1 and inside.item["newItemName"] == EggLook.ITEMS[0], "蛋液是生的颜色"
     events = run(show, 0.7)
     assert egg.visible and kinds(events, type="sound", name="egg_crack"), "磕在锅沿：脆响"
     assert kinds(events, type="particle", style="dust"), "蛋壳碎屑"
@@ -437,6 +438,28 @@ def testEggsAreCrackedOnTheRimAndTheInsideDropsIn():
     assert piece.visible and not show.waitingIn[1], "蛋液落稳了才露出那一块"
     assert near(piece.pos[0], -2.6) and near(piece.pos[2], -0.4)
     assert kinds(events, type="particle", style="oil_pop"), "落进热锅：油泡"
+
+
+def testAnEggsWhiteClearsFromGreyToWhiteAsItFries():
+    """JE 的蛋按 RAW_EGG 往白渐变着色；基岩版掉落物没法着色，三档专用图标（朝上那面每 1/12 重画一次，三档的分界在第 4、8 档），熟了画煎蛋。"""
+    show = make(heated=True)
+    apply(show, EGG, 1, down=0.0, up=0.0)
+    names = [show.nodes["piece_0"].item["newItemName"]]
+    for up in (0.3, 0.34, 0.6, 0.67, 0.99):
+        apply(show, EGG, 1, down=up, up=up)
+        names.append(show.nodes["piece_0"].item["newItemName"])
+    apply(show, EGG, 1, down=1.0, up=1.0)
+    names.append(show.nodes["piece_0"].item["newItemName"])
+    assert names == [EggLook.ITEMS[0], EggLook.ITEMS[0], EggLook.ITEMS[1], EggLook.ITEMS[1], EggLook.ITEMS[2], EggLook.ITEMS[2], FRIED], names
+
+
+def testNoOtherFoodIsEverDrawnAsAnEggLook():
+    show = make(heated=True)
+    for up in (0.0, 0.5, 0.99):
+        apply(show, BEEF, 1, down=1.0, up=up)
+        assert show.nodes["piece_0"].item["newItemName"] == BEEF
+    apply(show, BEEF, 1, down=1.0, up=1.0)
+    assert show.nodes["piece_0"].item["newItemName"] == COOKED
 
 
 def testEggRimAndStartFollowTheCursorOnlyForTheCook():

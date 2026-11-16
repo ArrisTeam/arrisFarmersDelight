@@ -1,0 +1,13 @@
+{
+    "format_version": "1.10",
+    "minecraft:item": {
+        "components": {
+            "minecraft:icon": "arris:egg_look_2"
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:egg_look_2",
+            "register_to_create_menu": false
+        }
+    }
+}
