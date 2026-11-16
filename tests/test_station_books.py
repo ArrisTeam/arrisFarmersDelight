@@ -70,6 +70,10 @@ def testWhatTheStationIsMakingNow():
     assert Books.potCurrent([_item("arris:tomato", 3), _item("arris:tomato", 2), {}]) == next(
         index for index, recipe in enumerate(Recipes.CookingPotRecipeList) if recipe["CookResult"][0] == "arris:tomato_sauce")
     assert Books.potCurrent([_item("minecraft:dirt")]) is None
+    soup = next(index for index, recipe in enumerate(Recipes.CookingPotRecipeList) if recipe["CookResult"][0] == "arris:chicken_soup")
+    assert Books.potCurrent([], _item("arris:chicken_soup", 4)) == soup, "料做不成菜：锅里那锅煮好的汤"
+    assert Books.potCurrent([_item("arris:tomato", 2), _item("arris:tomato", 2)], _item("arris:chicken_soup", 4)) != soup, "正在做的那道在先"
+    assert Books.potCurrent([], {}) is None
     assert Books.boardCurrent([_item("minecraft:bread"), _item("arris:fried_egg"), _item("arris:fried_egg")], None) \
         == "d:arris:egg_sandwich"
     assert Books.boardCurrent([], _item("minecraft:beef")) == "c:minecraft:beef:0"

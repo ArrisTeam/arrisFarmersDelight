@@ -87,10 +87,11 @@ def potRecipe(key):
     return None
 
 
-def potCurrent(inputs):
-    """锅里的料正在做的那道菜的键；做不成任何菜返回 None。"""
-    meal, _pushed = CookingPot.matchRecipe([item for item in inputs or () if item])
-    recipe = CookingPot.findRecipeByResult(meal["newItemName"]) if meal else None
+def potCurrent(inputs, meal=None):
+    """锅里的料正在做的那道菜的键；料做不成菜时是锅里已经煮好的那锅（meal）的菜（PotBook.current）；都没有返回 None。"""
+    cooking, _pushed = CookingPot.matchRecipe([item for item in inputs or () if item])
+    made = cooking or meal
+    recipe = CookingPot.findRecipeByResult(made["newItemName"]) if made else None
     for index, candidate in enumerate(CookingPotRecipeList):
         if candidate is recipe:
             return index

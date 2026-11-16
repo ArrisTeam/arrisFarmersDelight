@@ -47,7 +47,7 @@ class PotSource(_Source):
         return [item for item in self.view.state.getItems(PotStation.GROUP_INGREDIENTS) if item]
 
     def current(self):
-        return Books.potCurrent(self.inStation())
+        return Books.potCurrent(self.inStation(), self.view.data.get("meal"))
 
     def canFill(self, key):
         return Books.potRecipe(key) is not None
