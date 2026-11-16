@@ -1,0 +1,23 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:canvas_from_canvas_rug"
+        },
+        "ingredients": [
+            {
+                "count": 2,
+                "data": 0,
+                "item": "arris:canvas_rug"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:canvas"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

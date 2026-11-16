@@ -1,0 +1,23 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:rope_from_safety_net"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:safety_net"
+            }
+        ],
+        "result": {
+            "count": 4,
+            "data": 0,
+            "item": "arris:rope"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}
