@@ -15,6 +15,7 @@ STEAM = "arris_diegesis:steam"
 SPLASH = "arris_diegesis:splash"
 GLINT = "arris_diegesis:glint"
 DROPLET = "arris_diegesis:droplet"
+DUST = "arris_diegesis:dust"
 MIN_STOP = 0.5
 
 

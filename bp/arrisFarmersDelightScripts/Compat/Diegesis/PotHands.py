@@ -5,7 +5,8 @@
 那一刻该发生的事在 Shared/Rules/HandsOn/PotServeHands.py / PotServePour.py（纯计算，逐条照 Java），这里只管画：
 - 手里的东西是一件立着的客户端掉落物：正面朝镜头、往后仰 16 度、在贴图平面里倾（倒、抖）；倒空了换成空容器（桶、玻璃瓶）；
   蛋磕开之后蛋液是一件平躺的煎蛋；
-- 流出来的液体：JE 是一股连着的水柱，这里每帧从瓶口朝落点撒几滴染了色的水滴；粉末是往下掉的小粒，蛋壳是溅开的碎屑；
+- 流出来的液体：JE 是一股连着的水柱，这里每帧从瓶口朝落点撒几滴染了色的水滴；粉末是往下掉的小粒；蛋壳是溅开的碎屑，用前置包的
+  dust 粒子（HoD 的 DiegesisParticles.DUST，壳的颜色）；
 - 涟漪、水花、气泡、声音照事件放。
 动作在"场景像素"里算（JE 的场景朝着开站的人）：开着站点的人那边是他的站点坐标（PotView 给的 scene.viewFrame），旁观的人按锅自己的朝向看。
 """
@@ -25,7 +26,7 @@ EGG_INSIDE = "arris:fried_egg"      # 磕开之后落进汤里的蛋液画成什
 STREAM_TIME = 0.16          # 水滴从瓶口到汤面大约走这么久（定初速）
 STREAM_RIPPLES = 0.14       # 流着的时候每隔这么久在落点起一圈水波
 STREAM_RIPPLE = 0.1
-GRAIN_SCALE, BIT_SCALE = 0.45, 0.6
+GRAIN_SCALE = 0.45
 _CRACKED = frozenset(name for name, _aux in PotSunk.CRACKED)
 _POURED = frozenset(name for name, _aux in PotSunk.POURED)
 
@@ -183,10 +184,11 @@ class PotHands(object):
             return
         elif kind == "sound":
             play(event["name"], scene.world(8.0, scene.liquid.surfaceY(), 8.0), event["volume"], event["pitch"])
-        elif kind in ("droplets", "grains", "dust"):
-            scale = GRAIN_SCALE if kind == "grains" else (BIT_SCALE if kind == "dust" else None)
+        elif kind == "dust":                  # 蛋壳碎屑（KitchenLooks 磕的一下 5 颗、壳裂开 4 颗）：HoD 的 DiegesisParticles.DUST
+            PotFx.particle(PotFx.DUST, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"])
+        elif kind in ("droplets", "grains"):
             PotFx.particle(PotFx.DROPLET, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"],
-                           scale=scale, velocity=self._turned(event["rise"]))
+                           scale=GRAIN_SCALE if kind == "grains" else None, velocity=self._turned(event["rise"]))
         elif kind == "splash":
             PotFx.particle(PotFx.SPLASH, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"])
         elif kind == "bubbles":

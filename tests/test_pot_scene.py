@@ -197,6 +197,20 @@ def testTakingTheLiquidBackWhileItIsBeingPouredStopsTheHandAndTheWait():
     assert [drop["item"]["newItemName"] for drop in world.drops.values()] == ["minecraft:carrot"], "手端着的桶也收掉了"
 
 
+
+def testTheShellBitsOfACrackedEggAreTheDiegesisDustParticleInTheShellColour():
+    # KitchenLooks.java:113-116（磕的那下 5 颗）、KitchenMotions.java:510（壳裂开 4 颗）：DiegesisParticles.DUST
+    scene = setup()
+    withEgg(scene)
+    run(scene, 3.0)
+    dust = [spec for spec in world.particles if spec["id"] == "arris_diegesis:dust"]
+    assert sorted(spec["vars"]["variable.count"] for spec in dust) == [4.0, 5.0], [spec["vars"] for spec in dust]
+    for spec in dust:
+        rgb = tuple(int(round(spec["vars"][name] * 255.0)) for name in ("variable.tint_r", "variable.tint_g", "variable.tint_b"))
+        assert rgb == (0xEA, 0xD9, 0xB8), "壳色"
+    assert not [spec for spec in world.particles if spec["id"] == "arris_diegesis:droplet" and spec["vars"].get("variable.scale") == 0.6]
+
+
 if __name__ == "__main__":
     import fdtest
     raise SystemExit(fdtest.run(globals()))
