@@ -26,14 +26,11 @@ def findTool(logic, playerId, onBoard):
     hand = ctx.getHand()
     if hand is not None:
         return ((BoardGive.HAND,), hand) if env.cutsWith(onBoard, hand) else None
-    selected = BoardGive.selectedSlot(playerId)
-    candidates = [((BoardGive.INV, selected), ctx.inventory[selected])] if 0 <= selected < 9 else []
-    candidates.append(((BoardGive.OFFHAND,), BoardGive.offhandOf(playerId)))
-    candidates += [((BoardGive.INV, index), ctx.inventory[index]) for index in range(BoardGive.INVENTORY)]
-    for where, tool in candidates:
-        if tool and tool.get("count", 0) > 0 and env.cutsWith(onBoard, tool):
-            return where, tool
-    return None
+    offhand = BoardGive.offhandOf(playerId)
+    where = env.toolSlot(onBoard, [ctx.inventory[index] for index in range(BoardGive.INVENTORY)], BoardGive.selectedSlot(playerId), offhand)
+    if where is None:
+        return None
+    return (where, offhand) if where[0] == BoardGive.OFFHAND else (where, ctx.inventory[where[1]])
 
 
 def maxDurability(tool):

@@ -81,6 +81,17 @@ class Env(object):
         key = keyOf(item)
         return key is not None and any(key in dish["ingredients"] for dish in DishStation.dishes())
 
+    def toolSlot(self, onBoard, items, selected, offhand):
+        """手空着时用背包里哪把工具（Cutting.toolSlot，195-210）：选中的快捷栏格、副手、再 0..35 按序，第一个切得了 onBoard 的。
+        items 是 36 格背包（空格 None），selected 是选中的快捷栏格（0-8，不知道给 -1），offhand 是副手的物品或 None。
+        返回 ("inv", 格号) / ("offhand",) / None。"""
+        order = ([("inv", selected)] if 0 <= selected < min(9, len(items)) else []) + [("offhand",)] + [("inv", i) for i in range(len(items))]
+        for where in order:
+            tool = offhand if where[0] == "offhand" else items[where[1]]
+            if keyOf(tool) is not None and self.cutsWith(onBoard, tool):
+                return where
+        return None
+
     def isTool(self, item, onBoard):
         """手上这件是不是板上的"工具"、永远不当一层也不当要切的东西（Cutting.isTool(level, 物品, 板上的, 全部摆盘菜)，221-234）：
         它是某个配方的工具，而且（能切板上这样东西，或没有任何摆盘菜把它当一层）。"""

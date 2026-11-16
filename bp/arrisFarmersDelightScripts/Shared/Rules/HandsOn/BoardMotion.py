@@ -90,6 +90,11 @@ class Mover(object):
     def moving(self):
         return self._age < self._seconds or self._scaleAge < self._scaleSeconds
 
+    @property
+    def busy(self):
+        """还在走，或还有排着的事没做。"""
+        return self.moving or bool(self._steps)
+
     def update(self, dt):
         self._clock += dt
         if self._age < self._seconds:
