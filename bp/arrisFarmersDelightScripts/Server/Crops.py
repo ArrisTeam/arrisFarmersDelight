@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Crops - 作物：下方没了就掉落、种水稻、蘑菇放上有机肥 / 沃土、采摘番茄 / 卷心菜叶（服务端）
+"""Crops - 作物：下方没了就掉落、种水稻、蘑菇放上有机肥 / 沃土、采摘番茄（服务端）
 
 随机刻生长见 Server/CropTicks.py，骨粉见 Server/BoneMeal.py，沃土 / 沃土耕地见 Server/RichSoil.py，
 蘑菇菌落见 Server/MushroomColony.py，野生作物见 Server/WildCrops.py。随机刻生长、有机肥（OrganicCompost）、
@@ -18,8 +18,8 @@ from ..Shared.Data.Farming import cropsDict
 from ..Shared.Rules.ColonyRules import COLONY_BLOCKS
 from ..Shared.Rules.Ticks import probability
 
-# 这几种成熟作物右键采摘，不让手里的物品在它们上面生效
-_HARVESTABLE = ("arris:cabbages_stage7", "arris:budding_tomatoes_stage6", "arris:tomatoes_vine_stage3")
+# 成熟的番茄右键采摘，不让手里的物品在它们上面生效（JE 只有番茄能右键采摘；卷心菜和别的作物一样打掉收获）
+_HARVESTABLE = ("arris:budding_tomatoes_stage6", "arris:tomatoes_vine_stage3")
 _RICE_UPPER = ("arris:rice_upper_crop_stage0", "arris:rice_upper_crop_stage1", "arris:rice_upper_crop_stage2",
                "arris:rice_upper_crop_stage3")
 _CROP_GROUND = ("minecraft:farmland", "arris:rich_soil_farmland_moist", "arris:rich_soil_farmland", "minecraft:grass_block")
@@ -148,19 +148,6 @@ def OnTomatoUse(args):
         nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
         _setBlock((x, y, z), nextName, dimensionId)
     # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
-    args["cancel"] = True
-
-
-@registerHandler("ServerBlockUseEvent", match="arris:cabbages_stage7")
-def OnCabbageUse(args):
-    x, y, z = args["x"], args["y"], args["z"]
-    dimensionId = args["dimensionId"]
-    if SetPlayerUsedCD(args["playerId"]) is True:
-        return
-    dropPos = (x + 0.5, y, z + 0.5)
-    System.CreateEngineItemEntity({"itemName": "arris:cabbage_leaf", "count": random.randint(1, 2)}, dimensionId, dropPos)
-    ToAllPlayerPlaySound(dimensionId, dropPos, "block.sweet_berry_bush.pick")
-    _setBlock((x, y, z), "arris:cabbages_stage3", dimensionId)
     args["cancel"] = True
 
 

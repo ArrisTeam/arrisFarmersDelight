@@ -36,11 +36,9 @@ shearsList = ["minecraft:shears"]
 # 可以在砧板上切的食物及输出字典和使用工具
 CuttingBoardDict = {
     ("minecraft:beef", 0): {"itemList": [{"itemName": "arris:minced_beef", "count": 2}], "tool": knifeList},
-    ("minecraft:cooked_beef", 0): {"itemList": [{"itemName": "arris:beef_patty", "count": 2}], "tool": knifeList},
     ("minecraft:chicken", 0): {"itemList": [{"itemName": "arris:chicken_cuts", "count": 2}, {"itemName": "minecraft:bone_meal", "count": 1}], "tool": knifeList},
     ("minecraft:cooked_chicken", 0): {"itemList": [{"itemName": "arris:cooked_chicken_cuts", "count": 2}, {"itemName": "minecraft:bone_meal", "count": 1}], "tool": knifeList},
     ("minecraft:porkchop", 0): {"itemList": [{"itemName": "arris:bacon", "count": 2}], "tool": knifeList},
-    ("minecraft:cooked_porkchop", 0): {"itemList": [{"itemName": "arris:cooked_bacon", "count": 2}], "tool": knifeList},
     ("minecraft:mutton", 0): {"itemList": [{"itemName": "arris:mutton_chops", "count": 2}], "tool": knifeList},
     ("minecraft:muttonraw", 0): {"itemList": [{"itemName": "arris:mutton_chops", "count": 2}], "tool": knifeList},
     ("minecraft:cooked_mutton", 0): {"itemList": [{"itemName": "arris:cooked_mutton_chops", "count": 2}], "tool": knifeList},
