@@ -142,6 +142,28 @@ def testPanicleSpeedFollowsRiceBelow():
     _near(CropTick.cropSpeed(paddy, prefix, POS), 2.0)
 
 
+def testTotalTimeToMaturityMatchesJeForEveryFamily():
+    # 一级方块含几次 JE 转变，Bedrock 就按等待时间相加换算：从第 0 级长到最后一级平均要的随机刻数 × 3，
+    # 等于 JE 把全部年龄转变走完要的随机刻数（挑一块干耕地，这样每一级的概率都不到封顶 1）
+    Rates = fdtest.load("Shared.Rules.GrowthRates")
+    lone = FakeWorld().put((0, 0, 0), "minecraft:farmland", moisture=0)
+    ricePlot = FakeWorld().put((0, 0, 0), "arris:rice_supporting")
+    for prefix, spec in CropGrowth.FAMILIES.items():
+        world = ricePlot if spec.get("speed") == "rice" else lone
+        vanilla = Rates.vanillaChance(CropTick.cropSpeed(world, prefix, POS))
+        jeTicks = 0.0
+        for rate in spec["rates"]:
+            if rate == "soil":
+                chance = vanilla
+            elif isinstance(rate, tuple):
+                chance = vanilla * rate[1]
+            else:
+                chance = rate
+            jeTicks += 1.0 / chance
+        bedrockTicks = sum(1.0 / CropTick.growChance(world, prefix, stage, POS) for stage in range(CropGrowth.lastStage(prefix)))
+        _near(bedrockTicks * Rates.TICK_RATIO, jeTicks, 1e-6)
+
+
 def testWheatAndVanillaCropsUseTheSameFormula():
     assert _chances(_wet(), "arris:rich_soil_wheat") == [1.0] * 7 + [0.0]
     # 甜菜根、火把花苗再过一道 nextInt(3) != 0：2/3 × 1/3 = 2/9 → 3 × 2/9
