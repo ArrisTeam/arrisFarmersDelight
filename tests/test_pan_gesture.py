@@ -47,6 +47,12 @@ def testDraggingSidewaysOrSlowlyDoesNothing():
     assert tosses == [], "慢慢往上挪（一秒 30 单位、0.3 秒的窗口里只有 9）不是甩"
 
 
+def testOneLongFlickIsOneToss():
+    """实机：一甩往上拖了 100 多界面单位，每 30 毫秒一步都过门槛，连发了三次，服务端拒了后两次。"""
+    tosses, clicked = _drag(PanGesture.PanGesture(), [(300.0, 260.0 - 23.0 * i) for i in range(5)], step=0.03)
+    assert len(tosses) == 1 and not clicked, tosses
+
+
 def testHoldThenFlickStillTossesAndTwiceInOnePress():
     gesture = PanGesture.PanGesture()
     points = [(300.0, 200.0)] * 30 + [(300.0, 200.0 - 7.0 * i) for i in range(1, 5)]
