@@ -131,6 +131,32 @@ def testEveryModItemTheOverridesMentionExists():
 
 # ---- 与本机原版逐字比对 ----
 
+def testLivestockComponentsAreVanillaPlusOurItems():
+    # Mobs.py 里追加的 tempt / beg 会整个盖掉原版同名组件：除了 items 多出本模组的物品，别的字段必须和原版一致
+    vanilla = gen.find_vanilla()
+    if vanilla is None:
+        print("跳过：找不到本机原版行为包（FD_VANILLA_BP 可以指定）")
+        return
+    extras = {"arris:horse_feed", "arris:dog_food", "arris:cabbage", "arris:cabbage_leaf"}
+    Mobs = fdtest.load("Shared.Data.Mobs")
+    checked = 0
+    for entity, table in sorted(Mobs.livestockComponents.items()):
+        with io.open(os.path.join(vanilla, "entities", entity.split(":")[1] + ".json"), encoding="utf-8-sig") as f:
+            base = gen.load(f.read())["minecraft:entity"]["components"]
+        for name in ("minecraft:behavior.tempt", "minecraft:behavior.beg"):
+            if name not in table:
+                continue
+            ours, theirs = json.loads(table[name]), base[name]
+            assert set(ours) == set(theirs), (entity, name, sorted(set(ours) ^ set(theirs)))
+            for key in theirs:
+                if key == "items":
+                    assert set(theirs[key]) <= set(ours[key]) and set(ours[key]) - set(theirs[key]) <= extras, (entity, name)
+                else:
+                    assert ours[key] == theirs[key], (entity, name, key, ours[key], theirs[key])
+            checked += 1
+    assert checked == 5, checked          # 马 / 驴 / 骡的 tempt、兔子的 tempt、狼的 beg
+
+
 def testChestLootTableNamesAreRealVanillaFiles():
     # Server/ChestLoot.py 按这些名字认原版战利品箱（Shared/Data/ChestLoot.py 的键），名字错了不会有任何报错，只是永远追加不上
     vanilla = gen.find_vanilla()
