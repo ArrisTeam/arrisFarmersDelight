@@ -1,0 +1,33 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:lead_from_straw"
+        },
+        "key": {
+            "S": {
+                "data": 0,
+                "item": "arris:straw"
+            }
+        },
+        "pattern": [
+            "SS ",
+            "SS ",
+            "  S"
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "minecraft:lead"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:straw"
+            }
+        ]
+    }
+}

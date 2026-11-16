@@ -1,0 +1,41 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:painting_from_canvas"
+        },
+        "key": {
+            "C": {
+                "data": 0,
+                "item": "arris:canvas"
+            },
+            "S": {
+                "data": 0,
+                "item": "minecraft:stick"
+            }
+        },
+        "pattern": [
+            "SSS",
+            "SCS",
+            "SSS"
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "minecraft:painting"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:canvas"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:stick"
+            }
+        ]
+    }
+}

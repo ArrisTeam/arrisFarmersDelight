@@ -1,0 +1,41 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:scaffolding_from_canvas"
+        },
+        "key": {
+            "B": {
+                "data": 0,
+                "item": "minecraft:bamboo"
+            },
+            "C": {
+                "data": 0,
+                "item": "arris:canvas"
+            }
+        },
+        "pattern": [
+            "BCB",
+            "B B",
+            "B B"
+        ],
+        "result": {
+            "count": 6,
+            "data": 0,
+            "item": "minecraft:scaffolding"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "minecraft:bamboo"
+            },
+            {
+                "data": 0,
+                "item": "arris:canvas"
+            }
+        ]
+    }
+}

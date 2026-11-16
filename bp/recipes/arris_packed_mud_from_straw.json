@@ -1,0 +1,28 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:packed_mud_from_straw"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:straw"
+            },
+            {
+                "count": 2,
+                "data": 0,
+                "item": "minecraft:mud"
+            }
+        ],
+        "result": {
+            "count": 2,
+            "data": 0,
+            "item": "minecraft:packed_mud"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}
