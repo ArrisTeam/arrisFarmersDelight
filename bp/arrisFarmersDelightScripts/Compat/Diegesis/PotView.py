@@ -172,8 +172,10 @@ class PotViewMixin(object):
             if event.button == 0 and not event.quick:
                 self.picked = (target, self.clock)
             return True
+        if key == "sunk":
+            return self.serve.sunkClick()     # 取回不看是哪个键（PotBehavior.java:502-505）
         if event.button != 0:
-            return False
+            return False                      # 握勺子、点汤盛出只认左键（JE 的 Stroke / Click soup && button == 0）
         if key == "ladle":
             self.gesture.down(self.clock)
             scene.hand = True
@@ -181,8 +183,6 @@ class PotViewMixin(object):
             return True
         if key == "soup":
             return self.serve.soupClick(event)
-        if key == "sunk":
-            return self.serve.sunkClick()
         return False
 
     def onLeave(self):
@@ -191,15 +191,15 @@ class PotViewMixin(object):
             self.hover, self.ray, self.scene.aim = (None, None), None, None
 
     def _withStack(self, event, key):
-        """手上拿着东西点锅：盛这道菜的容器 = 盛一份（Shift 全盛）；别的 = 放进第一格放得下的（左键整叠、右键一个）。"""
+        """手上拿着东西点锅：盛这道菜的容器 = 盛一份（Shift 全盛，哪个键都行：PotBehavior.onItemClick 不看 button）；
+        别的 = 放进第一格放得下的（左键整叠、右键一个）。"""
         if key != "mouth":
             return False                      # 右键点在别处：内核把手上的放回背包
         meal = self.view.data.get("meal")
         vessel = self.view.data.get("vessel") or {}
         if meal and vessel.get("newItemName") and self.view.hand.get("newItemName") == vessel["newItemName"]:
-            if event.button == 0:
-                self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
-                self.serve.bowlWentIn(event.point)
+            self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
+            self.serve.bowlWentIn(event.point)
             return True
         return self.view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
 
