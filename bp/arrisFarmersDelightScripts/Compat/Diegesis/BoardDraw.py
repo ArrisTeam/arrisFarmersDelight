@@ -40,6 +40,7 @@ class Draw(object):
         self.steps = []
         self.melting = 0.0                              # 层正在沉进做好的菜：这么久之内不理状态里的东西
         self.cursor = None                              # 光标射线（站点射线）：落下的东西从光标上方来
+        self.bouncing = 0.0                             # 板不收的东西正弹回手上：这么久之内光标栈上的那份先收起来
         self.quiet = True                               # 刚开站的第一眼：板上有的就是有的，不落下
 
     # ---------------------------------------------------------------- 类型
@@ -166,6 +167,7 @@ class Draw(object):
         top = len(layers) * Motion.LAYER_STEP if layers else (self.surface() - Scene.TOP + 0.3 if board else 0.0)
         ghost = self._ghost(stack, FLAT, Scene.scaleOf(Scene.LAYER_SIZE))
         Motion.bounce(ghost.mover, top, self.fromCursor((0.0, top, 0.0), Motion.DROP_HEIGHT))
+        self.bouncing = Motion.BOUNCE_DOWN + Motion.BOUNCE_UP
 
     def gone(self, item):
         """最后一刀切开的食物：往上飘着缩没（这时状态里的食物已经没了）。"""
@@ -200,6 +202,7 @@ class Draw(object):
 
     def frame(self, dt):
         self.clock += dt
+        self.bouncing = max(0.0, self.bouncing - dt)
         if self.melting > 0.0:
             self.melting -= dt
         due = [step for step in self.steps if step[0] <= self.clock]

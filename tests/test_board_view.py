@@ -64,6 +64,7 @@ def testRegistrationGivesTheSchemaTheJavaChromeAndTheJavaCamera():
     assert behavior.pickables()[0].key == "surface", "空手：点板面"
     view.hand = C.item("arris:cabbage", 3)
     assert behavior.pickables()[0].key == "mouth", "拿着东西：整块板是接东西的口"
+    assert behavior.carrySize == 3.2 and behavior.carryLift == 2.5, "光标栈上的东西：内核的缺省大小"
 
 
 def testOpeningHidesTheBlockItemsAndClosingShowsThemAgain():
@@ -199,6 +200,49 @@ def testAKnifeOnTheCursorOnlyCutsWhenItIsOnTheDashedLine():
     assert behavior.cutter.knife.overMark == -1
     assert behavior.onPointer(C.Event("down", "mouth", off, button=0)) and view.sent == [], "没吸附上：只敲一声，什么也不发"
     assert C.engine.played and C.engine.played[-1][0] == "hit.wood"
+
+
+def testTheKnifeOnTheCursorIsDrawnOverTheFoodAndTheKernelsCopyOnTheCursorIsHiddenMeanwhile():
+    board, data = _across()
+    behavior, view = _open(board, data=data, hand=C.item(KNIFE))
+    _frames(behavior, 5)
+    assert behavior.carrySize == 3.2 and not _live(view, KNIFE), "光标还没到食物上：和任何一叠一样画在光标上"
+    cut, icon = _lineOf()
+    _cursorOn(behavior, (cut.x, cut.z))
+    _frames(behavior, 5)
+    knife = _live(view, KNIFE)
+    assert len(knife) == 1 and not knife[0].flat and knife[0].roll == 135.0, "光标栈上的刀也由板画：立着、刀尖朝下"
+    assert behavior.carrySize < 0.1, "板画着刀：内核画在光标上的那份缩成一个点（setCarriedHidden）"
+    _cursorOn(behavior, (14.0, 14.0))
+    _frames(behavior, 5)
+    assert behavior.carrySize == 3.2 and not _live(view, KNIFE), "光标移出食物：刀收起来，光标上的那份回来"
+    behavior.onClose()
+    assert behavior.carrySize == 3.2
+
+
+def testAStackInHandIsNeverHiddenButABouncingOneIsUntilItIsBack():
+    board, data = _across()
+    behavior, view = _open(board, data=data, hand=C.item("arris:cabbage", 3))
+    _cursorOn(behavior, (0.0, 0.0))
+    _frames(behavior, 5)
+    assert behavior.carrySize == 3.2, "不是工具：光标栈上的就是它自己"
+    behavior.onEffect("refused", {"stack": C.item("arris:cabbage", 3)})
+    _frames(behavior, 2)
+    assert behavior.carrySize < 0.1, "板不收：弹回手上的这一下，光标栈上的先收起来"
+    _frames(behavior, 30)
+    assert behavior.carrySize == 3.2
+
+
+def testAToolInHandIsDrawnOverTheFoodToo():
+    board, data = _across()
+    data = dict(data, stroke="chop")
+    behavior, view = _open(C.item("minecraft:oak_log", 3), data=data, hand=C.item("minecraft:iron_axe"))
+    _cursorOn(behavior, (0.0, 0.0))
+    _frames(behavior, 5)
+    assert _live(view, "minecraft:iron_axe") and behavior.carrySize < 0.1
+    _cursorOn(behavior, (14.0, 14.0))
+    _frames(behavior, 5)
+    assert not _live(view, "minecraft:iron_axe") and behavior.carrySize == 3.2
 
 
 def testWithAnEmptyHandTheKnifeInTheBagIsOfferedAndLeftClickCutsRightClickTakesBack():

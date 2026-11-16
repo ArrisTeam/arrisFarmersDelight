@@ -7,7 +7,8 @@
 - 底部托盘（前置包按 usable 列出背包里能切的、能摆盘的、切东西用的工具）拿一叠到手上点板 = 放上去（左键整叠、右键一个），Shift 点托盘 = 整叠直接放上去，
   右键开站时手里的食物也直接放；手上拿着刀、或手空着背包里有刀（选中格 -> 副手 -> 背包），光标移到食物上刀吸附下一刀的虚线，点一下落刀；
   右键 / 没有刀的左键 = 取回；摆盘一层层往上放，凑成了点一下做成；Shift 点空板 = 手上的工具插进去；
-- 板上的东西由本端自己画（开站期间 Client/BlockItems 不画这块板，关站还原）；食谱书照旧挂在左边（BookSources）。
+- 板上的东西由本端自己画（开站期间 Client/BlockItems 不画这块板，关站还原）；食谱书照旧挂在左边（BookSources）；
+- 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
 from . import BookSources
@@ -24,6 +25,7 @@ from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
+CARRY_SIZE, CARRY_HIDDEN = 3.2, 0.01                    # 光标栈上的东西画多大；收起来时缩成一个点（不为 0：零矩阵不稳）
 
 
 class BoardViewMixin(object):
@@ -32,7 +34,7 @@ class BoardViewMixin(object):
     camera = Scene.CAMERA
     flightSeconds = Scene.FLIGHT_SECONDS
     chrome = "java"
-    workPlane, carryLift, carrySize = Scene.WORK_PLANE, 2.5, 3.2
+    workPlane, carryLift = Scene.WORK_PLANE, 2.5
 
     def __init__(self, view):
         super(BoardViewMixin, self).__init__(view)
@@ -40,7 +42,14 @@ class BoardViewMixin(object):
         self.draw = None
         self.cutter = None
         self.screen = None
+        self.carriedHidden = False
         self._usable = {}
+
+    @property
+    def carrySize(self):
+        """内核每帧按它画光标栈上的东西（边长，像素）。本端正把刀 / 工具画在食物上、或板不收的东西正弹回手上时缩到看不见：
+        JE 的 view.setCarriedHidden（内核没给这个接口，借它每帧都读 carrySize 这一点）。"""
+        return CARRY_HIDDEN if self.carriedHidden else CARRY_SIZE
 
     # ---------------------------------------------------------------- 状态
 
@@ -118,6 +127,7 @@ class BoardViewMixin(object):
         if self.draw is not None:
             self.draw.close()
         self.cutter = self.draw = None
+        self.carriedHidden = False
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
 
     def onState(self, changes):
@@ -131,8 +141,8 @@ class BoardViewMixin(object):
         if self.draw is None:
             return
         self.draw.frame(dt)
-        tool, offered = self.toolOf()
-        self.cutter.frame(dt, tool, offered)
+        self.cutter.frame(dt, self.toolOf()[0])
+        self.carriedHidden = self.cutter.drawn or self.draw.bouncing > 0.0
         if self.cutter.pending.expire(self.cutter.clock):
             self.draw.refresh(self.board(), self.layers())
 

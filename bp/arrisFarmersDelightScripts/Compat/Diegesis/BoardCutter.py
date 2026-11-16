@@ -4,8 +4,8 @@
 对应 Hands-On Delight：client/BoardBehavior.java 的 moveKnife / moveTool / drawMarks / chop / startStroke / impact（834-1060、1142-1194、1257-1279）。
 数和状态机都在 Shared/Rules/HandsOn（BoardMarks 刀口线、BoardKnife 刀的走法和点下去等回话、BoardStroke 别的工具的动作），这里只把它们接到道具上：
 - 虚线：下一刀的那一条，平躺在食物顶面上，只画在图标的实心像素上（0.18 秒从无长到全长）；有工具可用（光标栈上切得了的，或手空着背包里有刀）才显示；
-- 刀：手空着、借背包里的刀时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、点一下下去 0.05 秒上来 0.14 秒；
-  光标栈上拿着刀时内核已经把它画在光标上（内核没有藏掉光标栈图标的接口），不再另画，吸附和点击的判断照样做；
+- 刀：光标栈上拿着的、或手空着借背包里的，光标在食物上时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、
+  点一下下去 0.05 秒上来 0.14 秒；画着的时候 drawn 为真，BoardView 据此把内核画在光标上的那一份缩到看不见（JE 的 setCarriedHidden）；
 - 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）。
 基岩版的掉落物不能半透明，借来的刀画成实的（HoD 是半透明，落下去才变实）。
 """
@@ -25,6 +25,7 @@ class Cutter(object):
         self.knife = Knife.Knife()
         self.pending = Knife.Pending()
         self.run = None                             # 正在进行的别的工具的动作（BoardStroke.Run）
+        self.drawn = False                          # 本端正把刀 / 工具画在食物上（光标栈上的那份该收起来）
         self.props = {"knife": None, "tool": None}
         self.line = None                            # [道具, 键, 已显出来的比例]
         self.clock = 0.0
@@ -66,8 +67,8 @@ class Cutter(object):
 
     # ---------------------------------------------------------------- 每帧
 
-    def frame(self, dt, tool, offered):
-        """tool 是现在用的工具（物品）或 None，offered 为真是从背包借的（手空着）。画刀 / 工具 / 虚线。"""
+    def frame(self, dt, tool):
+        """tool 是现在用的工具（物品，光标栈上的或背包里借的）或 None。画刀 / 工具 / 虚线。"""
         owner = self.owner
         self.clock += dt
         geo = self._geometry() if tool is not None else None
@@ -80,10 +81,11 @@ class Cutter(object):
         if geo is None or not moves:
             self._drop("tool")
             pose = self.knife.frame(dt, over, self.next[1], self.next[0], top, geo is not None)
-            self._knife(tool, pose if offered else None)
+            self._knife(tool, pose)
+            self.drawn = pose is not None and tool is not None
         else:
             self._drop("knife")
-            self._tool(dt, tool, stroke, geo, over, top)
+            self.drawn = self._tool(dt, tool, stroke, geo, over, top)
 
     # ---------------------------------------------------------------- 虚线
 
@@ -124,7 +126,7 @@ class Cutter(object):
             self.props[name].move(center=center, facing=facing, roll=roll)
 
     def _knife(self, tool, pose):
-        """借来的刀（只在手空着时画）：刀尖朝下，顺着这一刀的线。"""
+        """悬在食物上的刀：刀尖朝下，顺着这一刀的线。"""
         if pose is None or tool is None:
             self._drop("knife")
             return
@@ -135,7 +137,7 @@ class Cutter(object):
     # ---------------------------------------------------------------- 别的工具
 
     def _tool(self, dt, tool, kind, geo, over, top):
-        """斧、镐、锹、锄、剪刀：悬在活上，点一下开始动作，动作到接触才发 chop。"""
+        """斧、镐、锹、锄、剪刀：悬在活上，点一下开始动作，动作到接触才发 chop。返回有没有把工具画出来。"""
         if self.run is None and over is not None:
             self._aim(dt, kind, geo[1], over)
         if self.run is not None:
@@ -148,10 +150,11 @@ class Cutter(object):
                     self.run = None
         if tool is None or (over is None and self.run is None):
             self._drop("tool")
-            return
+            return False
         posed = Stroke.pose(kind, self.run.age if self.run is not None else None, (0.0, Stroke.workHeight(kind, top)), top, *self.snipRange)
         yaw = self.place[2]
         self._stand("tool", tool, self._at(posed["center"][0], posed["center"][1], yaw), (math.sin(yaw), -math.cos(yaw)), posed["roll"])
+        return True
 
     def _at(self, u, y, yaw=0.0):
         """工具平面里的 (沿线 u, 高 y) -> 站点像素。平面在 (place.x, place.z) 处、顺着 yaw。"""
@@ -211,5 +214,6 @@ class Cutter(object):
             self._drop(name)
         self.line = None
         self.run = None
+        self.drawn = False
         self.pending.reset()
         self.knife.reset()
