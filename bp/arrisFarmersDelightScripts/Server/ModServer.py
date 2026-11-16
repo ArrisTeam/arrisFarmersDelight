@@ -8,7 +8,7 @@ ServerItemUseOnEvent 是唯一靠执行顺序区分处理者的事件（同一�
 由共用的交互冷却决定谁认领）。各处理函数的 priority 按旧版模块加载顺序给出：
     100 砧板 / 成熟作物取消物品使用    99 野生作物放置检查    98 物品放成方块（煎锅、派）
      50 种水稻 / 骨粉 / 蘑菇菌落        10 炉灶放食物
-DamageEvent 同理：100 展示实体删除器、70 受伤失去舒适与滋养、60 爬绳免摔。
+DamageEvent 同理：100 展示实体删除器、60 爬绳免摔。
 """
 from ..QuModLibs.Server import Listen
 from .EventRegistry import dispatch
