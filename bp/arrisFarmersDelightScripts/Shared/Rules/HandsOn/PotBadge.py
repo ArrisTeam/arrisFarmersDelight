@@ -2,11 +2,12 @@
 """PotBadge - 厨锅上方的徽章牌：评星、进度条、火苗、出锅后星星一颗颗亮起并显示 "+N"、悬停提示（双端）
 
 移植自 Hands-On Delight 的 client/PotBehavior.java：徽章可见性 badge（873-881 行）、graded / grade / bonus / openStars（897-915 行）、
-showGrade（926-950 行）、frame 里的平滑（1172-1173 行）、tooltip（1113-1128 行）、drawDial（1579-1601 行）。像素本身在 PotBadgeGlyphs。
+showGrade（926-950 行）、frame 里的平滑（1172-1173 行）、tooltip（1113-1128 行）、drawDial（1579-1601 行）。画的是哪些图在 PotBadgeGlyphs。
 时间一律是秒（Java 的刻 = 1/20 秒；这里 COOK_LEFT 已经是秒）。
 
-每帧用当前状态调 step(dt, state)，得到 (model, events)：model 是给内核的"像素牌"（view.plate(...) 的 rects / itemRect，坐标是图标像素，
+每帧用当前状态调 step(dt, state)，得到 (model, events)：model 是给内核的牌（view.plate(...) 的 sprites / itemRect，坐标是图标像素，
 原点在菜的图标中心、+y 向下，见 PotBadgeGlyphs），不该显示时是 None；events 是出锅后星星亮起的闪光和叮的一声。
+出锅后每亮一颗星，那颗星的图弹一下（sprites 里它的 pop 加一，界面放一段属性动画）；"+N" 出现时也弹一下。
 
 state 的键（缺省都是假 / 0）：
     here 厨师在锅边（镜头在锅那儿）；dish 有一道菜可显示（成品，或锅里的料能做出的）；meal 锅里煮好的份数（0 = 没有）；ingredients 料格里有料；
@@ -16,8 +17,7 @@ state 的键（缺省都是假 / 0）：
 import math
 
 from .Mth import EPS, clamp, lerp, roundInt
-from .PotBadgeGlyphs import (BAR_LENGTH, HOVER_RECT, ITEM_RECT, MOST_ADDED, PIXEL, STAR, STAR_SIZE, STARS, dialRects, plateRects, starLeft,
-                             starTop, trackRects)
+from .PotBadgeGlyphs import BAR_LENGTH, HOVER_RECT, ITEM_RECT, MOST_ADDED, PIXEL, STAR, STAR_SIZE, STARS, sprites, starLeft, starTop
 from .PotSounds import ONE_SHOTS, shotOf
 
 GRADE_WAIT = 0.3          # 一批出锅后，第一颗星等这么久才亮
@@ -33,7 +33,6 @@ TIP_READY = "handson_delight.pot.ready"        # "%s x %s"：份数、菜名
 TIP_COOKING = "handson_delight.pot.cooking"    # "%s in %s s"：菜名、剩几秒
 TIP_NAME = "name"                              # 只显示菜名
 TIP_FORMATS = {TIP_READY: "%s x %s", TIP_COOKING: "%s in %s s"}
-_MEMO = 400               # 记着多少种已经拼好的矩形
 
 
 def tooltipOf(servings, mealName, dishName, heated, stirring, cookLeft):
@@ -51,17 +50,17 @@ def tooltipOf(servings, mealName, dishName, heated, stirring, cookLeft):
 
 
 class PotBadge(object):
-    """一口锅的徽章：平滑的进度 / 星、出锅后的亮星序列、拼好的矩形（没变就是同一个列表对象，内核不用重新摆）。"""
+    """一口锅的徽章：平滑的进度 / 星、出锅后的亮星序列、此刻的那几张图（没变就是同一个列表对象，内核不用重新摆）。"""
 
     def __init__(self):
         self.shownProgress = 0.0
         self.shownStars = 0.0
         self.gradeAge = None             # 出锅后星星亮起的计时；None = 没在亮
-        self._plate = plateRects()
-        self._tracks = {}
-        self._dials = {}
+        self._pops = [0] * STARS         # 每颗星亮起过几回：加一次界面上弹一下
+        self._countPop = 0               # "+N" 出现过几回
+        self._counted = False            # 这一回的 "+N" 已经出来了
         self._key = None
-        self._rects = None
+        self._sprites = None
 
     @property
     def flashing(self):
@@ -78,7 +77,7 @@ class PotBadge(object):
                          bool(state.get("heated")), bool(state.get("stirring")), float(state.get("cookLeft", 0.0)))
 
     def step(self, dt, state):
-        """推进 dt 秒，返回 (model, events)。model：{"rects": [[x, y, w, h, argb], ...], "itemRect": [x, y, w, h], "hoverRect": [...], "unit": PIXEL}
+        """推进 dt 秒，返回 (model, events)。model：{"sprites": [一格一张图或 None], "itemRect": [x, y, w, h], "hoverRect": [...], "unit": PIXEL}
         或 None（徽章不显示）；events：{"type": "glint", ...} 和 {"type": "sound", ...}（叮，只在这批多送了份数时响）。"""
         smooth = min(1.0, dt * SMOOTH)
         self.shownProgress = lerp(smooth, self.shownProgress, float(state.get("progress", 0.0)))
@@ -98,6 +97,7 @@ class PotBadge(object):
         for star in range(grade):
             at = GRADE_WAIT + star * GRADE_STAGGER
             if before <= at < self.gradeAge:
+                self._pops[star] += 1
                 events.append({"type": "glint", "x": starLeft(open_, star) + STAR_SIZE / 2.0, "y": starTop(open_, star) + STAR_SIZE / 2.0,
                                "count": GLINT_COUNT, "size": GLINT_SPREAD, "rise": PUFF_UP, "color": GLINT_COLOR})
                 if int(state.get("bonus", 0)) > 0:
@@ -117,7 +117,8 @@ class PotBadge(object):
         waiting = bool(state.get("waiting")) and not meal
         model = {"itemRect": list(ITEM_RECT), "hoverRect": list(HOVER_RECT), "unit": PIXEL}
         if not running or waiting:
-            model["rects"] = self._rectsFor(("plate",), lambda: list(self._plate))
+            self._counted = False
+            model["sprites"] = self._spritesFor(("plate",), lambda: sprites(1, False, 0, 0, 0, running=False))
             return model
         cold = not state.get("heated")
         grade = clamp(int(state.get("grade", 0)), 0, STARS)
@@ -128,25 +129,16 @@ class PotBadge(object):
         # 多送的份数在最后一颗星亮起之后才显示
         shows = holding and lit == grade and self.gradeAge > GRADE_WAIT + grade * GRADE_STAGGER
         added = min(max(0, int(state.get("bonus", 0))), MOST_ADDED) if shows else 0
-        model["rects"] = self._rectsFor((open_, cold, bar, rows, added), lambda: self._plate + self._track(open_, cold) + self._dial(open_, bar, rows, added))
+        if added > 0 and not self._counted:
+            self._countPop += 1
+        self._counted = added > 0
+        pops, countPop = tuple(self._pops), self._countPop
+        model["sprites"] = self._spritesFor((open_, cold, bar, rows, added, pops, countPop),
+                                            lambda: sprites(open_, cold, bar, rows, added, True, pops, countPop))
         return model
 
-    def _rectsFor(self, key, build):
-        """矩形列表：key（徽章此刻的样子）没变就还是上一个列表对象，内核不用重新摆。"""
+    def _spritesFor(self, key, build):
+        """这几张图：key（徽章此刻的样子）没变就还是上一个列表对象，内核不用重新摆。"""
         if key != self._key:
-            self._key, self._rects = key, build()
-        return self._rects
-
-    def _track(self, open_, cold):
-        key = (open_, cold)
-        if key not in self._tracks:
-            self._tracks[key] = trackRects(open_, cold)
-        return self._tracks[key]
-
-    def _dial(self, open_, bar, rows, added):
-        key = (open_, bar, rows, added)
-        if key not in self._dials:
-            if len(self._dials) > _MEMO:
-                self._dials.clear()
-            self._dials[key] = dialRects(open_, bar, rows, added)
-        return self._dials[key]
+            self._key, self._sprites = key, build()
+        return self._sprites

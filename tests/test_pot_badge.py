@@ -2,6 +2,7 @@
 # runner: both
 """厨锅徽章牌（Shared/Rules/HandsOn/PotBadge.py + PotBadgeGlyphs.py）：数值照 Hands-On Delight 的 PotBehavior（徽章常量 86-113、drawDial 1579-1660、
 showGrade 926-950、tooltip 1113-1128）和 cooking_pot.json 的 badge / dial_track / dial / preview 节点。
+JE 把每个像素画成小方块；这里每样东西是一张贴图、没亮满的靠裁切（见 PotBadgeGlyphs），下面按"实际画出来的格子"对照 Java 的像素。
 
 Java：底板 20 x 28 图标像素 + 上下各一条 18 x 1，颜色 0x8C1E140C；5 x 5 的星，间隔 1，顶在 -14（三颗全开时中间高一像素），没亮 0x50FFF2DC、亮 0xFFFFCB6B 从最底下一行往上亮，
 rows = min(open * 5, round(shownStars * 5))；条左 -7、顶 10、14 x 1，长 round(shownProgress * 14)；没火：没有条，一朵 5 x 5 的空火苗在 (-2, 8)；
@@ -29,17 +30,41 @@ def settle(badge, state, seconds=3.0, dt=TICK):
 
 
 def colored(model, argb):
-    return [rect[:4] for rect in model["rects"] if rect[4] == argb]
+    """model 里染成 argb 的那几张图。"""
+    return [sprite for sprite in model["sprites"] if sprite is not None and sprite["color"] == argb]
 
 
-def cellsOf(rects):
-    """矩形列表 -> 铺开的格子集合 {(x, y)}（x 可以是 .5）。"""
+def cellsOf(sprites):
+    """几张图实际画出来的格子 {(x, y)}（x 可以是 .5）：贴图的字符画按各自的裁切。"""
     cells = set()
-    for x, y, w, h in rects:
-        for i in range(int(w)):
-            for j in range(int(h)):
-                cells.add((x + i, y + j))
+    for sprite in sprites:
+        cells |= Glyphs.cellsOf(sprite)
     return cells
+
+
+def starCells(open_, rows):
+    """Java 的 dial() 画的星：开着 open_ 颗、点亮 rows 行（从第一颗最底下一行算起）的像素。"""
+    cells = set()
+    for star in range(open_):
+        lit = max(0, min(5, rows - star * 5))
+        for row in range(5 - lit, 5):
+            cells |= Glyphs.glyphCells((Glyphs.STAR[row],), Glyphs.starLeft(open_, star), Glyphs.starTop(open_, star) + row)
+    return cells
+
+
+def countCells(added):
+    """Java 的 count() 画的 "+N" 的像素。"""
+    text = "+" + str(added)
+    left = Glyphs.COUNT_RIGHT - len(text) * 4 + 1
+    cells = set()
+    for char in text:
+        cells |= Glyphs.glyphCells(Glyphs.PLUS if char == "+" else Glyphs.DIGITS[int(char)], left, Glyphs.COUNT_TOP)
+        left += 4
+    return cells
+
+
+def barCells(length):
+    return set((Glyphs.BAR_LEFT + index, Glyphs.BAR_TOP) for index in range(length))
 
 
 def exactly(progress=None, stars=None, **state):
@@ -63,9 +88,14 @@ def testTheConstantsAreJavas():
 
 
 def testThePlateIsTwentyByTwentyEightWithCutCorners():
-    assert Glyphs.plateRects() == [[-10, -16, 20, 28, PLATE], [-9, -17, 18, 1, PLATE], [-9, 12, 18, 1, PLATE]]
+    plate = Glyphs.sprites(1, False, 0, 0, 0, running=False)
+    assert plate[0]["rect"] == [-10, -17, 20, 30] and plate[0]["color"] == PLATE and plate[1:] == [None] * (Glyphs.SLOTS - 1)
+    javas = set()
+    for x, y, w, h in ((-10, -16, 20, 28), (-9, -17, 18, 1), (-9, 12, 18, 1)):
+        javas |= set((x + i, y + j) for i in range(w) for j in range(h))
+    assert Glyphs.cellsOf(plate[0]) == javas, "一张 20 x 30 的图，四个角是空的：就是 Java 的三块"
     model, _events = Badge.PotBadge().step(0.05, {"here": True, "dish": True, "meal": 2})
-    assert model["rects"] == Glyphs.plateRects(), "出锅后锅里只剩成品、料格空了：只有底板和图标"
+    assert model["sprites"] == plate, "出锅后锅里只剩成品、料格空了：只有底板和图标"
     assert model["itemRect"] == [-8, -8, 16, 16] and model["unit"] == 0.125
     assert model["hoverRect"] == [-12, -12, 24, 24], "preview 节点的碰撞盒 ±12"
 
@@ -78,29 +108,44 @@ def testStarsAreCentredOverTheIconAndTheMiddleOneStandsHigher():
     assert [Glyphs.starTop(2, star) for star in range(2)] == [-14, -14] and Glyphs.starTop(1, 0) == -14
 
 
-def testAFullStarMergesIntoSixRectangles():
-    cells = Glyphs.starCells(1, 5)
-    rects = Glyphs.merge(cells, DIAL)
-    assert len(rects) == 6 and cellsOf([r[:4] for r in rects]) == cells
-    assert [r[:4] for r in rects] == [[-0.5, -14, 1, 1], [-1.5, -13, 3, 1], [-2.5, -12, 5, 1], [-1.5, -11, 3, 1], [-1.5, -10, 1, 1], [0.5, -10, 1, 1]]
-    assert all(isinstance(value, int) for rect in rects for value in rect[2:4]), "宽和高是整数，只有 x 带 .5"
+def testEveryThingKeepsItsOwnSlotAndPartFilledOnesAreClipped():
+    """一样东西一张图、一直占同一格（不画的是 None）；没亮满的星只露出下面几行，没走完的条只露出左边几格。"""
+    made = Glyphs.sprites(3, False, 7, 7, 12, pops=(1, 0, 0), countPop=2)
+    assert len(made) == Glyphs.SLOTS == 12
+    assert made[Glyphs.SLOT_PLATE]["texture"] == "textures/ui/pot_badge/plate"
+    stars = made[Glyphs.SLOT_STARS:Glyphs.SLOT_STARS + 6]
+    assert [star and star["color"] for star in stars] == [TRACK, DIAL, TRACK, DIAL, TRACK, None], "每颗星：没亮的一张、亮的一张；第三颗还没亮"
+    assert stars[1]["clip"] == ["bottom", 1.0] and stars[1]["pop"] == 1 and stars[1]["rect"] == [-8.5, -14, 5, 5]
+    assert stars[3]["clip"] == ["bottom", 0.4] and "pop" not in stars[3], "第二颗亮了最底下两行"
+    assert made[Glyphs.SLOT_TRACK]["texture"].endswith("bar") and "clip" not in made[Glyphs.SLOT_TRACK]
+    assert made[Glyphs.SLOT_BAR]["clip"] == ["left", 0.5] and made[Glyphs.SLOT_BAR]["rect"] == [-7, 10, 14, 1]
+    count = made[Glyphs.SLOT_COUNT:]
+    assert [part["texture"].rsplit("/", 1)[1] for part in count] == ["plus", "digit_1", "digit_2"]
+    assert [part["rect"][0] for part in count] == [-2, 2, 6] and all(part["pop"] == 2 and part["rect"][1:] == [4, 3, 5] for part in count)
+    assert Glyphs.SLOT_COUNT >= 9, "数字那几格在内核里画在物品图标上面（PlateLayout.OVER_ITEM）"
+    cold = Glyphs.sprites(1, True, 9, 0, 0)
+    assert cold[Glyphs.SLOT_TRACK]["texture"].endswith("flame") and cold[Glyphs.SLOT_BAR]["clip"] == ["left", 9 / 14.0]
+    assert sorted(Glyphs.PATTERNS) == sorted(["plate", "star", "flame", "bar", "plus"] + ["digit_%d" % digit for digit in range(10)])
 
 
-def testMergingJoinsRunsAndTallColumns():
-    assert Glyphs.merge(set([(0, 0), (1, 0), (2, 0), (4, 0)]), 1) == [[0, 0, 3, 1, 1], [4, 0, 1, 1, 1]], "一行里连着的并成一条，断开的分开"
-    assert Glyphs.merge(set([(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2)]), 7) == [[0, 0, 2, 3, 7]], "上下横杠一样的并成高矩形"
-    assert Glyphs.merge(set([(0, 0), (0, 2)]), 1) == [[0, 0, 1, 1, 1], [0, 2, 1, 1, 1]], "隔了一行不并"
-    assert Glyphs.merge(set(), 1) == []
+def testClippingShowsExactlyJavasPixels():
+    for rows in range(0, 16):
+        made = Glyphs.sprites(3, False, 0, rows, 0)
+        lit = [sprite for sprite in made if sprite is not None and sprite["color"] == DIAL]
+        assert cellsOf(lit) == starCells(3, rows), rows
+    for bar in range(0, 15):
+        made = Glyphs.sprites(1, False, bar, 0, 0)
+        assert cellsOf([made[Glyphs.SLOT_BAR]]) == barCells(bar), bar
+    assert Glyphs.cellsOf(None) == set()
 
 
 def testAColdPotShowsUnlitStarsAndAnEmptyFlameInsteadOfTheBar():
     model = exactly(heated=False, openStars=2, progress=1.0, stars=2.0)
     track = colored(model, TRACK)
-    assert [-7, 10, 14, 1] not in track, "没火没有轨"
     flame = Glyphs.glyphCells(Glyphs.FLAME, -2, 8)
-    assert flame <= cellsOf(track) and len(cellsOf(track)) == FLAME_CELLS + 2 * STAR_CELLS, "空火苗 + 两颗空星"
-    assert [-2, 10, 5, 2] in track, "火苗中间两行一样，并成 5 x 2"
-    assert [rect for rect in colored(model, DIAL) if rect[1] == 10] == [], "冷锅的条是 0：进度再满也不画（星照控制量画）"
+    assert flame <= cellsOf(track) and len(cellsOf(track)) == FLAME_CELLS + 2 * STAR_CELLS, "空火苗 + 两颗空星，没有条的轨"
+    assert model["sprites"][Glyphs.SLOT_TRACK]["rect"] == [-2, 8, 5, 5], "火苗在条该在的那一格"
+    assert model["sprites"][Glyphs.SLOT_BAR] is None, "冷锅的条是 0：进度再满也不画（星照控制量画）"
 
 
 def testAColdPotLightsNoBarEvenWithProgress():
@@ -110,19 +155,19 @@ def testAColdPotLightsNoBarEvenWithProgress():
 
 def testAHotPotShowsTheBarTrackAndTheProgressAsFarAsTheBatchIs():
     model = exactly(progress=0.5)
-    assert [-7, 10, 14, 1] in colored(model, TRACK), "整条轨 14 像素"
-    assert [-7, 10, 7, 1] in colored(model, DIAL), "进度 0.5 -> round(7) = 7 像素"
-    assert [-7, 10, 4, 1] in colored(exactly(progress=0.25), DIAL), "3.5 进位成 4（Java 的 Math.round 是 floor(x + 0.5)）"
-    assert [-7, 10, 3, 1] in colored(exactly(progress=0.24), DIAL)
-    assert [-7, 10, 14, 1] in colored(exactly(progress=1.0), DIAL)
+    assert barCells(14) <= cellsOf(colored(model, TRACK)), "整条轨 14 像素"
+    assert cellsOf(colored(model, DIAL)) == barCells(7), "进度 0.5 -> round(7) = 7 像素"
+    assert cellsOf(colored(exactly(progress=0.25), DIAL)) == barCells(4), "3.5 进位成 4（Java 的 Math.round 是 floor(x + 0.5)）"
+    assert cellsOf(colored(exactly(progress=0.24), DIAL)) == barCells(3)
+    assert cellsOf(colored(exactly(progress=1.0), DIAL)) == barCells(14)
     assert colored(exactly(progress=0.0), DIAL) == [], "进度 0 又没有星：什么都不亮"
 
 
 def testTheStarsFillFromTheBottomRow():
     one = exactly(stars=1.0)
-    assert cellsOf(colored(one, DIAL)) == Glyphs.starCells(3, 5) and len(cellsOf(colored(one, DIAL))) == STAR_CELLS, "一颗星 = 5 行：第一颗全亮"
+    assert cellsOf(colored(one, DIAL)) == starCells(3, 5) and len(cellsOf(colored(one, DIAL))) == STAR_CELLS, "一颗星 = 5 行：第一颗全亮"
     part = exactly(stars=1.4)
-    assert cellsOf(colored(part, DIAL)) == Glyphs.starCells(3, 7), "1.4 颗星 round(7) 行：第一颗全亮，第二颗从下往上两行（.###. 和 .#.#.）"
+    assert cellsOf(colored(part, DIAL)) == starCells(3, 7), "1.4 颗星 round(7) 行：第一颗全亮，第二颗从下往上两行（.###. 和 .#.#.）"
     second = [cell for cell in cellsOf(colored(part, DIAL)) if cell[0] > -3]
     assert sorted(set(y for _x, y in second)) == [-12, -11], "第二颗的顶是 -15，最底下两行是 -12 和 -11"
     assert len(cellsOf(colored(exactly(stars=3.0), DIAL))) == 3 * STAR_CELLS
@@ -156,23 +201,23 @@ def testTheBadgeShowsOnlyForTheCookAtADish():
     assert badge.step(0.05, {"here": True, "heated": True})[0] is None
     assert badge.step(0.05, dict(HOT))[0] is not None
     waiting = badge.step(0.05, dict(HOT, waiting=True))[0]
-    assert waiting["rects"] == Glyphs.plateRects(), "等卷轴的菜不煮：没有条和星"
-    assert len(badge.step(0.05, dict(HOT, waiting=True, meal=1))[0]["rects"]) > 3, "已经有成品了就不再等（waiting 只在没成品时算）"
+    assert colored(waiting, TRACK) == [] and colored(waiting, DIAL) == [] and len(colored(waiting, PLATE)) == 1, "等卷轴的菜不煮：没有条和星"
+    assert colored(badge.step(0.05, dict(HOT, waiting=True, meal=1))[0], TRACK), "已经有成品了就不再等（waiting 只在没成品时算）"
 
 
 def testAFinishedPotWithIngredientsStillShowsTheBar():
-    assert len(Badge.PotBadge().step(0.05, dict(HOT, meal=2, ingredients=True))[0]["rects"]) > 3
-    assert Badge.PotBadge().step(0.05, dict(HOT, meal=2, ingredients=False))[0]["rects"] == Glyphs.plateRects()
+    assert colored(Badge.PotBadge().step(0.05, dict(HOT, meal=2, ingredients=True))[0], TRACK)
+    assert Badge.PotBadge().step(0.05, dict(HOT, meal=2, ingredients=False))[0]["sprites"] == Glyphs.sprites(1, False, 0, 0, 0, running=False)
 
 
-def testTheRectangleListIsTheSameObjectUntilSomethingChanges():
+def testTheSpriteListIsTheSameObjectUntilSomethingChanges():
     badge = Badge.PotBadge()
     badge.shownProgress = 0.5
-    first = badge.step(0.0, dict(HOT))[0]["rects"]
-    assert badge.step(0.0, dict(HOT))[0]["rects"] is first
+    first = badge.step(0.0, dict(HOT))[0]["sprites"]
+    assert badge.step(0.0, dict(HOT))[0]["sprites"] is first
     badge.shownProgress = 0.75
-    changed = badge.step(0.0, dict(HOT))[0]["rects"]
-    assert changed is not first and [-7, 10, 11, 1] in [r[:4] for r in changed if r[4] == DIAL], "0.75 * 14 = 10.5 -> 11"
+    changed = badge.step(0.0, dict(HOT))[0]["sprites"]
+    assert changed is not first and changed[Glyphs.SLOT_BAR]["clip"] == ["left", 11 / 14.0], "0.75 * 14 = 10.5 -> 11"
 
 
 def flashRun(state, steps=70, dt=TICK):
@@ -197,12 +242,19 @@ def testGradingFlashesTheStarsOneAfterTheOtherAndSaysThePlusWhenTheLastIsLit():
     chimes = [e for _at, _m, events in sequence for e in events if e["type"] == "sound"]
     assert [e["pitch"] for e in chimes] == [1.0, 1.26] and all(e["name"] == "chime" and e["volume"] == 0.35 for e in chimes)
     byAt = dict((at, model) for at, model, _e in sequence)
-    assert [-7, 10, 14, 1] in colored(byAt[0.1], DIAL), "亮星期间条是满的"
-    assert not Glyphs.countCells(3) & cellsOf(colored(byAt[0.5], DIAL)), "还没亮完不显示 +N"
-    assert Glyphs.starCells(3, 5) <= cellsOf(colored(byAt[0.4], DIAL)), "0.4 秒第一颗全亮"
-    assert not Glyphs.starCells(3, 10) <= cellsOf(colored(byAt[0.4], DIAL)), "第二颗还没亮"
-    assert Glyphs.countCells(3) <= cellsOf(colored(byAt[1.0], DIAL)), "两颗都亮了又过了 0.3 + 2 * 0.18 = 0.66 秒：+3 出来"
-    assert not badge.flashing and not Glyphs.countCells(3) & cellsOf(colored(sequence[-1][1], DIAL)), "2.8 秒后回到平常的样子"
+    assert barCells(14) <= cellsOf(colored(byAt[0.1], DIAL)), "亮星期间条是满的"
+    assert not countCells(3) & cellsOf(colored(byAt[0.5], DIAL)), "还没亮完不显示 +N"
+    assert starCells(3, 5) <= cellsOf(colored(byAt[0.4], DIAL)), "0.4 秒第一颗全亮"
+    assert not starCells(3, 10) <= cellsOf(colored(byAt[0.4], DIAL)), "第二颗还没亮"
+    assert countCells(3) <= cellsOf(colored(byAt[1.0], DIAL)), "两颗都亮了又过了 0.3 + 2 * 0.18 = 0.66 秒：+3 出来"
+    assert not badge.flashing and not countCells(3) & cellsOf(colored(sequence[-1][1], DIAL)), "2.8 秒后回到平常的样子"
+    stars = Glyphs.SLOT_STARS
+    assert byAt[0.4]["sprites"][stars + 1]["pop"] == 1 and byAt[0.4]["sprites"][stars + 3] is None, "亮起的那颗弹一下（pop 加一）"
+    assert byAt[1.0]["sprites"][stars + 3]["pop"] == 1 and byAt[1.0]["sprites"][stars + 1]["pop"] == 1, "先亮的那颗不再弹"
+    assert all(part["pop"] == 1 for part in byAt[1.0]["sprites"][Glyphs.SLOT_COUNT:Glyphs.SLOT_COUNT + 2]), "+3 出来时弹一下"
+    badge.flash()
+    again = [badge.step(TICK, state)[0] for _ in range(30)][-1]
+    assert again["sprites"][stars + 1]["pop"] == 2 and again["sprites"][Glyphs.SLOT_COUNT]["pop"] == 2, "再出一锅再弹一回"
 
 
 def testTheFlashLastsTwoPointEightSeconds():
@@ -234,11 +286,13 @@ def testTheFlashDoesNotPlayForSomeoneWhoIsNotAtThePot():
 
 def testThePlusSignAndDigitsAreRightAlignedAtNine():
     for added in (5, 12, 99):
-        cells = Glyphs.countCells(added)
+        cells = cellsOf(Glyphs.sprites(1, False, 0, 0, added)[Glyphs.SLOT_COUNT:])
+        assert cells == countCells(added)
         assert max(x for x, _y in cells) == 8 and max(y for _x, y in cells) == 8 and min(y for _x, y in cells) == 4, added
-    five = Glyphs.countCells(5)
+    five = countCells(5)
     assert min(x for x, _y in five) == 2, "'+5'：右对齐 9 - 2 * 4 + 1 = 2，+ 号的横杠从 x = 2 起"
-    assert min(x for x, _y in Glyphs.countCells(12)) == -2, "'+12'：9 - 3 * 4 + 1 = -2"
+    assert min(x for x, _y in countCells(12)) == -2, "'+12'：9 - 3 * 4 + 1 = -2"
+    assert Glyphs.countChars(12) == [("plus", -2), ("digit_1", 2), ("digit_2", 6)]
     assert (3, 5) in five and (2, 6) in five and (3, 6) in five and (4, 6) in five and (3, 7) in five, "+ 号"
     assert (6, 4) in five and (7, 4) in five and (8, 4) in five and (6, 5) in five and (7, 5) not in five, "5 的第一行 ### 和第二行 #.."
     capped = Badge.PotBadge()
@@ -247,7 +301,7 @@ def testThePlusSignAndDigitsAreRightAlignedAtNine():
     for _ in range(30):
         last = capped.step(0.05, dict(HOT, grade=1, bonus=150))[0]
     drawn = cellsOf(colored(last, DIAL))
-    assert Glyphs.countCells(99) <= drawn and not Glyphs.countCells(150) <= drawn, "最多显示 +99"
+    assert countCells(99) <= drawn and not countCells(150) <= drawn, "最多显示 +99"
 
 
 def testTheTooltipChoice():

@@ -4,10 +4,13 @@
 对应 Hands-On Delight：client/PotBehavior.java 的 badge / drawDial / showGrade（873-950、1579-1660）、offerBowl / scoop（542-618）
 和 KitchenMotions.Dip；数都在 Shared/Rules/HandsOn 的 PotBadge / PotServe 里，这里把它们交给前置包的像素牌、提示框和道具。
 - 徽章：锅里有菜可做（或煮好了）就在锅右边把手上方立一块牌：开放的星、菜、进度条；没火时是一个空火苗；一批出锅后
-  星一颗颗亮起、多送了份数时叮几声并显示 +N。光标在菜上时提示"N × 菜 / 菜 / 菜，还要 S 秒"；
+  星一颗颗亮起（那颗星的图弹一下、冒几点闪光）、多送了份数时叮几声并显示 +N。光标在菜上时提示"N × 菜 / 菜 / 菜，还要 S 秒"。
+  牌是内核的 view.plate：每样东西一张贴图（rp/textures/ui/pot_badge/），没亮满的星和没走完的条靠图片裁切；
 - 悬着的容器：汤煮好了、手空着、背包里有盛它的容器，光标在锅心 5 像素内就悬出那只容器；点一下它浸进汤里、盛满、
   提起来滴着汤、朝屏幕下方端走（同时发 scoop，容器从背包里扣）。基岩版的掉落物不能半透明，悬着的容器是实的。
 """
+import math
+
 from . import PotFx
 from .PotSceneFx import play
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
@@ -15,6 +18,7 @@ from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotBadge, PotServe
 
 BADGE_AT = (-0.6, 14.5, 4.6)            # scenes/cooking_pot.json 的 badge 节点：锅右边把手上方（站点像素）
+BADGE_TILT = math.radians(50.0)         # badge 节点朝镜头仰 50 度（rotation [-50, 0, 0]）：牌面上的"下"在场景里是往下、往镜头这边
 APPEAR_FROM = 0.25                      # 镜头来了四分之一之后徽章才开始长出来
 AWAY_LIFT = 6.0                         # 端走时朝屏幕底边在汤面上方这么高的那一点去（PB 548）
 TIPS = {PotBadge.TIP_READY: "%d × %s", PotBadge.TIP_COOKING: "%s，还要 %d 秒", PotBadge.TIP_NAME: "%s"}
@@ -59,13 +63,21 @@ class PotHud(object):
             view.plate(None)
         else:
             grown = max(0.0, min(1.0, (view.arrival - APPEAR_FROM) / (1.0 - APPEAR_FROM)))
-            view.plate({"at": BADGE_AT, "unit": model["unit"], "scale": grown * grown * (3.0 - 2.0 * grown), "rects": model["rects"],
+            view.plate({"at": BADGE_AT, "unit": model["unit"], "scale": grown * grown * (3.0 - 2.0 * grown), "sprites": model["sprites"],
                         "item": data.get("meal") or data.get("dish"), "itemRect": model["itemRect"]})
         for event in events:
             if event["type"] == "sound":
                 play(event["name"], scene.world(8.0, 14.0, 8.0), event["volume"], event["pitch"])
+            elif event["type"] == "glint" and model is not None:
+                self._glint(event, model["unit"])
         view.tooltip(self._tip(state))
         self._offer(dt)
+
+    def _glint(self, event, unit):
+        """亮起的那颗星冒几点闪光：牌面上的 (x, y)（图标像素，+x 向右、+y 向下）换到场景里——镜头从 -z 看过来，右是 -x。"""
+        x, y = event["x"] * unit, event["y"] * unit
+        at = (BADGE_AT[0] - x, BADGE_AT[1] - y * math.sin(BADGE_TILT), BADGE_AT[2] - y * math.cos(BADGE_TILT))
+        PotFx.particle(PotFx.GLINT, self.owner.view.toWorld(*at), color=event["color"] & 0xFFFFFF, count=event["count"], velocity=event["rise"])
 
     def _state(self, data):
         dish, meal = data.get("dish") or None, data.get("meal") or None
