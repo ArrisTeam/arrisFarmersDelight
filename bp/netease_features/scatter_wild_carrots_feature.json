@@ -4,21 +4,20 @@
     "description": {
       "identifier": "arris:scatter_wild_carrots_feature"
     },
-    "iterations": 4,
+    "iterations": 64,
     "x": {
-      "distribution": "gaussian",
-      "extent": [ -8, 8 ]
-    },
-    "y": {
-      "distribution": "gaussian",
+      "distribution": "triangle",
       "extent": [ -4, 4 ]
     },
+    "y": {
+      "distribution": "triangle",
+      "extent": [ -3, 3 ]
+    },
     "z": {
-      "distribution": "gaussian",
-      "extent": [ -8, 8 ]
+      "distribution": "triangle",
+      "extent": [ -4, 4 ]
     },
     "coordinate_eval_order": "zyx",
-    "project_input_to_floor": false,
     "places_feature": "arris:wild_carrots_feature"
   }
 }
