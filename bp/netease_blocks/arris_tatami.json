@@ -20,6 +20,9 @@
             "netease:face_directional": {
                 "type": "direction"
             },
+            "netease:fuel": {
+                "duration": 20
+            },
             "netease:render_layer": {
                 "value": "opaque"
             },

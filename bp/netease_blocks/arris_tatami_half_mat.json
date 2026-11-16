@@ -46,6 +46,15 @@
             "netease:face_directional": {
                 "type": "direction"
             },
+            "netease:fuel": {
+                "duration": 5
+            },
+            "netease:neighborchanged_sendto_script": {
+                "value": true
+            },
+            "netease:redstone_property": {
+                "value": "break_on_push"
+            },
             "netease:render_layer": {
                 "value": "alpha"
             },

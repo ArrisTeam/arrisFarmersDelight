@@ -54,6 +54,17 @@ def testEitherHalfDropsTheFootItem():
     assert counts == [{"min": 1, "max": 1}]
 
 
+def testHalfMatAndTatamiFollowJavaSupportPushAndFuel():
+    half = blockkit.components(Mat.HALF)
+    # JE TatamiHalfMatBlock：canSurvive 要脚下有方块（updateShape 里没了就变空气）、pushReaction(DESTROY)、FuelBlockItem 100 刻
+    assert half["netease:neighborchanged_sendto_script"] == {"value": True}
+    assert half["netease:redstone_property"] == {"value": "break_on_push"}
+    assert half["netease:fuel"] == {"duration": 5}
+    assert half["netease:aabb"]["collision"] == {"min": [0.0, 0.0, 0.0], "max": [1.0, 0.125, 1.0]}
+    # JE TATAMI 的物品是 FuelBlockItem(…, 400)
+    assert blockkit.components("arris:tatami")["netease:fuel"] == {"duration": 20}
+
+
 def _faceTextures(identifier):
     geometry = blockkit.model(identifier)
     cubes = blockkit.modelFaces(geometry)
