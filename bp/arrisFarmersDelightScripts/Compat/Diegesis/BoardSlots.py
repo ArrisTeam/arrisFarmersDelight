@@ -4,6 +4,8 @@
 对应 Hands-On Delight：station/BoardLogic.java 构造里的 bindSlots（58-93）。站点只是交互层，存档不变：
     board   1 格 = 方块实体数据 cuttingDict（带数量的物品字典，经典玩法也读写它；做好的菜、插着的工具也躺在这里）
     layers  9 格 = dishLayers（物品字典的列表，底座在前；Server/Helpers/BoardDish.py 经典玩法读它）
+物品是整件存的：名字、aux、数量加上附魔 / 耐久 / 改名 / extraId / userData（Shared/Rules/HandsOn/ItemData.py：元组换列表、unicode 换 str 写进去，
+读出来再换回），取回原样还；存不进去的数据板根本不收（BoardPlace 的 canHold），所以这里写的都是存得住的。
 前置包的 StationState 经 get / set 读写这里，别处（经典玩法、漏斗）改了它们由 Manager 的 pollStorages 发现并同步。
 每次写完照最后的样子广播给各客户端画（Helpers/BlockItems）：有层时画层，否则画板上的东西。
 """
@@ -11,27 +13,18 @@ from ...Server.Helpers import BoardDish as Store
 from ...Server.Helpers.BlockItems import PublishBoard, PublishBoardDish
 from ...Server.Helpers.Engine import GetBlockEntityData
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
-
-
-_TEXT = type(u"")      # py2 的 unicode；py3 里就是 str
+from ...Shared.Rules.HandsOn import ItemData
 
 
 def stack(item):
-    """存档用的一叠：名字、aux、数量（带耐久的工具再加耐久）；空是 None。名字转成 str：py2 的 unicode 写进方块实体数据引擎只打日志、不存。"""
-    if keyOf(item) is None:
-        return None
-    out = Store.stack(item)
-    if _TEXT is not str and isinstance(out["newItemName"], _TEXT):
-        out["newItemName"] = out["newItemName"].encode("utf-8")
-    if item.get("durability"):
-        out["durability"] = item["durability"]
-    return out
+    """存档用的一叠：名字（转成 str：py2 的 unicode 写进方块实体数据引擎只打日志、不存）、aux、数量和全部数据；空是 None。"""
+    return ItemData.stored(item) if keyOf(item) is not None else None
 
 
 def boardOf(data):
-    """方块实体数据里板上的东西（只读用，空是 None）。"""
+    """方块实体数据里板上的东西（只读用，空是 None）：附魔换回元组，数据原样。"""
     item = data["cuttingDict"] if data else None
-    return stack(item) if item else None
+    return ItemData.restored(item) if item and keyOf(item) is not None else None
 
 
 def layersOf(data):

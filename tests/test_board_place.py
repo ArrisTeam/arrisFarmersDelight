@@ -228,11 +228,50 @@ def testAToolIsStuckIntoABareBoardOnlyAndTakenOutWithAClick():
     assert Place.carve(knife, None, [_item("minecraft:bowl")], ENV).moved == 0, "有层不能插"
     sword = _item("minecraft:iron_sword", 1)
     assert Place.carve(sword, None, [], ENV).moved == 0 or Place.carve(sword, None, [], ENV).moved == 1
-    enchanted = dict(knife, enchantData=[(9, 1)])
-    assert Place.carve(enchanted, None, [], ENV).moved == 0, "带附魔的不插：方块里只存名字 aux 数量，拔出来会丢附魔"
+    unkeepable = dict(knife, userData={"mixed": [1, "a"]})
+    assert Place.carve(unkeepable, None, [], ENV).moved == 0, "数据存不进方块实体数据的不插：拔出来会丢数据，所以板不收"
     out = Place.take(result.board, [], ENV)
     assert out.board is None and out.give == [result.board] and out.events == [("taken", {"stack": result.board, "at": -1, "carved": True})], \
         "拔出来：带 carved"
+
+
+def testAToolWithDataIsStuckInAndComesOutAsItWent():
+    knife = dict(_item("arris:iron_knife", 2), enchantData=[(9, 1)], extraId="x1", durability=77, customTips="tips", userData={"display": {"Name": "n"}})
+    result = Place.carve(knife, None, [], ENV)
+    assert result.moved == 1 and result.board["enchantData"] == [(9, 1)] and result.board["extraId"] == "x1", "extraId、附魔都跟着（审查 B7）"
+    assert result.board["durability"] == 77 and result.board["customTips"] == "tips" and result.board["userData"] == {"display": {"Name": "n"}}
+    out = Place.take(result.board, [], ENV)
+    assert out.give == [result.board] and out.give[0]["count"] == 1 and out.give[0]["enchantData"] == [(9, 1)], "取回原样还"
+    assert "enchantData" not in out.events[0][1]["stack"], "事件里的一份只给动画用"
+
+
+def testWhatCarriesDataLiesOnTheBoardWithItAndComesBackWithIt():
+    chestplate = dict(_item("minecraft:leather_chestplate", 1), enchantData=[(0, 3)], userData={"customColor": 123}, customTips="mine")
+    result = _place(chestplate)
+    assert _names(result.events) == ["placed"] and result.moved == 1
+    assert result.board["enchantData"] == [(0, 3)] and result.board["userData"] == {"customColor": 123} and result.board["customTips"] == "mine"
+    back = Place.take(result.board, [], ENV)
+    assert back.give[0]["enchantData"] == [(0, 3)] and back.give[0]["userData"] == {"customColor": 123}, "取回的还是那件"
+    layered = _place(dict(_item("arris:cabbage", 1), customTips="Prize"), layers=[_item("minecraft:bowl", 2)])
+    assert layered.layers[1]["customTips"] == "Prize", "摆盘的层也一样带着数据"
+
+
+def testFoodWithDifferentDataDoesNotPileUpWithOtherFood():
+    pile = _item("arris:cabbage", 2)
+    named = dict(_item("arris:cabbage", 1), customTips="Prize cabbage")
+    result = _place(named, pile)
+    assert result.moved == 0 and _names(result.events) == ["refused"], "同名同 aux 但数据不一样：不叠（JE 的 isSameItemSameTags），弹回"
+    assert _place(named, dict(named, count=2)).board["count"] == 3, "数据一样的才接着叠"
+    assert _place(_item("arris:cabbage", 1), pile).board["count"] == 3
+
+
+def testWhatTheBoardCannotKeepTheDataOfIsRefusedLoudlyOrQuietly():
+    odd = dict(_item("arris:cabbage", 2), userData={"mixed": [1, "a"]})
+    assert ENV.canHold(_item("arris:cabbage")) and not ENV.canHold(odd)
+    assert _names(_place(odd).events) == ["refused"] and _place(odd).moved == 0 and _place(odd).board is None, "弹回，手上的留着"
+    assert _place(odd, byUse=True).events == [] and _place(odd, byUse=True).moved == 0, "开站时手里的：一声不吭"
+    assert _place(odd, layers=[_item("minecraft:bowl")], one=True).moved == 0
+    assert not ENV.shiftPlaces(odd, None) and ENV.shiftPlaces(_item("arris:cabbage", 2), None), "Shift 点托盘也不发板不收的"
 
 
 def testFoodLaidNextToACarvedKnifeSendsTheKnifeToTheCook():

@@ -3,7 +3,8 @@
 
 照 JE：手里那一叠整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
 工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），带 chance 的产物按概率给。
-板上的东西只存在方块实体数据 cuttingDict（带数量）；画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
+板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
+画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
 from .EventRegistry import registerHandler
 from .Helpers import BoardDish
@@ -14,6 +15,7 @@ from .Helpers.Items import GetItemType, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data.Cutting import CuttingBoardDict
 from ..Shared.Rules import CuttingStation
+from ..Shared.Rules.HandsOn import ItemData
 
 CUTTING_BOARD = "arris:cutting_board"
 # 这些类型的物品可以单纯摆在砧板上（不切）
@@ -55,7 +57,7 @@ def OnServerCuttingBoardBlockUse(args):
     # 空手：取回砧板上的物品
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
-        SetCarriedItem(playerId, cuttingDict)
+        SetCarriedItem(playerId, ItemData.restored(cuttingDict))
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cuttingDict"] = None
         PublishBoard(dimensionId, blockPos, None)
@@ -89,14 +91,18 @@ def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
 
 
 def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
-    """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。"""
+    """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。数据（附魔、改名……）存不进方块实体数据的、
+    和板上的数据不一样的不放（JE 的 isSameItemSameTags），不然取回时会丢数据。"""
     board = blockEntityData["cuttingDict"]
+    if not ItemData.storable(carriedDict) or (board and not ItemData.same(board, carriedDict)):
+        ShowTip(playerId, "这东西放不上砧板……")
+        return
     info = compFactory.CreateItem(levelId).GetItemBasicInfo(carriedDict["newItemName"], _kind(carriedDict)[1]) or {}
     room = max(1, info.get("maxStackSize") or 64) - (board["count"] if board else 0)
     moved = min(carriedDict["count"], room)
     if moved <= 0:
         return
-    stack = dict(board) if board else {"newItemName": carriedDict["newItemName"], "newAuxValue": _kind(carriedDict)[1]}
+    stack = dict(board) if board else ItemData.stored(carriedDict)
     stack["count"] = (board["count"] if board else 0) + moved
     blockEntityData["cuttingDict"] = stack
     if not IsCreative(playerId):
@@ -137,6 +143,6 @@ def OnCuttingBoardRemove(args):
     DropLegacyDisplays(blockEntityData)
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
-        System.CreateEngineItemEntity(cuttingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+        System.CreateEngineItemEntity(ItemData.restored(cuttingDict), dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
     BoardDish.spill(dimensionId, blockPos, blockEntityData)
     PublishBoard(dimensionId, blockPos, None)

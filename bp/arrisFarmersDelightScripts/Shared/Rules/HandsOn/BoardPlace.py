@@ -13,7 +13,10 @@ take（525-541）、refuse（613-630）。只算"板和层变成什么样、手�
      以后的层最多和第 0 层一样多（最薄的一层定份数），右键只放一个；
   4. 别的：板空着时能切的整叠放上去，板上是同种的接着叠（都不超过物品的最大堆叠和 BOARD_MAX），否则弹回。
 手上这一叠是光标栈或背包里的一格（Shift 点托盘），差别只在服务端从哪里扣。byUse（右键开站那一下手里拿着的）板不收就一声不吭。
+板上、层里的东西是整件的（附魔、染色、改名、耐久这些数据一起，取回原样还，ItemData.py）；数据存不进方块实体数据的（storable 说否）板不收，
+同名同 aux 但数据不一样的不叠在一起（JE 的 isSameItemSameTags）。
 """
+from . import ItemData
 from .Assembly import BATCH, MOST_LAYERS
 from .Items import keyOf
 
@@ -26,11 +29,13 @@ CARVED = "carved"
 
 
 def stackOf(item, count):
-    """拷一份、改个数（只留名字、aux、数量，不会损坏的工具才没有耐久）。"""
-    out = {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": int(count)}
-    if item.get("durability"):
-        out["durability"] = item["durability"]
-    return out
+    """拷一份、改个数：名字、aux、数量和全部数据（附魔、耐久、改名……）。"""
+    return ItemData.copyOf(item, count)
+
+
+def eventStack(item, count):
+    """事件里给客户端看的一份（弹回 / 拿走的动画）：只有名字、aux、数量（和工具的耐久）。"""
+    return ItemData.light(item, count)
 
 
 class Placed(object):
@@ -52,12 +57,12 @@ class Placed(object):
     def refuse(self, carried, quiet):
         """板不收：手上这叠弹回去（带一个当样子）；quiet（开站时手里的）一声不吭。"""
         if not quiet:
-            self.events.append((REFUSED, {"stack": stackOf(carried, 1)} if keyOf(carried) is not None else {}))
+            self.events.append((REFUSED, {"stack": eventStack(carried, 1)} if keyOf(carried) is not None else {}))
         return self
 
     def clear(self, env):
         """板上的整个还给厨师（clear，251-258）：事件 taken（-1 = 板上的，插着的工具带 carved）。"""
-        self.events.append((TAKEN, {"stack": stackOf(self.board, self.board["count"]), "at": -1, "carved": env.isCarving(self.board)}))
+        self.events.append((TAKEN, {"stack": eventStack(self.board, self.board["count"]), "at": -1, "carved": env.isCarving(self.board)}))
         self.give.append(self.board)
         self.board = None
         self.restart = True
@@ -72,8 +77,10 @@ def place(carried, board, layers, one, byUse, env):
     if env.isTool(carried, board):
         result.ignored = True
         return result
+    if not env.canHold(carried):
+        return result.refuse(carried, byUse)             # 数据存不进方块实体数据的东西：板不收，绝不悄悄丢数据
     cuttable = env.cuttable(carried)
-    same = keyOf(board) == keyOf(carried)
+    same = keyOf(board) == keyOf(carried) and ItemData.same(board, carried)
     if not result.layers and keyOf(board) is not None and not same and env.fits([board], carried):
         # 等着切的东西成为第 0 层：先躺下等切，下一层放上来时才开始做菜（startDish，286-297）
         base = stackOf(board, min(board["count"], BATCH))
@@ -92,7 +99,7 @@ def place(carried, board, layers, one, byUse, env):
         result.moved, result.finish = count, True
         return result
     onBoard = result.board
-    fits = cuttable if keyOf(onBoard) is None else (keyOf(onBoard) == keyOf(carried) and not env.isCarving(onBoard))
+    fits = cuttable if keyOf(onBoard) is None else (same and not env.isCarving(onBoard))
     room = min(env.maxStack(carried), BOARD_MAX) - (onBoard["count"] if keyOf(onBoard) is not None else 0)
     moved = min(1 if one else carried["count"], room)
     if not fits or moved <= 0:
@@ -109,7 +116,7 @@ def take(board, layers, env):
     result = Placed(board, layers)
     if result.layers:
         top = result.layers.pop()
-        result.events.append((TAKEN, {"stack": stackOf(top, top["count"]), "at": len(result.layers), "carved": False}))
+        result.events.append((TAKEN, {"stack": eventStack(top, top["count"]), "at": len(result.layers), "carved": False}))
         result.give.append(top)
     elif keyOf(board) is not None:
         result.clear(env)

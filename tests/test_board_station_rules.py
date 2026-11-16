@@ -72,16 +72,20 @@ def testShiftClickInTheTrayPlacesFoodButNeverATool():
     assert not ENV.shiftPlaces(None, None)
 
 
-def testOnlyPlainToolsAreStuckInAndEnchantedOnesAreNot():
+def testToolsAreStuckInWithTheirDataUnlessTheDataCannotBeKept():
     assert ENV.canStick(_item("arris:iron_knife")) and ENV.canStick(_item("minecraft:iron_sword")) and ENV.canStick(_item("minecraft:iron_axe"))
     assert ENV.canStick(_item("minecraft:shears")) and ENV.canStick(_item("othermod:jade_knife"))
     assert not ENV.canStick(_item("arris:cabbage")) and not ENV.canStick(_item("minecraft:bowl")) and not ENV.canStick(None)
     enchanted = _item("arris:iron_knife")
     enchanted["enchantData"] = [(9, 1)]
-    assert not ENV.canStick(enchanted)
+    assert ENV.canStick(enchanted), "附魔的刀照样插：数据整件存着，取回原样还（JE 的 carve 不挑）"
     named = _item("arris:iron_knife")
     named["userData"] = {"x": 1}
-    assert not ENV.canStick(named)
+    named["extraId"] = "id"
+    assert ENV.canStick(named) and ENV.canHold(named)
+    unkeepable = _item("arris:iron_knife")
+    unkeepable["userData"] = {"mixed": [1, "a"]}
+    assert not ENV.canStick(unkeepable) and not ENV.canHold(unkeepable), "存不进方块实体数据的不插、不放"
 
 
 def testWhatIsNoWorkInHandGivesWayToFood():

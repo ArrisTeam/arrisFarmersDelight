@@ -482,6 +482,83 @@ def testAFinishedDishFromBeforeGivesWayToFood():
     assert K.board(data) == ("minecraft:beef", 3) and K.count("arris:hamburger") == 2, "做好的菜挪给厨师，牛肉躺下等切"
 
 
+def _give(slot, name, count=1, **data):
+    """背包第 slot 格放一件带数据（附魔、改名……）的东西，不点它。"""
+    fake.give("a", slot, name, count)
+    _inv(slot).update(data)
+
+
+def _stacks(name):
+    """玩家背包里所有 name 的格子（物品字典）。"""
+    return [item for item in fake.world.players["a"]["inv"] if item and item["newItemName"] == name]
+
+
+def testAnEnchantedAndDyedItemLiesOnTheBoardWholeAndComesBackWhole():
+    manager, data = K.setup()
+    K.opened(manager)
+    _give(5, "minecraft:leather_chestplate", enchantData=[(0, 3)], userData={"customColor": 123}, customTips="mine", extraId="id7")
+    assert K.do(manager, "a", K.click(K.inv(5)))
+    assert K.do(manager, "a", K.custom("place")) and K.board(data) == ("minecraft:leather_chestplate", 1)
+    saved = data["cuttingDict"]
+    assert saved["enchantData"] == [[0, 3]] and saved["userData"] == {"customColor": 123} and saved["extraId"] == "id7", "方块实体数据里是列表、字典，不是元组"
+    assert saved["customTips"] == "mine"
+    assert _state(manager).getItem(("board", 0))["enchantData"] in ([[0, 3]], [(0, 3)]), "站点的槽也带着"
+    assert K.do(manager, "a", K.custom("take")) and K.board(data) is None
+    back = _stacks("minecraft:leather_chestplate")
+    assert len(back) == 1 and back[0]["enchantData"] == [(0, 3)] and back[0]["userData"] == {"customColor": 123} and back[0]["extraId"] == "id7",         "取回的还是那件：附魔换回元组交给引擎"
+    assert back[0]["customTips"] == "mine"
+
+
+def testAnEnchantedKnifeIsStuckIntoTheBoardAndPulledOutAgainWithItsEnchantsAndExtraId():
+    manager, data = K.setup()
+    K.opened(manager)
+    _knife(3, 77)
+    _inv(3).update(enchantData=[(9, 2), (17, 1)], extraId="knife-1")
+    K.do(manager, "a", K.click(K.inv(3)))
+    assert K.do(manager, "a", K.custom("carve")) and K.board(data) == (KNIFE, 1), "附魔的刀也插得进"
+    assert data["cuttingDict"]["extraId"] == "knife-1" and data["cuttingDict"]["durability"] == 77
+    K.do(manager, "a", K.custom("take"))
+    knife = _stacks(KNIFE)[0]
+    assert knife["durability"] == 77 and knife["enchantData"] == [(9, 2), (17, 1)] and knife["extraId"] == "knife-1", "拔出来：耐久、附魔、extraId 都在（审查 B7）"
+
+
+def testWhatCannotBeKeptStaysInTheHandAndTheBoardTakesNoLeftovers():
+    manager, data = K.setup()
+    K.opened(manager)
+    _give(5, CABBAGE, 3, userData={"weird": [1, "a"]})
+    assert K.do(manager, "a", K.custom("place", **{"from": 5, "by_use": True}))
+    assert K.board(data) is None and _inv(5)["count"] == 3 and K.effects() == [], "开站时手里的：存不住就一声不吭留在手里"
+    assert K.do(manager, "a", K.click(K.inv(5)))
+    assert K.do(manager, "a", K.custom("place")) and K.board(data) is None and K.hand(manager)["count"] == 3
+    assert _names(K.effects()) == ["refused"], "拿在光标栈上点板：弹回"
+
+
+def testTheBreadNotUsedGoesBackWithItsOwnData():
+    manager, data = K.setup()
+    K.opened(manager)
+    _give(10, "minecraft:bread", 3, customTips="fresh")
+    assert K.do(manager, "a", K.click(K.inv(10))) and K.do(manager, "a", K.custom("place"))
+    assert data["dishLayers"][0]["customTips"] == "fresh" and K.layers(data) == [("minecraft:bread", 3)]
+    for slot, (name, count) in enumerate((("arris:beef_patty", 1), ("arris:cabbage_leaf", 1), ("arris:tomato", 1), ("arris:onion", 1))):
+        assert _place(manager, name, count, slot=11 + slot)
+    assert K.board(data) == ("arris:hamburger", 1)
+    bread = _stacks("minecraft:bread")
+    assert len(bread) == 1 and bread[0]["count"] == 2 and bread[0]["customTips"] == "fresh", "没用上的面包带着自己的数据还回来"
+
+
+def testTheBookDoesNotUseTheItemsThatCarryDataItWouldLose():
+    manager, data = K.setup()
+    K.opened(manager)
+    for slot, name in enumerate(("minecraft:bowl", "minecraft:crimson_fungus", "minecraft:warped_fungus")):
+        fake.give("a", 5 + slot, name, 4)
+    _inv(6)["customTips"] = "special"
+    assert not K.do(manager, "a", K.custom("bookFill", key="d:arris:nether_salad", sets=1)), "料不够（带数据的那格不算）：什么也没放"
+    assert K.board(data) is None and _inv(6)["count"] == 4 and _inv(6)["customTips"] == "special"
+    fake.give("a", 9, "minecraft:crimson_fungus", 4)
+    assert K.do(manager, "a", K.custom("bookFill", key="d:arris:nether_salad", sets=1)) and K.board(data) == ("arris:nether_salad", 1)
+    assert _inv(6)["count"] == 4 and _inv(9)["count"] == 3, "用的是不带数据的那格"
+
+
 def testAKnifeIsNoLayerAndKnocksWithoutAnythingHappening():
     manager, data = K.setup()
     K.opened(manager)

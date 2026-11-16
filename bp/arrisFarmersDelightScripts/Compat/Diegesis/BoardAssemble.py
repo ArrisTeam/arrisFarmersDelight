@@ -15,7 +15,7 @@ from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Shared.Rules import DishStation as Dishes
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.BoardStation import BATCH, BOARD_MAX, keyOf
-from ...Shared.Rules.HandsOn import Assembly
+from ...Shared.Rules.HandsOn import Assembly, ItemData
 
 
 def _wire(item):
@@ -44,8 +44,8 @@ def assemble(logic, playerId):
         return False
     plan = Dishes.makeOf(dish, stacks)
     logic.setLayers([])
-    for kind, left in plan["left"]:
-        BoardGive.give(logic, _one(kind, left))
+    for layer, (_kind, left) in zip(layers, plan["left"]):
+        BoardGive.give(logic, ItemData.copyOf(layer, left))       # 没用上的原样还（带着自己的附魔、改名……）
     for name, aux, count in plan["extras"]:
         BoardGive.give(logic, {"newItemName": name, "newAuxValue": aux, "count": count})
     name, aux, count = plan["result"]
@@ -68,12 +68,12 @@ def assemble(logic, playerId):
 # ---------------------------------------------------------------- 书里点一道菜
 
 def _removeFrom(window, kind, amount):
-    """从背包窗口按格号扣 amount 件 kind。"""
+    """从背包窗口按格号扣 amount 件 kind（只扣不带数据的：带附魔 / 改名的那件做成一层再还回来会丢数据，书里放料不动它）。"""
     for index in range(len(window)):
         item = window[index]
         if amount <= 0:
             return
-        if item is None or keyOf(item) != kind:
+        if item is None or keyOf(item) != kind or ItemData.dataOf(item):
             continue
         used = min(item["count"], amount)
         window[index] = dict(item, count=item["count"] - used) if item["count"] > used else None
@@ -83,7 +83,7 @@ def _removeFrom(window, kind, amount):
 def _pool(window):
     pool = {}
     for item in window:
-        if item is not None and item.get("count", 0) > 0:
+        if item is not None and item.get("count", 0) > 0 and not ItemData.dataOf(item):
             pool[keyOf(item)] = pool.get(keyOf(item), 0) + item["count"]
     return pool
 

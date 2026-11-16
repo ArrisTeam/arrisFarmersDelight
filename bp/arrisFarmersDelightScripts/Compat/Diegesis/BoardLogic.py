@@ -157,7 +157,7 @@ class BoardLogicMixin(object):
             self.setBoard(dish)
             return True
         if self.actor is not None:
-            GiveOrDropItem(self.actor, Store.stack(dish), self.station.dimensionId)
+            GiveOrDropItem(self.actor, dish, self.station.dimensionId)
         return False
 
     # ---------------------------------------------------------------- 刀口与同步

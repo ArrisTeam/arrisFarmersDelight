@@ -12,6 +12,7 @@ from ..Data.Cutting import CuttingBoardDict
 from . import DishStation
 from .CuttingStation import BOARD_BLOCKS, STATION_ID, fitsTool  # noqa: F401 - 站点和测试从这里取
 from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最多 9 层
+from .HandsOn import ItemData
 from .HandsOn.BoardPlace import BOARD_MAX  # noqa: F401 - 板上一种东西放多少
 from .HandsOn.Items import keyOf  # noqa: F401 - 站点和测试从这里取
 
@@ -19,7 +20,6 @@ MIN_API_VERSION = 3          # 前置包 API：砧板站点用到光标栈 / 托
 GROUP_BOARD = "board"
 GROUP_LAYERS = "layers"
 STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))   # FD 潜行使用会把这些插进空板
-TAG_KEYS = ("enchantData", "modEnchantData", "userData", "customTips")      # 带这些的工具不插（方块实体里只存名字 aux 数量）
 
 _cache = {"size": -1, "tools": frozenset(), "types": frozenset()}
 
@@ -111,10 +111,14 @@ class Env(object):
 
     # ---------------------------------------------------------------- 插着的工具
 
+    def canHold(self, item):
+        """这件东西的数据（附魔、染色、改名、耐久、extraId、userData……）存得进方块实体数据吗：存不进的板不收，不悄悄丢（ItemData.storable）。"""
+        return ItemData.storable(item)
+
     def canStick(self, item):
-        """FD 的潜行使用能把它插进空板（Cutting.canStick：有材质等级的工具、三叉戟、剪刀），而且身上没有方块实体存不下的数据。"""
+        """FD 的潜行使用能把它插进空板（Cutting.canStick：有材质等级的工具、三叉戟、剪刀），而且身上的数据存得住（附魔的刀照样插，取回原样还）。"""
         key = keyOf(item)
-        if key is None or any(item.get(tag) for tag in TAG_KEYS):
+        if key is None or not self.canHold(item):
             return False
         return self.typeOf(item) in STICKABLE_TYPES or key[0] == "minecraft:shears" or bool(self.isKnife(key[0]))
 
@@ -134,4 +138,4 @@ class Env(object):
 
     def shiftPlaces(self, item, onBoard=None):
         """Shift 点托盘里这一格是不是直接整叠放上板（onInventoryShiftClick，1337-1348）：不是板上的工具，而且能切或进摆盘菜。"""
-        return keyOf(item) is not None and not self.isTool(item, onBoard) and (self.cuttable(item) or self.goesIntoADish(item))
+        return keyOf(item) is not None and self.canHold(item) and not self.isTool(item, onBoard) and (self.cuttable(item) or self.goesIntoADish(item))
