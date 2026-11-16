@@ -63,9 +63,10 @@ def buildSchema(kit):
 
 def opens(held, itemType, covered):
     """这一下右键开不开炉灶的站点（StoveStation.opens）。held 是主手的物品名（空手 None），itemType 是引擎给的物品类型
-    （"food" / "block" / "shovel" / "bucket" ...），covered 是炉灶上面盖着东西。
+    （"food" / "block" / "shovel" / "bucket" ...），covered 是炉灶上面盖着东西（StoveCover.covers：锅、煎锅、任何方块；FD 对盖住的炉灶
+    还会把烤架上的东西全丢出来，Server/Stove.py）。
 
-    上面摆着锅或煎锅：烤架是它们的，不开。空手、有营火配方的（蛋也算，开了站点再把它弹回）、食物、刀和砧板上用的工具、碗、玻璃瓶：开。
+    上面盖着东西：烤架是它们的（锅、煎锅有自己的站点），不开。空手、有营火配方的（蛋也算，开了站点再把它弹回）、食物、刀和砧板上用的工具、碗、玻璃瓶：开。
     炉灶自己用得上的（打火石、火焰弹点火，铲子、桶灭火，不是食物的方块——往上摆锅）和别的东西：不开，照原来的用法。
     """
     if covered:

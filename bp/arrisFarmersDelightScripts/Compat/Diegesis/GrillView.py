@@ -17,7 +17,7 @@ from .GrillPieces import Pieces
 from .GrillSpace import Space
 from ...Client import BlockItems
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
-from ...Shared.Rules import GrillStation as Rules
+from ...Shared.Rules import GrillStation as Rules, StoveCover
 from ...Shared.Rules.HandsOn import StoveLayout
 
 CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target"], "fov": StoveLayout.CAMERA["fov"],
@@ -169,7 +169,7 @@ def opensStation(pos, dimensionId):
     held = compFactory.CreateItem(playerId).GetCarriedItem() or {}
     name = held.get("newItemName")
     info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, held.get("newAuxValue") or 0) if name else None
-    return Rules.opens(name, (info or {}).get("itemType") or "", bool(above and above[0] != "minecraft:air"))
+    return Rules.opens(name, (info or {}).get("itemType") or "", StoveCover.covers(above[0] if above else None))
 
 
 def register(api):

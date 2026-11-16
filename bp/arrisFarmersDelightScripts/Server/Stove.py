@@ -6,6 +6,7 @@
 炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
 右键放上去的照这里每件 30 秒烤好弹出。
 站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
+上面盖了东西（锅、煎锅、任何方块，Shared/Rules/StoveCover）：烤架上的东西全丢出来，生的熟的、手放的 FD 的都一样（FD 的 shouldDropItems）。
 """
 import time
 
@@ -16,7 +17,7 @@ from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, Ge
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
-from ..Shared.Rules import StoveBurn
+from ..Shared.Rules import StoveBurn, StoveCover
 from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
@@ -77,7 +78,7 @@ def OnServerStoveItemUse(args):
         return
     EnsureStoveData(blockEntityData)
     DropLegacyDisplays(blockEntityData)
-    if GetBlockName((x, y + 1, z), dimensionId) != "minecraft:air":
+    if StoveCover.covers(GetBlockName((x, y + 1, z), dimensionId)):
         ShowTip(playerId, "炉灶上方被挡住了……")
         return
     # 旧实现只看 cookingIndex 那一格，那格占着就放不进去
@@ -100,6 +101,26 @@ def OnServerStoveItemUse(args):
         ShowTip(playerId, "这东西可不能被烹饪……")
 
 
+def _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
+    """上面盖了东西：烤架上的东西全丢出来（FD 的 AbstractStoveBlockEntity.serverTick：空炉灶不查，有东西才查）。丢了返回 True。"""
+    if not any(HandGrill.slotItem(blockEntityData, index) for index in range(STOVE_SLOTS)):
+        return False
+    x, y, z = blockPos
+    if not StoveCover.covers(GetBlockName((x, y + 1, z), dimensionId)):
+        return False
+    for index in range(STOVE_SLOTS):
+        item = HandGrill.slotItem(blockEntityData, index)
+        if item:
+            System.CreateEngineItemEntity(item, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
+            blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
+        if hand is not None:
+            hand.grill.farmersDelightsWay(index)
+    if hand is not None:
+        HandGrill.save(hand, blockEntityData)
+    PublishStove(dimensionId, blockPos, blockEntityData)
+    return True
+
+
 @registerHandler("ServerBlockEntityTickEvent", match=StoveList)
 def OnStoveTick(args):
     dimensionId = args["dimension"]
@@ -111,6 +132,8 @@ def OnStoveTick(args):
         return
     EnsureStoveData(blockEntityData)
     hand = HandGrill.peek(dimensionId, blockPos) or HandGrill.restore(dimensionId, blockPos, blockEntityData)
+    if _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
+        return
     handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP) if hand is not None else (set(), False)
     if hand is not None:
         HandGrill.save(hand, blockEntityData)

@@ -9,13 +9,12 @@ JE 的 StationManager 在服务端又测一遍站点的 openCondition（HoD 的 
 from ...Server.Helpers.Engine import GetBlockName, GetCarriedItem
 from ...Server.Helpers.Items import GetItemType
 from ...Shared.Rules import GrillStation as Rules
-
-AIR = "minecraft:air"
+from ...Shared.Rules import StoveCover
 
 
 def isCovered(dimensionId, pos):
-    """炉灶上面盖着东西（锅、煎锅、别的方块）：烤架是它们的，什么也不收、也不开站点。"""
-    return GetBlockName((pos[0], pos[1] + 1, pos[2]), dimensionId) != AIR
+    """炉灶上面盖着东西（锅、煎锅、别的方块；空气和液体不算，Shared/Rules/StoveCover）：烤架是它们的，什么也不收、也不开站点。"""
+    return StoveCover.covers(GetBlockName((pos[0], pos[1] + 1, pos[2]), dimensionId))
 
 
 def opensStation(playerId, dimensionId, pos):

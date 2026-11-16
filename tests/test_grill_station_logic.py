@@ -111,6 +111,40 @@ def testNothingGoesOntoAStoveWithAPotOnTop():
     assert manager.sessions["a"].hand["count"] == 3
 
 
+def testAPotSetOnTheStoveThrowsEverythingOffTheGrillAsFarmersDelightDoes():
+    """FD 的 serverTick：上面盖了东西，烤架上的东西全丢出来（生的、熟的、手放的、FD 原样的都一样）；站点和世界里的展示跟着空了。"""
+    manager, data = K.setup()
+    data["4"] = {"itemDict": beef(), "cookTimer": 30}
+    fake.give("a", 3, BEEF, 2)
+    K.opened(manager)
+    K.do(manager, "a", K.click(K.inv(3)))
+    K.do(manager, "a", K.custom("place"))
+    K.step(11.0)
+    K.do(manager, "a", K.custom("turn", place=0))
+    assert [name for name in K.names(data) if name] == [BEEF, BEEF, BEEF] and K.hand_of().grill.byHand(0)
+    K.BlockItems.startRecording()
+    K.step(0.5)
+    assert not fake.spawned, "上面是空气：什么也不丢"
+    fake.world.blocks[(0, (K.STOVE[0], K.STOVE[1] + 1, K.STOVE[2]))] = "arris:cooking_pot"
+    K.step(0.25)
+    sent = K.BlockItems.stopRecording()
+    assert K.names(data) == [None] * 6, "全丢出来了"
+    assert sorted(item["newItemName"] for item, _, _ in fake.spawned) == [BEEF] * 3, "一件一个掉落物，不分手放的还是 FD 原样的"
+    assert all(pos == (K.STOVE[0] + 0.5, K.STOVE[1] + 0.5, K.STOVE[2] + 0.5) for _, _, pos in fake.spawned)
+    assert not any(K.hand_of().grill.byHand(place) for place in range(6)) and K.hand_of().grill.up(0) == 0.0, "手放的进度作废"
+    assert sent and sent[-1]["kind"] == "stove" and all(not entry for entry in sent[-1]["items"].values()), "世界里的展示清空"
+    K.step(5.0)
+    assert len(fake.spawned) == 3, "只丢一回"
+
+
+def testNoThingIsThrownOffWhileWaterOrAirIsOnTop():
+    manager, data = K.setup()
+    data["0"] = {"itemDict": beef(), "cookTimer": 30}
+    fake.world.blocks[(0, (K.STOVE[0], K.STOVE[1] + 1, K.STOVE[2]))] = "minecraft:water"
+    K.step(1.0)
+    assert K.names(data)[0] == BEEF and not fake.spawned, "水不算盖住（FD 里液体没有方块形状）"
+
+
 def testShiftClickOnTheTrayLaysTheStackOnAndTheWorldIsToldOnce():
     manager, data = K.setup()
     fake.give("a", 3, BEEF, 10)

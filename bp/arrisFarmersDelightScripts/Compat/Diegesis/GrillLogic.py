@@ -23,7 +23,7 @@ from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarr
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.StoveSlots import StoveSlots
 from ...Server.Stove import EnsureStoveData
-from ...Shared.Rules import GrillStation as Rules
+from ...Shared.Rules import GrillStation as Rules, StoveCover
 from ...Shared.Rules.HandsOn import Frying, Grill
 
 REACH = 6.0
@@ -213,7 +213,8 @@ class GrillLogicMixin(object):
         return GetBlockEntityData(self.station.dimensionId, self.station.pos)
 
     def _covered(self):
-        """炉灶上面盖着东西（锅、煎锅、别的方块）：烤架是它们的，什么也不收（开站前服务端复查用同一个答案，GrillOpen）。"""
+        """炉灶上面盖着东西（锅、煎锅、别的方块，Shared/Rules/StoveCover）：烤架是它们的，什么也不收
+        （开站前服务端复查用同一个答案，GrillOpen）。"""
         return GrillOpen.isCovered(self.station.dimensionId, self.station.pos)
 
     def _flush(self):
