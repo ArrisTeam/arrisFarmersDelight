@@ -74,6 +74,10 @@
                     }
                 ]
             },
+            "netease:block_animate_random_tick": {
+                "send_event": true,
+                "trigger_rate": 0.2
+            },
             "netease:face_directional": {
                 "type": "direction"
             },

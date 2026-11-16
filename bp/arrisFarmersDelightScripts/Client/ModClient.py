@@ -12,6 +12,7 @@ from ..Shared.Data.GuideBook import uiGuideBookPath, uiGuideBookScreen
 from . import Endpoints  # noqa: F401
 from . import BlockEntityRestore  # noqa: F401
 from . import BlockItems  # noqa: F401
+from . import BlockSparkle  # noqa: F401
 from . import Input  # noqa: F401
 from . import CookingPotUi  # noqa: F401
 from .Ui import CookingPotScreen  # noqa: F401
