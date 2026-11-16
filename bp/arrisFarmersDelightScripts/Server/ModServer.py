@@ -95,6 +95,11 @@ def _onDestroyBlock(args):
     dispatch("DestroyBlockEvent", args, args.get("fullName"))
 
 
+@Listen("ServerEntityTryPlaceBlockEvent")
+def _onServerEntityTryPlaceBlock(args):
+    dispatch("ServerEntityTryPlaceBlockEvent", args, args.get("fullName"))
+
+
 @Listen("ServerPlayerTryDestroyBlockEvent")
 def _onServerPlayerTryDestroyBlock(args):
     dispatch("ServerPlayerTryDestroyBlockEvent", args, args.get("fullName"))

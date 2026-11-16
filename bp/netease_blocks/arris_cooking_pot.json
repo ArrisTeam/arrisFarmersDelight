@@ -14,10 +14,16 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 4.0
+                "value": 0.5
             },
             "minecraft:explosion_resistance": {
-                "value": 5.0
+                "value": 6.0
+            },
+            "minecraft:loot": {
+                "table": "loot_tables/air_loot.json"
+            },
+            "minecraft:max_stack_size": {
+                "value": 1
             },
             "minecraft:map_color": {
                 "color": "#5d5d5d"

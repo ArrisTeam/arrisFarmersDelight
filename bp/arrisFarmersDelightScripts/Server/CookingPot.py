@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、破坏时掉落成品（服务端）
+"""CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅（服务端）
 
 容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py。
 """
@@ -7,10 +7,10 @@ import copy
 import time
 
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
-from . import HandCooking
+from . import CookingPotItem, HandCooking
 from .EventRegistry import registerHandler
 from .Helpers import PotContainer
-from .Helpers.Engine import compFactory, levelId, System, ItemPosType, GetBlockEntityData, GetBlockName
+from .Helpers.Engine import compFactory, levelId, ItemPosType, GetBlockEntityData, GetBlockName
 from .Helpers.Heat import RefreshHeat
 from ..Shared.Rules.Ticks import Pacer
 
@@ -33,6 +33,7 @@ def OnServerCookingPotCreate(args):
         return
     blockEntityData["previewItemSlot"] = [{}]
     blockEntityData["timer"] = COOK_SECONDS
+    CookingPotItem.attachPending(blockEntityData, dimensionId, blockPos)      # 放下的这口锅带着菜（JE 的 BlockEntityTag）
     belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
     RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, GetBlockName(belowPos, dimensionId), delay=0.1)
 
@@ -133,17 +134,9 @@ def _addFood(playerId, blockPos, dimensionId, indexList):
 
 @registerHandler("BlockRemoveServerEvent", match=COOKING_POT)
 def OnCookingPotRemove(args):
-    # 厨锅被破坏：预览槽里煮好还没装碗的成品存在方块实体数据里，不掉出来就会凭空消失
+    # 厨锅没了：掉一口厨锅物品，预览槽里煮好还没装碗的那叠菜跟着它走（JE 的 copy_meal）；别的格子里的东西引擎照常掉
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
     HandCooking.forget(dimensionId, blockPos)
-    blockEntityData = GetBlockEntityData(dimensionId, blockPos)
-    if not blockEntityData:
-        return
-    previewItemSlot = PotContainer.preview(blockEntityData)
-    if previewItemSlot:
-        dropDict = {"newItemName": previewItemSlot["newItemName"], "newAuxValue": previewItemSlot.get("newAuxValue", 0),
-                    "count": previewItemSlot["count"]}
-        System.CreateEngineItemEntity(dropDict, dimensionId, (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5))
-        PotContainer.setPreview(blockEntityData, None)
+    CookingPotItem.dropPot(GetBlockEntityData(dimensionId, blockPos), dimensionId, blockPos)
