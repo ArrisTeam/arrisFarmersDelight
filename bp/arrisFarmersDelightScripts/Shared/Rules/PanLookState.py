@@ -73,6 +73,13 @@ def decode(payload, now, previous=None):
     return look
 
 
+def eventData(payload):
+    """一次性事件的负载 -> 干净的 {"stack", "strength", "in_pan", "to_cook"}：栈按物品字典查、力度夹进 0..1，别的键不要。"""
+    payload = payload if isinstance(payload, dict) else {}
+    return {"stack": _item(payload.get("stack")), "strength": _number(payload.get("strength"), 0.5),
+            "in_pan": payload.get("in_pan") is True, "to_cook": payload.get("to_cook") is True}
+
+
 def progressAt(look, now):
     """按上次收到的熟度和速度外推到此刻，取成 1/32 一档：(贴锅面, 朝上面)。"""
     gone = look.rate * max(0.0, now - look.stamp)

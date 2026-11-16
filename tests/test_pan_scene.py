@@ -215,6 +215,16 @@ def testABroadcastForAnotherDimensionOrAnotherBlockIsDropped():
     assert Scenes._scenes[(0, POS)].look is None, "只有那一口煎锅的广播才算"
 
 
+def testAnEventFromTheServerReachesTheSceneCleaned():
+    scene = setup()
+    Scenes.OnPanLook(payload(count=2))
+    run(scene, 0.1)
+    Scenes.OnPanLook({"dimensionId": 0, "pos": list(POS), "event": "taken", "stack": {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 2}})
+    assert not scene.show.nodes["piece_0"].visible and scene.show.nodes["lift_0"].visible and scene.show.nodes["lift_1"].visible
+    Scenes.OnPanLook({"dimensionId": 0, "pos": list(POS), "event": "tossed", "strength": 5})
+    assert scene.show.tossing(), "力度夹进 0..1 后照演"
+
+
 def testALateLoadingChunkBuildsTheLookFromTheBlockEntityData():
     setup()
     Scenes._scenes.clear()

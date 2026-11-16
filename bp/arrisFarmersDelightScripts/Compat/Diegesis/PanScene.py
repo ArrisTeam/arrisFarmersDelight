@@ -9,7 +9,7 @@
 - 粒子、声音：PanFx.py。
 全部用"场景坐标"（HoD 的 skillet.json：锅心 (8, 0, 8)，锅柄朝 +z），出手时经 PanModelMath 换到世界（锅柄永远朝方块的朝向）。
 本人开着这口锅的站点时，PanView 把手交进来：focused、startsOf（一次放进好几件时从玩家屏幕底边飞来）、cursorAt（光标在某个高度的平面上的点）、
-hovered（光标在锅柄上）。
+strokeAt（抓着锅柄时光标的高度，每帧读）、hovered（光标在锅柄上）。
 """
 import random
 
@@ -41,6 +41,7 @@ class PanScene(object):
         self.hovered = False                  # 光标在锅柄上（本人）
         self.startsOf = None                  # startsOf(高度, 第几个, 共几个) -> (dx, dz)：从玩家屏幕底边飞来的起点相对中心的偏移
         self.cursorAt = None                  # cursorAt(高度) -> 场景坐标的点或 None
+        self.strokeAt = None                  # strokeAt() -> 抓着锅柄时光标此刻在竖直平面上的高度，没抓着 None（每帧读，帧间隔和场景的钟同源）
 
     # ---------------------------------------------------------------- 回调
 
@@ -105,6 +106,9 @@ class PanScene(object):
         self.clock += dt
         self.show.progress(*PanLookState.progressAt(look, self.clock))
         self.show.frame(dt)
+        y = self.strokeAt() if self.strokeAt is not None else None
+        if y is not None:
+            self.show.strokeMove(y)
         self._pose()
         self.fx.play(self.show.drain(), near)
         return True

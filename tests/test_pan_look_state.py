@@ -83,5 +83,14 @@ def testALateLoadingClientBuildsTheLookFromTheBlockEntityData():
     assert Look.fromBlockData(None).item is None and Look.fromBlockData({"cookingDict": 7}).item is None
 
 
+def testAnEventPayloadIsCleanedBeforeTheSceneSeesIt():
+    clean = Look.eventData({"event": "taken", "stack": {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 3, "evil": 1}, "strength": 7.0,
+                            "in_pan": True, "pos": [1, 2, 3]})
+    assert clean == {"stack": {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 3}, "strength": 1.0, "in_pan": True, "to_cook": False}
+    junk = Look.eventData({"stack": "beef", "strength": "hard", "in_pan": "yes"})
+    assert junk == {"stack": None, "strength": 0.5, "in_pan": False, "to_cook": False}
+    assert Look.eventData(None)["stack"] is None
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

@@ -86,6 +86,10 @@ class PanViewMixin(object):
         point = self.api.Geometry.planeAtHeight(self.ray, height) if self.ray is not None else None
         return self._toScene(point) if point is not None else None
 
+    def _strokeNow(self):
+        """抓着锅柄时光标此刻在竖直平面上的高度（场景每帧读它，和场景的钟同一个帧间隔）；没抓着 None。"""
+        return self._strokeY(self.ray) if self.stroking and self.ray is not None else None
+
     def _strokeY(self, ray):
         """光标射线和"过锅柄原点、正对镜头的竖直平面"的交点的高度（Diegesis 的 strokePoint）；平行时 None。"""
         cam = self.camera
@@ -116,7 +120,7 @@ class PanViewMixin(object):
         self.scene = PanScenes.ensure(self.view.dimensionId, self.view.pos)
         if self.scene is not None:
             self.scene.show.focused = True
-            self.scene.startsOf, self.scene.cursorAt = self._startsOf, self._cursorAt
+            self.scene.startsOf, self.scene.cursorAt, self.scene.strokeAt = self._startsOf, self._cursorAt, self._strokeNow
         BookSources.attach(self.view, "pan")
 
     def onClose(self):
@@ -124,7 +128,7 @@ class PanViewMixin(object):
         if scene is not None:
             scene.show.close()
             scene.show.focused, scene.hovered = False, False
-            scene.startsOf = scene.cursorAt = None
+            scene.startsOf = scene.cursorAt = scene.strokeAt = None
         self.stroking = False
 
     def onState(self, changes):
@@ -135,10 +139,6 @@ class PanViewMixin(object):
         if scene is None:
             return
         scene.hovered = self.stroking or (self.hover == "handle" and self.view.hand is None)
-        if self.stroking and self.ray is not None:
-            y = self._strokeY(self.ray)
-            if y is not None:
-                scene.show.strokeMove(y)
         self._flush()
 
     def _flush(self):

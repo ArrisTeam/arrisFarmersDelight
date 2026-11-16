@@ -100,7 +100,7 @@ def OnPanLook(payload):
     if scene is None:
         return
     if payload.get("event"):
-        scene.event(str(payload["event"]), payload)
+        scene.event(str(payload["event"]), PanLookState.eventData(payload))
     else:
         scene.apply(payload)
 
