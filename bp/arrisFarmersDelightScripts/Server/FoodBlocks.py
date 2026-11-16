@@ -35,7 +35,8 @@ def OnEatPie(args):
 
 @registerHandler("ServerBlockUseEvent", match=platePackagedFoodDict)
 def OnServePlatedFood(args):
-    # 盘装食物：拿碗右键盛一份（饭卷拼盘不用碗），盛完最后一份留下空盘，再点一下收走
+    # 盘装食物：拿碗右键盛一份（饭卷拼盘不用碗）。盛完最后一份：有空盘的菜留下空盘、再点一下收走，
+    # 没有空盘的菜（南瓜盅）整道消失，最后一份也盛给玩家（JE 的 FeastBlock：hasLeftovers 为假时拿走最后一份就拆掉）
     blockName = args["blockName"]
     x, y, z = args["x"], args["y"], args["z"]
     blockPos = (x, y, z)
@@ -46,7 +47,8 @@ def OnServePlatedFood(args):
     handItemDict = GetCarriedItem(playerId) or {}
     packagedFoodDict = platePackagedFoodDict[blockName]
     name = packagedFoodDict.get("target")
-    if name is None:
+    if packagedFoodDict.get("item") is None:
+        # 吃剩的空盘：收走（掉落物按方块的战利品表）
         compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)
         return
     itemDict = {"itemName": packagedFoodDict.get("item"), "count": 1}
@@ -54,11 +56,15 @@ def OnServePlatedFood(args):
     if needsBowl and handItemDict.get("newItemName") != "minecraft:bowl":
         ShowTip(playerId, "你需要一个碗以食用它。")
         return
-    compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
-    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
-    if blockStates:
-        blockStates["direction"] = FacingOfAux(args["aux"])
-        compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
+    if name is None:
+        # 没有空盘可留的菜：最后一份盛出，整道菜消失
+        compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 1, dimensionId)
+    else:
+        compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
+        blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
+        if blockStates:
+            blockStates["direction"] = FacingOfAux(args["aux"])
+            compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
     ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
     if needsBowl:
         SetNotCreateItem(playerId, handItemDict)
