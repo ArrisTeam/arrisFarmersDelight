@@ -1,16 +1,22 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""作物催熟阶段表与旧 if/elif 链（farmCrop.CropAccelerateTheRipening，1862a1f 及以前）逐项等价。
+"""作物阶段表（Shared/Rules/CropGrowth.py）：每一级方块覆盖 JE 的哪几个年龄，与方块定义、cropsDict 对得上。
 
-旧实现的 11 段分支只差"前缀"和"最大阶段"两个数，下面的 _legacyGrow 原样保留它的判断顺序，
-对每种作物、每个阶段、每种步数（骨粉 2/3 级，湿润沃土耕地 1 级）对拍。
+阶段表原来只有"最大阶段"一列（旧催熟表），现在每族还带 JE 年龄的分段、各次转变的概率和骨粉算法；
+旧的 11 族与最大阶段仍然一一对应。
 """
 from __future__ import print_function
+
+import io
+import json
+import os
 
 import fdtest
 
 CropGrowth = fdtest.load("Shared.Rules.CropGrowth")
+Farming = fdtest.load("Shared.Data.Farming")
 
+# 旧催熟表（farmCrop.CropAccelerateTheRipening）里的 11 族与最大阶段
 _LEGACY_CHAIN = [
     ("arris:cabbages_stage", 7), ("arris:budding_tomatoes_stage", 6), ("arris:tomatoes_vine_stage", 3),
     ("arris:onions_stage", 3), ("arris:rich_soil_wheat", 7), ("arris:rich_soil_beetroot", 3),
@@ -19,46 +25,80 @@ _LEGACY_CHAIN = [
 ]
 
 
-def _legacyGrow(blockName, num):
-    """旧实现：stage = int(blockName[-1])；命中前缀且 stage < 上限才长，最多到上限；否则不变（None）。"""
-    stage = int(blockName[-1])
-    for prefix, top in _LEGACY_CHAIN:
-        if blockName[:-1] == prefix:
-            if stage < top:
-                stage = min(stage + num, top)
-                return prefix + str(stage)
-            return None
-    return None
-
-
-def testMatchesLegacyChainForEveryStage():
-    checked = 0
-    for prefix, top in _LEGACY_CHAIN:
-        for stage in range(0, top + 1):
-            name = prefix + str(stage)
-            for steps in (1, 2, 3):
-                assert CropGrowth.grownName(name, steps) == _legacyGrow(name, steps), (name, steps)
-                checked += 1
-    assert checked == sum((top + 1) * 3 for _, top in _LEGACY_CHAIN)
+def _blockIdentifiers():
+    found = set()
+    blocks = os.path.join(fdtest.BP, "netease_blocks")
+    for folder, _, files in os.walk(blocks):
+        for name in files:
+            if name.endswith(".json"):
+                with io.open(os.path.join(folder, name), encoding="utf-8") as handle:
+                    data = json.load(handle)
+                found.add(data["minecraft:block"]["description"]["identifier"])
+    return found
 
 
 def testTableCoversExactlyTheLegacyCrops():
     assert sorted(CropGrowth.CROP_MAX_STAGE.items()) == sorted(_LEGACY_CHAIN)
+    assert sorted(CropGrowth.FAMILIES) == sorted(prefix for prefix, _ in _LEGACY_CHAIN)
 
 
-def testUnknownOrNonNumericNamesDoNotGrow():
-    for name in ("arris:rich_soil", "arris:organic_compost_stage2", "minecraft:wheat", "arris:cabbages_stagex", ""):
-        assert CropGrowth.grownName(name, 3) is None, name
+def testSplitStage():
     assert CropGrowth.splitStage("arris:onions_stage2") == ("arris:onions_stage", 2)
+    assert CropGrowth.splitStage("arris:budding_tomatoes_stage6") == ("arris:budding_tomatoes_stage", 6)
     assert CropGrowth.splitStage("arris:rich_soil") == (None, None)
+    for name in ("arris:organic_compost_stage2", "minecraft:wheat", "arris:cabbages_stagex", "arris:onions_stage4",
+                 "arris:cabbages_stage8", "arris:rich_soil_torchflower3", ""):
+        assert CropGrowth.splitStage(name) == (None, None), name
 
 
-def testEveryGrowableCropIsInCropsDict():
-    # 能被催熟的每个阶段都应该也在 cropsDict 里（随机刻生长走的是那张表）
-    cropsDict = fdtest.load("Shared.Data.Farming").cropsDict
-    for prefix, top in _LEGACY_CHAIN:
-        for stage in range(0, top + 1):
-            assert prefix + str(stage) in cropsDict, prefix + str(stage)
+def testAgeRangesTileTheJeAgeAxis():
+    # 每一级覆盖一段连续的 JE 年龄，所有级拼起来正好是 0..maxAge，没有空洞也不重叠
+    for prefix in CropGrowth.FAMILIES:
+        covered = []
+        for stage in range(CropGrowth.lastStage(prefix) + 1):
+            low, high = CropGrowth.ageRange(prefix, stage)
+            assert low <= high
+            covered.extend(range(low, high + 1))
+            for age in range(low, high + 1):
+                assert CropGrowth.stageOfAge(prefix, age) == stage, (prefix, stage, age)
+        assert covered == list(range(CropGrowth.maxAge(prefix) + 1)), prefix
+        assert CropGrowth.stageOfAge(prefix, 99) == CropGrowth.lastStage(prefix)
+
+
+def testRatesCoverEveryJeTransition():
+    for prefix, spec in CropGrowth.FAMILIES.items():
+        assert len(spec["rates"]) == CropGrowth.maxAge(prefix), prefix
+
+
+def testOnionCarrotPotatoAgesFollowJeBlockstate():
+    # farmersdelight blockstates/onions.json：age 0,1 → stage0；2,3 → stage1；4,5,6 → stage2；7 → stage3
+    for prefix in ("arris:onions_stage", "arris:rich_soil_carrots", "arris:rich_soil_potatoes"):
+        assert [CropGrowth.stageOfAge(prefix, age) for age in range(8)] == [0, 0, 1, 1, 2, 2, 2, 3], prefix
+
+
+def testTomatoAgeAxisJoinsBuddingAndTomatoCrop():
+    prefix = "arris:budding_tomatoes_stage"
+    # JE 年龄轴：budding 0-3、番茄 0-3 共 8 个；budding 的最大年龄（3）并进第 2 级，所以 Bedrock 只有 7 级
+    assert [CropGrowth.stageOfAge(prefix, age) for age in range(8)] == [0, 1, 2, 2, 3, 4, 5, 6]
+    assert CropGrowth.ageRange(prefix, 2) == (2, 3)
+
+
+def testEveryStageHasABlockAndIsInCropsDict():
+    identifiers = _blockIdentifiers()
+    for prefix in CropGrowth.FAMILIES:
+        for stage in range(CropGrowth.lastStage(prefix) + 1):
+            name = CropGrowth.stageName(prefix, stage)
+            assert name in identifiers, name
+            assert name in Farming.cropsDict, name       # 随机刻生长走的是 cropsDict 登记的方块
+        assert CropGrowth.stageName(prefix, CropGrowth.lastStage(prefix) + 1) not in identifiers, prefix
+
+
+def testIsFamilyBlock():
+    assert CropGrowth.isFamilyBlock("arris:cabbages_stage3", "arris:cabbages_stage")
+    assert not CropGrowth.isFamilyBlock("arris:onions_stage3", "arris:cabbages_stage")
+    assert CropGrowth.isFamilyBlock("arris:budding_tomatoes_stage1", "arris:budding_tomatoes_stage", (0, 1, 2))
+    assert not CropGrowth.isFamilyBlock("arris:budding_tomatoes_stage4", "arris:budding_tomatoes_stage", (0, 1, 2))
+    assert not CropGrowth.isFamilyBlock("minecraft:air", "arris:cabbages_stage")
 
 
 if __name__ == "__main__":
