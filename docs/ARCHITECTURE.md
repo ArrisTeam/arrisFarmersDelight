@@ -34,6 +34,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         SkilletHandRules（手持煎锅烹饪：右键按住的上报与记录、一次烹饪的计时、滋滋声概率）
                         Basket（篮子吸掉落物：收集区、往 27 格里塞的次序、冷却） RopeReel（卷绳子：整根绳子最下面一节）
                         NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
+                        TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
@@ -58,6 +59,7 @@ Server/                 服务端
   ChestLoot             战利品箱第一次打开时追加 FD 的物品（JE 的 add_loot_table），原版战利品表一个字不动
   CraftReturns          工作台合成后补还无序配方的剩余物（读合成格，照 JE 放回原格 / 进背包）
   Backstabbing          背刺魔咒：玩家从背后打中目标时在 DamageEvent 里加伤害
+  TatamiMats            长榻榻米垫两格一起放、一起拆（只掉一个）、长短垫脚下没了方块就碎；RopeFences  绳栅栏门右键开关
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
@@ -349,6 +351,46 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
    `SetPlayerMotion` 的单位按"格/刻"用，弹得过高或过低就要重标定 `NetBounce`。
 4. 炉灶：`netease:on_stand_on` 让 `OnStandOnBlockServerEvent` 每刻来一次（对玩家和怪都来）；站在点燃的炉灶中央每 0.5 秒掉半颗心，潜行不掉，穿冰霜行者不掉，站在熄灭的炉灶上不掉，
    烈焰人 / 岩浆怪不掉；死亡信息是引擎的"死了"；点燃后亮度 13。
+
+## 榻榻米垫与绳栅栏（对照 JE）
+
+- 长榻榻米垫（JE `TatamiMatBlock`，像床的两格方块）是两个方块：`arris:tatami_full_mat`（脚，物品就是它）和 `arris:tatami_full_mat_head`
+  （头，技术方块，不进创造栏），模型和 JE 的 `tatami_mat_foot` / `tatami_mat_head` 一一对应（odd / even 顶面、inner 接头面）。
+  放置在 `Server/TatamiMats.py`：`ServerItemUseOnEvent` 里自己放两格并取消引擎的放置（`ret`，同 `WildCrops` 的做法），朝向用玩家的 yaw
+  （`Placement.facingOfYaw` -> `directionOfFacing`，direction 的编号见官方文档：south 0、west 1、north 2、east 3，方块前面朝向玩家），
+  头在放置者面朝的方向；头那格要能被顶替（空气、草、水……）、两格下面都不是空气，放不下什么都不做。
+  拆：不挂拆除事件，两个方块都开 `netease:neighborchanged_sendto_script`，一半变成别的方块，另一半在邻居变化里静默清掉（不掉落、不通知邻居）；
+  掉落全交给被拆那一半的战利品表（头的表指向长垫子，脚掉自己），所以整张只掉一个、创造模式一个不掉。脚下变空气时先静默清掉另一半，
+  再把这一半以"销毁"（`SetBlockNew` 第三个参数 1）清掉，同样只掉一个；短垫子也走这一条（JE 的 `canSurvive`），放置时下面是空气会被取消。
+  与 JE 的差别：两半都 `break_on_push`（被活塞推会碎成一个掉落物；JE 里长垫子能被推，推一半会留下一个孤零零的头）。
+- 榻榻米合成照 JE 四条无序配方（方块 -> 2 长垫、2 短垫 -> 1 长垫、1 长垫 -> 2 短垫、2 长垫 -> 1 方块），原来基岩版自加的"方块 -> 4 短垫"去掉了。
+- 绳栅栏（JE `RopeFenceBlock`）没有脚本：连不连邻居靠方块 JSON 的 `netease:connection`（按标识符列名单）和模型 / 碰撞盒里的
+  `query.is_connect(面)`（2 北 3 南 4 西 5 东）。名单 = 实心整格的原版方块（引擎方块表里形状是整格的，去掉树叶、屏障、南瓜、西瓜、潜影盒这些
+  JE `isExceptionForConnection` 的例外，约 490 个）+ 本模组的整格方块（箱子、橱柜、草垛、榻榻米、沃土、炉灶……）+ 绳栅栏自己和它的门。
+  所以不连原版栅栏 / 墙 / 玻璃板（JE 里它们的面不是实心的，原版栅栏还被 mixin 明着拒绝），别的模组的实心方块也不连（名单是静态的）。
+  碰撞盒是 JE `CrossCollisionBlock(1, 1, 16, 16, 24)`：中间柱 + 四条臂，选取框高 1、碰撞高 1.5（`netease:aabb` 的 `max` 能写到 2）。
+- 绳栅栏门（JE `RopeFenceGateBlock`）是两个方块：`arris:rope_fence_gate`（关着）和 `arris:rope_fence_gate_open`（开着，不进创造栏，
+  没有碰撞、`netease:pathable`），右键由 `Server/RopeFences.py` 换成另一个并写回朝向（`Shared/Rules/RopeFence.toggleGate`：从门背面开会先转向，
+  和 JE `FenceGateBlock.use` 一致），声音是 `leashknot.break`（打开）/ `leashknot.place`（关上），即 JE 的 `entity.leash_knot.*`。
+  两侧都是墙时模型换成"在墙里"的样子（JE `in_wall`，这里按"两侧都是墙"，名单是原版的 26 种墙）。门的碰撞 / 选取框写在 `direction`
+  未旋转的坐标里，靠引擎随朝向转（同 `tikstudio` 的竖半砖 JSON 的写法）。
+- 模型里的零厚度片（栅栏的臂、门的布）用一个面双面渲染：栅栏臂贴图左右镜像对称，所以背面和 JE 的另一个面完全一样；门的布两面颜色略有差别，
+  所以北、南各出一片并错开 1/16 像素（网易模型坐标的最小刻度）。
+- 没做的：拴绳（JE 的 `use` 里 `LeadItem.bindPlayerMobs`）、红石开关门、`waterlogged`、栅栏只连"门轴向对得上"的门（现在连所有朝向）、
+  JE 放置门时"任一侧是墙就画墙里的样子"（现在只认两侧都是墙）、`fences` / `fence_gates` 标签、`combination_step_sound_blocks` 标签。
+
+待实机验证（写完这一版时没进过游戏；Strata 沙箱已把放置、邻居变化、开关门的脚本跑过一遍，模型也出过图）：
+
+1. 长垫子：右键地面两格一起出现，头在面朝方向；四个朝向下头的位置对、两个接头面贴在一起、顶面 odd / even 接得上（若头出现在反方向，改
+   `Placement.directionOfFacing`）；引擎自己没有多放一个脚（`ret` 取消了方块物品的放置）。
+2. 头那格被占 / 下面是空气 / 点的是草 / 冒险模式 / 按住右键：分别什么都不放 / 放进草那格 / 不能放 / 不连放。
+3. 拆脚、拆头（生存、创造）、活塞推、爆炸、`/setblock air`：另一半跟着没，生存只掉一个；脚下方块被拆整张碎、掉一个；短垫子同理，
+   也不能放在悬空的格子。创造模式中键点头方块拿到的物品能当长垫子放。
+4. 栅栏：`netease:connection` 里写 `minecraft:` 开头的名字能连上（碰撞盒的 `enable` 也能）；碰撞高 1.5 挡得住跳；相邻原版栅栏 / 墙 / 玻璃板
+   不连；两个栅栏、栅栏和门相连；栅栏物品图标。
+5. 门：东西向的门碰撞盒 / 选取框跟着转（若不转，门要拆成东西两个方块）；两侧是墙时的样子；开关的模型、朝向、声音；开着的门能走过去、能点中关上；
+   关着的门 1.5 高挡得住；门布的两片没有闪烁。
+6. `netease:fuel`（长垫子 / 栅栏 / 门 10 秒，榻榻米 20 秒，短垫 5 秒，绳子 10 秒）在熔炉里的时长（200 刻 = 10 秒，榻榻米 400 刻）。
 
 ## 引擎坑（踩过的）
 
