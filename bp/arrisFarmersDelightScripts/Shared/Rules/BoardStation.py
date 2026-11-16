@@ -15,6 +15,7 @@ from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最
 from .HandsOn.BoardPlace import BOARD_MAX  # noqa: F401 - 板上一种东西放多少
 from .HandsOn.Items import keyOf  # noqa: F401 - 站点和测试从这里取
 
+MIN_API_VERSION = 3          # 前置包 API：砧板站点用到光标栈 / 托盘 / 站点逻辑的 ctx（2）和输入方式、半透明悬着的东西（3）；更老的前置包上砧板走经典玩法
 GROUP_BOARD = "board"
 GROUP_LAYERS = "layers"
 STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))   # FD 潜行使用会把这些插进空板

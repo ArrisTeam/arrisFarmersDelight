@@ -239,7 +239,10 @@ class BoardViewMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
+    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None。"""
+    if getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
+        return None
     behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.BOARD_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))

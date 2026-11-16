@@ -207,6 +207,7 @@ class FakeApi(object):
     ITEM_SPAN = 8.0
     Schema = KernelSchema
     TOUCH = "touch"
+    API_VERSION = 3
 
     def __init__(self):
         self.registered = None

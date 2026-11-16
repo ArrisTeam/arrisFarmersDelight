@@ -5,8 +5,8 @@
 砧板、厨锅、煎锅、炉灶照常走经典玩法（Server/CuttingBoard.py、CookingPot.py、Skillet.py、Stove.py）。只靠 API_VERSION 判断能力，不写清单依赖。
 两次机会、只登记一次：导入时（前置包的服务端 Api 是纯 Python，早于它的服务端系统导入也安全），
 以及 LoadServerAddonScriptsAfter（前置包比本包后加载时）。
-厨锅、煎锅站点要前置包 API 3（2：光标栈随状态同步、站点逻辑的 ctx / dropped / userData、托盘；3：客户端悬着的半透明容器和输入方式）：
-更老的前置包上它们照旧走经典玩法，其余两个站点照常登记。装了新前置包时顺手打开厨锅、煎锅的世界外观广播（Server/PotLook.py、Server/PanLook.py）。
+砧板、厨锅、煎锅站点要前置包 API 3（2：光标栈随状态同步、站点逻辑的 ctx / dropped / userData、托盘；3：客户端悬着的半透明容器和输入方式），
+炉灶要 2：更老的前置包上它们照旧走经典玩法（砧板没登记，工作台也就照旧出那些菜）。装了新前置包时顺手打开厨锅、煎锅的世界外观广播（Server/PotLook.py、Server/PanLook.py）。
 """
 from ...QuModLibs.Server import Listen, serverApi
 from ...Server import PanLook, PotLook
@@ -30,14 +30,15 @@ def tryRegister():
     api = getApi()
     if api is None:
         return False
-    BoardLogic.register(api)
+    board = BoardLogic.register(api)       # API 不够新返回 None：砧板和它的工作台拦截一起没有
     if getattr(api, "API_VERSION", 0) >= POT_API_VERSION:
         PotLogic.register(api)
         PotLook.enable()
         PanLogic.register(api)
         PanLook.enable()
     GrillLogic.register(api)
-    DishCrafts.register()            # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）
+    if board is not None:
+        DishCrafts.register()        # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）；砧板站点不在就一切照旧
     _state["registered"] = True
     return True
 

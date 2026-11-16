@@ -67,6 +67,14 @@ def testRegistrationGivesTheSchemaTheJavaChromeAndTheJavaCamera():
     assert behavior.carrySize == 3.2 and behavior.carryLift == 2.5, "光标栈上的东西：内核的缺省大小"
 
 
+def testAnOldPrerequisiteGetsNoBoardStation():
+    api = C.FakeApi()
+    api.API_VERSION = 2                         # 没有输入方式（api.TOUCH）和半透明悬着的东西：砧板要 API 3
+    assert C.BoardView.register(api) is None and api.registered is None
+    api.API_VERSION = 3
+    assert C.BoardView.register(api) is not None and api.registered[0] == "arris:cutting_board"
+
+
 def testOpeningHidesTheBlockItemsAndClosingShowsThemAgain():
     board, data = _across()
     behavior, view = _open(board, data=data)

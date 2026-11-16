@@ -187,7 +187,10 @@ class BoardLogicMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 BoardStation.buildSchema）。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 BoardStation.buildSchema）。
+    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None。"""
+    if getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
+        return None
     logicClass = type("CuttingBoardLogic", (BoardLogicMixin, api.StationLogic), {"kit": api})
     api.registerStation(api.StationType(Rules.STATION_ID, Rules.BOARD_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
     return logicClass

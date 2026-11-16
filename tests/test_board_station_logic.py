@@ -48,6 +48,11 @@ def _place(manager, name, count, slot=3, **data):
     return K.do(manager, "a", K.custom("place", **data))
 
 
+def testAnOldPrerequisiteGetsNoBoardStation():
+    assert K.BoardLogic.register(type("OldApi", (), {"API_VERSION": 2})) is None, "太旧的前置包：不登记，砧板走经典玩法"
+    assert K.BoardLogic.register(type("NoVersion", (), {})) is None
+
+
 def testOpeningBindsTheBoardAndLayerSlotsAndSendsTheMarks():
     manager, data = K.setup()
     data["cuttingDict"] = {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 3}
