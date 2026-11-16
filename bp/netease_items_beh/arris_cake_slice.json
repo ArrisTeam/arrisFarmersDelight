@@ -5,7 +5,7 @@
             "minecraft:food": {
                 "effects": [
                     {
-                        "amplifier": 1,
+                        "amplifier": 0,
                         "chance": 1.0,
                         "duration": 20,
                         "name": "speed"

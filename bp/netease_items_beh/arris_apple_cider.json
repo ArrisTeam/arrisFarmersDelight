@@ -6,7 +6,7 @@
                 "can_always_eat": true,
                 "effects": [
                     {
-                        "amplifier": 1,
+                        "amplifier": 0,
                         "chance": 1.0,
                         "duration": 60,
                         "name": "absorption"

@@ -5,15 +5,9 @@
             "minecraft:food": {
                 "effects": [
                     {
-                        "amplifier": 1,
-                        "chance": 0.2,
-                        "duration": 10,
-                        "name": "hunger"
-                    },
-                    {
-                        "amplifier": 1,
-                        "chance": 0.2,
-                        "duration": 10,
+                        "amplifier": 0,
+                        "chance": 0.3,
+                        "duration": 12,
                         "name": "nausea"
                     }
                 ],

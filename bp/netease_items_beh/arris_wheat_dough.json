@@ -6,7 +6,7 @@
                 "effects": [
                     {
                         "amplifier": 0,
-                        "chance": 0.2,
+                        "chance": 0.3,
                         "duration": 30,
                         "name": "hunger"
                     }

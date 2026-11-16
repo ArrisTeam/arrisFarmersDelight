@@ -7,8 +7,8 @@
                     {
                         "amplifier": 0,
                         "chance": 1.0,
-                        "duration": 300,
-                        "name": "arris:comfort"
+                        "duration": 180,
+                        "name": "arris:nourishment"
                     }
                 ],
                 "nutrition": 12,
