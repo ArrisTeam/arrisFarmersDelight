@@ -1,0 +1,43 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:grilled_salmon4"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:bowl"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:onion"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:sweet_berries"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:cabbage"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:cooked_salmon"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:grilled_salmon"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}
