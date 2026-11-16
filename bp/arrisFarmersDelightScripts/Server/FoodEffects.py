@@ -4,21 +4,20 @@ import random
 
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory
-from ..Shared.Data.Effects import negativeEffect
+from ..Shared.Data.Effects import negativeEffect, COMFORT, NOURISHMENT
 from ..Shared.Rules import FoodEffects as Rules
-
-COMFORT = "arris:comfort"
-NOURISHMENT = "arris:nourishment"
 
 
 @registerHandler("PlayerEatFoodServerEvent", match=Rules.HANDLED)
 def OnPlayerEatFood(args):
-    # 牛奶瓶、热可可的追加结算：做什么由 Shared/Rules/FoodEffects.py 决定，这里只执行
+    # 牛奶瓶、热可可、原版汤的追加结算：做什么由 Shared/Rules/FoodEffects.py 决定，这里只执行
     effectComp = compFactory.CreateEffect(args["playerId"])
     active = [effectDict["effectName"] for effectDict in effectComp.GetAllEffects() or []]
     for action in Rules.eatActions(args["itemDict"]["newItemName"], active, random):
         if action[0] == Rules.REMOVE:
             effectComp.RemoveEffectFromEntity(action[1])
+        elif action[0] == Rules.ADD:
+            effectComp.AddEffectToEntity(action[1], action[2], action[3], action[4])
 
 
 @registerHandler("PlayerHungerChangeServerEvent")

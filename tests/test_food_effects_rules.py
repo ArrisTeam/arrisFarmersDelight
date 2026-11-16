@@ -49,6 +49,26 @@ def testMilkBottleRemovesOneRandomEffectOfAnyKind():
     assert Rules.eatActions("arris:milk_bottle", [], random) == []
 
 
+def testNourishmentTiersMatchJeFoodValues():
+    # FoodValues.java：BRIEF 600 刻 / SHORT 1200 / MEDIUM 3600 / LONG 6000
+    assert (Effects.BRIEF_DURATION, Effects.SHORT_DURATION, Effects.MEDIUM_DURATION, Effects.LONG_DURATION) == (30, 60, 180, 300)
+    assert Effects.NOURISHMENT == "arris:nourishment" and Effects.COMFORT == "arris:comfort"
+
+
+def testVanillaSoupsGiveNourishmentLikeJe():
+    # 默认配置：蘑菇煲、甜菜汤滋养 3 分钟；兔肉煲滋养 5 分钟，另加跳跃提升 II 10 秒（CommonEvents.handleVanillaSoupEffects）
+    nourishment = lambda seconds: (Rules.ADD, "arris:nourishment", seconds, 0, False)
+    assert Rules.eatActions("minecraft:mushroom_stew", [], random) == [nourishment(180)]
+    assert Rules.eatActions("minecraft:beetroot_soup", ["speed", "poison"], random) == [nourishment(180)]
+    rabbit = Rules.eatActions("minecraft:rabbit_stew", [], random)
+    assert sorted(rabbit) == sorted([nourishment(300), (Rules.ADD, "jump_boost", 10, 1, True)]), rabbit
+
+
+def testSoupBuffsDoNotDependOnWhatThePlayerAlreadyHas():
+    for state in ([], ["arris:nourishment"], ["poison", "speed"]):
+        assert len(Rules.eatActions("minecraft:rabbit_stew", state, random)) == 2
+
+
 def testOtherFoodsHaveNoExtraActions():
     for itemName in ("minecraft:apple", "arris:cooked_rice", "arris:cake_slice"):
         assert Rules.eatActions(itemName, ["poison"], random) == [], itemName
@@ -56,6 +76,7 @@ def testOtherFoodsHaveNoExtraActions():
 
 def testHandledListsTheItemsWithRules():
     assert "arris:milk_bottle" in Rules.HANDLED and "arris:hot_cocoa" in Rules.HANDLED
+    assert set(["minecraft:mushroom_stew", "minecraft:beetroot_soup", "minecraft:rabbit_stew"]) <= Rules.HANDLED
     for itemName in Rules.HANDLED:
         # 每个登记的食物在"身上有各种效果"时都应该产生动作（否则就不该登记）
         assert Rules.eatActions(itemName, ["poison", "speed"], random), itemName

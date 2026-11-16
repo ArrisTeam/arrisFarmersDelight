@@ -90,6 +90,18 @@ def testMilkBottleClearsOneEffect():
     assert comp.log == []
 
 
+def testVanillaSoupsGrantNourishment():
+    comp = _player("speed")
+    _eat("minecraft:mushroom_stew")
+    assert comp.log == [("add", "arris:nourishment", 180, 0, False)]
+    comp = _player()
+    _eat("minecraft:beetroot_soup")
+    assert comp.log == [("add", "arris:nourishment", 180, 0, False)], "身上没有任何效果也要给"
+    comp = _player()
+    _eat("minecraft:rabbit_stew")
+    assert sorted(comp.log) == sorted([("add", "arris:nourishment", 300, 0, False), ("add", "jump_boost", 10, 1, True)])
+
+
 def testOrdinaryFoodDoesNotTouchEffects():
     comp = _player("poison", "speed")
     _eat("minecraft:apple")
