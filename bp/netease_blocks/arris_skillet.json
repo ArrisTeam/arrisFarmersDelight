@@ -18,7 +18,7 @@
                 "value": 5.0
             },
             "minecraft:loot": {
-                "table": "loot_tables/skillet_item.json"
+                "table": "loot_tables/air_loot.json"
             },
             "minecraft:map_color": {
                 "color": "#5d5d5d"

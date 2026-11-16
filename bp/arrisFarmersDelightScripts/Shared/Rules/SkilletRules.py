@@ -192,10 +192,11 @@ def restoreItem(stored):
         return item
     for key in _STORED_KEYS:
         if stored.get(key) is not None:
-            item[key] = stored[key]
+            item[key] = _plain(stored[key])      # 从方块实体数据读出来的可能是引擎对象，换成普通的字典 / 列表再交给引擎
     for key in ("enchantData", "modEnchantData"):
         if item.get(key):
             item[key] = [tuple(entry) if isinstance(entry, list) else entry for entry in item[key]]
+    item["newItemName"], item["count"] = SKILLET_ITEM, 1
     return item
 
 

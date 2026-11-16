@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Skillet - 放置的煎锅：放入一叠食物、逐个煎熟弹出、取回（服务端）
 
-煎锅物品放成方块的逻辑在 Server/ItemToBlock.py（与派共用一份）。锅里的东西只存在方块实体数据 cookingDict，
-画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
+煎锅物品放成方块（只有潜行才放）、方块里记着那一件煎锅、拆掉原样掉回在 Server/SkilletItem.py，放置本身在 Server/ItemToBlock.py（与派共用一份）。
+锅里的东西只存在方块实体数据 cookingDict，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 煎锅站点（场景交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
 """
 import time
 
-from . import HandFrying
+from . import HandFrying, SkilletItem
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, PublishSkillet
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
@@ -95,6 +95,7 @@ def OnServerSkilletCreate(args):
     ToAllPlayerPlaySound(dimensionId, blockPos, "dig.stone")
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if blockEntityData:
+        SkilletItem.attachPending(blockEntityData, dimensionId, blockPos)
         belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
         blockEntityData["cookTimer"] = COOK_TIMER
         _refreshSkilletHeat(blockEntityData, blockPos, belowPos, dimensionId, GetBlockName(belowPos, dimensionId))
@@ -142,10 +143,11 @@ def OnSkilletRemove(args):
     _pacer.forget((dimensionId, blockPos))
     HandFrying.forget(dimensionId, blockPos)
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
-    if not blockEntityData:
-        return
-    DropLegacyDisplays(blockEntityData)
-    cookingDict = blockEntityData["cookingDict"]
-    if cookingDict:
-        System.CreateEngineItemEntity(cookingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
-    PublishSkillet(dimensionId, blockPos, None)
+    if blockEntityData:
+        DropLegacyDisplays(blockEntityData)
+        cookingDict = blockEntityData["cookingDict"]
+        if cookingDict:
+            System.CreateEngineItemEntity(cookingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+        PublishSkillet(dimensionId, blockPos, None)
+    # 方块的战利品表是空的，煎锅自己在这里掉（连耐久、附魔一起；方块实体丢了也掉一把新的，不能凭空没了）
+    SkilletItem.dropStored(blockEntityData, dimensionId, blockPos)
