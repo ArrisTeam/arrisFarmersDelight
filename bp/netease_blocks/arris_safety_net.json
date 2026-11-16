@@ -2,6 +2,9 @@
     "format_version": "1.10.0",
     "minecraft:block": {
         "components": {
+            "netease:fuel": {
+                "duration": 10
+            },
             "minecraft:block_light_absorption": {
                 "value": 0
             },

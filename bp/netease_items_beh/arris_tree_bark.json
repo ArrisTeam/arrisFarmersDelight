@@ -4,7 +4,7 @@
         "components": {
             "minecraft:max_stack_size": 64,
             "netease:fuel": {
-                "duration": 5
+                "duration": 10
             }
         },
         "description": {
