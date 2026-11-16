@@ -32,6 +32,7 @@ from . import RopeAndNet  # noqa: F401
 from . import FoodEffects  # noqa: F401
 from . import Livestock  # noqa: F401
 from . import Tools  # noqa: F401
+from . import KnifeSlicing  # noqa: F401
 from . import DisplayGuard  # noqa: F401
 
 
@@ -85,6 +86,11 @@ def _onBlockRemove(args):
 @Listen("DestroyBlockEvent")
 def _onDestroyBlock(args):
     dispatch("DestroyBlockEvent", args, args.get("fullName"))
+
+
+@Listen("ServerPlayerTryDestroyBlockEvent")
+def _onServerPlayerTryDestroyBlock(args):
+    dispatch("ServerPlayerTryDestroyBlockEvent", args, args.get("fullName"))
 
 
 @Listen("OnEntityInsideBlockServerEvent")
