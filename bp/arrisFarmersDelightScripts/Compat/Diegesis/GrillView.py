@@ -54,8 +54,7 @@ class GrillViewMixin(object):
 
     def __init__(self, view):
         super(GrillViewMixin, self).__init__(view)
-        self.space = Space(view)
-        self.pieces = Pieces(view, self.space)
+        self.space = self.pieces = None        # onOpen 里建：服务端的 Opened 可能改了朝向（view.yaw），之后才算坐标
         self.hover = None                      # 光标悬着的那一件（序号），没有是 None
 
     # ---------------------------------------------------------------- 钩子
@@ -68,6 +67,8 @@ class GrillViewMixin(object):
 
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)     # 开站期间本端不画世界里的那份，关站时还原
+        self.space = Space(self.view)
+        self.pieces = Pieces(self.view, self.space)
         self.pieces.refresh()
         BookSources.attach(self.view, "grill")
 
@@ -76,11 +77,14 @@ class GrillViewMixin(object):
         self.view.tooltip(None)
 
     def onState(self, changes):
-        self.pieces.refresh()
+        if self.pieces is not None:
+            self.pieces.refresh()
         BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
         pieces, place = self.pieces, _place(data)
+        if pieces is None:
+            return
         if name == "placed":
             pieces.placed(data.get("places") if isinstance(data, dict) else None)
         elif name == "refused":
@@ -95,6 +99,8 @@ class GrillViewMixin(object):
             pieces.grilled(place)
 
     def frame(self, dt):
+        if self.pieces is None:
+            return
         self.pieces.frame(dt, self.hover)
         item = self.pieces.shown[self.hover] if self.hover is not None else None
         self.view.tooltip([nameOf(item)] if HOVER_NAME and item is not None and self.view.hand is None else None)
@@ -103,6 +109,8 @@ class GrillViewMixin(object):
 
     def pickables(self):
         """拿着东西时整个烤架面是一块（mouth）；手空着时只有烤位上的件能点（点件旁边什么也不发生）。"""
+        if self.pieces is None:
+            return []
         if self.view.hand is not None:
             return [self.space.box(self.api, "mouth", *StoveLayout.MOUTH_BOX)]
         boxes = []

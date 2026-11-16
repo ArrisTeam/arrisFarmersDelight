@@ -191,6 +191,25 @@ def testTheSidePlayersOpenFromTurnsTheLayoutWithTheWorld():
         assert side.behavior.space.centers()[0] != north.behavior.space.centers()[0], "站点空间里的位置随玩家的一侧转"
 
 
+def testTheYawTheServerSendsAtOpenIsUsedNotTheClientsGuess():
+    """Controller 先按客户端猜的一侧建表现，服务端的 Opened 可能改 view.yaw，再调 onOpen：件的坐标和朝向要按改后的算。"""
+    reference = make(yaw=90, pieces={0: item(BEEF)})
+    want = [(d["pos"], d["rot"]) for d in drops()]
+    world.reset()
+    behaviorClass = GrillView.register(Api)
+    entry = Registry.getBehavior("arris:stove")
+    view = View.StationView(entry, STOVE, 0, 0, Ports.Ports(lambda: shot(90)))
+    view.behavior = behaviorClass(view)
+    view.opened = True
+    view.yaw = 90                                         # Opened 里服务端给的朝向
+    world.camera["pose"], world.camera["fov"] = shot(90)[0], 30.0
+    view.state.rawSetItem(("grill", 0), item(BEEF))
+    view.data = {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False] * 6}
+    view.behavior.onOpen()
+    got = [(d["pos"], d["rot"]) for d in drops()]
+    assert got == want and view.behavior.space.centers() == reference.behavior.space.centers()
+
+
 # ---------------------------------------------------------------- 手
 
 def testClickingAPieceTurnsItAndSendsTurnAndTheHopStarts():
