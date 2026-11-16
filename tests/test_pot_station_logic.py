@@ -210,6 +210,7 @@ def testTheBookPutsWholeSetsFromTheInventoryAndLaysThemOut():
     assert fake.count("a", TOMATO) == 8
     assert HandCooking.handOf(0, POT).clock._handFed is True
     assert manager.stations[(0, POT)].logic.wanted == K.sauceIndex(), "书里点的这道成了锅的选择"
+    assert not [c for c in fake.calls if c[1] == "OnPlaySound"], "书里放料不放声音（HoD 的 fill 没有，落水的声音是各客户端按到达动画放）"
     assert K.do(manager, "a", K.custom("bookFill", key=K.sauceIndex(), sets=1))
     assert fake.count("a", TOMATO) == 6 and sum(c["count"] for c in K.cells() if c) == 34
     assert K.shape(K.cells())[:2] == [(TOMATO, 17), (TOMATO, 17)]
@@ -259,7 +260,7 @@ def testARightClickWithTheContainerServesOneAndRefusesTheStation():
     assert fake.world.take("a", Protocol.EP_DENIED)[0][2]["reason"] == "refused" and not manager.sessions and not manager.stations
     assert fake.count("a", BOWL) == 1 and fake.count("a", SAUCE) == 1 and K.preview()["count"] == 1
     assert HandCooking.madeOf("a", SAUCE) == 1 and K.orbs() == [], "右键盛不给经验（FD 也不给）"
-    assert [c for c in fake.calls if c[1] == "OnPlaySound"], "有盛菜的声音"
+    assert [c[2][0]["soundName"] for c in fake.calls if c[1] == "OnPlaySound"] == ["armor.equip_generic"], "盛菜的声音：FD 的 take_portion 就是原版的穿护甲声"
     assert not manager.open("a", list(POT)) and fake.count("a", SAUCE) == 1, "按住右键：冷却里不重复盛，也不开站点"
     for delay, fn, args in list(fake.timers):
         fn(*args)

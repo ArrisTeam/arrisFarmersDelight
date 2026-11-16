@@ -13,7 +13,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import GiveOrDropItem, SetNotCreateItem, SetPlayerUsedCD
 from ..Shared.Rules import CookingPot as CookingPotRules
 
-TAKE_SOUND = "bucket.fill_water"      # 右键盛菜的声音（站点里的盛出由客户端按 scooped 事件自己放）
+TAKE_SOUND = "armor.equip_generic"    # 右键盛菜的声音：FD 的 block.food.take_portion 就是原版的 item.armor.equip_generic（站点里的盛出由客户端按 scooped 事件自己放）
 
 
 def vesselName(meal):

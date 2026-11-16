@@ -5,11 +5,10 @@
 键、份数都只当请求看：配方按键在服务端重新查，料从服务端读到的背包里拿。
 - 锅（fillPot，HoD 的 StationRecipes.fill）：背包里凑得出份数最多的写法，整份整份地放（最多 sets 份，装不进格子的那一份不放）；
   锅里有这种写法用不上的料时不放；放进去的料按这道菜摆开，书里点的这道成了锅的选择（wanted）；料从站点的背包窗口里扣
-  （和点击动作同一份事务），创造模式照扣（HoD 不分）；放进去了返回 True。
+  （和点击动作同一份事务），创造模式照扣（HoD 不分）；放进去了返回 True。不放声音：HoD 的 fill 没有，料落水的声音由各客户端的到达动画放。
 砧板摆盘的书（HoD 的 pick / fill）在 BoardAssemble.fill。
 """
 from ...Server.Helpers import PotContainer
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Shared.Rules import DishStation
 from ...Shared.Rules import PotLayout
 from ...Shared.Rules import StationBooks as Books
@@ -66,5 +65,4 @@ def fillPot(logic, playerId, key, sets, maxStackOf):
     logic.dropped.extend(rest)
     logic.wanted = key
     logic.hand.clock.feedByHand()
-    ToAllPlayerPlaySound(station.dimensionId, station.pos, "random.splash")
     return True
