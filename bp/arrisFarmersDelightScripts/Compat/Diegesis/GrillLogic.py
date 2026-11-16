@@ -16,9 +16,10 @@
 """
 import time
 
+from . import GrillOpen
 from ...Server import HandGrill
 from ...Server.Helpers.BlockItems import PublishStove
-from ...Server.Helpers.Engine import GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem
+from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.StoveSlots import StoveSlots
 from ...Server.Stove import EnsureStoveData
@@ -28,7 +29,6 @@ from ...Shared.Rules.HandsOn import Frying, Grill
 REACH = 6.0
 INTS = (int, type(2 ** 64))      # py2 的 int / long（客户端发来的整数可能是 long）
 WINDOW = 36                      # 背包窗口的格数（0-8 快捷栏）
-AIR = "minecraft:air"
 
 
 def _wire(item):
@@ -213,9 +213,8 @@ class GrillLogicMixin(object):
         return GetBlockEntityData(self.station.dimensionId, self.station.pos)
 
     def _covered(self):
-        """炉灶上面盖着东西（锅、煎锅、别的方块）：烤架是它们的，什么也不收。"""
-        x, y, z = self.station.pos
-        return GetBlockName((x, y + 1, z), self.station.dimensionId) != AIR
+        """炉灶上面盖着东西（锅、煎锅、别的方块）：烤架是它们的，什么也不收（开站前服务端复查用同一个答案，GrillOpen）。"""
+        return GrillOpen.isCovered(self.station.dimensionId, self.station.pos)
 
     def _flush(self):
         """世界里的展示（烤位上的东西变了才广播）和站点数据（每刻重算，变了才发）。"""
@@ -241,5 +240,7 @@ def register(api):
     if getattr(api, "API_VERSION", 0) < 2:
         return None
     logicClass = type("StoveLogic", (GrillLogicMixin, api.StationLogic), {"kit": api})
-    api.registerStation(api.StationType(Rules.STATION_ID, Rules.STOVE_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
+    stationType = api.StationType(Rules.STATION_ID, Rules.STOVE_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH)
+    stationType.canOpen = GrillOpen.opensStation     # 服务端开站前复查（K30）；老版本的前置包不读这个属性，行为同从前
+    api.registerStation(stationType)
     return logicClass

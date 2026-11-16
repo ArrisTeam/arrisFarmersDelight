@@ -100,9 +100,11 @@ def testOnlyFoodThatStaysOnTheBarsGoesOn():
 
 
 def testNothingGoesOntoAStoveWithAPotOnTop():
-    manager, data = K.setup(covered="arris:cooking_pot")
+    """开站时就盖着锅的炉灶服务端不让开（test_grill_station_open）；这里是站点开着的时候，有人在上面摆了口锅：槽规则照样挡。"""
+    manager, data = K.setup()
     fake.give("a", 3, BEEF, 3)
     K.opened(manager)
+    fake.world.blocks[(0, (K.STOVE[0], K.STOVE[1] + 1, K.STOVE[2]))] = "arris:cooking_pot"
     K.do(manager, "a", K.click(K.inv(3)))
     assert K.do(manager, "a", K.custom("place")) and K.names(data) == [None] * 6
     assert not K.do(manager, "a", K.click(K.slot(2))), "内核的点击也放不进去"
