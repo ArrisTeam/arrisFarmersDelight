@@ -48,6 +48,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+砧板、煎锅、炉灶三个站点的场景数据（机位、碰撞盒、各件的大小和位置）取自 Hands-On Delight 的 `scenes/cutting_board.json / skillet.json /
+stove.json`，写在 `Shared/Rules/HandsOn/BoardScene.py / PanLayout.py / StoveLayout.py` 和各站点的表现里；煎锅的油膜贴图（`block/oil_film.png`）
+和热浪粒子贴图（`heat.png`）同样来自 Hands-On Delight / Diegesis，放在 `diegesisRp/textures/handson/` 下，协议同上（MIT）。
+
 ## 团队自有库（拷入）
 
 | 库 | 来源 | 拷到 |

@@ -82,14 +82,16 @@ Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
-                        BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；
+                        BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools（服务端）+ BoardView + BoardDraw /
+                        BoardThing / BoardCutter / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具）；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotHud + PotOffer（客户端，开着站点的人：点击、徽章和提示、
                         悬着的容器和它浸汤的动作）= 厨锅站点；
                         PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands（客户端）= 谁都看得见的锅里场景：开盖、
                         汤面、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
-                        PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
-                        GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
-                        DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台摆出砧板菜的配方时拦下）；
+                        PanLogic（服务端）+ PanView（客户端，开着站点的人）+ PanScenes / PanScene / PanModel / PanFx（客户端，谁都看得见的
+                        锅里场景：食物落进来、颠锅、油膜热气）= 煎锅站点，世界外观由 Server/PanLook 广播；
+                        GrillLogic（服务端）+ GrillView + GrillPieces / GrillSpace / GrillGhosts / GrillFx（客户端）= 炉灶站点；
+                        DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
                         BookSources（客户端，把各站点的食谱书交给前置包）+ BookFill（服务端，照书从背包放料）；
                         未安装则不做任何事
 ```
@@ -281,7 +283,7 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 4. 活塞推：整份掉方块、其余阶段掉碗（`netease:redstone_property` 只在服务端生效，不同步给客户端）。
 5. 闪光：`BlockAnimateRandomTickEvent` 的 `blockPos` 是方块整数坐标；闪光出现的频率合不合手感（JE 的 `animateTick` 离得近的方块估算每秒有两次机会，
    官方文档说 `trigger_rate` = 1 时 16 格内几乎每秒触发一次），不合就只调四个方块 JSON 的 `trigger_rate`（`test_gleaming_sparkle.py` 里"概率等于 0.05 × 份数"那条跟着改）。
-6. 无序配方做出整份方块后返回玻璃瓶；砧板一次做多份时 `DishBoard.give` 按堆叠 1 拆开给；创造栏和背包里的方块物品是平面图标（`item_texture`）。
+6. 无序配方做出整份方块后返回玻璃瓶；砧板一次做多份时 `BoardGive.give` 按堆叠 1 拆开给；创造栏和背包里的方块物品是平面图标（`item_texture`）。
 
 ## 煎锅（对照 JE，FD 1.3.4）
 
