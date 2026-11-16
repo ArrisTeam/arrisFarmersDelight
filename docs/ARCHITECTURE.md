@@ -32,12 +32,14 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Backstabbing（背刺魔咒：物品上几级、是不是从背后打的、伤害乘多少）
                         SkilletRules（煎锅照 JE：烹饪时间含火焰附加的换算、手持热源范围、攻击冷却挑音效、耐久磨损、存取煎锅物品、创造拆煎锅记录）
                         SkilletHandRules（手持煎锅烹饪：右键按住的上报与记录、一次烹饪的计时、滋滋声概率）
+                        Basket（篮子吸掉落物：收集区、往 27 格里塞的次序、冷却） RopeReel（卷绳子：整根绳子最下面一节）
+                        NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；30 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ModServer.py          导入全部玩法模块；31 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
@@ -51,6 +53,7 @@ Server/                 服务端
   HandGrill             炉灶手放的每一件（HoD Grill）：逐件两面分开烤、等翻面、烤好留在灶台上；右键放的照 FD 原样
   CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
+  Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
   ChestLoot             战利品箱第一次打开时追加 FD 的物品（JE 的 add_loot_table），原版战利品表一个字不动
   CraftReturns          工作台合成后补还无序配方的剩余物（读合成格，照 JE 放回原格 / 进背包）
@@ -297,6 +300,56 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 5. 放下的煎锅：火焰附加 I / II 煎一件 4 / 3 秒；水能不能流进煎锅所在的格（`GetLiquidBlock` 读到水）——能的话放食物提示、锅里的东西浮出来。
 6. 打人音效：连点是轻击、隔 1 秒再打是重击。
 
+## 篮子、绳子、安全网、炉灶（对照 JE）
+
+JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、SafetyNetBlock、AbstractStoveBlock、ModDamageTypes、ModBlocks、Configuration。
+
+- 木篮 `arris:wooden_basket`（JE wooden_basket）：方块 JSON 与竹篮一份（27 格箱子、碰撞盒、斧挖、`on_entity_inside`），模型是竹篮模型整份拷贝、只改 description 的标识与贴图名，
+  贴图是 JE 木篮四张拼成的 32×32 图集（左上 handle、右上 side、左下 bottom、右下 top，和 `basket.png` 的格子用法一致）。
+  不用"两个方块共用一个 `netease_model` 再各写 `model_textures`"：那会改写全局模型对象，还会让竹篮的物品图标也变成平面图（NM §3.4）。
+  配方（木棍 + 帆布，摆法同竹篮）与砧板（斧 -> 帆布 + 木棍）照 JE。两种篮子的硬度、爆炸抗性都是 JE 的 1.5。
+- 篮子吸掉落物（`Server/Basket.py`，规则在 `Shared/Rules/Basket.py`），照 JE BasketBlockEntity：
+  - 收集区 = 篮子自己那一格 + 朝向那一格（JE 六种朝向的盒子都写在 `AREAS` 里）。本模组的篮子 `face_directional` 只有水平四向、碰撞盒也只朝上开口，所以取朝上：身体加上面一格，1×2×1。
+    判断用掉落物碰撞盒（0.25）与收集区严格相交（边贴边不算）。
+  - 往 27 格里塞照 `putStackInInventoryAllSlots`：从 0 号格往后逐格试，遇到空格整堆放进去、遇到同种没满的补满，哪一格先遇到用哪一格——
+    **不是**先补同种再找空格（0 号格空着、5 号格有半堆同种时，整堆进 0 号格）。同种 = 名字、aux、userData、附魔、tips、extraId 都一样。
+    27 格全是满堆不吸；吸一半的，剩下的在原处重新放一个掉落物（基岩版改不了掉落物的数量）。原来的实现没传 `getUserData`，带数据的物品会丢数据，现在带上。
+  - 冷却：吸进一整个掉落物之后 8 刻（0.4 秒）不再吸（`transferCooldown`）；没吸成（满了、被红石锁住）每 0.2 秒再试（JE 每刻都试，这边每次试要读 27 格）。
+  - 红石：邻居有信号（`CreateRedStone.GetBlockPoweredState` 非 0）时不吸，对应 JE 的 ENABLED 状态。
+  - 篮子是 `netease:block_chest`，没有方块实体 tick（`netease:block_entity` 要网易的 ModBlockActor，箱子是原版 ChestBlockActor，一个方块只能有一种方块实体 [推断，没在游戏里试过两个组件并用]），所以两条路共用 `pull` 和一份冷却：
+    掉落物进了篮子这一格走 `OnEntityInsideBlockServerEvent`；上面那一格靠每 0.25 秒一次的轮询——`GetEngineActor()` 一次拿到全部已加载实体（带维度和类型名），挑出掉落物，
+    用 `basketCells` 找收集区碰得到它的篮子。不登记篮子的坐标，`/setblock`、结构放出来的篮子照样吸。定时器在第一个玩家进服（或第一次有东西落进篮子）时开。
+    JE 的 `onEntityCollision` 是死代码（BasketBlock 没覆盖 `entityInside`），篮子只靠 `pushItemsTick`。
+- 卷绳子（`RopeAndNet.OnUseRope`，`Shared/Rules/RopeReel.py`），照 RopeBlock.use：手里空着；配置 `enableRopeReeling`（JE 缺省开，`Shared/Data/Blocks.enableRopeReeling`）且潜行时，
+  从被点的绳子往下数、一路都是 `arris:rope`，拆**最下面**那一节（`destroyBlock(pos, false)`：不掉落，所以用 `SetBlockNew(…, 0)` 而不是 1），给玩家背包放一根绳子；
+  创造模式不给；没有建造权限（`GetPlayerAbilities()["build"]`，对应 mayBuild）或背包放不下什么都不做，也不会转去敲钟。
+  不潜行（或配置关了）时才敲钟，一路连着往上最多 24 格的钟；敲钟也要空手（原来拿着东西也敲）。
+- 安全网（`RopeAndNet.OnFallOnSafetyNet`，`Shared/Rules/NetBounce.py`），照 SafetyNetBlock：不潜行时 `causeFallDamage(fallDistance, 0.0F)`，没有任何摔落伤害；
+  竖直速度反过来：生物（LivingEntity，`IsLiving` 看 `EntityType.Mob`）乘 0.6，其它实体（掉落物、船、矿车……）乘 0.8；潜行（`isSuppressingBounce`）照常摔、不弹。
+  引擎事件只给摔落距离，撞上去的速度用自由落体推回来（每刻先按当前速度走一步，再 v = (v + 0.08) × 0.98，末速度 3.92 格/刻；10 格落差约 1.14 格/刻），
+  所以弹起的速度是 0.6（或 0.8）× 撞击速度，原来自拟的曲线（10 格落差给 1.0 格/刻）作废。落差不到 0.5 格不弹（JE 站在网上会一直微微颠，这里不跟，也省得事件连发）。
+- 炉灶烫伤（`Stove.OnStandOnStove`，`Shared/Rules/StoveBurn.py`），照 AbstractStoveBlock.burnEntitySteppingOnStove：站在点燃的炉灶上，
+  碰撞盒碰到烤架区（`Block.box(3,0,3,13,1,13)` 平移到炉灶上面一格）、没潜行、是生物、脚上没有冰霜行者（鞋子附魔里没有 `EnchantType.FrostWalker`）就受 1.0 点伤害（半颗心），
+  之后靠引擎的无敌帧（10 刻，和 JE 的 invulnerableTime 一样）每 0.5 秒扎一下。点燃的炉灶 JSON 带 `netease:on_stand_on`（熄灭的 `arris:stove_extinguish` 是另一个方块，不带），
+  事件 `OnStandOnBlockServerEvent` 在 `ModServer.py` 里挂了监听（第 31 个）。点燃亮度 13、硬度 2.0（copy BRICKS）也照 JE 改了。
+  - 伤害类型：JE 的 `stove_burn`（死亡信息 `death.attack.farmersdelight.stove`：%1$s被烤的酥脆）基岩版给不出。引擎的死亡信息是 `ActorDamageSource::getDeathMessage` 按 cause 查固定的表，
+    `magma`、`custom` 等表外的 cause 一律落到 `death.attack.generic`（"死了"），网易的 `Hurt(…, "custom", customTag)` 只是给伤害事件打个标记、不改消息，也没有找到换死亡消息的接口。
+    所以取最接近的 `magma`（JE 里岩浆块的 hot_floor 正是这个脚感）：好处是 `fire_immune` 的实体（烈焰人、岩浆怪、凋灵骷髅……）引擎本来就对 magma 无敌，对上 JE 的 `fireImmune()`；
+    代价是抗火药水大概也会挡住（JE 的 stove_burn 不在 `is_fire` 标签里，抗火拦不住）。护甲照常减伤（两边都不绕过护甲）。
+- 外加 `tests/test_event_wiring.py`：服务端每个 `registerHandler` 的事件在 `ModServer.py` 里都要有 `@Listen`；需要触发组件的事件，方块 JSON 里要带那个组件。
+
+待实机验证（写完这一版时没进过游戏）：
+
+1. 篮子：扔进篮子的掉落物被吸进 0 号格、附魔 / 命名物品数据不丢；同种补满再进下一格；两个篮子上下叠放时一个掉落物只进一个；
+   接红石（拉杆贴着篮子，或旁边放红石块）停吸、断开 0.2 秒内恢复；篮子上面一格里的掉落物（比如放块地毯 / 半砖挡着让它浮在那）被轮询吸走；
+   27 格满堆不吸；只剩一格半堆时吸一半、剩下的原地留一个掉落物；活塞 / `/setblock` 出来的篮子也吸；`GetBlockPoweredState` 对非实心的篮子是否如实回答。
+2. 卷绳子：潜行空手右键绳子卷掉最下面一节、背包 +1、不掉落、有拆绳子的声音；点中间一节也是拆最下面；背包满了什么都不发生；创造模式不给；冒险模式不行；不潜行空手敲钟，手里拿东西不敲；
+   潜行时 `ServerBlockUseEvent` 是否照来（原版容器潜行空手能开，绳子应同理）。
+3. 安全网：从 10 / 30 格落下不掉血、弹起约落差的三分之一（玩家）；潜行落下照常摔且不弹；牛 / 掉落物也弹（掉落物更高）；
+   `SetPlayerMotion` 的单位按"格/刻"用，弹得过高或过低就要重标定 `NetBounce`。
+4. 炉灶：`netease:on_stand_on` 让 `OnStandOnBlockServerEvent` 每刻来一次（对玩家和怪都来）；站在点燃的炉灶中央每 0.5 秒掉半颗心，潜行不掉，穿冰霜行者不掉，站在熄灭的炉灶上不掉，
+   烈焰人 / 岩浆怪不掉；死亡信息是引擎的"死了"；点燃后亮度 13。
+
 ## 引擎坑（踩过的）
 
 - 方块实体数据（`GetBlockEntityData`）是引擎对象，不是 dict：没有 `.get()`，缺键读出来是 `None`，用 `data["k"] or 缺省值`。
@@ -353,6 +406,10 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   `Shared/Rules/FoodEffects.py`，`test_food_effects_server.py` 把假的 Engine 模块塞进 `sys.modules` 来驱动 `Server/FoodEffects.py` 的事件处理。
 - JE 方块模型转网易模型：`test_je_model_convert.py`（转换工具对 JE 烘焙规则逐顶点逐 UV）；闪亮沙拉：`test_gleaming_salad.py`（方块 / 战利品 / 盛菜 / 模型 / 砧板摆盘，
   JE 资源在场时重转模型比对，`FD_JE_ASSETS` 指定位置）、`test_gleaming_sparkle.py`（闪光的概率 / 位置 / 粒子文件 / 客户端处理，假的 `Listen` 与 `compFactory`）。
+- 篮子 / 绳子 / 安全网 / 炉灶（对照 JE，期望值抄自 JE 代码）：`test_basket_rules.py`（收集区、塞的次序、冷却）、`test_basket_server.py`（接线：事件与轮询两条路、红石、
+  满了、吸一半、叠放的两个篮子）、`test_rope_reel.py`、`test_safety_net.py`、`test_stove_burn.py`、`test_wooden_basket.py`（配方 / 砧板 / 模型 / 贴图 / 名字）、
+  `test_block_strength.py`（硬度 / 爆炸抗性 / 亮度）、`test_event_wiring.py`（每个 `registerHandler` 的事件在 ModServer 里有 `@Listen`，触发组件在方块 JSON 里）。
+  `RopeAndNet` 导入了离线导入不了的 `QuModLibs.Server`，这几个测试先往 `sys.modules` 里塞一个只有两个装饰器的替身。
 - dolorContainer：`test_dolor_vendor.py`（库文件与编译产物的哈希、界面文件登记、导入闭包；随库装入，不手改）、`test_rpc_caller_id.py`
   （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅的食谱书规则与
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
