@@ -17,7 +17,7 @@
 import time
 
 from . import GrillOpen
-from ...Server import HandGrill
+from ...Server import HandGrill, StoveLook
 from ...Server.Helpers.BlockItems import PublishStove
 from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
@@ -29,12 +29,6 @@ from ...Shared.Rules.HandsOn import Frying, Grill
 REACH = 6.0
 INTS = (int, type(2 ** 64))      # py2 的 int / long（客户端发来的整数可能是 long）
 WINDOW = 36                      # 背包窗口的格数（0-8 快捷栏）
-
-
-def _wire(item):
-    if not item or not item.get("newItemName"):
-        return {}
-    return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": item.get("count") or 1}
 
 
 def _index(value, size):
@@ -73,6 +67,7 @@ class GrillLogicMixin(object):
         super(GrillLogicMixin, self).__init__(station)
         self.hand = None
         self._publishStove = False
+        self._laidNow = []               # 内核的点击（Shift 点托盘）这一刻摆上去的位置：一次动作只告诉附近的人一回
         station.state.bindSlots(Rules.GROUP_GRILL, StoveSlots(station.dimensionId, station.pos, Rules.PLACES, HandGrill.COOK_TIMER))
 
     # ---------------------------------------------------------------- 钩子
@@ -100,6 +95,7 @@ class GrillLogicMixin(object):
         if ref[0] == Rules.GROUP_GRILL and self.hand is not None:
             if self.station.state.getItem(ref) is not None:
                 self._laid(ref[1], self.actor)
+                self._laidNow.append(ref[1])
             else:
                 self.hand.grill.farmersDelightsWay(ref[1])
             self._publishStove = True
@@ -125,7 +121,7 @@ class GrillLogicMixin(object):
         while hand.just:
             place = hand.just.pop(0)
             item = self.station.state.getItem((Rules.GROUP_GRILL, place))
-            self.station.effect("grilled", {"place": place, "stack": _wire(item)})
+            self.station.effect("grilled", {"place": place, "stack": StoveLook.wire(item)})
             ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "random.pop")
         self._flush()
 
@@ -141,23 +137,23 @@ class GrillLogicMixin(object):
             return
         laid = self._laidPlaces(carried, place if one and place is not None else -1)
         if not laid:
-            self.station.effect("refused", {"stack": dict(_wire(carried), count=1)})
+            self._tell("refused", {"stack": dict(StoveLook.wire(carried), count=1)})
             return
         rest = self._lay(carried, laid, playerId)
         if fromSlot is not None:
             ctx.inventory[fromSlot] = rest
         else:
             ctx.setHand(rest)
-        self.station.effect("placed", {"places": laid})
+        self._tell("placed", {"places": laid})
         ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _turn(self, playerId, place):
         item = self.station.state.getItem((Rules.GROUP_GRILL, place)) if place is not None else None
         turned = place is not None and HandGrill.turn(self.hand, playerId, place, time.time(), item)
         if turned:
-            self.station.effect("turned", {"place": place, "up": Frying.syncStep(self.hand.grill.up(place))})
+            self._tell("turned", {"place": place, "up": Frying.syncStep(self.hand.grill.up(place))})
         else:
-            self.station.effect("unturned", {"place": -1 if place is None else place})
+            self._tell("unturned", {"place": -1 if place is None else place})
 
     def _take(self, playerId, place):
         ref = (Rules.GROUP_GRILL, place)
@@ -171,7 +167,7 @@ class GrillLogicMixin(object):
         if rest is not None:
             self.dropped.append(rest)
         self._publishStove = True
-        self.station.effect("taken", {"place": place, "stack": _wire(item)})
+        self._tell("taken", {"place": place, "stack": StoveLook.wire(item)})
         ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _layHeld(self, playerId):
@@ -182,7 +178,7 @@ class GrillLogicMixin(object):
         laid = self._laidPlaces(held, -1)
         if laid:
             SetCarriedItem(playerId, self._lay(held, laid, playerId))
-            self.station.effect("placed", {"places": laid})
+            self._tell("placed", {"places": laid})
             ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _laidPlaces(self, carried, place):
@@ -209,6 +205,11 @@ class GrillLogicMixin(object):
 
     # ---------------------------------------------------------------- 同步
 
+    def _tell(self, name, data):
+        """表现事件：站点里的人（内核的 effect）和附近所有人（StoveLook 广播）都收到。"""
+        self.station.effect(name, data)
+        StoveLook.event(self.station.dimensionId, self.station.pos, name, data)
+
     def _blockData(self):
         return GetBlockEntityData(self.station.dimensionId, self.station.pos)
 
@@ -222,6 +223,9 @@ class GrillLogicMixin(object):
         data = self._blockData()
         if data is None:
             return
+        if self._laidNow:
+            StoveLook.event(self.station.dimensionId, self.station.pos, "placed", {"places": sorted(self._laidNow)})
+            del self._laidNow[:]
         if self._publishStove:
             self._publishStove = False
             PublishStove(self.station.dimensionId, self.station.pos, data)
@@ -233,6 +237,7 @@ class GrillLogicMixin(object):
             up.append(Frying.syncStep(grill.up(place)) if here else 0.0)
             byHand.append(bool(grill.byHand(place)) and here)
         state.setData({"down": down, "up": up, "hand": byHand})
+        StoveLook.tick(self.station.dimensionId, self.station.pos, data, self.hand, time.time())
 
 
 def register(api):

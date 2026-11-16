@@ -19,6 +19,8 @@ for _name, _value in (("GetEngineTypeStr", lambda entityId: "minecraft:player"),
 
 GrillLogic = potfake.load("Compat.Diegesis.GrillLogic")
 HandGrill = potfake.load("Server.HandGrill")
+StoveLook = potfake.load("Server.StoveLook")
+LookWatch = potfake.load("Server.Helpers.LookWatch")
 Stove = potfake.load("Server.Stove")
 BlockItems = potfake.load("Server.Helpers.BlockItems")
 Rules = fdtest.load("Shared.Rules.GrillStation")
@@ -32,11 +34,15 @@ BEEF, EGG, STICK = "minecraft:beef", "minecraft:egg", "minecraft:stick"
 ARGS = {"dimension": 0, "posX": STOVE[0], "posY": STOVE[1], "posZ": STOVE[2]}
 
 
-def setup(creative=False, covered=None):
-    """干净的假世界：一个点着的炉灶（方块实体数据初始化好）、玩家 a（炉灶北边，生存或创造）和 b（东边）；返回 (Manager, 炉灶的方块实体数据)。"""
+def setup(creative=False, covered=None, look=False):
+    """干净的假世界：一个点着的炉灶（方块实体数据初始化好）、玩家 a（炉灶北边，生存或创造）和 b（东边）；返回 (Manager, 炉灶的方块实体数据)。
+    look 为真打开世界外观广播（StoveLook），之后 looks() / events() 看发出去的东西。"""
     fake.reset()
     Registry.clearAll()
     HandGrill._hands.clear()
+    StoveLook._sent.clear()
+    LookWatch.reset()
+    StoveLook.enable(look)
     Stove._pacer = Stove.Pacer(Stove.TICK_STEP)
     GrillLogic.time = Stove.time = potfake.Clock(fake.world)
     GrillLogic.register(Api)
@@ -123,3 +129,35 @@ def step(seconds, dt=0.05, manager=None):
 
 def hand_of():
     return HandGrill.handOf(0, STOVE)
+
+
+def _grouped():
+    """StoveLook 发出去的 [(载荷, [收到的玩家])]：同一个载荷对象发给每个附近的人一次。"""
+    out, index = [], {}
+    for player, key, args in fake.calls:
+        if key != StoveLook.ENDPOINT:
+            continue
+        payload = args[0]
+        if id(payload) not in index:
+            index[id(payload)] = (payload, [])
+            out.append(index[id(payload)])
+        index[id(payload)][1].append(player)
+    return out
+
+
+def looks():
+    """StoveLook 发出去的状态载荷（带收件人）：[(载荷, [玩家])]。"""
+    return [(payload, players) for payload, players in _grouped() if not payload.get("event")]
+
+
+def broadcasts(name=None):
+    """StoveLook 发出去的一次性事件 [(事件名, 负载, [收到的玩家])]；name 给了只要这个名字的。"""
+    return [(payload["event"], payload, players) for payload, players in _grouped()
+            if payload.get("event") and (name is None or payload["event"] == name)]
+
+
+def tick(now=None):
+    """炉灶自己的一步（只是广播那一截，不走烤的时间）：now 缺省是假世界现在的钟。"""
+    data = fake.blockEntities[(0, STOVE)]
+    hand = HandGrill.peek(0, STOVE)
+    StoveLook.tick(0, STOVE, data, hand, fake.world.time if now is None else now)

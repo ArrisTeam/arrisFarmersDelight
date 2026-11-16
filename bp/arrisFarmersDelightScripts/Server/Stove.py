@@ -7,10 +7,11 @@
 右键放上去的照这里每件 30 秒烤好弹出。
 站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
 上面盖了东西（锅、煎锅、任何方块，Shared/Rules/StoveCover）：烤架上的东西全丢出来，生的熟的、手放的 FD 的都一样（FD 的 shouldDropItems）。
+烤架的世界外观（东西、冒烟等翻、烤好的汽和闪）每一步照 StoveLook 广播给附近的人，站点开不开着都一样。
 """
 import time
 
-from . import HandGrill
+from . import HandGrill, StoveLook
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
@@ -95,8 +96,12 @@ def OnServerStoveItemUse(args):
             hand.grill.farmersDelightsWay(freeIndex)
         SetNotCreateItem(playerId, itemDict)
         PublishStove(dimensionId, (x, y, z), blockEntityData)
-        ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
         blockEntityData["cookingIndex"] = (freeIndex + 1) % STOVE_SLOTS
+        if StoveLook.enabled():
+            StoveLook.event(dimensionId, (x, y, z), "placed", {"places": [freeIndex]})
+            StoveLook.tick(dimensionId, (x, y, z), blockEntityData, hand, time.time())
+        else:
+            ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
     elif itemDict["newItemName"] not in _PASS_ITEMS:
         ShowTip(playerId, "这东西可不能被烹饪……")
 
@@ -121,11 +126,19 @@ def _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
     return True
 
 
+def _announceGrilled(dimensionId, blockPos, blockEntityData, hand):
+    """刚烤好的几件告诉附近所有人：一团汽、金光、叮的一声（JE 的 EFFECT_GRILLED，站点开不开着都有）。"""
+    while hand is not None and hand.just:
+        place = hand.just.pop(0)
+        StoveLook.event(dimensionId, blockPos, "grilled", {"place": place, "stack": StoveLook.wire(HandGrill.slotItem(blockEntityData, place))})
+
+
 @registerHandler("ServerBlockEntityTickEvent", match=StoveList)
 def OnStoveTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if not _pacer.due((dimensionId, blockPos), time.time()):
+    now = time.time()
+    if not _pacer.due((dimensionId, blockPos), now):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
@@ -133,6 +146,7 @@ def OnStoveTick(args):
     EnsureStoveData(blockEntityData)
     hand = HandGrill.peek(dimensionId, blockPos) or HandGrill.restore(dimensionId, blockPos, blockEntityData)
     if _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
+        StoveLook.tick(dimensionId, blockPos, blockEntityData, hand, now)
         return
     handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP) if hand is not None else (set(), False)
     if hand is not None:
@@ -156,6 +170,9 @@ def OnStoveTick(args):
         PublishStove(dimensionId, blockPos, blockEntityData)
     if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
         blockEntityData["cookingIndex"] = 0
+    if StoveLook.enabled():
+        _announceGrilled(dimensionId, blockPos, blockEntityData, hand)
+        StoveLook.tick(dimensionId, blockPos, blockEntityData, hand, now)
 
 
 @registerHandler("OnStandOnBlockServerEvent", match=StoveList)
@@ -182,6 +199,7 @@ def OnStoveRemove(args):
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
     HandGrill.forget(dimensionId, blockPos)
+    StoveLook.forget(dimensionId, blockPos)
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
