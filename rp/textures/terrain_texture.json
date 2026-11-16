@@ -361,6 +361,21 @@
         "arris:rope": {
             "textures": "textures/blocks/rope"
         },
+        "arris:rope_fence": {
+            "textures": "textures/blocks/rope_fence"
+        },
+        "arris:rope_fence_gate": {
+            "textures": "textures/blocks/rope_fence_gate"
+        },
+        "arris:rope_fence_gate_open": {
+            "textures": "textures/blocks/rope_fence_gate_open"
+        },
+        "arris:rope_fence_gate_wall": {
+            "textures": "textures/blocks/rope_fence_gate_wall"
+        },
+        "arris:rope_fence_icon": {
+            "textures": "textures/blocks/rope_fence_icon"
+        },
         "arris:rope_item": {
             "textures": "textures/items/rope"
         },

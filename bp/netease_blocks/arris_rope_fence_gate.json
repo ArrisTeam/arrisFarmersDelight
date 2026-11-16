@@ -1,0 +1,97 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:block": {
+        "components": {
+            "minecraft:block_light_absorption": {
+                "value": 0
+            },
+            "minecraft:block_light_emission": {
+                "emission": 0
+            },
+            "minecraft:destroy_time": {
+                "value": 1.0
+            },
+            "minecraft:explosion_resistance": {
+                "value": 1.0
+            },
+            "netease:aabb": {
+                "clip": {
+                    "max": [
+                        1.0,
+                        0.875,
+                        0.5625
+                    ],
+                    "min": [
+                        0.0,
+                        0.0,
+                        0.4375
+                    ]
+                },
+                "collision": {
+                    "max": [
+                        1.0,
+                        1.5,
+                        0.5625
+                    ],
+                    "min": [
+                        0.0,
+                        0.0,
+                        0.4375
+                    ]
+                }
+            },
+            "netease:connection": {
+                "blocks": [
+                    "minecraft:andesite_wall",
+                    "minecraft:blackstone_wall",
+                    "minecraft:brick_wall",
+                    "minecraft:cobbled_deepslate_wall",
+                    "minecraft:cobblestone_wall",
+                    "minecraft:deepslate_brick_wall",
+                    "minecraft:deepslate_tile_wall",
+                    "minecraft:diorite_wall",
+                    "minecraft:end_stone_brick_wall",
+                    "minecraft:granite_wall",
+                    "minecraft:mossy_cobblestone_wall",
+                    "minecraft:mossy_stone_brick_wall",
+                    "minecraft:mud_brick_wall",
+                    "minecraft:nether_brick_wall",
+                    "minecraft:polished_blackstone_brick_wall",
+                    "minecraft:polished_blackstone_wall",
+                    "minecraft:polished_deepslate_wall",
+                    "minecraft:polished_tuff_wall",
+                    "minecraft:prismarine_wall",
+                    "minecraft:red_nether_brick_wall",
+                    "minecraft:red_sandstone_wall",
+                    "minecraft:resin_brick_wall",
+                    "minecraft:sandstone_wall",
+                    "minecraft:stone_brick_wall",
+                    "minecraft:tuff_brick_wall",
+                    "minecraft:tuff_wall"
+                ]
+            },
+            "netease:face_directional": {
+                "type": "direction"
+            },
+            "netease:fuel": {
+                "duration": 10
+            },
+            "netease:render_layer": {
+                "value": "alpha"
+            },
+            "netease:solid": {
+                "value": false
+            },
+            "netease:tier": {
+                "destroy_special": false,
+                "digger": "hatchet",
+                "level": 0
+            }
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:rope_fence_gate",
+            "register_to_creative_menu": true
+        }
+    }
+}

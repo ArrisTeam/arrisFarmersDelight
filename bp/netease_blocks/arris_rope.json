@@ -99,6 +99,9 @@
                     "arris:rope"
                 ]
             },
+            "netease:fuel": {
+                "duration": 10
+            },
             "netease:on_entity_inside": {
                 "send_python_event": true
             },

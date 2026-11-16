@@ -86,6 +86,16 @@ def modelFaces(geometry):
     return found
 
 
-def modelTextureNames(geometry, faceTextureIndex):
+def cubeBounds(cube):
+    """立方体在方块像素坐标（x 向东、z 向南，和 JE 模型的 from / to 同一套，不转的立方体）里的包围盒 ((x0, y0, z0), (x1, y1, z1))。
+
+    网易模型文件里的 x 是取了反的：整格的 origin.x 是 -16，所以 x0 = -(origin.x + size.x)、x1 = -origin.x。
+    """
+    ox, oy, oz = cube["origin"]
+    sx, sy, sz = cube["size"]
+    return (-(ox + sx), oy, oz), (-ox, oy + sy, oz + sz)
+
+
+def faceTextureName(geometry, face):
     """面用的贴图名（description.textures 里的下标 -> 名字）。"""
-    return geometry["description"]["textures"][faceTextureIndex]
+    return geometry["description"]["textures"][face["texture"]]

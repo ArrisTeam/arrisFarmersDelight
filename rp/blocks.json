@@ -765,6 +765,18 @@
         "netease_model": "arris:rope",
         "sound": "cloth"
     },
+    "arris:rope_fence": {
+        "netease_model": "arris:rope_fence",
+        "sound": "wood"
+    },
+    "arris:rope_fence_gate": {
+        "netease_model": "arris:rope_fence_gate",
+        "sound": "wood"
+    },
+    "arris:rope_fence_gate_open": {
+        "netease_model": "arris:rope_fence_gate_open",
+        "sound": "wood"
+    },
     "arris:safety_net": {
         "netease_model": "arris:safety_net",
         "sound": "cloth",

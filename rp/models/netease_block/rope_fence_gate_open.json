@@ -1,0 +1,439 @@
+{
+    "format_version": "1.13.0",
+    "netease:block_geometry": {
+        "bones": [
+            {
+                "cubes": [
+                    {
+                        "origin": [
+                            -16,
+                            0,
+                            7
+                        ],
+                        "pivot": [
+                            -8,
+                            0,
+                            8
+                        ],
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "size": [
+                            2,
+                            14,
+                            2
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    2,
+                                    14
+                                ],
+                                "uv_size": [
+                                    2,
+                                    2
+                                ]
+                            },
+                            "east": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "north": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "south": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "up": {
+                                "texture": 0,
+                                "uv": [
+                                    4,
+                                    16
+                                ],
+                                "uv_size": [
+                                    -2,
+                                    -2
+                                ]
+                            },
+                            "west": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "origin": [
+                            -2,
+                            0,
+                            7
+                        ],
+                        "pivot": [
+                            -8,
+                            0,
+                            8
+                        ],
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "size": [
+                            2,
+                            14,
+                            2
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    2,
+                                    14
+                                ],
+                                "uv_size": [
+                                    2,
+                                    2
+                                ]
+                            },
+                            "east": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "north": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "south": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            },
+                            "up": {
+                                "texture": 0,
+                                "uv": [
+                                    4,
+                                    16
+                                ],
+                                "uv_size": [
+                                    -2,
+                                    -2
+                                ]
+                            },
+                            "west": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    14
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "enable": "!(query.is_connect(4) && query.is_connect(5))",
+                "name": "posts",
+                "pivot": [
+                    -8,
+                    0,
+                    8
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "cubes": [
+                    {
+                        "origin": [
+                            -3,
+                            4,
+                            6
+                        ],
+                        "pivot": [
+                            -8,
+                            0,
+                            8
+                        ],
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "size": [
+                            2,
+                            8,
+                            4
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    4
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    0
+                                ],
+                                "uv_size": [
+                                    4,
+                                    8
+                                ]
+                            },
+                            "north": {
+                                "texture": 2,
+                                "uv": [
+                                    4,
+                                    0
+                                ],
+                                "uv_size": [
+                                    2,
+                                    8
+                                ]
+                            },
+                            "south": {
+                                "texture": 2,
+                                "uv": [
+                                    0,
+                                    0
+                                ],
+                                "uv_size": [
+                                    2,
+                                    8
+                                ]
+                            },
+                            "up": {
+                                "texture": 2,
+                                "uv": [
+                                    4,
+                                    7
+                                ],
+                                "uv_size": [
+                                    -2,
+                                    -4
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    6,
+                                    0
+                                ],
+                                "uv_size": [
+                                    -4,
+                                    8
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "enable": "!(query.is_connect(4) && query.is_connect(5))",
+                "name": "coil",
+                "pivot": [
+                    -8,
+                    0,
+                    8
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "cubes": [
+                    {
+                        "origin": [
+                            -2,
+                            5,
+                            6
+                        ],
+                        "pivot": [
+                            -8,
+                            0,
+                            8
+                        ],
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "size": [
+                            2,
+                            8,
+                            4
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    2
+                                ],
+                                "uv_size": [
+                                    2,
+                                    4
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    0
+                                ],
+                                "uv_size": [
+                                    4,
+                                    8
+                                ]
+                            },
+                            "north": {
+                                "texture": 2,
+                                "uv": [
+                                    4,
+                                    0
+                                ],
+                                "uv_size": [
+                                    2,
+                                    8
+                                ]
+                            },
+                            "south": {
+                                "texture": 2,
+                                "uv": [
+                                    0,
+                                    0
+                                ],
+                                "uv_size": [
+                                    2,
+                                    8
+                                ]
+                            },
+                            "up": {
+                                "texture": 2,
+                                "uv": [
+                                    4,
+                                    7
+                                ],
+                                "uv_size": [
+                                    -2,
+                                    -4
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    6,
+                                    0
+                                ],
+                                "uv_size": [
+                                    -4,
+                                    8
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "enable": "query.is_connect(4) && query.is_connect(5)",
+                "name": "wall_coil",
+                "pivot": [
+                    -8,
+                    0,
+                    8
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "description": {
+            "identifier": "arris:rope_fence_gate_open",
+            "item_texture": "arris:rope_fence_gate",
+            "textures": [
+                "arris:rope_fence_gate",
+                "arris:rope_fence_gate_wall",
+                "arris:rope_fence_gate_open"
+            ],
+            "textures_descriptions": [
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                }
+            ],
+            "use_ao": true
+        }
+    }
+}
