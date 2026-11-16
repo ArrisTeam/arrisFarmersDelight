@@ -60,7 +60,7 @@ PACKS = {
     },
 }
 DIEGESIS_PURE = {"Server/Manager.py", "Server/Station.py", "Server/Registry.py", "Server/Session.py",
-                 "Server/Runtime.py", "Server/Sync.py", "Client/Registry.py", "Client/Shot.py", "Client/Hub.py",
+                 "Server/Runtime.py", "Server/Sync.py", "Client/Registry.py", "Client/Shot.py", "Client/Hub.py", "Client/PropMath.py",
                  "Api/Server.py"}
 
 
@@ -164,6 +164,59 @@ def testRelativeImportsResolve():
                 # from . import X：X 是子模块时要存在
                 if node.module is None and alias.name != "*" and not _exists(pack, parts + [alias.name]):
                     problems.append("%s/%s:%d 找不到子模块 %s" % (pack, relPath, node.lineno, alias.name))
+    assert not problems, "\n".join(problems)
+
+
+def _targetNames(target):
+    if isinstance(target, ast.Name):
+        return {target.id}
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return set().union(*[_targetNames(elt) for elt in target.elts]) if target.elts else set()
+    return set()
+
+
+def _definedNames(body):
+    """模块顶层定义的名字（函数、类、赋值、导入；也看 if / try 里的）。"""
+    names = set()
+    for node in body:
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                names |= _targetNames(target)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            names |= {(alias.asname or alias.name).split(".")[0] for alias in node.names}
+        elif isinstance(node, ast.If):
+            names |= _definedNames(node.body) | _definedNames(node.orelse)
+        elif isinstance(node, ast.Try):
+            names |= _definedNames(node.body) | _definedNames(node.orelse) | _definedNames(node.finalbody)
+            for handler in node.handlers:
+                names |= _definedNames(handler.body)
+    return names
+
+
+def testImportedNamesExist():
+    """from .X import name：name 要在 X 里定义（或是 X 包的子模块）。实机：删掉的常量还被别处导入，整条导入链在游戏里才炸。"""
+    problems = []
+    cache = {}
+    for pack, relPath, path, source in _allSources():
+        for kind, parts, node in _importTargets(relPath, ast.parse(source)):
+            if kind != "rel" or not parts or node.module is None or parts[0] == "QuModLibs":
+                continue
+            scriptsDir = PACKS[pack]["dir"]
+            modulePath = os.path.join(scriptsDir, *parts) + ".py"
+            packagePath = os.path.join(scriptsDir, *parts)
+            target = modulePath if os.path.isfile(modulePath) else os.path.join(packagePath, "__init__.py")
+            if not os.path.isfile(target):
+                continue
+            if target not in cache:
+                cache[target] = _definedNames(ast.parse(io.open(target, encoding="utf-8").read()).body)
+            for alias in node.names:
+                if alias.name == "*" or alias.name in cache[target]:
+                    continue
+                if target.endswith("__init__.py") and _exists(pack, parts + [alias.name]):
+                    continue
+                problems.append("%s/%s:%d %s 里没有 %s" % (pack, relPath, node.lineno, ".".join(parts), alias.name))
     assert not problems, "\n".join(problems)
 
 

@@ -12,9 +12,11 @@ from ...Shared.Rules.HandsOn import Cutting
 
 CAMERA = {"pos": (8.0, 21.0, -3.0), "target": (8.0, 1.0, 7.5), "fov": 55.0}
 FOOD = (3.0, 13.0, 3.0, 13.0)       # 食材在板上的范围 x0, x1, z0, z1（z1 是离玩家远的一端）
-MARK_Y = 2.2                        # 虚线贴在食材上面一点
-KNIFE_HOVER = 7.0                   # 刀悬在下一刀上方多高
-KNIFE_SCALE = 1.1
+MARK_Y = 2.0                        # 虚线贴在食材上面
+KNIFE_SCALE = 0.8                   # 刀的贴图 6.4 像素见方
+KNIFE_ROLL = 135.0                  # 竖立的刀在贴图平面内顺时针转 135 度：刀柄朝上、刀尖朝下（实机标定）
+KNIFE_TIP = 3.2 * math.sqrt(2.0)    # 刀尖在视觉中心正下方多远（贴图对角线的一半）
+KNIFE_HOVER = 9.0                   # 刀的视觉中心悬多高：刀尖离食材约 2.5 像素
 CHOP_SECONDS = 0.22
 BOARD_BOX = ((1.0, 0.0, 1.0), (15.0, 4.0, 15.0))
 HINTS = {
@@ -87,8 +89,8 @@ class BoardViewMixin(object):
         self.chopLeft = max(0.0, self.chopLeft - dt)
         center = self._knifeCenter()
         if center is not None:
-            dip = math.sin(math.pi * (1.0 - self.chopLeft / CHOP_SECONDS)) * (KNIFE_HOVER - MARK_Y)
-            self.knife.move((center[0], center[1] - dip, center[2]))
+            dip = math.sin(math.pi * (1.0 - self.chopLeft / CHOP_SECONDS)) * (KNIFE_HOVER - KNIFE_TIP - MARK_Y)
+            self.knife.move(center=(center[0], center[1] - dip, center[2]))
 
     # ---------------------------------------------------------------- 画
 
@@ -109,7 +111,7 @@ class BoardViewMixin(object):
         center = self._knifeCenter()
         if center is not None and self.toolName:
             knifeItem = {"newItemName": self.toolName, "newAuxValue": 0, "count": 1}
-            self.knife = props.item(knifeItem, center, self._knifeRot(), KNIFE_SCALE)
+            self.knife = props.item(knifeItem, center, flat=False, facing=(0.0, -1.0), roll=KNIFE_ROLL, scale=KNIFE_SCALE)
         self.view.hint(self._hintText(item, plan, done))
 
     def _knifeCenter(self):
@@ -119,12 +121,6 @@ class BoardViewMixin(object):
             return None
         a, b = markLine(data.get("style"), spots[done], angles[done])
         return ((a[0] + b[0]) * 0.5, KNIFE_HOVER, (a[2] + b[2]) * 0.5)
-
-    def _knifeRot(self):
-        data = self.view.data
-        done, spots, angles = int(data.get("marks") or 0), data.get("spots") or [], data.get("angles") or []
-        a, b = markLine(data.get("style"), spots[done], angles[done])
-        return (0.0, -math.degrees(math.atan2(b[2] - a[2], b[0] - a[0])), -45.0)
 
     def _hintText(self, item, plan, done):
         if not item:
