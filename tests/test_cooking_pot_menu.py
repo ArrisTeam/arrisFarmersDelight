@@ -254,6 +254,8 @@ def testStateFromIsIdleWithoutHeatAWholeTimerOrMissingKeys():
     waiting = PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=10.0), 10.0)
     assert waiting["progress"] == 0.0   # 计时是满值：还没开始
     assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=-0.2), 10.0)["progress"] == 1.0   # 夹在 0-1 里
+    quick = PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=2.5, timerTotal=5.0), 10.0)
+    assert abs(quick["progress"] - 0.5) < 1.0e-9, "番茄酱这类 5 秒的菜：按 timerTotal 算进度"
     assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=99.0), 10.0)["progress"] == 0.0
     assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=True), 10.0)["progress"] == 0.0   # 布尔不算计时
 

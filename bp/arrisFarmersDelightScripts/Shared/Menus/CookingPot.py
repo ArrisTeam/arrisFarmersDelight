@@ -37,14 +37,17 @@ def setStateReader(reader):
 def stateFrom(data, cookSeconds):
     """
     厨锅方块实体数据 -> 界面数据 {"heated", "progress", "preview"}。data 读缺了的键得到 None（引擎的方块实体数据对象就是这样），
-    cookSeconds 是一份菜的烹饪时长：计时从它倒数到 0，没在烹饪时是满值，进度为 0；没热源时进度也是 0。
+    cookSeconds 是一份菜的缺省烹饪时长：计时从总时长倒数到 0，没在烹饪时是满值，进度为 0；没热源时进度也是 0。
+    总时长优先读方块实体数据的 timerTotal（按配方的 CookTime，和 JE 一样番茄酱 5 秒、南瓜盅 20 秒），没有才用 cookSeconds。
     预览是煮好、还没装进容器的成品（预览槽里的一份物品，空槽为 None）。
     """
     heated = bool(data["heatEnable"])
-    timer = data["timer"]
+    timer, total = data["timer"], data["timerTotal"]
+    if not isinstance(total, (int, float)) or isinstance(total, bool) or total <= 0:
+        total = cookSeconds
     progress = 0.0
     if heated and isinstance(timer, (int, float)) and not isinstance(timer, bool):
-        progress = max(0.0, min(1.0, 1.0 - float(timer) / cookSeconds))
+        progress = max(0.0, min(1.0, 1.0 - float(timer) / float(total)))
     stack = (data["previewItemSlot"] or [None])[0]
     preview = None
     if stack and stack.get("newItemName"):
