@@ -9,6 +9,9 @@ CraftReturns = {
     'arris:cod_roll': [
         {"ingredients": ('arris:cod_slice', 'arris:cod_slice', 'arris:cooked_rice',), "count": 2, "returns": {'arris:cooked_rice': 'minecraft:bowl'}, "source": 'arris_cod_roll.json'},
     ],
+    'arris:gleaming_salad_block_stage0': [
+        {"ingredients": ('arris:cabbage', 'arris:cabbage', 'arris:tomato', 'minecraft:beetroot', 'minecraft:bowl', 'minecraft:glow_berries', 'minecraft:glow_berries', 'minecraft:golden_carrot', 'minecraft:honey_bottle',), "count": 1, "returns": {'minecraft:honey_bottle': 'minecraft:glass_bottle'}, "source": 'arris_gleaming_salad_block.json'},
+    ],
     'arris:honey_cookie': [
         {"ingredients": ('minecraft:honey_bottle', 'minecraft:wheat', 'minecraft:wheat',), "count": 8, "returns": {'minecraft:honey_bottle': 'minecraft:glass_bottle'}, "source": 'arris_honey_cookie.json'},
     ],

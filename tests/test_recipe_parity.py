@@ -79,6 +79,9 @@ FAMILIES = {
                                                one("arris:onion", 2), BOWL]],
     ("arris:honey_glazed_ham_block_stage0", 1): [[one("minecraft:sweet_berries", 4), one("minecraft:honey_bottle"),
                                                   one("arris:smoked_ham"), one("arris:cooked_rice", 2), BOWL]],
+    # JE 的无序配方：发光浆果 ×2、蜂蜜瓶（还玻璃瓶）、番茄、金胡萝卜、甜菜根、卷心菜 ×2、碗（forge:crops/tomato 与 crops/beetroot 各只有一种）
+    ("arris:gleaming_salad_block_stage0", 1): [[one("minecraft:glow_berries", 2), one("minecraft:honey_bottle"), TOMATO,
+                                                one("minecraft:golden_carrot"), one("minecraft:beetroot"), one("arris:cabbage", 2), BOWL]],
     ("arris:horse_feed", 1): [[anyOf("hay"), one("minecraft:apple", 2), one("minecraft:golden_carrot")]],
     ("arris:cod_roll", 2): [[one("arris:cod_slice", 2), RICE]],
     ("arris:salmon_roll", 2): [[one("arris:salmon_slice", 2), RICE]],
