@@ -24,7 +24,8 @@ DISH_RESULTS = (
     "arris:chicken_sandwich", "arris:chocolate_pie_item", "arris:cod_roll", "arris:egg_sandwich", "arris:fruit_salad",
     "arris:grilled_salmon", "arris:hamburger", "arris:honey_cookie", "arris:honey_glazed_ham_block_stage0",
     "arris:kelp_roll", "arris:melon_juice", "arris:melon_popsicle", "arris:mixed_salad", "arris:mutton_wrap",
-    "arris:nether_salad", "arris:pie_crust", "arris:rice_roll_medley_block_stage0", "arris:roast_chicken_block_stage0",
+    "arris:nether_salad", "arris:pie_crust", "minecraft:pumpkin_pie", "arris:rice_roll_medley_block_stage0",
+    "arris:roast_chicken_block_stage0",
     "arris:roasted_mutton_chops", "arris:salmon_roll", "arris:shepherds_pie_block_stage0", "arris:steak_and_potatoes",
     "arris:stuffed_potato", "arris:sweet_berry_cheesecake_item", "arris:sweet_berry_cookie", "arris:wheat_dough",
 )

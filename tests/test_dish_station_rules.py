@@ -24,11 +24,11 @@ def testTheTableIsUpToDateWithTheRecipes():
 
 def testTheBoardTakesJavasDishesAndLeavesTheRest():
     for name in ("arris:egg_sandwich", "arris:hamburger", "arris:wheat_dough", "arris:pie_crust", "arris:melon_juice",
-                 "arris:apple_pie_item", "arris:roast_chicken_block_stage0"):
+                 "arris:apple_pie_item", "minecraft:pumpkin_pie", "arris:roast_chicken_block_stage0"):
         assert Rules.isDishResult(name), name
     for name in ("arris:horse_feed", "arris:milk_bottle", "arris:tomato", "arris:cabbage", "arris:iron_knife"):
         assert not Rules.isDishResult(name), name
-    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 30
+    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 31
 
 
 def testBasesFollowTheKeywords():
@@ -36,6 +36,7 @@ def testBasesFollowTheKeywords():
     assert kinds["arris:egg_sandwich"] == "bread" and kinds["arris:mixed_salad"] == "bowl"
     assert kinds["arris:barbecue_stick"] == "stick" and kinds["arris:kelp_roll"] == "kelp"
     assert kinds["arris:apple_pie_item"] == "crust", "派皮先于小麦"
+    assert kinds["minecraft:pumpkin_pie"] == "crust", "HoD 的 pumpkin_pie_from_pie_crust 也从派皮摆起"
     assert kinds["arris:honey_cookie"] == "wheat", "蜂蜜瓶不算玻璃瓶"
     assert kinds["arris:melon_juice"] == "bottle"
     assert Rules.isBase(BREAD) and Rules.isBase(("minecraft:bowl", 0)) and not Rules.isBase(TOMATO)
