@@ -10,6 +10,9 @@ SHORT_DURATION = 60
 MEDIUM_DURATION = 180
 LONG_DURATION = 300
 
+# 西瓜汁回的生命值（JE MelonJuiceItem：heal(2.0F)，一颗心）
+MELON_JUICE_HEAL = 2.0
+
 # 原版汤吃下后追加的增益（JE CommonEvents.handleVanillaSoupEffects，默认配置里汤类额外效果和兔肉煲跳跃都开着）
 # 物品名 -> [(效果名, 秒, 等级, 是否显示粒子)]；滋养不显示粒子，兔肉煲的跳跃提升 II 显示 10 秒
 VANILLA_SOUP_BUFFS = {

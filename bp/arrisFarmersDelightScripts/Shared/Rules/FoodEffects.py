@@ -1,21 +1,28 @@
 # -*- coding: utf-8 -*-
 """FoodEffects - 吃喝之后要追加的结算（双端，纯规则）
 
-JE 里牛奶瓶、热可可是 Item 子类的 affectConsumer（MilkBottleItem / HotCocoaItem），原版汤是 CommonEvents 里的
-LivingEntityUseItemEvent.Finish 事件；网易的 minecraft:food 表达不了这些，由服务端在 PlayerEatFoodServerEvent 里结算。
-这里只决定"做什么"（返回动作元组），引擎调用在 Server/FoodEffects.py，所以不碰引擎、离线可测。
+JE 里牛奶瓶、热可可、西瓜汁、冰棒是 Item 子类的 affectConsumer（MilkBottleItem / HotCocoaItem / MelonJuiceItem /
+PopsicleItem），原版汤是 CommonEvents 里的 LivingEntityUseItemEvent.Finish 事件；网易的 minecraft:food 表达不了这些，
+由服务端在 PlayerEatFoodServerEvent 里结算。这里只决定"做什么"（返回动作元组），引擎调用在 Server/FoodEffects.py，
+所以不碰引擎、离线可测。
 
 动作：
     (REMOVE, 效果名)
     (ADD, 效果名, 秒, 等级, 是否显示粒子)
+    (HEAL, 生命值)
+    (EXTINGUISH,)
 """
-from ..Data.Effects import negativeEffect, VANILLA_SOUP_BUFFS
+from ..Data.Effects import negativeEffect, VANILLA_SOUP_BUFFS, MELON_JUICE_HEAL
 
 REMOVE = "remove"
 ADD = "add"
+HEAL = "heal"
+EXTINGUISH = "extinguish"
 
 MILK_BOTTLE = "arris:milk_bottle"
 HOT_COCOA = "arris:hot_cocoa"
+MELON_JUICE = "arris:melon_juice"
+MELON_POPSICLE = "arris:melon_popsicle"
 
 
 def _milk(activeEffects, rng):
@@ -33,6 +40,16 @@ def _hotCocoa(activeEffects, rng):
     return [(REMOVE, rng.choice(harmful))]
 
 
+def _melonJuice(activeEffects, rng):
+    # 西瓜汁：回 2 点生命（以前靠瞬间治疗效果，等级对不上）
+    return [(HEAL, MELON_JUICE_HEAL)]
+
+
+def _popsicle(activeEffects, rng):
+    # 西瓜冰棒：灭火（JE 的 PopsicleItem：clearFire）
+    return [(EXTINGUISH,)]
+
+
 def _soup(itemName):
     # 原版汤：蘑菇煲 / 甜菜汤给滋养 3 分钟，兔肉煲给滋养 5 分钟和跳跃提升 II 10 秒
     buffs = VANILLA_SOUP_BUFFS[itemName]
@@ -43,12 +60,21 @@ def _soup(itemName):
 _RULES = {
     MILK_BOTTLE: _milk,
     HOT_COCOA: _hotCocoa,
+    MELON_JUICE: _melonJuice,
+    MELON_POPSICLE: _popsicle,
 }
 for _name in VANILLA_SOUP_BUFFS:
     _RULES[_name] = _soup(_name)
 
 # 有追加结算的食物（登记事件处理函数时当匹配表用）
 HANDLED = frozenset(_RULES)
+
+
+def healedValue(current, top, amount):
+    """回 amount 点之后的生命值；已经满了或已经倒下（<= 0）时返回 None，不用设置。"""
+    if current <= 0 or current >= top:
+        return None
+    return min(top, current + amount)
 
 
 def eatActions(itemName, activeEffects, rng):

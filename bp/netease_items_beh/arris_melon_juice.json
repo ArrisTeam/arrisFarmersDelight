@@ -4,14 +4,6 @@
         "components": {
             "minecraft:food": {
                 "can_always_eat": true,
-                "effects": [
-                    {
-                        "amplifier": 1,
-                        "chance": 1.0,
-                        "duration": 1,
-                        "name": "instant_health"
-                    }
-                ],
                 "using_converts_to": "minecraft:glass_bottle"
             },
             "netease:customtips": {

@@ -69,6 +69,20 @@ def testSoupBuffsDoNotDependOnWhatThePlayerAlreadyHas():
         assert len(Rules.eatActions("minecraft:rabbit_stew", state, random)) == 2
 
 
+def testMelonJuiceHealsTwoAndPopsicleExtinguishes():
+    assert Rules.eatActions("arris:melon_juice", [], random) == [(Rules.HEAL, 2.0)]
+    assert Rules.eatActions("arris:melon_popsicle", ["poison"], random) == [(Rules.EXTINGUISH,)]
+    assert Effects.MELON_JUICE_HEAL == 2.0
+
+
+def testHealedValue():
+    assert Rules.healedValue(10.0, 20.0, 2.0) == 12.0
+    assert Rules.healedValue(19.0, 20.0, 2.0) == 20.0
+    assert Rules.healedValue(20.0, 20.0, 2.0) is None, "满血"
+    assert Rules.healedValue(0.0, 20.0, 2.0) is None, "已经倒下"
+    assert Rules.healedValue(25.0, 30.0, 2.0) == 27.0
+
+
 def testOtherFoodsHaveNoExtraActions():
     for itemName in ("minecraft:apple", "arris:cooked_rice", "arris:cake_slice"):
         assert Rules.eatActions(itemName, ["poison"], random) == [], itemName

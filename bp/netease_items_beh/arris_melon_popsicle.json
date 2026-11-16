@@ -4,19 +4,8 @@
         "components": {
             "minecraft:food": {
                 "can_always_eat": true,
-                "effects": [
-                    {
-                        "amplifier": 0,
-                        "chance": 1.0,
-                        "duration": 15,
-                        "name": "fire_resistance"
-                    }
-                ],
                 "nutrition": 3,
                 "saturation_modifier": 0.2
-            },
-            "netease:customtips": {
-                "value": "§9抗火 (00:15)"
             },
             "minecraft:max_stack_size": 64,
             "minecraft:use_duration": 16

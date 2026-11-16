@@ -38,17 +38,58 @@ class FakeEffects(object):
         return True
 
 
+class FakeAttr(object):
+    """一个实体的引擎属性（CreateAttr 的组件）：只做生命值和着火。"""
+
+    def __init__(self):
+        self.health = 20.0
+        self.top = 20.0
+        self.log = []
+
+    def GetAttrValue(self, attrType):
+        return self.health
+
+    def GetAttrMaxValue(self, attrType):
+        return self.top
+
+    def SetAttrValue(self, attrType, value, setDefault=1):
+        self.log.append(("set", attrType, value, setDefault))
+        self.health = value
+        return True
+
+    def SetEntityOnFire(self, seconds, burnDamage=1):
+        self.log.append(("fire", seconds))
+        return True
+
+
 class FakeFactory(object):
     def __init__(self):
         self.effects = {}
+        self.attrs = {}
 
     def CreateEffect(self, entityId):
         return self.effects.setdefault(entityId, FakeEffects())
+
+    def CreateAttr(self, entityId):
+        return self.attrs.setdefault(entityId, FakeAttr())
+
+
+HEALTH = 7  # 假的 AttrType.HEALTH，只要前后一致
+
+
+class FakeServerApi(object):
+    class _Enum(object):
+        class AttrType(object):
+            HEALTH = HEALTH
+
+    def GetMinecraftEnum(self):
+        return self._Enum
 
 
 FACTORY = FakeFactory()
 _engine = types.ModuleType("arrisFarmersDelightScripts.Server.Helpers.Engine")
 _engine.compFactory = FACTORY
+_engine.serverApi = FakeServerApi()
 sys.modules[_engine.__name__] = _engine
 
 Registry = fdtest.load("Server.EventRegistry")
@@ -102,11 +143,43 @@ def testVanillaSoupsGrantNourishment():
     assert sorted(comp.log) == sorted([("add", "arris:nourishment", 300, 0, False), ("add", "jump_boost", 10, 1, True)])
 
 
+def _attr(health, top=20.0):
+    attr = FACTORY.CreateAttr(PLAYER)
+    attr.health, attr.top = health, top
+    del attr.log[:]
+    return attr
+
+
+def testMelonJuiceHealsTwoPointsAndNeverPastTheMax():
+    attr = _attr(10.0)
+    comp = _player("speed")
+    _eat("arris:melon_juice")
+    assert attr.log == [("set", HEALTH, 12.0, 0)], "回 2 点；第三个参数 0 = 不改属性默认值"
+    assert comp.log == [], "不再靠瞬间治疗效果"
+    attr = _attr(19.0)
+    _eat("arris:melon_juice")
+    assert attr.log == [("set", HEALTH, 20.0, 0)], "不超过上限"
+    attr = _attr(20.0)
+    _eat("arris:melon_juice")
+    assert attr.log == [], "满血不用设置"
+    attr = _attr(25.0, 30.0)
+    _eat("arris:melon_juice")
+    assert attr.log == [("set", HEALTH, 27.0, 0)], "生命上限被别的包改过也照回 2 点"
+
+
+def testMelonPopsicleExtinguishesTheEater():
+    attr = _attr(20.0)
+    comp = _player()
+    _eat("arris:melon_popsicle")
+    assert attr.log == [("fire", 0)] and comp.log == [], "秒数 <= 0 即灭火；不再给抗火"
+
+
 def testOrdinaryFoodDoesNotTouchEffects():
     comp = _player("poison", "speed")
+    attr = _attr(10.0)
     _eat("minecraft:apple")
     _eat("arris:cooked_rice")
-    assert comp.log == []
+    assert comp.log == [] and attr.log == []
 
 
 def testNourishmentCancelsHungerLossButNotEating():
