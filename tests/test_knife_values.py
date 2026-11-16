@@ -4,6 +4,10 @@
 
 基岩版的耐久比较是"损伤 > 最大耐久才坏"，所以 max_damage = N 的工具能用 N+1 次，和原版基岩工具（铁剑 251）一致，
 这里不再另外减一。攻击伤害、挖掘等级不在这个对照里。
+
+netease:weapon 里的 attack_damage / level / enchantment 只有 description.custom_item_type 是 weapon 时才会被读
+（网易"自定义武器及工具"文档；引擎里 Item::initServer 对 netease:weapon 只做"最大堆叠 1"，不写类型就是普通物品），
+所以小刀必须带 custom_item_type，附魔能力才生效。
 """
 from __future__ import print_function, unicode_literals
 
@@ -26,6 +30,12 @@ def testEnchantabilityMatchesJeTier():
         weapon = _knife(tier)["netease:weapon"]
         assert weapon["enchantment"] == enchant, tier
         assert weapon["type"] == "sword" and weapon["attack_damage"] > 0, "%s：攻击伤害保持原样、还是剑类" % tier
+
+
+def testKnivesAreDeclaredAsWeapons():
+    for tier in sorted(KNIVES):
+        declared = jefood.description("%s_knife" % tier).get("custom_item_type")
+        assert declared == "weapon", "%s：不写 custom_item_type 就是普通物品，netease:weapon 的攻击和附魔能力不生效" % tier
 
 
 def testOnlyTheNetheriteKnifeIsFireResistant():

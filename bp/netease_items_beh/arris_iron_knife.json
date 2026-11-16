@@ -13,6 +13,7 @@
         },
         "description": {
             "category": "arris_farmers_delight",
+            "custom_item_type": "weapon",
             "identifier": "arris:iron_knife",
             "register_to_create_menu": true
         }

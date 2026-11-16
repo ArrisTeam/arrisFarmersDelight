@@ -154,6 +154,11 @@ def beh(short):
     return _read(os.path.join(BEH, "arris_%s.json" % short))["minecraft:item"]["components"]
 
 
+def description(short):
+    """行为包物品的 description。"""
+    return _read(os.path.join(BEH, "arris_%s.json" % short))["minecraft:item"]["description"]
+
+
 def res(short):
     """资源包物品的 components。"""
     return _read(os.path.join(RES, "arris_%s.json" % short))["minecraft:item"]["components"]
