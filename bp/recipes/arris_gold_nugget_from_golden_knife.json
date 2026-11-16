@@ -1,0 +1,18 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_furnace": {
+        "description": {
+            "identifier": "arris:gold_nugget_from_golden_knife"
+        },
+        "input": {
+            "item": "arris:golden_knife"
+        },
+        "output": {
+            "item": "minecraft:gold_nugget"
+        },
+        "tags": [
+            "blast_furnace",
+            "furnace"
+        ]
+    }
+}

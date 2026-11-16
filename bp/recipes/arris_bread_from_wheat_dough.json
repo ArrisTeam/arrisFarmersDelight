@@ -1,0 +1,18 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_furnace": {
+        "description": {
+            "identifier": "arris:bread_from_wheat_dough"
+        },
+        "input": {
+            "item": "arris:wheat_dough"
+        },
+        "output": {
+            "item": "minecraft:bread"
+        },
+        "tags": [
+            "furnace",
+            "smoker"
+        ]
+    }
+}

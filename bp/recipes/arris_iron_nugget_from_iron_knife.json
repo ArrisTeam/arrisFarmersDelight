@@ -1,0 +1,18 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_furnace": {
+        "description": {
+            "identifier": "arris:iron_nugget_from_iron_knife"
+        },
+        "input": {
+            "item": "arris:iron_knife"
+        },
+        "output": {
+            "item": "minecraft:iron_nugget"
+        },
+        "tags": [
+            "blast_furnace",
+            "furnace"
+        ]
+    }
+}

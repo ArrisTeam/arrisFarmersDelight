@@ -1,0 +1,20 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_furnace": {
+        "description": {
+            "identifier": "arris:cooked_salmon_slice"
+        },
+        "input": {
+            "item": "arris:salmon_slice"
+        },
+        "output": {
+            "item": "arris:cooked_salmon_slice"
+        },
+        "tags": [
+            "campfire",
+            "furnace",
+            "smoker",
+            "soul_campfire"
+        ]
+    }
+}
