@@ -19,7 +19,7 @@
 
 | 模块 | 功能 |
 |---|---|
-| **厨锅 `arris:cooking_pot`** | 6 格食材 + 容器槽 + 产出槽 + 进度条动画 + 热源判定 + 实时 molang 同步；厨锅UI同时支持经典/携带版档案；支持 30+ 配方（蘑菇煲、兔肉煲、牛肉炖、蔬菜汤、番茄酱、饺子、意面、火腿、蛋糕等） |
+| **厨锅 `arris:cooking_pot`** | 6 格食材 + 容器槽 + 产出槽 + 进度条动画 + 热源判定 + 实时 molang 同步；厨锅界面用 dolorContainer（服务端权威，食谱书带搜索与"添加食材"），同时支持经典/携带版档案；支持 30+ 配方（蘑菇煲、兔肉煲、牛肉炖、蔬菜汤、番茄酱、饺子、意面、火腿、蛋糕等） |
 | **煎锅 `arris:skillet`** | 坐置烹饪；自动切换 1-5 层食物展示实体；攻击时播放特殊音效 |
 | **炉灶 `arris:stove`** | 6 槽同时烘焙；每槽独立计时；支持原版肉类 + 自定义切片 |
 | **砧板 `arris:cutting_board`** | 刀 → 肉切片 / 切菜 / 切派；斧头 → 剥树皮（所有原版 + Nether 原木） |
@@ -44,11 +44,12 @@ arrisFarmersDelight/
 ├── bp/                                      # 行为包 (UUID 0bbb87d8-…)
 │   ├── arrisFarmersDelightScripts/          # Python 2.7 脚本根目录（结构说明见 docs/ARCHITECTURE.md）
 │   │   ├── modMain.py                       # 入口：登记服务端、客户端与联动入口
-│   │   ├── Shared/                          # 双端共用、不依赖引擎：Data/ 数据表、Rules/ 纯规则
+│   │   ├── Shared/                          # 双端共用、不依赖引擎：Data/ 数据表、Rules/ 纯规则、Menus/ dolor 界面模型
 │   │   ├── Api/                             # 对外联动接口（linkage.md）
 │   │   ├── Server/                          # 服务端：ModServer 入口 + EventRegistry + 各玩法模块 + Helpers/
-│   │   ├── Client/                          # 客户端：ModClient 入口、客户端端点、Ui/（厨锅界面、指南书）
+│   │   ├── Client/                          # 客户端：ModClient 入口、客户端端点、CookingPotUi、Ui/（指南书、旧厨锅界面）
 │   │   ├── Compat/                          # 联动：Jei/、Create/（对方未安装时不做任何事）
+│   │   ├── dolorContainer/                  # 容器界面库（tools/vendor.py 拷入，请勿修改），dolorLayouts.py 是布局编译产物
 │   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 89 个自定义方块 JSON
 │   ├── netease_items_beh/                   # 98 个物品行为 JSON
@@ -60,9 +61,10 @@ arrisFarmersDelight/
 ├── rp/                                      # 资源包 (UUID 497a11b2-…)
 │   ├── models/ textures/ animations/        # 模型、贴图、动画
 │   ├── entity/ render_controllers/ animation_controllers/  # 实体客户端定义
-│   ├── ui/                                  # 4 个自定义 UI：厨锅、引导书、JEI 视图
+│   ├── ui/                                  # 自定义 UI：引导书、JEI 视图、旧厨锅界面；dolor_*.json 是 dolorContainer 与厨锅布局的拷入 / 编译产物
 │   ├── particles/ sounds/ fonts/            # 特效 / 音效 / 字体
 │   └── manifest.json
+├── layouts/ dolor.json dolor.lock           # dolorContainer 的布局源文件、配置与拷入记录（docs/ARCHITECTURE.md「厨锅界面」）
 ├── img/                                     # README 配图
 ├── CLAUDE.md                                # 项目开发指南（面向 AI / 新贡献者）
 ├── .planning/OPTIMIZATION_PLAN.md           # 性能优化计划存档
