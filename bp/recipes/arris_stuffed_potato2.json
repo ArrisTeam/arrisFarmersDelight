@@ -1,0 +1,33 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:stuffed_potato2"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:baked_potato"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:cooked_beef"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:milk_bottle"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:stuffed_potato"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

@@ -8,17 +8,17 @@
             {
                 "count": 1,
                 "data": 0,
+                "item": "minecraft:baked_potato"
+            },
+            {
+                "count": 1,
+                "data": 0,
                 "item": "arris:beef_patty"
             },
             {
                 "count": 1,
                 "data": 0,
                 "item": "arris:milk_bottle"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:baked_potato"
             }
         ],
         "result": {
