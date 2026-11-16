@@ -34,6 +34,26 @@ def setStateReader(reader):
     _stateReader[0] = reader
 
 
+def stateFrom(data, cookSeconds):
+    """
+    厨锅方块实体数据 -> 界面数据 {"heated", "progress", "preview"}。data 读缺了的键得到 None（引擎的方块实体数据对象就是这样），
+    cookSeconds 是一份菜的烹饪时长：计时从它倒数到 0，没在烹饪时是满值，进度为 0；没热源时进度也是 0。
+    预览是煮好、还没装进容器的成品（预览槽里的一份物品，空槽为 None）。
+    """
+    heated = bool(data["heatEnable"])
+    timer = data["timer"]
+    progress = 0.0
+    if heated and isinstance(timer, (int, float)) and not isinstance(timer, bool):
+        progress = max(0.0, min(1.0, 1.0 - float(timer) / cookSeconds))
+    stack = (data["previewItemSlot"] or [None])[0]
+    preview = None
+    if stack and stack.get("newItemName"):
+        # 换成普通字典再交给界面（引擎对象里读出来的堆，只用 Server/CookingPot.py 读预览槽时用过的取法）
+        preview = {"newItemName": stack.get("newItemName"), "newAuxValue": stack.get("newAuxValue", 0),
+                   "count": stack.get("count", 0)}
+    return {"heated": heated, "progress": progress, "preview": preview}
+
+
 class VesselSlot(SlotType):
     """容器格：手动放什么都收（与旧界面一致）；Shift 点击只往里放已知的容器，不然食材会被塞进这一格。"""
 

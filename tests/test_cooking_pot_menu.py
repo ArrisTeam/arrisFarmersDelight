@@ -188,6 +188,36 @@ def testDataValuesComeFromTheRegisteredStateReader():
     assert menu.dataValues(_Instance()) == {}   # 没登记读数函数（客户端）时什么都不给
 
 
+class _BlockEntityData(dict):
+    """引擎的方块实体数据对象的替身：读缺了的键得到 None。"""
+
+    def __missing__(self, key):
+        return None
+
+
+def testStateFromBlockEntityData():
+    stew = {"newItemName": "minecraft:mushroom_stew", "newAuxValue": 0, "count": 2}
+    state = PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=4.0, previewItemSlot=[stew]), 10.0)
+    assert state["heated"] is True and abs(state["progress"] - 0.6) < 1e-9
+    assert state["preview"] == stew and state["preview"] is not stew   # 换成了普通字典
+    menu = _menu()
+    assert set(state) <= set(menu.data)
+    for name, value in state.items():
+        assert menu.data[name].encode(value) is not None or value is None
+
+
+def testStateFromIsIdleWithoutHeatAWholeTimerOrMissingKeys():
+    idle = PotMenu.stateFrom(_BlockEntityData(), 10.0)   # /setblock 出来的厨锅：什么键都没有
+    assert idle == {"heated": False, "progress": 0.0, "preview": None}
+    cold = PotMenu.stateFrom(_BlockEntityData(heatEnable=False, timer=3.0, previewItemSlot=[{}]), 10.0)
+    assert cold["progress"] == 0.0 and cold["preview"] is None   # 没热源就没有进度；空的预览槽没有预览
+    waiting = PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=10.0), 10.0)
+    assert waiting["progress"] == 0.0   # 计时是满值：还没开始
+    assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=-0.2), 10.0)["progress"] == 1.0   # 夹在 0-1 里
+    assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=99.0), 10.0)["progress"] == 0.0
+    assert PotMenu.stateFrom(_BlockEntityData(heatEnable=True, timer=True), 10.0)["progress"] == 0.0   # 布尔不算计时
+
+
 def testViewerStartsWithNothingSelectedAndTheWholeList():
     menu = _menu()
     viewer = _viewer(menu)

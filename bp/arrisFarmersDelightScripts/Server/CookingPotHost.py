@@ -28,26 +28,10 @@ class CookingPotHost(Block.Host):
 
 
 def readState(key):
-    """
-    界面数据：厨锅方块实体数据里的热源、烹饪进度（计时从 COOK_SECONDS 倒数，没在烹饪时是满值，进度为 0）、预览格里
-    煮好还没装进容器的成品。厨锅 /setblock 出来、区块没加载时读不到数据，什么都不给。
-    """
+    """界面数据：读厨锅的方块实体数据换成热源、进度、预览（换算见 PotMenu.stateFrom）；读不到（区块没加载）时什么都不给。"""
     place = Block.parseKey(key)
     data = GetBlockEntityData(place[0], place[1]) if place is not None else None
-    if not data:
-        return {}
-    heated = bool(data["heatEnable"])
-    timer = data["timer"]
-    progress = 0.0
-    if heated and isinstance(timer, (int, float)):
-        progress = max(0.0, min(1.0, 1.0 - float(timer) / COOK_SECONDS))
-    stack = (data["previewItemSlot"] or [None])[0]
-    preview = None
-    if stack and stack.get("newItemName"):
-        # 引擎对象里读出的堆换成普通字典再交给界面（与 Server/CookingPot.py 读预览格用的是同样的取法）
-        preview = {"newItemName": stack.get("newItemName"), "newAuxValue": stack.get("newAuxValue", 0),
-                   "count": stack.get("count", 0)}
-    return {"heated": heated, "progress": progress, "preview": preview}
+    return PotMenu.stateFrom(data, COOK_SECONDS) if data else {}
 
 
 PotMenu.setStateReader(readState)
