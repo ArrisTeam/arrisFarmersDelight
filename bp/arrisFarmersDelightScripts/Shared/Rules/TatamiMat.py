@@ -10,6 +10,8 @@
 方块的 direction 状态沿用 netease:face_directional 的约定（south 0、west 1、north 2、east 3，方块的"前面"朝向放置的玩家），
 所以头在 direction 对面那一侧、也就是放置者面朝的方向。
 """
+from ..Data.Blocks import cabinetList
+from ..Data.Cooking import StoveList
 from .Placement import directionOfFacing, facingOfDirection, facingOfYaw, placePositions, stepFacing
 
 FOOT = "arris:tatami_full_mat"
@@ -27,6 +29,15 @@ REPLACEABLE = frozenset((
     "minecraft:nether_sprouts", "minecraft:fire", "minecraft:soul_fire",
     "minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava",
 ))
+
+
+# 自己会处理右键的方块：手里拿着东西点它们时先轮到它们（JE：方块的 use 优先，潜行才改成放方块）
+USES_THE_CLICK = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet", "arris:basket", "minecraft:frame",
+                  "minecraft:glow_frame")
+
+
+def usesTheClick(blockName):
+    return blockName in USES_THE_CLICK or blockName in cabinetList or blockName in StoveList
 
 
 def isReplaceable(name):

@@ -24,7 +24,7 @@ FLOOR_Y = 63
 MAT_ITEM = {"newItemName": "arris:tatami_full_mat", "newAuxValue": 0, "count": 3}
 HALF_ITEM = {"newItemName": "arris:tatami_half_mat", "newAuxValue": 0, "count": 3}
 BLOCK_CALLS = []                         # SetBlockNew 的调用记录：("set", 位置, 方块名, 处理方式, 多出来的参数)
-STATE = {"yaw": 0.0, "gameType": None}
+STATE = {"yaw": 0.0, "gameType": None, "sneak": False}
 
 
 def _blockInfo(target):
@@ -43,8 +43,15 @@ def _game(target):
     return methods
 
 
+def _player(target):
+    methods = dict(fakeengine.FakeWorld._Player(world, target))
+    methods["isSneaking"] = lambda: STATE["sneak"]
+    return methods
+
+
 world._BlockInfo = _blockInfo
 world._Game = _game
+world._Player = _player
 world._Rot = lambda target: {"GetRot": lambda: (0.0, STATE["yaw"])}
 
 
@@ -57,7 +64,7 @@ def _setUp(hand=MAT_ITEM, yaw=0.0, creative=False, gameType=None, floor=True):
     world.entities.clear()
     world.modAttr.clear()
     world.timers = []
-    STATE.update(yaw=yaw, gameType=gameType)
+    STATE.update(yaw=yaw, gameType=gameType, sneak=False)
     world.addPlayer("p1", hand=dict(hand), creative=creative)
     if floor:
         for x in range(0, 11):
@@ -159,6 +166,24 @@ def testHoldingTheClickDoesNotPlaceASecondMat():
     again = dict(args, ret=False, itemDict=dict(MAT_ITEM))
     Registry.dispatch("ServerItemUseOnEvent", again, STONE)     # 还在 0.2 秒冷却里（按住右键每刻重发）
     assert len(BLOCK_CALLS) == placed and again["ret"] is True
+
+
+def testBlocksThatUseTheClickThemselvesWinUnlessSneaking():
+    # JE：方块的 use 优先，潜行才改成放方块；这里让它们处理右键，也不抢交互冷却（它们的处理函数要能认领这次点击）
+    for name in ("arris:cooking_pot", "arris:skillet", "arris:stove", "arris:oak_cabinet", "arris:cutting_board", "arris:basket"):
+        _setUp(yaw=0.0)
+        world.setBlock(5, 64, 5, name)
+        args, handled = _use(blockPos=(5, 64, 5), face=1)
+        assert args["ret"] is True and handled is True, name                  # 引擎自己那一格照样取消
+        assert world.blockName(5, 65, 5) == "minecraft:air" and not BLOCK_CALLS, name
+        assert world.modAttr.get(("p1", "arrisUsedCD")) in (None, False), name     # 没占交互冷却
+        assert world.players["p1"]["hand"]["count"] == 3, name
+    _setUp(yaw=0.0)
+    world.setBlock(5, 64, 5, "arris:oak_cabinet")
+    world.setBlock(5, 64, 6, STONE)                                         # 头的脚下也要有方块
+    STATE["sneak"] = True
+    _use(blockPos=(5, 64, 5), face=1)
+    assert world.blockName(5, 65, 5) == Mat.FOOT and world.blockName(5, 65, 6) == Mat.HEAD
 
 
 def testTheHeadItemPlacesAWholeMatToo():
