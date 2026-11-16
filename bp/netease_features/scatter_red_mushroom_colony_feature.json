@@ -1,0 +1,23 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:scatter_feature": {
+    "description": {
+      "identifier": "arris:scatter_red_mushroom_colony_feature"
+    },
+    "iterations": 64,
+    "x": {
+      "distribution": "triangle",
+      "extent": [ -4, 4 ]
+    },
+    "y": {
+      "distribution": "triangle",
+      "extent": [ -3, 3 ]
+    },
+    "z": {
+      "distribution": "triangle",
+      "extent": [ -4, 4 ]
+    },
+    "coordinate_eval_order": "zyx",
+    "places_feature": "arris:red_mushroom_colony_feature"
+  }
+}
