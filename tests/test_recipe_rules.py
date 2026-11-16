@@ -14,71 +14,16 @@
 """
 from __future__ import print_function
 
-import collections
-import io
-import json
 import os
 import re
 
 import fdtest
+from recipekit import RECIPES, loadRecipes, packIdentifiers, readText, resultsOf
 
 Food = fdtest.load("Shared.Data.Food")
 
-RECIPES = os.path.join(fdtest.BP, "recipes")
 FURNACE_TAGS = ("furnace", "blast_furnace", "smoker", "campfire", "soul_campfire")
 ARRIS_ID = re.compile(r'"(arris:[a-z0-9_]+)"')
-
-
-def _read(path):
-    with io.open(path, encoding="utf-8-sig") as f:
-        return f.read()
-
-
-def loadRecipes():
-    """{文件名: (种类 shaped / shapeless / furnace, 配方体)}，一个文件只许一份配方。"""
-    found = {}
-    for name in sorted(os.listdir(RECIPES)):
-        if not name.endswith(".json"):
-            continue
-        doc = json.loads(_read(os.path.join(RECIPES, name)))
-        bodies = [(key, value) for key, value in doc.items() if key != "format_version"]
-        assert len(bodies) == 1, "%s 里不是恰好一份配方" % name
-        found[name] = (bodies[0][0].split("_")[-1], bodies[0][1])
-    return found
-
-
-def resultsOf(body):
-    """[(物品名, 个数), ...]，第一个进结果槽。"""
-    result = body["result"]
-    entries = result if isinstance(result, list) else [result]
-    return [(entry["item"], entry.get("count", 1)) for entry in entries]
-
-
-def ingredientsOf(kind, body):
-    """{物品名: 个数}：有序按 pattern 里每个键出现几次，无序把 count 加起来。"""
-    counts = collections.Counter()
-    if kind == "shaped":
-        for char in "".join(body["pattern"]):
-            if char != " ":
-                counts[body["key"][char]["item"]] += 1
-    else:
-        for entry in body["ingredients"]:
-            counts[entry["item"]] += entry.get("count", 1)
-    return counts
-
-
-def packIdentifiers():
-    """包里定义的物品和方块标识符（方块有子目录）。"""
-    found = set()
-    for folder in ("netease_items_beh", "netease_blocks"):
-        for root, _dirs, files in os.walk(os.path.join(fdtest.BP, folder)):
-            for name in files:
-                if not name.endswith(".json"):
-                    continue
-                for value in json.loads(_read(os.path.join(root, name))).values():
-                    if isinstance(value, dict) and "description" in value:
-                        found.add(value["description"]["identifier"])
-    return found
 
 
 def testFileNamesAndIdentifiersMatch():
@@ -129,7 +74,7 @@ def testFurnaceTagsAreFurnaces():
 def testPackItemsExist():
     known = packIdentifiers()
     for name in sorted(os.listdir(RECIPES)):
-        for item in set(ARRIS_ID.findall(_read(os.path.join(RECIPES, name)))):
+        for item in set(ARRIS_ID.findall(readText(os.path.join(RECIPES, name)))):
             own = "arris:" + name[len("arris_"):-len(".json")]
             assert item in known or item == own, "%s 用到的 %s 包里没有定义" % (name, item)
 
