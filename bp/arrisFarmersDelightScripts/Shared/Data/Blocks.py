@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Blocks - 可攀爬方块、橱柜、篮子（双端，纯数据）
 """
+# JE 配置 enableRopeReeling（缺省开）：潜行空手右键绳子，把这根绳子最下面的一节卷回背包
+enableRopeReeling = True
 # 可攀爬的方块列表
 canClimbList = [
     "arris:rope",

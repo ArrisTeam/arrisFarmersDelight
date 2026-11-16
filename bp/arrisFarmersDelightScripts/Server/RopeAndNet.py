@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
-"""RopeAndNet - 绳子攀爬、绳子敲钟、安全网弹跳、爬绳时免摔落伤害与不踩坏耕地（服务端）"""
+"""RopeAndNet - 绳子攀爬、敲钟、卷绳子，安全网弹跳，爬绳时免摔落伤害与不踩坏耕地（服务端）
+
+绳子照 JE 的 RopeBlock，规则在 Shared/Rules/RopeReel.py。
+"""
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, System, GetBlockName, GetEngineTypeStr
-from .Helpers.Player import SetPlayerUsedCD
+from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, GetEngineTypeStr
+from .Helpers.Fx import ToAllPlayerPlaySound
+from .Helpers.Player import SetPlayerUsedCD, IsCreative
+from ..Shared.Data import Blocks
 from ..Shared.Data.Blocks import canClimbList
+from ..Shared.Rules import RopeReel
 import math
 
 ROPE = "arris:rope"
@@ -76,13 +82,34 @@ def OnFallOnSafetyNet(args):
     args["cancel"] = True
 
 
+def _reelRope(args):
+    # 潜行：这根绳子最下面的一节收回背包（JE：destroyBlock(pos, false)，不掉落；背包放不下什么都不做）
+    playerId = args["playerId"]
+    dimensionId = args["dimensionId"]
+    abilities = compFactory.CreatePlayer(playerId).GetPlayerAbilities()
+    if not (abilities and abilities.get("build")):
+        return
+    target = RopeReel.lowestRope((args["x"], args["y"], args["z"]), lambda pos: GetBlockName(pos, dimensionId) == ROPE)
+    ropeItem = {"itemName": ROPE, "count": 1, "auxValue": 0}
+    if not IsCreative(playerId) and not compFactory.CreateItem(playerId).SpawnItemToPlayerInv(ropeItem, playerId):
+        return
+    compFactory.CreateBlockInfo(levelId).SetBlockNew(target, {"name": "minecraft:air"}, 0, dimensionId)
+    ToAllPlayerPlaySound(dimensionId, target, "dig.cloth")
+
+
 @registerHandler("ServerBlockUseEvent", match=ROPE)
 def OnUseRope(args):
-    # 绳子一路连到上方的钟时，右键绳子敲钟
+    # JE RopeBlock.use：手里得是空的；潜行（配置 enableRopeReeling 开着）卷绳子，否则一路连到上方的钟时敲钟
+    playerId = args["playerId"]
+    if GetCarriedItem(playerId):
+        return
+    if SetPlayerUsedCD(playerId) is True:
+        return
+    if Blocks.enableRopeReeling and compFactory.CreatePlayer(playerId).isSneaking() is True:
+        _reelRope(args)
+        return
     x, y, z = args["x"], args["y"], args["z"]
     dimensionId = args["dimensionId"]
-    if SetPlayerUsedCD(args["playerId"]) is True:
-        return
     names = [GetBlockName((x, i, z), dimensionId) for i in range(y, y + BELL_SEARCH)]
     if "minecraft:bell" not in names:
         return
