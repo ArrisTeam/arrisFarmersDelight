@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Input - 跳跃键（爬绳往上）、指南书物品、对着方块拿原版南瓜派不吃（客户端）"""
+"""Input - 跳跃键（爬绳往上）、指南书物品、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开（客户端）"""
+import time
+
 from ..QuModLibs.Client import Listen, Call
 from .Engine import clientApi, compFactory, levelId, playerId
 from ..Shared.Data import Food
 from ..Shared.Rules.Placement import eatsPumpkinPie
+from ..Shared.Rules.SkilletHandRules import HoldReporter
+from ..Shared.Rules.SkilletRules import SKILLET_ITEM
 
 GUIDE_BOOK_ITEM = "arris:farmer_delight_guide_book"
+# 手持煎锅烹饪要知道右键有没有按住，服务端没有"按住"的事件：主手拿着煎锅时由这里报告（规则见 SkilletHandRules.HoldReporter）
+_skilletHold = HoldReporter()
 
 
 @Listen("ClientJumpButtonPressDownEvent")
@@ -32,3 +38,29 @@ def OnClientItemTryUse(args):
         sneaking = compFactory.CreatePlayer(playerId).isSneaking()
         if not eatsPumpkinPie(aimsAtBlock, sneaking, Food.PUMPKIN_PIE_SNEAK_TO_PLACE):
             args["cancel"] = True
+
+
+def _carryingSkillet():
+    item = compFactory.CreateItem(playerId).GetCarriedItem()
+    return bool(item) and item.get("newItemName") == SKILLET_ITEM
+
+
+def _reportSkilletHold(held):
+    if held is not None:
+        Call("SkilletUseHeld", {"held": held})
+
+
+@Listen("RightClickBeforeClientEvent")
+def OnRightClickDown(args):
+    _reportSkilletHold(_skilletHold.press(time.time(), _carryingSkillet()))
+
+
+@Listen("RightClickReleaseClientEvent")
+def OnRightClickUp(args):
+    _reportSkilletHold(_skilletHold.release())
+
+
+@Listen("OnScriptTickClient")
+def OnSkilletHoldTick(args):
+    if _skilletHold.down:
+        _reportSkilletHold(_skilletHold.tick(time.time(), _carryingSkillet()))

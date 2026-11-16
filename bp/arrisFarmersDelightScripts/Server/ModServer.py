@@ -21,6 +21,7 @@ from . import CraftReturns  # noqa: F401
 from . import CookingPot  # noqa: F401
 from . import CookingPotHost  # noqa: F401
 from . import Skillet  # noqa: F401
+from . import SkilletHold  # noqa: F401
 from . import Stove  # noqa: F401
 from . import CuttingBoard  # noqa: F401
 from . import ItemToBlock  # noqa: F401

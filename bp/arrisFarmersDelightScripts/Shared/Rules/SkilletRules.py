@@ -58,7 +58,7 @@ def fireAspectLevel(itemDict):
     return enchantLevel(itemDict, FIRE_ASPECT)
 
 
-# ---- 手持烹饪 ----
+# ---- 手持烹饪的热源（计时与按住状态在 SkilletHandRules.py） ----
 
 # 脚的位置取整时给 y 一点余量：站在方块顶上时脚的 y 可能是 63.9999 一类
 _FOOT_EPSILON = 0.001
@@ -79,49 +79,6 @@ def nearHeat(footPos, blockNameAt, heatNames, onFire=False):
         if blockNameAt(pos) in heatNames:
             return True
     return False
-
-
-# 客户端按住右键时每 HOLD_BEAT 秒报一次；超过 HOLD_TIMEOUT 没消息就当松手了（掉线、开界面时没发松开事件）
-HOLD_BEAT = 0.2
-HOLD_TIMEOUT = 0.8
-# JE onUseTick：每刻 1/50 的概率播一声滋滋
-SIZZLE_PER_TICK = 1.0 / 50
-
-
-def sizzleChance(seconds):
-    """seconds 秒里至少响一声滋滋的概率（每刻 1/50 逐刻累计）。"""
-    return 1.0 - (1.0 - SIZZLE_PER_TICK) ** (seconds * TICKS_PER_SECOND)
-
-
-class HoldTracker(object):
-    """各玩家的右键按住状态：客户端报"按着"就记下时间，报"松开"就清掉；太久没消息也算松开。"""
-
-    def __init__(self):
-        self._beat = {}
-
-    def beat(self, playerId, now):
-        self._beat[playerId] = now
-
-    def release(self, playerId):
-        self._beat.pop(playerId, None)
-
-    def held(self, playerId, now):
-        last = self._beat.get(playerId)
-        return last is not None and now - last <= HOLD_TIMEOUT
-
-
-class HandCook(object):
-    """一次手持烹饪：从按下右键起 seconds 秒做好一件 food -> result（JE：按住 getUseDuration 刻，煎一件）。"""
-    __slots__ = ("food", "result", "seconds", "started")
-
-    def __init__(self, food, result, seconds, now):
-        self.food = food
-        self.result = result
-        self.seconds = seconds
-        self.started = now
-
-    def finished(self, now):
-        return now - self.started >= self.seconds
 
 
 # ---- 打人 ----

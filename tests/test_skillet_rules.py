@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""煎锅规则对 JE（Shared/Rules/SkilletRules.py）：烹饪时间换算、手持热源范围、按住状态、攻击冷却音效、耐久磨损、存取煎锅物品。
+"""煎锅规则对 JE（Shared/Rules/SkilletRules.py）：烹饪时间换算、手持热源范围、攻击冷却音效、耐久磨损、存取煎锅物品。
 
 期望值抄自 FD 1.3.4 的 SkilletBlock.getSkilletCookingTime（float 运算 + Mth.clamp）手算的结果，不依赖 .refs：
     600 刻：30 秒 × 0.2 = 6 秒（120 刻）；火焰附加 I：30 × 0.15 = 4.5 -> 4 秒（80 刻）；II：30 × 0.1 = 3 秒（60 刻，到下限）
@@ -54,28 +54,6 @@ def testNearHeatLooksAtBlockNamesOnlyAndFireCounts():
     assert Rules.nearHeat((9.5, 64.0, 9.5), near, heat, onFire=True) is True
     # 熄灭的营火名字不变：JE 只看标签，所以照样算（这里不读状态）
     assert Rules.nearHeat((1.5, 64.0, 2.5), lambda pos: "minecraft:campfire", heat) is True
-
-
-def testHoldTrackerExpiresWhenTheClientGoesQuiet():
-    holds = Rules.HoldTracker()
-    assert holds.held("p", 0.0) is False
-    holds.beat("p", 10.0)
-    assert holds.held("p", 10.5) is True and holds.held("p", 10.0 + Rules.HOLD_TIMEOUT - 0.01) is True
-    assert holds.held("p", 10.0 + Rules.HOLD_TIMEOUT + 0.01) is False
-    holds.beat("p", 20.0)
-    holds.release("p")
-    assert holds.held("p", 20.1) is False
-    assert Rules.HOLD_BEAT < Rules.HOLD_TIMEOUT
-
-
-def testHandCookFinishesAfterItsSeconds():
-    cook = Rules.HandCook("minecraft:beef", "minecraft:cooked_beef", 6.0, 100.0)
-    assert not cook.finished(105.9) and cook.finished(106.0)
-
-
-def testSizzleChanceAccumulatesTheJePerTickChance():
-    assert abs(Rules.sizzleChance(1.0 / 20) - 0.02) < 1e-9
-    assert abs(Rules.sizzleChance(0.25) - (1 - 0.98 ** 5)) < 1e-9
 
 
 def testAttackClockPicksStrongOrWeakByTheSkilletAttackDelay():
