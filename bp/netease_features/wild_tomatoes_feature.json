@@ -16,7 +16,17 @@
       "auto_rotate": false,
       "min_sides_must_attach": 1,
       "bottom": [
-        "minecraft:sand"
+        "minecraft:dirt",
+        "minecraft:grass_block",
+        "minecraft:podzol",
+        "minecraft:coarse_dirt",
+        "minecraft:mycelium",
+        "minecraft:dirt_with_roots",
+        "minecraft:moss_block",
+        "minecraft:mud",
+        "minecraft:muddy_mangrove_roots",
+        "minecraft:sand",
+        "minecraft:red_sand"
       ]
     }
   }

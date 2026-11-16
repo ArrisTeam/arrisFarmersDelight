@@ -1,0 +1,12 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:aggregate_feature": {
+    "description": {
+      "identifier": "arris:patch_wild_tomatoes_feature"
+    },
+    "features": [
+      "arris:scatter_wild_tomatoes_feature",
+      "arris:scatter_companion_dead_bush_feature"
+    ]
+  }
+}
