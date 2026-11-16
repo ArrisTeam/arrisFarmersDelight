@@ -3,22 +3,24 @@
 
 HoD 的煎锅场景是 idle_visible：32 格内每个客户端都按同步来的状态自己演全部动作（SkilletLogic 在客户端也跑，只读）。基岩版的客户端拿不到
 站点状态，靠这条广播：服务端把锅的样子发给同维度 32 格内的玩家（客户端 Compat/Diegesis/PanScenes 的 OnPanLook 去演）。默认关着，
-前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。负载（Call 到 OnPanLook）：
+前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。新走进 32 格的人单发一份当前的样子（Helpers/LookWatch：
+等翻面、煎好留在锅里这些不再变的状态，不补的话走近的人永远看到旧的）。负载（Call 到 OnPanLook）：
     {"dimensionId", "pos": [x, y, z], "item": 锅里的东西（物品线格式，空是 {}）, "batch": 算多少件煎, "byHand": 手放的（两面分开煎）,
      "heated": 有没有热源, "down" / "up": 贴锅面 / 朝上面熟到哪（0..1）, "rate": 每秒往前走多少（0 = 停着）, "both": 两面一起走（蛋）}
 状态变了（东西、批量、手放、热源、开始 / 停止走、颠了一下）马上发；在走的时候每 KEYFRAME_SECONDS 秒补一次，客户端按 rate 往前推。
 一次性的事件（placed / tossed / untossed / taken / fried）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，发给附近所有人
 （包括正在用站点的人：他的客户端按"自己刚颠过"去重）。锅的计时和这里一样用真实时间，不受 /time 影响。
 """
-from .Helpers.Engine import Call, compFactory, serverApi
+from .Helpers import LookWatch
+from .Helpers.Engine import Call
 from ..Shared.Rules import PanStation, SkilletRules
 
 ENDPOINT = "OnPanLook"
-RANGE = 32.0               # 与前置包的 WATCH_RANGE 一致（两个包互不导入）
+RANGE = LookWatch.RANGE
 KEYFRAME_SECONDS = 1.0     # 熟度在走时多久补发一次
 STORED_KEY = "skilletItem"
 _enabled = [False]
-_sent = {}                 # (维度, 坐标) -> {"sig": 上次发的签名, "at": 上次发的时刻}
+_sent = {}                 # (维度, 坐标) -> {"sig": 上次发的签名, "at": 上次发的时刻, "audience": 已经收到当前样子的人}
 
 
 def enable(on=True):
@@ -70,29 +72,26 @@ def _signature(payload, hand):
             payload["heated"], payload["rate"] > 0.0, hand.tosses)
 
 
-def nearby(dimensionId, blockPos):
-    """同维度、离方块 RANGE 格内的玩家。"""
-    cx, cy, cz = blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5
-    near = []
-    for playerId in serverApi.GetPlayerList():
-        if compFactory.CreateDimension(playerId).GetEntityDimensionId() != dimensionId:
-            continue
-        at = compFactory.CreatePos(playerId).GetFootPos()
-        if at is not None and (at[0] - cx) ** 2 + (at[1] - cy) ** 2 + (at[2] - cz) ** 2 <= RANGE * RANGE:
-            near.append(playerId)
-    return near
+def nearby(dimensionId, blockPos, now=None):
+    """同维度、离方块 RANGE 格内的玩家（给了 now 就用 LookWatch 的快照）。"""
+    return LookWatch.nearby(dimensionId, blockPos, now)
 
 
 def tick(dimensionId, blockPos, blockEntityData, hand, now):
-    """锅每个步（和每次动作）之后：状态变了就发；熟度在走时每 KEYFRAME_SECONDS 秒补一次。"""
+    """锅每个步（和每次动作）之后：状态变了就发给附近所有人；熟度在走时每 KEYFRAME_SECONDS 秒补一次；
+    没变的时候，刚走进 32 格的人单发一份当前的样子（他们错过了上一次广播）。"""
     if not _enabled[0] or blockEntityData is None:
         return
-    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "at": -1.0e12})
+    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "at": -1.0e12, "audience": LookWatch.Audience()})
     payload = build(dimensionId, blockPos, blockEntityData, hand)
     signature = _signature(payload, hand)
+    near = nearby(dimensionId, blockPos, now)
     if signature != entry["sig"] or (payload["rate"] > 0.0 and now - entry["at"] >= KEYFRAME_SECONDS):
         entry["sig"], entry["at"] = signature, now
-        _send(nearby(dimensionId, blockPos), payload)
+        entry["audience"].sent(near)
+        _send(near, payload)
+    else:
+        _send(entry["audience"].arrivals(near), payload)
 
 
 def _send(players, payload):

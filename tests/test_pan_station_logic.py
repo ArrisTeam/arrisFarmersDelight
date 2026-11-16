@@ -357,6 +357,43 @@ def testTheBroadcastGoesOnlyToPlayersWithin32Blocks():
     assert "a" in players and "b" in players and "far" not in players
 
 
+def testAPlayerWhoWalksIntoRangeGetsTheCurrentLookOnceAndNobodyElseDoes():
+    """JE 的状态在方块实体里，走近就对；广播只发给"发的那一刻在 32 格内的人"，走进来的人要补一份，不然等翻 / 煎好留在锅里这类不再变的状态永远是旧的。"""
+    manager, _ = P.setup(heated=False)
+    fake.addPlayer("far", (10.5, 64.0, 80.5))
+    P.opened(manager)
+    carry(manager, "a", 35, BEEF, 2)
+    P.do(manager, "a", P.custom("place"))
+    P.step(0.25, now=fake.world.time + 1.0)
+    for payload, players in P._grouped():
+        assert "far" not in players, "还在 32 格外：什么也收不到"
+    before = len(P.looks())
+    fake.world.players["far"]["pos"] = (10.5, 64.0, 20.5)           # 走进来了
+    P.step(0.25, now=fake.world.time + 2.0)
+    arrivals = [(payload, players) for payload, players in P._grouped() if "far" in players]
+    assert len(arrivals) == 1 and arrivals[0][1] == ["far"], "只单发给他一份，a 和 b 不重复收"
+    assert arrivals[0][0]["item"] == {"newItemName": BEEF, "newAuxValue": 0, "count": 2} and arrivals[0][0]["byHand"], "是锅现在的样子"
+    assert len(P.looks()) == before + 1
+    P.step(0.25, now=fake.world.time + 3.0)
+    assert len(P.looks()) == before + 1, "他已经有了：没变就不再发"
+
+
+def testAPlayerWhoLeavesAndComesBackGetsAnotherCopy():
+    manager, _ = P.setup(heated=False)
+    P.opened(manager)
+    carry(manager, "a", 35, BEEF, 1)
+    P.do(manager, "a", P.custom("place"))
+    P.step(0.25, now=fake.world.time + 1.0)
+    fake.world.players["b"]["pos"] = (10.5, 64.0, 90.5)             # b 走远了
+    P.step(0.25, now=fake.world.time + 2.0)
+    P.do(manager, "a", P.custom("take"))                              # 锅里的东西被取走（b 没收到）
+    fake.world.players["b"]["pos"] = (12.5, 64.0, 10.5)             # b 回来
+    mark = len(fake.calls)
+    P.step(0.25, now=fake.world.time + 3.0)
+    got = [m for m in fake.calls[mark:] if m[0] == "b" and m[1] == PanLook.ENDPOINT]
+    assert len(got) == 1 and got[0][2][0]["item"] == {}, "回来的人补到的是现在的样子：锅里空了"
+
+
 def testTheBroadcastIsOffWithoutThePrerequisite():
     manager, _ = P.setup()
     PanLook.enable(False)
