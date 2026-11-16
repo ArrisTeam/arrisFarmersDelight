@@ -59,7 +59,7 @@ class PotViewMixin(object):
 
     def __init__(self, view):
         super(PotViewMixin, self).__init__(view)
-        self.foods, self.foodKeys = [], None
+        self.foods, self.foodKeys, self.foodTotal = [], None, None
         self.dish, self.dishKey, self.spoon = None, None, None
         self.hand = SpoonHand()
         self.stroking = self.sticky = False
@@ -178,6 +178,10 @@ class PotViewMixin(object):
         """锅里的料、上方的菜变了就换道具；勺子只建一次。"""
         data, props = self.view.data, self.view.props
         inputs = data.get("inputs") or []
+        total = sum(item.get("count") or 0 for item in inputs if item)
+        if self.foodTotal is not None and total > self.foodTotal and getattr(self.view, "particles", None):
+            self.view.particles("arris_diegesis:splash", (MIDDLE, SOUP_Y, MIDDLE))      # Diegesis 的水花：料落进锅里
+        self.foodTotal = total
         keys = [(slot, Rules.keyOf(item)) for slot, item in enumerate(inputs) if Rules.keyOf(item)]
         if keys != self.foodKeys:
             for _, prop in self.foods:

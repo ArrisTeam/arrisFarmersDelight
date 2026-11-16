@@ -149,7 +149,7 @@ class BoardLogicMixin(object):
             return False
         last = self.cut.strike()
         ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "ambient.cutting_board.knife")
-        self.station.effect("chop", {"mark": mark, "last": last})
+        self.station.effect("chop", {"mark": mark, "last": last, "item": item["newItemName"]})
         if last:
             self._cutTheStack(playerId, data, item, tool)
         else:

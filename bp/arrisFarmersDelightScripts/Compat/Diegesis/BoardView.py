@@ -9,6 +9,7 @@
 import math
 
 from . import BookSources
+from ...Shared.Data.FoodColors import FoodColors
 from ...Shared.Rules import CuttingStation as Rules
 from ...Shared.Rules import DishStation
 from ...Shared.Rules.HandsOn import Cutting
@@ -16,6 +17,11 @@ from ...Shared.Rules.HandsOn import Cutting
 CAMERA = {"pos": (8.0, 21.0, -3.0), "target": (8.0, 1.0, 7.5), "fov": 55.0}
 FOOD = (3.0, 13.0, 3.0, 13.0)       # 食材在板上的范围 x0, x1, z0, z1（z1 是离玩家远的一端）
 MARK_Y = 2.0                        # 虚线贴在食材上面
+# 每一下飞几颗碎屑、不是食物时按工具给什么颜色（HoD BoardBehavior 的 stroke：刀 4、斧 7、镐 10……）
+STROKE_DUST = {Cutting.TOOL_CUT: 4, Cutting.TOOL_CHOP: 7, Cutting.TOOL_STRIP: 6, Cutting.TOOL_SMASH: 10, Cutting.TOOL_DIG: 8,
+               Cutting.TOOL_PRY: 4, Cutting.TOOL_SNIP: 3}
+STROKE_COLORS = {Cutting.TOOL_CHOP: 0x9C7F4E, Cutting.TOOL_STRIP: 0x6B5034, Cutting.TOOL_SMASH: 0x8A8A8A, Cutting.TOOL_DIG: 0xA4A8B8,
+                 Cutting.TOOL_PRY: 0x9C7F4E, Cutting.TOOL_SNIP: 0x8B5A2B}
 KNIFE_SCALE = 0.8                   # 刀的贴图 6.4 像素见方
 KNIFE_ROLL = 135.0                  # 竖立的刀在贴图平面内顺时针转 135 度：刀柄朝上、刀尖朝下（实机标定）
 KNIFE_TIP = 3.2 * math.sqrt(2.0)    # 刀尖在视觉中心正下方多远（贴图对角线的一半）
@@ -80,6 +86,7 @@ class BoardViewMixin(object):
             self._redraw()
         elif name == "chop":
             self.chopLeft = CHOP_SECONDS
+            self._dust(data.get("mark"), data.get("item"))
         elif name == "hint":
             self.view.hint(HINTS.get(data.get("key"), ""))
         elif name == "drawer":
@@ -131,6 +138,17 @@ class BoardViewMixin(object):
             knifeItem = {"newItemName": self.toolName, "newAuxValue": 0, "count": 1}
             self.knife = props.item(knifeItem, center, flat=False, facing=(0.0, -1.0), roll=KNIFE_ROLL, scale=KNIFE_SCALE)
         self.view.hint(self._hintText(item, plan, done))
+
+    def _dust(self, mark, itemName):
+        """HoD：每一下都飞出被切的东西的碎屑，食物按贴图的颜色（Shared/Data/FoodColors），木头、石头、皮革按工具。"""
+        data = self.view.data
+        spots, angles = data.get("spots") or [], data.get("angles") or []
+        if not getattr(self.view, "particles", None) or not isinstance(mark, int) or not 0 <= mark < min(len(spots), len(angles)):
+            return
+        a, b = markLine(data.get("style"), spots[mark], angles[mark])
+        stroke = data.get("stroke") or Cutting.TOOL_CUT
+        self.view.particles("arris_diegesis:dust", ((a[0] + b[0]) * 0.5, MARK_Y + 1.0, (a[2] + b[2]) * 0.5),
+                            FoodColors.get(itemName, STROKE_COLORS.get(stroke)), STROKE_DUST.get(stroke, 4))
 
     def _knifeCenter(self):
         data = self.view.data
