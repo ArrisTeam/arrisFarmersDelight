@@ -84,6 +84,24 @@ def testTheFarmersDelightCopyOfThePoseMathMatchesTheCalibration():
 
 
 
+def testAThingHeldUprightLeansBackAndTipsInTheScenesFrame():
+    """厨师手里端着的瓶、桶、蛋：正面朝场景的 -z（镜头那边），往后仰、在贴图平面里倾；场景转了 90 度，姿态跟着转。"""
+    same = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    up = [row[1] for row in Pose.standingMatrix(same, 16.0, 0.0)]
+    assert abs(up[0]) < 1e-9 and up[1] > 0.95 and 0.27 < up[2] < 0.28, "往后仰 16 度：顶朝 +z（离开镜头）"
+    tipped = [row[1] for row in Pose.standingMatrix(same, 0.0, -105.0)]
+    assert tipped[0] > 0.96 and tipped[1] < 0.0, "倾 -105 度：顶倒向 +x（屏幕左边），过了水平"
+    turned = [[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]          # 场景的 x 轴是世界的 +z，z 轴是世界的 -x
+    moved = [row[1] for row in Pose.standingMatrix(turned, 16.0, 0.0)]
+    assert abs(moved[2]) < 1e-9 and moved[0] < -0.27, "场景转了：往后仰变成朝世界的 -x"
+    flat = Pose.lyingMatrix(30.0)
+    assert Pose.framed(same, flat) == flat
+    assert [row[1] for row in Pose.framed(turned, flat)] != [row[1] for row in flat]
+    rebuilt = _rebuild(Pose.engineEuler(Pose.standingMatrix(turned, 16.0, -40.0)))
+    wanted = Pose.standingMatrix(turned, 16.0, -40.0)
+    assert all(abs(rebuilt[i][j] - wanted[i][j]) < 1e-6 for i in range(3) for j in range(3)), "引擎的欧拉角还原得回来"
+
+
 def testDishLayersStackOnTheBoardAndTheDishLiesAlone():
     bread = {"newItemName": "minecraft:bread", "newAuxValue": 0, "count": 3}
     egg = {"newItemName": "arris:fried_egg", "newAuxValue": 0, "count": 6}

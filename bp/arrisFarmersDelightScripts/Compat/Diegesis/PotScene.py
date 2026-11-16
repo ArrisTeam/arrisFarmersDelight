@@ -13,6 +13,7 @@
 import random
 
 from . import PotFx
+from .PotHands import PotHands
 from .PotModel import PotModel
 from .PotSceneFx import SceneFx, play
 from ...Client.Engine import compFactory, levelId
@@ -43,6 +44,8 @@ class PotScene(object):
         self.spoon = PotSpoonMotion.PotSpoonMotion()
         self.drift = PotDrift.PotDrift()
         self.fx = SceneFx(self)
+        self.hands = PotHands(self)
+        self.viewFrame = None                 # 开着站点的人的坐标换算（PotView 给）：手部动作朝着他那一边演
         self.look = None
         self.key = None
         self.clock = 0.0
@@ -145,6 +148,7 @@ class PotScene(object):
             self.model.ripple(INNER_LO + INNER_SPAN * u, INNER_LO + INNER_SPAN * v, height)
         self._moveProps(present)
         self.fx.step(dt, near)
+        self.hands.step(dt, near)
         self.model.waves(dt)
         if spoon.send and self.onSend is not None:
             wx, wz = PotModelMath.localToWorld(self.facing, spoon.sendX, spoon.sendZ)
@@ -224,5 +228,6 @@ class PotScene(object):
                 self.removeProp(prop[0])
         self.props = [None] * (SLOTS + 1)
         self.fx.clear()
+        self.hands.clear()
         if not blockGone:
             self.model.open(False)

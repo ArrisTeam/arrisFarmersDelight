@@ -53,6 +53,17 @@ def lyingMatrix(yaw, pitch=0.0, roll=0.0):
     return _mul(_mul(_mul(_ry(yaw), _rx(pitch)), _rz(roll)), _rx(90.0))
 
 
+def framed(axes, matrix):
+    """在一个转过的场景里算好的姿态换到世界里：axes 是 3x3，列是场景的 x / y / z 轴在世界里的方向。"""
+    return _mul(axes, matrix)
+
+
+def standingMatrix(axes, lean, tilt):
+    """立着的东西：正面朝场景的 -z（镜头那边），往后仰 lean 度、在贴图平面里倾 tilt 度（JE 节点的欧拉角 (lean, 0, tilt)，顺序 y、x、z），
+    再换到世界里：axes·Rx(lean)·Rz(tilt)。厨师手里端着的瓶、桶、蛋用它。"""
+    return _mul(axes, _mul(_rx(lean), _rz(tilt)))
+
+
 def pivotFor(center, matrix, scale):
     """视觉中心 -> 轴心（贴图底边中点）：中心 = 轴心 + R·(0, 半边长, 0)。坐标是格。"""
     half = ITEM_SPAN / 16.0 * scale * 0.5

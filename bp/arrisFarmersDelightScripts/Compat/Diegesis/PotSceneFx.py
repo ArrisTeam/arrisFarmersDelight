@@ -70,6 +70,8 @@ class SceneFx(object):
         """料落水：染成汤色的水花、噗的一声（烧着的锅再加一声下料的嗞），锅心一圈水波。"""
         scene, drift = self.scene, self.scene.drift
         for kind, slot in drift.events:
+            if kind == PotDrift.EVENT_POUR:
+                scene.hands.start(slot)       # 不浮着的料：一只手端来倒 / 磕 / 抖（PotHands）
             if kind != PotDrift.EVENT_LANDED:
                 continue
             ripple, splashes, volume, pitch, sizzle, sizzlePitch = PotDrift.landingEffects(slot, scene.look.heated)
@@ -100,6 +102,11 @@ class SceneFx(object):
             x = (INNER_LO + along) if side < 2 else (INNER_LO + inset if side == 2 else INNER_LO + INNER_SPAN - inset)
             z = (INNER_LO + inset if side == 0 else INNER_LO + INNER_SPAN - inset) if side < 2 else (INNER_LO + along)
             PotFx.particle(PotFx.BUBBLE_POP, scene.world(x, surface + 0.15, z), color=liquid.bubbleColor, scale=EDGE_SCALE)
+
+    def bubbles(self, count):
+        """锅底随处冒 count 个泡。"""
+        for _ in range(count):
+            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), FLOOR + 0.2)
 
     def _bubble(self, x, z, y):
         """水里冒一个泡：浮到液面的时候破掉、起一圈水波。"""
@@ -169,8 +176,7 @@ class SceneFx(object):
             elif not near:
                 continue
             elif kind == "bubbles":
-                for _ in range(event["count"]):
-                    self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), FLOOR + 0.2)
+                self.bubbles(event["count"])
             elif kind == "steam":
                 PotFx.particle(PotFx.STEAM, scene.world(*event["pos"]), alpha=STEAM_ALPHA, count=event["count"],
                                velocity=event["rise"])

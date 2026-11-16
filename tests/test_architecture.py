@@ -60,6 +60,7 @@ PACKS = {
             "Compat/Diegesis/PotSceneFx.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotScenes.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotModel.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/PotHands.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotFx.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PanView.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/GrillView.py": {"forbid": {"Server"}, "engine": True},

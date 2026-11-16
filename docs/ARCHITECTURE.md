@@ -84,8 +84,8 @@ Compat/
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
                         BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotHud（客户端，开着站点的人）= 厨锅站点；
-                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx（客户端）= 谁都看得见的锅里场景：开盖、汤面、
-                        漂着的料、碎料、勺子、气泡蒸汽和声音（docs/diegesis/DESIGN.md §10）；
+                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands（客户端）= 谁都看得见的锅里场景：开盖、
+                        汤面、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
                         PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
                         GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
                         DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台摆出砧板菜的配方时拦下）；
