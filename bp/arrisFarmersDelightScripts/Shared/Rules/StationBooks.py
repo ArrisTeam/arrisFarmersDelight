@@ -65,12 +65,20 @@ def bestKinds(variants, pool):
 
 # ---------------------------------------------------------------- 厨锅
 
+def _potWays(recipe):
+    """配料井怎么摆（RecipeBook.drawDish：一格是一组备选，每秒换一种）：配方表里 _ways 展开的留着每格的选项，就摆成一种写法、
+    一格几个选项，玩家一眼知道"任一生肉"都行；没有（下游模组追加的、只有展开后的写法）每种写法一种、一格一件。"""
+    cells = getattr(recipe.get("Recipe"), "slots", ())
+    if cells:
+        return [[[(name, 0) for name in options] for options in cells]]
+    return [[[(entry[0], entry[1])] for entry in variant] for variant in (recipe.get("Recipe") or ()) if variant]
+
+
 def potPages():
     pages = []
     for index, recipe in enumerate(CookingPotRecipeList):
         result = recipe.get("CookResult") if isinstance(recipe, dict) else None
-        ways = [[[(entry[0], entry[1])] for entry in variant] for variant in (recipe.get("Recipe") or ()) if variant] \
-            if _pair(result) else []
+        ways = _potWays(recipe) if _pair(result) else []
         if not ways:
             continue
         vessel = recipe.get("Vessel")

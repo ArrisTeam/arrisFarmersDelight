@@ -3,9 +3,11 @@
 """四个站点的食谱书页（Shared/Rules/StationBooks.py）：页的写法、当前在做的菜、服务端放料挑写法和份数。"""
 from __future__ import print_function
 
+import dgtest
 import fdtest
 
 Books = fdtest.load("Shared.Rules.StationBooks")
+Book = dgtest.load("Shared.Book")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes")
 PotCooking = fdtest.load("Shared.Rules.HandsOn.PotCooking")
 
@@ -39,6 +41,38 @@ def testPotPagesFollowTheRecipeTable():
         assert slow["note"] == "13 秒", "cooking_pot_time 2.0：书上的时间也翻倍（20 / 1.5）"
     finally:
         PotCooking.COOKING_POT_TIME = before
+
+
+def testPotPagesKeepTheAlternativesOfEachSlotForTheBookToCycle():
+    # RecipeBook.java:1456-1459：一格是一组备选，每秒换一种；配方表里 _ways 展开的留着每格的选项，书上就是一种写法、一格几个选项
+    stew = next(page for page in Books.potPages() if page["item"]["newItemName"] == "minecraft:rabbit_stew")
+    assert len(stew["ways"]) == 1, "不再是 2 种写法各占一页上的一种"
+    cells = stew["ways"][0]
+    assert cells[0] == [("minecraft:potato", 0)] and cells[1] == [("minecraft:rabbit", 0)] and cells[2] == [("minecraft:carrot", 0)]
+    assert cells[3] == [("minecraft:brown_mushroom", 0), ("minecraft:red_mushroom", 0)], "蘑菇这一格两种都行"
+    soup = next(page for page in Books.potPages() if page["item"]["newItemName"] == "arris:pumpkin_soup")
+    assert soup["ways"] == [[[("arris:pumpkin_slice", 0)], [("arris:cabbage", 0), ("arris:cabbage_leaf", 0)],
+                             [("minecraft:porkchop", 0), ("arris:bacon", 0)], [("minecraft:milk_bucket", 0), ("arris:milk_bottle", 0)]]],         "卷心菜 / 生猪肉 / 奶：整组备选都在，一格一组"
+    # 书按"每格有没有一件"判断现在能不能做：任一备选在背包里就行
+    have = {("minecraft:potato", 0): 1, ("minecraft:rabbit", 0): 1, ("minecraft:carrot", 0): 1, ("minecraft:red_mushroom", 0): 1}
+    assert Book.bestWay(stew, have) == (0, [True, True, True, True], 0)
+    assert Book.bestWay(stew, {("minecraft:potato", 0): 1})[1] == [True, False, False, False]
+    for page in Books.potPages():
+        _wellShaped(page)
+
+
+def testRecipesAddedByDownstreamModsStayOneWayPerVariant():
+    # 下游模组往 CookingPotRecipeList 追加的配方是普通列表（没有每格的选项）：照旧每种写法一件一格
+    recipe = {"Recipe": [[("t:a", 0), ("t:b", 0)], [("t:a", 0), ("t:c", 0)]], "CookResult": ("t:dish", 0), "PushItem": [], "text": "试"}
+    Recipes.CookingPotRecipeList.append(recipe)
+    try:
+        page = Books.potPages()[-1]
+        assert page["item"]["newItemName"] == "t:dish"
+        assert page["ways"] == [[[("t:a", 0)], [("t:b", 0)]], [[("t:a", 0)], [("t:c", 0)]]]
+        assert isinstance(Recipes._ways("t:a", ["t:b", "t:c"]), list) and Recipes._ways("t:a", ["t:b", "t:c"]) == [
+            [("t:a", 0), ("t:b", 0)], [("t:a", 0), ("t:c", 0)]], "_ways 的结果还是写法的列表"
+    finally:
+        Recipes.CookingPotRecipeList.remove(recipe)
 
 
 def testBoardPagesHaveDishesBaseFirstAndCutsWithTheirTools():

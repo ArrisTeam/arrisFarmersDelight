@@ -12,8 +12,14 @@ forge 标签换成基岩版的物品名（生肉含 FD 切好的肉丁 / 肉排 
 """
 
 
+class _Ways(list):
+    """_ways 的结果：全部写法（就是个列表，下游照旧当列表用），外加每格能放哪些料 slots：食谱书照 JE 一格一格轮换着画备选。"""
+    slots = ()
+
+
 def _ways(*slots):
-    """每格能放的料（一个物品名，或一组可替换的物品名）-> 全部写法 [[(物品名, 0), ...], ...]；排好序后相同的写法只留一种。"""
+    """每格能放的料（一个物品名，或一组可替换的物品名）-> 全部写法 [[(物品名, 0), ...], ...]；排好序后相同的写法只留一种。
+    结果的 .slots 是每格的选项（物品名元组的元组）。"""
     ways, seen = [[]], set()
     for slot in slots:
         options = [slot] if isinstance(slot, str) else slot
@@ -24,7 +30,9 @@ def _ways(*slots):
         if key not in seen:
             seen.add(key)
             unique.append(way)
-    return unique
+    found = _Ways(unique)
+    found.slots = tuple(tuple([slot] if isinstance(slot, str) else slot) for slot in slots)
+    return found
 
 
 # JE 的 forge 标签（基岩版物品名）
