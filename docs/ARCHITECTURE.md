@@ -25,6 +25,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         GrowthRates（JE 作物的生长概率 -> 基岩随机刻的概率，换算只在这里） CropTick（一次随机刻长不长、长几级）
                         FarmEdits（随机刻 / 骨粉要改哪些方块） BoneMealRules（骨粉照 JE） WildSpread（野生作物骨粉蔓延）
                         CompostRules（有机肥堆沤） ColonyRules（蘑菇菌落） RichSoilRules（沃土催熟与湿度） StrawRules（刀收草秆）
+                        Sparkle（闪亮沙拉的闪光粒子：哪些阶段冒、概率 0.05 × 份数、冒在哪）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
@@ -49,6 +50,7 @@ Client/                 客户端
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
   Endpoints.py          服务端调用的 4 个客户端端点
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染） Input.py
+  BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
   CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
 Compat/
@@ -168,9 +170,45 @@ def OnServerSkilletBlockUse(args):
    `ServerItemTryUseEvent` / `ClientItemTryUseEvent` 里拦）；对着空气右键照常吃。放下的方块图集、四口动画、拿刀切 / 拆掉的切片数、饥饿值满时点派没反应、
    创造模式中键拾取给什么（JE 是原版南瓜派，这边多半给 `arris:pumpkin_pie` 方块物品）。
 
+## 闪亮沙拉（JE 1.3 盛宴，对照 JE）
+
+- 方块 `arris:gleaming_salad_block_stage0..3` + `_leftover`（`bp/netease_blocks/gleaming_salad_block/`）= JE `GleamingSaladBlock` 的 servings 4..1 与 0。
+  盛菜走 `platePackagedFoodDict` 的通用流程（拿碗右键盛一碗 `arris:gleaming_salad`，4 份盛完留空盘，空盘再点一下收走），战利品整份掉自己、其余掉一个碗，
+  整份方块物品堆叠 1（`minecraft:max_stack_size`）、被活塞推时破坏（`netease:redstone_property: break_on_push` = `PushReaction.DESTROY`，官方只认这一个值）。
+  硬度 / 抗爆 0.5、声音木头；发光 = 份数 × 3；轮廓和碰撞是 JE 写死的两个盒子（`Block.box(3,0,3,13,2,13)` 与 `(2,2,2,14,6,14)`，不随份数变）。
+- 配方是 JE 的 9 格无序配方（发光浆果 ×2、蜂蜜瓶、番茄、金胡萝卜、甜菜根、卷心菜 ×2、碗），蜂蜜瓶的玻璃瓶走 `shapedRecipeContainerDict`；
+  前置包在场时和别的盛宴一样改在砧板上摆（`tools/gen_dishes.py` 的 `DISH_RESULTS`，碗打底、9 层）。
+- 模型：JE 的 `models/block/gleaming_salad_block_stage0..3 / leftovers.json` 用 `tools/je_model_to_netease.py` 原样转成网易方块模型
+  （`py -3 tools/je_model_to_netease.py --je <JE 模型> --id arris:xxx [--icon arris:xxx_icon] --map JE贴图名=terrain_texture短名 … --out <输出>`，
+  只有 stage0 带 `--icon`，贴图的对照表在 `tests/test_gleaming_salad.py`）。换算依据是 Strata 知识库 `rp/16_netease_block_model`：文件里 x 取反，
+  元素旋转 x / y 轴写 `-angle`、z 轴写 `+angle`，顶面的 UV 角另排（写负的 `uv_size`）；`tests/test_je_model_convert.py` 一边按 JE 的 FaceBakery、
+  一边按引擎的面表逐顶点逐 UV 对照。找得到 JE 资源时（环境变量 `FD_JE_ASSETS` 指到 `…/assets/farmersdelight`，缺省 `.refs/FarmersDelight/src/main/resources/assets/farmersdelight`），
+  `test_gleaming_salad.py` 把五个模型重转一遍逐项比对。`forge_data` 的浆果自发光、`shade: false`、`cullface` 网易模型没有对应物，没搬。
+- 闪光粒子：JE 的 `animateTick` 在客户端按 `0.05 × 份数` 的概率放 `SparkleParticle`（4 张 8×8、满亮度、4 刻寿命、不动）。基岩版 stage0..3 写
+  `netease:block_animate_random_tick`（`trigger_rate` = 0.2 / 0.15 / 0.1 / 0.05，引擎按概率给客户端发 `BlockAnimateRandomTickEvent`，不用服务端参与），
+  `Client/BlockSparkle.py` 收到就在 `Shared/Rules/Sparkle.sparkleSpot`（JE 的位置公式）放 `arris:sparkle`（`rp/particles/sparkle.json`，4 张贴图竖着拼成
+  `textures/particle/arris_sparkle.png`，帧号 `floor(floor(age × 20) × 0.75)` 复现 JE 的 `SpriteSet`，寿命 0.25 秒，不写 lighting 即满亮度）。
+- 没搬的：JE 的 `canSurvive`（脚下没了盛宴消失）、红石比较器输出、`isPathfindable = false`、盛菜时的方块碎屑粒子和 `BLOCK_FOOD_TAKE_PORTION` 音效（统一用
+  `FoodBlocks` 里的声音）、成就。别的盛宴方块（烤鸡、南瓜盅、蜂蜜火腿、牧羊人派、饭卷拼盘）的硬度（这里都是 0.8，JE 0.5）、声音（多数 cloth，JE 木头）、
+  整份堆叠（JE 1）、活塞推动与 JE 不一致，这次没动。
+
+待实机验证（写完这一版时没进过游戏）：
+
+1. 朝向：官方文档说 `netease:face_directional` 放置时 north 贴图面向玩家（与 JE 的 `FACING = 玩家朝向的反方向` 一致），所以模型没有预先转 180°；
+   实机看第一份是不是从靠玩家的一侧盛走（stage1 少的是 JE 模型的 north 侧叶子）。
+2. 模型：叶子伸出方块边界（-1..17 像素）后在区块网格里不被裁掉、镂空边缘（alpha test）正常；`use_ao` 不把整块压得过暗。
+3. 发光：四个阶段实际是 12 / 9 / 6 / 3 级、空盘 0（旧写法 ×15 取整的结果）。
+4. 活塞推：整份掉方块、其余阶段掉碗（`netease:redstone_property` 只在服务端生效，不同步给客户端）。
+5. 闪光：`BlockAnimateRandomTickEvent` 的 `blockPos` 是方块整数坐标；闪光出现的频率合不合手感（JE 的 `animateTick` 离得近的方块估算每秒有两次机会，
+   官方文档说 `trigger_rate` = 1 时 16 格内几乎每秒触发一次），不合就只调四个方块 JSON 的 `trigger_rate`（`test_gleaming_sparkle.py` 里"概率等于 0.05 × 份数"那条跟着改）。
+6. 无序配方做出整份方块后返回玻璃瓶；砧板一次做多份时 `DishBoard.give` 按堆叠 1 拆开给；创造栏和背包里的方块物品是平面图标（`item_texture`）。
+
 ## 引擎坑（踩过的）
 
 - 方块实体数据（`GetBlockEntityData`）是引擎对象，不是 dict：没有 `.get()`，缺键读出来是 `None`，用 `data["k"] or 缺省值`。
+- `netease:face_directional` 的缺省状态 `direction = 0` 会把网易方块模型转 180°（Strata 的 `render --block` 不给状态就是这样），玩家放置时官方文档保证 north 贴图面向玩家；
+  所以模型照 JE 的朝向原样转，和 JE 对照出图时要加 `--state direction=2`（不转）。
+- 旧写法 `minecraft:block_light_emission` 是 0~1 的小数，引擎 ×15 取整：写 0.8 / 0.6 / 0.4 / 0.2 这种乘 15 正好落在整数上的值，别靠取整的方向碰运气。
 - 它的读取走 Python 侧缓存，**只有赋值才会写进引擎、随存档落盘**，缓存在区块卸载时丢弃：
   改了取回来的字典 / 列表之后一定要整体赋值回去，否则区块卸载后恢复原值（煎锅曾因此刷熟食）。
   键必须是 `str`、列表元素类型要一致、值不能是 `unicode`，不满足时引擎只打日志不报错。
@@ -195,6 +233,7 @@ def OnServerSkilletBlockUse(args):
 1. `Shared/Data/` 对应的表（厨锅配方、砧板配方、可烹饪食物、作物阶段……）；
 2. `bp/netease_items_beh/`、`bp/netease_blocks/`、`bp/recipes/`、`bp/loot_tables/` 的定义；
 3. `rp/` 的贴图、模型、`netease_items_res`、`blocks.json`。
+   JE 的方块模型（盛宴一类）用 `tools/je_model_to_netease.py` 转，不手抄坐标（见"闪亮沙拉"一节）。
 
 Python 只管运行时行为，物品 / 方块是否存在由 JSON 决定。
 
@@ -212,6 +251,8 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 - 食物 / 小刀对 JE 1.3.4 的核对：`jefood.py`（参照表，抄自 FoodValues.java / ModItems.java，不依赖 .refs）、`test_food_values.py`
   （营养、饱和度、容器、使用时长、效果、提示）、`test_knife_values.py`（耐久、附魔能力、防火）；`test_food_effects_rules.py` 测
   `Shared/Rules/FoodEffects.py`，`test_food_effects_server.py` 把假的 Engine 模块塞进 `sys.modules` 来驱动 `Server/FoodEffects.py` 的事件处理。
+- JE 方块模型转网易模型：`test_je_model_convert.py`（转换工具对 JE 烘焙规则逐顶点逐 UV）；闪亮沙拉：`test_gleaming_salad.py`（方块 / 战利品 / 盛菜 / 模型 / 砧板摆盘，
+  JE 资源在场时重转模型比对，`FD_JE_ASSETS` 指定位置）、`test_gleaming_sparkle.py`（闪光的概率 / 位置 / 粒子文件 / 客户端处理，假的 `Listen` 与 `compFactory`）。
 - dolorContainer：`test_dolor_vendor.py`（库文件与编译产物的哈希、界面文件登记、导入闭包；随库装入，不手改）、`test_rpc_caller_id.py`
   （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅的食谱书规则与
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
