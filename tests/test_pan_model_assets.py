@@ -11,6 +11,7 @@ import os
 import re
 
 import fdtest
+import pngkit
 
 RP = os.path.join(fdtest.ROOT, "rp")
 DG = os.path.join(fdtest.ROOT, "diegesisRp")
@@ -124,6 +125,14 @@ def testTheMaterialsAndTexturesExist():
         assert os.path.isfile(os.path.join(RP, texture + ".png")), texture
     assert description["textures"]["oil"] == "textures/handson/block/oil_film"
     assert os.path.isfile(os.path.join(DG, "textures", "handson", "block", "oil_film.png")), "油膜的图在前置包的资源里（HoD 的 block/oil_film）"
+
+
+def testTheOutlineShellIsTheColourDiegesisDrawsItsOutlinesIn():
+    """JE 的悬停描边色是 Diegesis 的缺省（InterfaceOptions.DEFAULT.outlineColor = 0xFFE6E6E6，skillet.json 没写 outline_color）；
+    煎锅的描边壳（锅柄 / 锅身）只用 outline_solid.png 这一张图，原来是偏暖的 (255, 232, 192)。"""
+    width, height, rows = pngkit.read(os.path.join(RP, "textures", "entity", "outline_solid.png"))
+    assert (width, height) == (4, 4)
+    assert all(pixel == (0xE6, 0xE6, 0xE6, 0xFF) for row in rows for pixel in row), rows[0]
 
 
 def testPanModelOnlyPushesVariablesTheEntityInitializes():
