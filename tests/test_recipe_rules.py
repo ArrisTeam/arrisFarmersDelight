@@ -122,6 +122,8 @@ def testFurnaceTagsAreFurnaces():
     for name, (kind, body) in loadRecipes().items():
         if kind == "furnace":
             assert body["tags"] and set(body["tags"]) <= set(FURNACE_TAGS), "%s: %s" % (name, body["tags"])
+            # JE 的 campfire_cooking 营火和灵魂营火都能用，原版 Bedrock 的食物配方也是 campfire + soul_campfire 一起写
+            assert ("campfire" in body["tags"]) == ("soul_campfire" in body["tags"]), "%s: %s" % (name, body["tags"])
 
 
 def testPackItemsExist():
