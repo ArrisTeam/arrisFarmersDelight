@@ -50,9 +50,10 @@ def _result(case, ok, started, **extra):
 
 def caseRegistryOrder():
     started = time.time()
-    names = [name for _, name in handlerNames("ServerItemUseOnEvent")]
-    expected = ["OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnPlaceWildCrop", "OnPlaceItemAsBlock",
-                "OnServerItemUse", "OnServerStoveItemUse"]
+    # 只看本包登记的（调试时临时挂的探针不算）；顺序就是 ModServer.py 模块说明里的优先级表
+    names = [name for module, name in handlerNames("ServerItemUseOnEvent") if module.startswith(__name__.split(".")[0] + ".")]
+    expected = ["OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnPlaceWildCrop", "OnUseSkilletItem",
+                "OnPlaceItemAsBlock", "OnPlaceFullMat", "OnPlaceHalfMat", "OnServerItemUse", "OnServerStoveItemUse"]
     return _result("registry_order", names == expected, started, actual=names)
 
 
