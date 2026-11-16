@@ -9,12 +9,14 @@ dolorContainer/         容器界面库：团队自有，由 dolorContainer 仓�
 dolorLayouts.py         布局的绑定表：vendor 时从仓库根 layouts/*.json 编译生成，不手改
 Shared/                 双端共用；不导入引擎、QuModLibs、Server、Client —— 离线可测
   Data/                 纯数据表：Cooking  Cutting  CookingPotRecipes  Farming  Food  Blocks  Effects  Mobs  GuideBook
+                        Dishes（砧板摆盘的菜谱，tools/gen_dishes.py 从合成配方生成）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
                         PotStation（厨锅站点：份数、放料、按配方把料摆进几格、取回、徽章与提示文字）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）
                         GrillStation（炉灶站点：六个烤位在哪、一面多久、该翻的那件、提示文字）
+                        DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
@@ -25,6 +27,7 @@ Server/                 服务端
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
+                        BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
@@ -45,7 +48,9 @@ Compat/
                         BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；
                         PotLogic + PotSync（服务端）+ PotView + PotSpoon（客户端）= 厨锅站点；
                         PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
-                        GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；未安装则不做任何事
+                        GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
+                        DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台不再出砧板菜）；
+                        未安装则不做任何事
 ```
 
 ## 分层与导入规则（tests/test_architecture.py 守着）
