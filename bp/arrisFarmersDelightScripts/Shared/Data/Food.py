@@ -11,13 +11,16 @@ itemChangeBlockDict = {
 # "合成后还给玩家的空容器"映射：从合成栏取出 key 物品时 → 返还 value 空容器
 # 由服务端 CraftItemOutputChangeServerEvent 发放；perCraft 是配方一份的产出数（缺省 1），
 # 一次取出 N 个时按 N // perCraft 份返还
+# 只给无序配方用：引擎对无序配方的 result 数组只认第一项，退还物放不进去；有序配方直接把容器写进 result 数组，
+# 别再列在这里（会还两遍）。这里按成品名查、分不出是哪条配方做的，一份配方也只能还一种容器、一个：
+# 同一成品有几条配方而退还的不一样（牛奶桶 / 牛奶瓶、水桶留着），或者要还两个以上（海带卷、蜂蜜火腿），只能做成有序配方走 result 数组
 shapedRecipeContainerDict = {
     "arris:wheat_dough": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
     "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0, "perCraft": 4},
     "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0, "perCraft": 8},
     "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
-    "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
-    "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
+    "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
+    "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
 }
 # 派列表
 pieList = [
