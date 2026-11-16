@@ -176,6 +176,10 @@ def testSnapIsWithinOnePointFourPixels():
     assert Marks.SNAP == 1.4 and Marks.REACH == 4.0 and Marks.ITEM_SIZE == 10.0 and _close(Marks.BLOCK_SIZE, 5.2)
 
 
+# 实心像素分成几块的图标（马铠、两只靴子、两条裤腿）：线可能正好从块与块之间穿过，这时虚线改按外框裁（BoardMarks.dashOf）
+BROKEN_UP = ("minecraft:leather_horse_armor", "minecraft:leather_boots", "minecraft:leather_leggings")
+
+
 def testEveryRealIconGetsADashedLineOnItForAnyLayout():
     names = sorted(Masks)
     assert len(names) >= 30
@@ -194,7 +198,7 @@ def testEveryRealIconGetsADashedLineOnItForAnyLayout():
                 span = Marks.dashOf(cut, icon)
                 assert span is not None, (name, seed, index, plan.style)
                 if Marks.ends(cut, icon) is None:
-                    assert name == "minecraft:leather_horse_armor", (name, "实心像素碎成几块的图标才会碰不到")
+                    assert name in BROKEN_UP, (name, "实心像素碎成几块的图标才会碰不到")
                 length = math.hypot(span[1][0] - span[0][0], span[1][1] - span[0][1])
                 assert 0.2 < length <= 2.0 * Marks.ITEM_SIZE, (name, seed, index, length)
 

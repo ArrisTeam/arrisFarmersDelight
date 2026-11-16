@@ -28,6 +28,21 @@ def testTheFoodsTheBoardCutsAreThere():
         assert name in Masks, name
 
 
+def testTheFlatThingsTheBoardTakesApartAreThereToo():
+    # 砧板配方里拆的船、告示牌、矿车、皮甲：平躺的物品，刀口 / 虚线要按它们自己的轮廓（原来 44 件没有掩码，按整格实心算）
+    flat = ["minecraft:%s_boat" % wood for wood in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry")]
+    flat += ["minecraft:%s_chest_boat" % wood for wood in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry")]
+    flat += ["minecraft:bamboo_raft", "minecraft:bamboo_chest_raft", "minecraft:chest_minecart", "minecraft:hopper_minecart", "minecraft:tnt_minecart"]
+    flat += ["minecraft:%s_sign" % wood for wood in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "crimson", "warped", "bamboo", "cherry", "mangrove")]
+    flat += ["minecraft:%s_hanging_sign" % wood for wood in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "crimson", "warped", "bamboo", "cherry", "mangrove")]
+    flat += ["minecraft:leather_%s" % piece for piece in ("helmet", "chestplate", "leggings", "boots")]
+    assert len(flat) == 8 + 8 + 5 + 11 + 11 + 4
+    for name in flat:
+        assert name in Masks, name
+        width, height, rows = Masks[name]
+        assert not all(row == (1 << width) - 1 for row in rows), (name, "整格实心 = 没读到轮廓")
+
+
 def testTheTableMatchesTheTextures():
     if not os.path.isdir(VANILLA):
         print("跳过：本机没有原版资源包", VANILLA)

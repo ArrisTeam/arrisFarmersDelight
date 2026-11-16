@@ -33,6 +33,24 @@ VANILLA = {
     "minecraft:pumpkin_pie": "textures/items/pumpkin_pie", "minecraft:ink_sac": "textures/items/dye_powder_black",
     "minecraft:wooden_door": "textures/items/door_wood", "minecraft:clay": "textures/items/clay_ball",
 }
+# 船、箱子船、告示牌、悬挂式告示牌、矿车、皮甲：平躺的物品，砧板配方里拆它们。原版的贴图名不统一（深色橡木有 darkoak 也有 dark_oak），
+# 物品名到贴图名的对应写在这里，而不是靠 item_texture.json 里的键（那里一个键下面是一串贴图，取不准）
+_BOAT = {"oak": "boat_oak", "spruce": "boat_spruce", "birch": "boat_birch", "jungle": "boat_jungle", "acacia": "boat_acacia",
+         "dark_oak": "boat_darkoak", "mangrove": "mangrove_boat", "cherry": "cherry_boat"}
+_SIGN = {"oak": "sign", "spruce": "sign_spruce", "birch": "sign_birch", "jungle": "sign_jungle", "acacia": "sign_acacia",
+         "dark_oak": "sign_darkoak", "crimson": "sign_crimson", "warped": "sign_warped"}
+for _wood, _texture_name in _BOAT.items():
+    VANILLA["minecraft:%s_boat" % _wood] = "textures/items/" + _texture_name
+    VANILLA["minecraft:%s_chest_boat" % _wood] = "textures/items/%s_chest_boat" % _wood
+for _wood, _texture_name in _SIGN.items():
+    VANILLA["minecraft:%s_sign" % _wood] = "textures/items/" + _texture_name
+for _wood in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped"):
+    VANILLA["minecraft:%s_hanging_sign" % _wood] = "textures/items/%s_hanging_sign" % _wood
+VANILLA.update({"minecraft:bamboo_raft": "textures/items/bamboo_raft", "minecraft:bamboo_chest_raft": "textures/items/bamboo_chest_raft"})
+for _kind in ("chest", "hopper", "tnt"):
+    VANILLA["minecraft:%s_minecart" % _kind] = "textures/items/minecart_%s" % _kind
+for _piece in ("helmet", "chestplate", "leggings", "boots"):
+    VANILLA["minecraft:leather_%s" % _piece] = "textures/items/leather_%s" % _piece
 
 
 def _data(name):
