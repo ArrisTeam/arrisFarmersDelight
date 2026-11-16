@@ -5,6 +5,8 @@
 所以想在原版基础上加一点东西，只能把原版文件抄过来再改。本工具读本机游戏目录里的原版行为包，只做下面写明的加法：
 
     entities/cat.json                                    猫被鳕鱼片 / 鲑鱼片吸引、驯服、繁殖、长大、治疗（JE：Cat.TEMPT_INGREDIENT）
+    trading/economy_trades/farmer_trades.json            农民收洋葱、番茄、卷心菜、稻米（JE：VillagerEvents.onVillagerTrades）
+    trading/economy_trades/wandering_trader_trades.json  流浪商人卖卷心菜种子、番茄种子、稻米、洋葱（JE：onWandererTrades）
 
 原版的内容一个字不改（解析后只在列表末尾追加）。游戏升级、原版文件变了就重新跑一遍；
 tests/test_vanilla_overrides.py 在能找到游戏目录时比对，不一致就失败，提醒重新生成。
@@ -91,9 +93,49 @@ def build_cat(vanilla):
     return vanilla
 
 
+def _buy(item, quantity, maxUses, traderExp):
+    # 农民收货：quantity 个 item 换 1 个绿宝石（JE：emeraldForItemsTrade(item, quantity, maxTrades, xp)，价格倍率 0.05）
+    return collections.OrderedDict([
+        ("wants", [collections.OrderedDict([("item", item), ("quantity", quantity), ("price_multiplier", 0.05)])]),
+        ("gives", [collections.OrderedDict([("item", "minecraft:emerald"), ("quantity", 1)])]),
+        ("trader_exp", traderExp), ("max_uses", maxUses), ("reward_exp", True)])
+
+
+def build_farmer(vanilla):
+    tiers = vanilla["tiers"]
+    # JE 新手农民（第 1 级）多收洋葱、番茄，学徒（第 2 级）多收卷心菜、稻米；基岩版的"收货换绿宝石"那一组是各级的第 0 组
+    for tier, trades in ((0, [_buy("arris:onion", 26, 16, 2), _buy("arris:tomato", 26, 16, 2)]),
+                         (1, [_buy("arris:cabbage", 16, 16, 5), _buy("arris:rice", 20, 16, 5)])):
+        group = tiers[tier]["groups"][0]
+        for trade in group["trades"]:
+            if trade["gives"][0]["item"] != "minecraft:emerald":
+                raise SystemExit("原版农民表结构变了：第 %d 级第 0 组不再是'收货换绿宝石'，请先看过原版再改本工具" % tier)
+        group["trades"].extend(trades)
+    return vanilla
+
+
+def _sell(item):
+    # 流浪商人：1 个绿宝石换 1 个 item，只能买 1 次（JE：itemForEmeraldTrade(item, 1, 12)）
+    return collections.OrderedDict([
+        ("wants", [collections.OrderedDict([("item", "minecraft:emerald"), ("quantity", 1)])]),
+        ("gives", [collections.OrderedDict([("item", item), ("quantity", 1)])]),
+        ("max_uses", 1)])
+
+
+def build_wanderer(vanilla):
+    # 第 0 级第 2 组是"随机抽 5 个"的大杂烩（对应 JE 的 getGenericTrades）
+    group = vanilla["tiers"][0]["groups"][2]
+    if group.get("num_to_select") != 5 or len(group["trades"]) < 30:
+        raise SystemExit("原版流浪商人表结构变了：第 0 级第 2 组不再是大杂烩，请先看过原版再改本工具")
+    group["trades"].extend(_sell(item) for item in ("arris:cabbage_seeds", "arris:tomato_seeds", "arris:rice", "arris:onion"))
+    return vanilla
+
+
 # 输出文件（相对 bp/）-> (原版里的相对路径, 构建函数)
 OUTPUTS = collections.OrderedDict([
     ("entities/cat.json", ("entities/cat.json", build_cat)),
+    ("trading/economy_trades/farmer_trades.json", ("trading/economy_trades/farmer_trades.json", build_farmer)),
+    ("trading/economy_trades/wandering_trader_trades.json", ("trading/economy_trades/wandering_trader_trades.json", build_wanderer)),
 ])
 
 
