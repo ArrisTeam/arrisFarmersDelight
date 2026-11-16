@@ -1,178 +1,231 @@
 # -*- coding: utf-8 -*-
-"""BoardView - 切菜板站点的客户端表现：机位、刀口虚线、悬在下一刀上的刀、点击即切（客户端）
+"""BoardView - 切菜板站点里本人的那一层：托盘拿放、点板、落刀、取回、摆盘、食谱书（客户端）
 
-对应 Hands-On Delight：刀吸附到下一条虚线，点一下落刀。食材本身由农夫乐事的展示实体画（所有人都看得见），
-这里只画给使用者自己看的东西：刀口虚线（下一刀是金色）和悬着的刀（落刀时往下一扎）。
-点击板面：板空着 -> place；板上有东西 -> use（服务端判断是切、取回，还是摆盘的做成 / 拿走）。坐标是站点像素（16 = 1 格，玩家在北面）。
-摆盘（HoD 的 dishes on the board）：底部抽屉列出快捷栏里现在能放上砧板的，点一格 = lay；板上的层由 Client/BlockItems 给所有人画。
+对应 Hands-On Delight：client/BoardBehavior.java 的 onEvent / onItemClick / onInventoryShiftClick / usable / onEffect / frame。
+板上的画面（食物、层、落下 / 拿走 / 弹回的动画）在 BoardDraw.py，刀和虚线在 BoardCutter.py，声音和碎屑在 BoardFx.py。照 JE 的规矩：
+- 机位照 scenes/cutting_board.json：相机 (7.5, 35.5, -21) 看 (7.5, 1, 8)，视野 30，0.4 秒，窗口窄时保住左右；没有提示行、没有关闭按钮（chrome = java）；
+- 底部托盘（前置包按 usable 列出背包里能切的、能摆盘的、切东西用的工具）拿一叠到手上点板 = 放上去（左键整叠、右键一个），Shift 点托盘 = 整叠直接放上去，
+  右键开站时手里的食物也直接放；手上拿着刀、或手空着背包里有刀（选中格 -> 副手 -> 背包），光标移到食物上刀吸附下一刀的虚线，点一下落刀；
+  右键 / 没有刀的左键 = 取回；摆盘一层层往上放，凑成了点一下做成；Shift 点空板 = 手上的工具插进去；
+- 板上的东西由本端自己画（开站期间 Client/BlockItems 不画这块板，关站还原）；食谱书照旧挂在左边（BookSources）。
+点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
-import math
-
 from . import BookSources
-from ...Shared.Data.FoodColors import FoodColors
-from ...Shared.Rules import CuttingStation as Rules
-from ...Shared.Rules import DishStation
+from .BoardCutter import Cutter
+from .BoardDraw import Draw
+from .BoardFx import KNOCK, BOUNCE, PICKUP, dustAt, flourAt, play
+from .BoardInv import isKnife, offhand, selectedSlot, typeOf
+from ...Client import BlockItems
+from ...Client.Engine import clientApi, compFactory, levelId
+from ...Shared.Rules import BoardClick as Click
+from ...Shared.Rules import BoardStation as Rules
+from ...Shared.Rules import PotModelMath
+from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
-CAMERA = {"pos": (8.0, 21.0, -3.0), "target": (8.0, 1.0, 7.5), "fov": 55.0}
-FOOD = (3.0, 13.0, 3.0, 13.0)       # 食材在板上的范围 x0, x1, z0, z1（z1 是离玩家远的一端）
-MARK_Y = 2.0                        # 虚线贴在食材上面
-# 每一下飞几颗碎屑、不是食物时按工具给什么颜色（HoD BoardBehavior 的 stroke：刀 4、斧 7、镐 10……）
-STROKE_DUST = {Cutting.TOOL_CUT: 4, Cutting.TOOL_CHOP: 7, Cutting.TOOL_STRIP: 6, Cutting.TOOL_SMASH: 10, Cutting.TOOL_DIG: 8,
-               Cutting.TOOL_PRY: 4, Cutting.TOOL_SNIP: 3}
-STROKE_COLORS = {Cutting.TOOL_CHOP: 0x9C7F4E, Cutting.TOOL_STRIP: 0x6B5034, Cutting.TOOL_SMASH: 0x8A8A8A, Cutting.TOOL_DIG: 0xA4A8B8,
-                 Cutting.TOOL_PRY: 0x9C7F4E, Cutting.TOOL_SNIP: 0x8B5A2B}
-KNIFE_SCALE = 0.8                   # 刀的贴图 6.4 像素见方
-KNIFE_ROLL = 135.0                  # 竖立的刀在贴图平面内顺时针转 135 度：刀柄朝上、刀尖朝下（实机标定）
-KNIFE_TIP = 3.2 * math.sqrt(2.0)    # 刀尖在视觉中心正下方多远（贴图对角线的一半）
-KNIFE_HOVER = 9.0                   # 刀的视觉中心悬多高：刀尖离食材约 2.5 像素
-CHOP_SECONDS = 0.22
-BOARD_BOX = ((1.0, 0.0, 1.0), (15.0, 4.0, 15.0))
-HINTS = {
-    "empty": "点击砧板放上手里的食材，或点下方物品栏：能切的切、能打底的摆盘   潜行右键 = 原来的玩法",
-    "cut": "点击食材：切第 %d / %d 刀",
-    "no_tool": "背包里没有合适的刀具：点击取回",
-    "take": "点击取回",
-    "only_food": "只有能切的食材、或能打底的（面包、碗、签子……）才能放上砧板",
-    "no_layer": "这个放不上去：不是哪道菜的下一层",
-    "missing": "背包里的料凑不齐这道菜",
-    "board_busy": "砧板上有别的东西：先拿走再照书摆",
-    "no_recipe": "",
-}
-
-
-def markLine(style, spot, angle):
-    """第 i 刀的虚线两端（站点像素）。spot 是离远端的比例；angle 随布局：横切是 -1..1（占最大斜度），楔形是弧度。"""
-    x0, x1, z0, z1 = FOOD
-    half = (x1 - x0) * 0.5
-    cx, cz = (x0 + x1) * 0.5, (z0 + z1) * 0.5
-    if style == Cutting.STYLE_WEDGES:
-        dx, dz = math.cos(angle) * half, math.sin(angle) * half
-        return (cx - dx, MARK_Y, cz - dz), (cx + dx, MARK_Y, cz + dz)
-    z = z1 - spot * (z1 - z0)
-    lean = math.tan(angle * Cutting.MOST_LEAN) * half if style == Cutting.STYLE_ACROSS else 0.0
-    return (x0, MARK_Y, z - lean), (x1, MARK_Y, z + lean)
+SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
 
 
 class BoardViewMixin(object):
     """和前置包的 StationBehavior 拼成表现类（register 里用 type() 组装）。self.api 是前置包的 Api.Client。"""
 
-    camera = CAMERA
+    camera = Scene.CAMERA
+    flightSeconds = Scene.FLIGHT_SECONDS
+    chrome = "java"
+    workPlane, carryLift, carrySize = Scene.WORK_PLANE, 2.5, 3.2
 
     def __init__(self, view):
         super(BoardViewMixin, self).__init__(view)
-        self.strokes = []
-        self.knife = None
-        self.toolName = ""
-        self.chopLeft = 0.0
+        self.env = Rules.Env(isKnife, typeOf, view.ports.maxStack)
+        self.draw = None
+        self.cutter = None
+        self.screen = None
+        self._usable = {}
+
+    # ---------------------------------------------------------------- 状态
+
+    def board(self):
+        item = self.view.state.getItem((Rules.GROUP_BOARD, 0))
+        return item if Rules.keyOf(item) is not None else None
+
+    def layers(self):
+        return [item for item in self.view.state.getItems(Rules.GROUP_LAYERS) if item]
+
+    def ready(self):
+        return bool(self.view.data.get("dish"))
+
+    def toolOf(self):
+        """现在能用的工具：(物品, 是不是从背包借的)。光标栈上拿着的、切得了板上东西的；手空着就是背包里第一把（选中格 -> 副手 -> 按序）。"""
+        board = self.board()
+        if board is None or self.layers():
+            return None, False
+        hand = self.view.hand
+        if hand is not None:
+            return (hand, False) if self.env.cutsWith(board, hand) else (None, False)
+        items, side = self.view.ports.inventory(), offhand()
+        where = self.env.toolSlot(board, items, selectedSlot(), side)
+        if where is None:
+            return None, False
+        return (side if where[0] == "offhand" else items[where[1]]), True
+
+    def center(self):
+        """板面中心（站点像素 x, z）：FD 的板底座在方块自己坐标的 (6.5, 8)，按方块朝向和玩家这一侧换算。"""
+        block = compFactory.CreateBlockInfo(levelId).GetBlock(self.view.pos)
+        facing = PotModelMath.facingOf(block[1] if block else 0)
+        world = PotModelMath.localPoint(facing, self.view.pos, Scene.BASE_X, 0.0, Scene.BASE_Z)
+        station = self.view.toStation(*world)
+        return station[0], station[2]
 
     # ---------------------------------------------------------------- 钩子
 
+    def usable(self, item):
+        """托盘里这件亮不亮（按名字和 aux 缓存：每帧要问 36 次）。"""
+        key = (item["newItemName"], int(item.get("newAuxValue") or 0))
+        if key not in self._usable:
+            self._usable[key] = bool(self.env.usable(item))
+        return self._usable[key]
+
+    def onTrayClick(self, slot, button, quick):
+        """Shift 点托盘里的格子：能切的 / 能摆盘的整叠直接放上板（内核先发的 QUICK_MOVE 服务端不收）。"""
+        if quick and slot >= 0:
+            item = self.view.ports.inventory()[slot]
+            if item is not None and self.env.shiftPlaces(item, self.board()):
+                self.view.sendAction("place", {"from": slot})
+
     def pickables(self):
-        return [self.api.box("board", BOARD_BOX[0], BOARD_BOX[1])]
+        box = Scene.MOUTH if self.view.hand is not None else Scene.SURFACE
+        return [self.api.box("mouth" if self.view.hand is not None else "surface", box[0], box[1])]
 
     def onOpen(self):
-        self._redraw()
+        BlockItems.hide(self.view.dimensionId, self.view.pos, True)
+        self.draw = Draw(self.view, self.center(), typeOf, self.api.Geometry)
+        self.cutter = Cutter(self)
+        self.draw.refresh(self.board(), self.layers())
         BookSources.attach(self.view, "board")
+        self._useHeld()
+
+    def _useHeld(self):
+        """右键开站那一下手里拿着的：不是工具就当点了一下板放上去，板不收就留在手里一声不吭（useHeld，376-385）。"""
+        selected = selectedSlot()
+        items = self.view.ports.inventory()
+        held = items[selected] if 0 <= selected < len(items) else None
+        if held is not None and self.view.hand is None and not self.env.isTool(held, self.board()):
+            self.view.sendAction("place", {"from": selected, "by_use": True})
+
+    def onClose(self):
+        if self.cutter is not None:
+            self.cutter.close()
+        if self.draw is not None:
+            self.draw.close()
+        self.cutter = self.draw = None
+        BlockItems.hide(self.view.dimensionId, self.view.pos, False)
 
     def onState(self, changes):
-        if changes.data:
-            self._redraw()
-            BookSources.refresh(self.view)
-
-    def onEffect(self, name, data):
-        if name == "tool":
-            self.toolName = data.get("item") or ""
-            self._redraw()
-        elif name == "chop":
-            self.chopLeft = CHOP_SECONDS
-            self._dust(data.get("mark"), data.get("item"))
-        elif name == "hint":
-            self.view.hint(HINTS.get(data.get("key"), ""))
-        elif name == "drawer":
-            self.view.drawer(data.get("items") or [])
-        elif name == "plated":
-            self.view.hint("做好了：点一下砧板拿走")
-
-    def onDrawer(self, index):
-        self.view.sendAction("lay", {"slot": int(index)})
-
-    def onPointer(self, event):
-        if event.kind != "down" or event.hit is None:
+        if self.draw is None:
             return
-        data = self.view.data
-        if data.get("layers") or data.get("dish"):
-            self.view.sendAction("use", {"mark": 0})
-        elif not data.get("item"):
-            self.view.sendAction("place")
-        else:
-            self.view.sendAction("use", {"mark": int(data.get("marks") or 0)})
+        self.cutter.pending.state(int(self.view.data.get("marks") or 0), changes.hasSlot((Rules.GROUP_BOARD, 0)))
+        self.draw.refresh(self.board(), self.layers())
+        BookSources.refresh(self.view)
 
     def frame(self, dt):
-        if self.knife is None or self.chopLeft <= 0.0:
+        if self.draw is None:
             return
-        self.chopLeft = max(0.0, self.chopLeft - dt)
-        center = self._knifeCenter()
-        if center is not None:
-            dip = math.sin(math.pi * (1.0 - self.chopLeft / CHOP_SECONDS)) * (KNIFE_HOVER - KNIFE_TIP - MARK_Y)
-            self.knife.move(center=(center[0], center[1] - dip, center[2]))
+        self.draw.frame(dt)
+        tool, offered = self.toolOf()
+        self.cutter.frame(dt, tool, offered)
+        if self.cutter.pending.expire(self.cutter.clock):
+            self.draw.refresh(self.board(), self.layers())
 
-    # ---------------------------------------------------------------- 画
+    # ---------------------------------------------------------------- 点
 
-    def _redraw(self):
-        props = self.view.props
-        for prop in self.strokes:
-            props.remove(prop)
-        self.strokes = []
-        if self.knife is not None:
-            props.remove(self.knife)
-            self.knife = None
-        data = self.view.data
-        item, plan, done = data.get("item"), int(data.get("plan") or 0), int(data.get("marks") or 0)
-        spots, angles = data.get("spots") or [], data.get("angles") or []
-        for index in range(done, min(plan, len(spots), len(angles))):
-            a, b = markLine(data.get("style"), spots[index], angles[index])
-            self.strokes.append(props.line(a, b, hot=(index == done)))
-        center = self._knifeCenter()
-        if center is not None and self.toolName:
-            knifeItem = {"newItemName": self.toolName, "newAuxValue": 0, "count": 1}
-            self.knife = props.item(knifeItem, center, flat=False, facing=(0.0, -1.0), roll=KNIFE_ROLL, scale=KNIFE_SCALE)
-        self.view.hint(self._hintText(item, plan, done))
+    def onPointer(self, event):
+        if self.draw is None:
+            return False
+        self.screen = event.screen
+        if event.ray is not None:
+            self.draw.cursor = event.ray
+        if event.kind != "down":
+            return False
+        key = event.hit.node.key if event.hit is not None else None
+        if self.view.hand is not None:
+            return key == "mouth" and self._withStack(event)
+        return key == "surface" and self._bareHand(event)
 
-    def _dust(self, mark, itemName):
-        """HoD：每一下都飞出被切的东西的碎屑，食物按贴图的颜色（Shared/Data/FoodColors），木头、石头、皮革按工具。"""
-        data = self.view.data
-        spots, angles = data.get("spots") or [], data.get("angles") or []
-        if not getattr(self.view, "particles", None) or not isinstance(mark, int) or not 0 <= mark < min(len(spots), len(angles)):
+    def _withStack(self, event):
+        """手上拿着东西点板（onItemClick）。"""
+        board, layers, hand = self.board(), self.layers(), self.view.hand
+        cuts = board is not None and not layers and self.env.cutsWith(board, hand)
+        action = Click.withStack(self.env, hand, event.button, event.quick, board, layers, self.ready(), cuts)
+        if action[0] == Click.PUT_AWAY:
+            return False                                   # 内核把手上的东西放回背包
+        if action[0] == Click.CHOP:
+            self.cutter.click()
+        elif action[0] == Click.KNOCK:
+            play(KNOCK, self.view.toWorld(self.draw.cx, self.draw.surface(), self.draw.cz))
+        elif action[0] == Click.PLACE:
+            self.view.sendAction("place", {"one": bool(action[1])})
+        else:
+            self.view.sendAction(action[0])                # carve / assemble
+        return True
+
+    def _bareHand(self, event):
+        """空手点板面（onEvent）。"""
+        board = self.board()
+        borrowed = self.toolOf()[1]
+        carved = board is not None and self.env.isCarving(board)
+        action = Click.bareHand(event.button, board, self.layers(), self.ready(), borrowed, carved)
+        if action[0] == Click.CHOP:
+            self.cutter.click()
+        elif action[0] in (Click.TAKE, Click.ASSEMBLE):
+            self.view.sendAction(action[0])
+        else:
+            return False
+        return True
+
+    def sendChop(self, x, z, mark):
+        """落刀：mark 是第几刀，(x, z) 是刀刃在板面上的位置（离食物中心），换成站点像素给服务端画碎屑用。"""
+        self.view.sendAction("chop", {"mark": int(mark), "at": round(self.draw.cz + z, 3), "at_x": round(self.draw.cx + x, 3),
+                                      "yaw": int(self.view.yaw)})
+        self.draw.refresh(self.board(), self.layers())
+
+    # ---------------------------------------------------------------- 服务端的表现事件
+
+    def onEffect(self, name, data):
+        if self.draw is None:
             return
-        a, b = markLine(data.get("style"), spots[mark], angles[mark])
-        stroke = data.get("stroke") or Cutting.TOOL_CUT
-        self.view.particles("arris_diegesis:dust", ((a[0] + b[0]) * 0.5, MARK_Y + 1.0, (a[2] + b[2]) * 0.5),
-                            FoodColors.get(itemName, STROKE_COLORS.get(stroke)), STROKE_DUST.get(stroke, 4))
+        if name == "chopped":
+            self._chopped(data)
+        elif name == "refused":
+            if self.cutter.pending.refused():
+                self.draw.refresh(self.board(), self.layers())
+            stack = data.get("stack")
+            if stack:
+                self.draw.bounced(stack)
+            play(BOUNCE, self.view.toWorld(self.draw.cx, Scene.TOP, self.draw.cz))
+        elif name == "taken":
+            if (data.get("stack") or {}).get("newItemName"):
+                self.draw.taken(data["stack"], int(data.get("at", -1)), bool(data.get("carved")))
+            play(PICKUP, self.view.toWorld(self.draw.cx, Scene.TOP, self.draw.cz))
+        elif name == "assembled":
+            made = [layer for layer in data.get("layers") or [] if layer]
+            self.draw.assembled(made)
+            flourAt(self.view, (self.draw.cx, Scene.TOP + 1.0, self.draw.cz))
 
-    def _knifeCenter(self):
-        data = self.view.data
-        done, spots, angles = int(data.get("marks") or 0), data.get("spots") or [], data.get("angles") or []
-        if not data.get("item") or done >= min(len(spots), len(angles)):
-            return None
-        a, b = markLine(data.get("style"), spots[done], angles[done])
-        return ((a[0] + b[0]) * 0.5, KNIFE_HOVER, (a[2] + b[2]) * 0.5)
-
-    def _hintText(self, item, plan, done):
-        data = self.view.data
-        if data.get("layers") or data.get("dish"):
-            return DishStation.statusText(data, lambda name: data.get("readyName") or name)
-        if not item:
-            return HINTS["empty"]
-        if not self.view.data.get("cuttable"):
-            return HINTS["take"]
-        if not self.toolName:
-            return HINTS["no_tool"]
-        return HINTS["cut"] % (min(done + 1, plan), plan)
+    def _chopped(self, data):
+        """一刀（所有看得见板的人）：碎屑；最后一刀切开的食物飘走。位置是操作者那边的站点像素，转到本人这边。"""
+        stroke = Cutting.strokeKind([data.get("tool") or ""], [])
+        item = data.get("item") or ""
+        point = (data.get("at_x") if data.get("at_x") is not None else self.draw.cx, Scene.TOP + 2.0, data.get("at") if data.get("at") is not None else self.draw.cz)
+        geometry = self.api.Geometry
+        world = geometry.stationPointToWorld(int(data.get("yaw") or 0), point[0], point[1], point[2], self.view.pos[0], self.view.pos[1], self.view.pos[2])
+        dustAt(self.view, self.view.toStation(*world), self.view.data.get("stroke") or stroke, item)
+        if data.get("done"):
+            self.draw.gone({"newItemName": item, "newAuxValue": 0, "count": 1})
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
     behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), {"api": api})
-    api.registerBehavior(Rules.STATION_ID, Rules.BOARD_BLOCKS, behaviorClass)
+    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    api.registerBehavior(Rules.STATION_ID, Rules.BOARD_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass

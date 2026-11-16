@@ -1,0 +1,215 @@
+# -*- coding: utf-8 -*-
+"""BoardCutter - 砧板站点里本人的刀：悬在食物上跟着光标、吸附到下一刀的虚线、点一下落刀；刀以外的工具点一下开始一个动作（客户端）
+
+对应 Hands-On Delight：client/BoardBehavior.java 的 moveKnife / moveTool / drawMarks / chop / startStroke / impact（834-1060、1142-1194、1257-1279）。
+数和状态机都在 Shared/Rules/HandsOn（BoardMarks 刀口线、BoardKnife 刀的走法和点下去等回话、BoardStroke 别的工具的动作），这里只把它们接到道具上：
+- 虚线：下一刀的那一条，平躺在食物顶面上，只画在图标的实心像素上（0.18 秒从无长到全长）；有工具可用（光标栈上切得了的，或手空着背包里有刀）才显示；
+- 刀：手空着、借背包里的刀时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、点一下下去 0.05 秒上来 0.14 秒；
+  光标栈上拿着刀时内核已经把它画在光标上（内核没有藏掉光标栈图标的接口），不再另画，吸附和点击的判断照样做；
+- 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）。
+基岩版的掉落物不能半透明，借来的刀画成实的（HoD 是半透明，落下去才变实）。
+"""
+import math
+
+from . import BoardFx
+from ...Shared.Rules.HandsOn import BoardKnife as Knife
+from ...Shared.Rules.HandsOn import BoardMarks as Marks
+from ...Shared.Rules.HandsOn import BoardScene as Scene
+from ...Shared.Rules.HandsOn import BoardStroke as Stroke
+from ...Shared.Rules.HandsOn import Cutting
+
+
+class Cutter(object):
+    def __init__(self, owner):
+        self.owner = owner                          # BoardViewMixin：要它的 view、api、draw、screen、board()、layers()、sendChop
+        self.knife = Knife.Knife()
+        self.pending = Knife.Pending()
+        self.run = None                             # 正在进行的别的工具的动作（BoardStroke.Run）
+        self.props = {"knife": None, "tool": None}
+        self.line = None                            # [道具, 键, 已显出来的比例]
+        self.clock = 0.0
+        self.place = [0.0, Knife.REST_Z, 0.0]       # 别的工具悬在哪：x、z、朝向（弧度）
+        self.snap = -1                              # 别的工具吸附着的那一刀（方块类在方块上任何地方都算）
+        self.next = (-1, None, None)                # 下一刀：(序号, 线, 虚线两端)
+        self.snipRange = (-0.5, 0.5)
+
+    # ---------------------------------------------------------------- 这一帧要的东西
+
+    def _geometry(self):
+        """板上的东西的几何：(图标, 是不是方块类, 主轴, 一共几刀)；没有要切的东西返回 None。"""
+        board, owner = self.owner.board(), self.owner
+        if board is None or owner.layers() or not owner.view.data.get("plan"):
+            return None
+        isBlock = owner.draw.kindOf(board) == "block"
+        icon = None if isBlock else Marks.iconOf(board["newItemName"])
+        return icon, isBlock, Marks.axisOf(icon, isBlock), int(owner.view.data["plan"])
+
+    def over(self):
+        """光标在食物上的点（离食物中心，夹进 REACH），不在食物上是 None（overItem）。"""
+        owner = self.owner
+        ray = owner.draw.cursor
+        if ray is None or owner.board() is None or owner.view.overUi(owner.screen):
+            return None
+        found = owner.api.Geometry.planeAtHeight(ray, owner.draw.surface())
+        return None if found is None else Marks.overItem(found[0] - owner.draw.cx, found[2] - owner.draw.cz)
+
+    def _next(self, geo, whole):
+        """下一刀：服务端说的已切刀数加上等着回话的，取第一条没切的线。"""
+        if geo is None or whole:
+            return (-1, None, None)
+        data = self.owner.view.data
+        index = self.pending.next(int(data.get("marks") or 0), geo[3])
+        if index < 0:
+            return (-1, None, None)
+        cut = Marks.markOf(geo[2], data.get("style"), data.get("spots") or [], data.get("angles") or [], index, geo[3])
+        return (index, cut, Marks.dashOf(cut, geo[0], geo[1]))
+
+    # ---------------------------------------------------------------- 每帧
+
+    def frame(self, dt, tool, offered):
+        """tool 是现在用的工具（物品）或 None，offered 为真是从背包借的（手空着）。画刀 / 工具 / 虚线。"""
+        owner = self.owner
+        self.clock += dt
+        geo = self._geometry() if tool is not None else None
+        stroke = owner.view.data.get("stroke") or Cutting.TOOL_CUT
+        moves = Stroke.isStroke(stroke) and stroke != Cutting.TOOL_CUT
+        self.next = self._next(geo, geo is not None and geo[1] and moves)
+        self._marks(dt, geo)
+        over = self.over() if geo is not None else None
+        top = owner.draw.surface() - Scene.TOP
+        if geo is None or not moves:
+            self._drop("tool")
+            pose = self.knife.frame(dt, over, self.next[1], self.next[0], top, geo is not None)
+            self._knife(tool, pose if offered else None)
+        else:
+            self._drop("knife")
+            self._tool(dt, tool, stroke, geo, over, top)
+
+    # ---------------------------------------------------------------- 虚线
+
+    def _marks(self, dt, geo):
+        """下一刀的虚线：换了一条就重画（从无长到全长）。"""
+        index, cut, ends = self.next
+        view, draw = self.owner.view, self.owner.draw
+        key = (index, round(cut.x, 3), round(cut.z, 3), round(cut.angle, 3), self.owner.board()["newItemName"]) if ends is not None else None
+        if self.line is not None and self.line[1] != key:
+            view.props.remove(self.line[0])
+            self.line = None
+        if key is None:
+            return
+        height = draw.surface() + 0.03
+        a, b = (draw.cx + ends[0][0], height, draw.cz + ends[0][1]), (draw.cx + ends[1][0], height, draw.cz + ends[1][1])
+        if self.line is None:
+            self.line = [view.props.line(a, b, hot=False), key, 0.0]
+        grown = min(1.0, self.line[2] + dt / Knife.MARK_FADE)
+        if grown != self.line[2]:
+            self.line[2] = grown
+            self.line[0].move(scale=max(1.0e-3, math.hypot(b[0] - a[0], b[2] - a[2])) * grown / self.owner.api.ITEM_SPAN)
+
+    # ---------------------------------------------------------------- 画道具
+
+    def _drop(self, name):
+        if self.props[name] is not None:
+            self.owner.view.props.remove(self.props[name])
+            self.props[name] = None
+
+    def _stand(self, name, tool, center, facing, roll):
+        """立着的一把工具（刀或别的）：没有就建，物品换了重建，有就挪。"""
+        one = {"newItemName": tool["newItemName"], "newAuxValue": tool.get("newAuxValue") or 0, "count": 1}
+        if self.props[name] is not None and self.props[name].item != one:
+            self._drop(name)
+        if self.props[name] is None:
+            self.props[name] = self.owner.view.props.item(one, center, flat=False, facing=facing, roll=roll, scale=Scene.KNIFE_SCALE)
+        else:
+            self.props[name].move(center=center, facing=facing, roll=roll)
+
+    def _knife(self, tool, pose):
+        """借来的刀（只在手空着时画）：刀尖朝下，顺着这一刀的线。"""
+        if pose is None or tool is None:
+            self._drop("knife")
+            return
+        x, y, z, angle = pose
+        draw = self.owner.draw
+        self._stand("knife", tool, (draw.cx + x, Scene.TOP + y + Scene.KNIFE_TIP, draw.cz + z), (math.sin(angle), -math.cos(angle)), Scene.KNIFE_ROLL)
+
+    # ---------------------------------------------------------------- 别的工具
+
+    def _tool(self, dt, tool, kind, geo, over, top):
+        """斧、镐、锹、锄、剪刀：悬在活上，点一下开始动作，动作到接触才发 chop。"""
+        if self.run is None and over is not None:
+            self._aim(dt, kind, geo[1], over)
+        if self.run is not None:
+            for event in self.run.step(dt):
+                if event == "snip":
+                    BoardFx.play(BoardFx.SHEARS, self.owner.view.toWorld(*self._at(0.0, 3.0)))
+                elif event == "impact":
+                    self._impact()
+                elif event == "done":
+                    self.run = None
+        if tool is None or (over is None and self.run is None):
+            self._drop("tool")
+            return
+        posed = Stroke.pose(kind, self.run.age if self.run is not None else None, (0.0, Stroke.workHeight(kind, top)), top, *self.snipRange)
+        yaw = self.place[2]
+        self._stand("tool", tool, self._at(posed["center"][0], posed["center"][1], yaw), (math.sin(yaw), -math.cos(yaw)), posed["roll"])
+
+    def _at(self, u, y, yaw=0.0):
+        """工具平面里的 (沿线 u, 高 y) -> 站点像素。平面在 (place.x, place.z) 处、顺着 yaw。"""
+        draw = self.owner.draw
+        return (draw.cx + self.place[0] + u * math.cos(yaw), Scene.TOP + y, draw.cz + self.place[1] + u * math.sin(yaw))
+
+    def _aim(self, dt, kind, isBlock, over):
+        """工具悬在哪（aim，965-992）：方块在方块上任何地方，食物吸附到线上、握柄朝厨师。"""
+        index, cut, _ends = self.next
+        x, z = Stroke.aimOnBlock(kind, over[0], over[1]) if isBlock else over
+        self.snap = index if isBlock else -1
+        if isBlock:
+            self.place[2] = 0.0
+        elif cut is not None:
+            self.place[2] = Stroke.towardsCook(cut.angle)
+            offset = Marks.snapOffset(cut, x, z)
+            if offset is not None:
+                x, z, self.snap = x - cut.normalX() * offset, z - cut.normalZ() * offset, index
+        follow = 1.0 - math.exp(-Knife.FOLLOW * dt)
+        self.place[0] += (x - self.place[0]) * follow
+        self.place[1] += (z - self.place[1]) * follow
+
+    def _impact(self):
+        """接触（impact，1040-1060）：落在线上才发 chop；没吸附上只敲一声。"""
+        if self.run is None or self.run.mark < 0:
+            BoardFx.play(BoardFx.KNOCK, self.owner.view.toWorld(*self._at(0.0, 2.0)))
+            return
+        self.pending.add(self.clock)
+        self.owner.sendChop(self.place[0], self.place[1], self.run.mark)
+
+    # ---------------------------------------------------------------- 点一下
+
+    def click(self):
+        """本人点了板、要落刀（chop，1257-1279）：刀按线落（吸附上了才发），别的工具开始一个动作。"""
+        owner = self.owner
+        stroke = owner.view.data.get("stroke") or Cutting.TOOL_CUT
+        over = self.over()
+        if Stroke.isStroke(stroke) and stroke != Cutting.TOOL_CUT:
+            if over is not None and self.run is None:
+                self.run = Stroke.Run(stroke, self.snap)
+                if stroke == Cutting.TOOL_SNIP and self.snap >= 0 and self.next[1] is not None and self.next[2] is not None:
+                    cut, ends = self.next[1], self.next[2]
+                    along = [(p[0] - cut.x) * math.cos(cut.angle) + (p[1] - cut.z) * math.sin(cut.angle) for p in ends]
+                    self.snipRange = Stroke.snipRange(self.place[0], self.place[1], self.place[2], cut, along)
+            return
+        result = self.knife.click(over)
+        if result is None:
+            return
+        if result[0] == Knife.KNOCK:
+            BoardFx.play(BoardFx.KNOCK, owner.view.toWorld(owner.draw.cx, owner.draw.surface(), owner.draw.cz))
+            return
+        self.pending.add(self.clock)
+        owner.sendChop(self.knife.x, result[2], result[1])
+
+    def close(self):
+        for name in self.props:
+            self._drop(name)
+        self.line = None
+        self.run = None
+        self.pending.reset()
+        self.knife.reset()
