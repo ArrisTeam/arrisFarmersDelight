@@ -13,9 +13,9 @@ import time
 
 from ..EventRegistry import handlerNames
 from ..Helpers.Engine import compFactory, levelId, serverApi, GetBlockEntityData, GetBlockName, ItemPosType
-from ..Helpers import BlockItems
+from ..Helpers import BlockItems, PotContainer
 from ..Helpers.Player import ResetPlayerUsedCD
-from .. import CookingPot, CuttingBoard, Skillet
+from .. import CuttingBoard, Skillet
 from ..BoneMeal import ApplyBoneMeal
 from ...Api import LegacyModAttr
 
@@ -168,7 +168,7 @@ def caseCookingPot(playerId, base):
     itemComp = compFactory.CreateItem(levelId)
     itemComp.SpawnItemToContainer({"newItemName": "minecraft:red_mushroom", "newAuxValue": 0, "count": 1}, 0, (x, y, z), dim)
     itemComp.SpawnItemToContainer({"newItemName": "minecraft:brown_mushroom", "newAuxValue": 0, "count": 1}, 1, (x, y, z), dim)
-    itemComp.SpawnItemToContainer({"newItemName": "minecraft:bowl", "newAuxValue": 0, "count": 4}, CookingPot.VESSEL_SLOT, (x, y, z), dim)
+    itemComp.SpawnItemToContainer({"newItemName": "minecraft:bowl", "newAuxValue": 0, "count": 4}, PotContainer.VESSEL_SLOT, (x, y, z), dim)
     data = GetBlockEntityData(dim, (x, y, z))
     _async["cooking_pot"] = {"pos": (x, y, z), "dim": dim, "started": started}
     return _result("cooking_pot_start", bool(data and data["heatEnable"] is True), started,
@@ -205,8 +205,8 @@ def mcdk_test_collect():
                         "seconds": int(time.time() - skillet["started"])})
     pot = _async.pop("cooking_pot", None)
     if pot:
-        result = compFactory.CreateItem(levelId).GetContainerItem(pot["pos"], CookingPot.RESULT_SLOT, pot["dim"])
-        vessel = compFactory.CreateItem(levelId).GetContainerItem(pot["pos"], CookingPot.VESSEL_SLOT, pot["dim"])
+        result = compFactory.CreateItem(levelId).GetContainerItem(pot["pos"], PotContainer.RESULT_SLOT, pot["dim"])
+        vessel = compFactory.CreateItem(levelId).GetContainerItem(pot["pos"], PotContainer.VESSEL_SLOT, pot["dim"])
         ok = bool(result and result["newItemName"] == "minecraft:mushroom_stew" and vessel and vessel["count"] == 3)
         results.append({"case": "cooking_pot_served", "ok": ok, "result": result and (result["newItemName"], result["count"]),
                         "bowls_left": vessel and vessel["count"], "seconds": int(time.time() - pot["started"])})

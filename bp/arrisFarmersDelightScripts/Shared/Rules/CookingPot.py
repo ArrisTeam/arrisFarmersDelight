@@ -3,15 +3,20 @@
 
 配方匹配：一锅里每个非空输入格算一件食材（同一格叠了多个也只算一件，与 Java 版一致）。
 把各格的 (物品名, aux) 排序后作为键查索引，O(1)；CookingPotRecipeList 被修改后要调用 rebuildIndex()。
+另有两份给厨锅站点用的索引（Shared/Rules/PotStation.py）：每种写法各种料占几格、哪些物品是食材。
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 
 _recipeIndex = {}
+_partsIndex = {}             # frozenset(种类) -> [{种类: 占几格}, ...]（按配方表顺序）
+_ingredients = set()
 
 
 def rebuildIndex():
     """重建配方索引。键冲突时保留先插入的那条，与旧实现"首个匹配获胜"一致。"""
     _recipeIndex.clear()
+    _partsIndex.clear()
+    _ingredients.clear()
     for recipeDict in CookingPotRecipeList:
         cookResult = recipeDict["CookResult"]
         pushItemList = recipeDict.get("PushItem", [])
@@ -19,6 +24,22 @@ def rebuildIndex():
             key = tuple(sorted(variant))
             if key not in _recipeIndex:
                 _recipeIndex[key] = (cookResult, pushItemList)
+            parts = {}
+            for entry in variant:
+                kind = (entry[0], entry[1])
+                parts[kind] = parts.get(kind, 0) + 1
+                _ingredients.add(kind)
+            _partsIndex.setdefault(frozenset(parts), []).append(parts)
+
+
+def partsFor(kinds):
+    """种类集合正好是 kinds 的各个配方写法：[{种类: 占几格}, ...]。"""
+    return _partsIndex.get(frozenset(kinds), ())
+
+
+def isIngredient(kind):
+    """(物品名, aux) 是不是某个配方的食材。"""
+    return kind in _ingredients
 
 
 def lookupRecipe(inputKey):

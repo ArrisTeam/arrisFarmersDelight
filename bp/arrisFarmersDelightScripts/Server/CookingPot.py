@@ -1,25 +1,22 @@
 # -*- coding: utf-8 -*-
 """CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、破坏时掉落成品（服务端）
 
-容器格：0-5 食材，6 容器（碗等），7 成品。煮好的成品先进方块实体数据里的预览槽 previewItemSlot，
-容器格里有对应容器时再转到 7 号格。
+容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py。
 """
 import copy
 import time
 
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
+from . import HandCooking
 from .EventRegistry import registerHandler
+from .Helpers import PotContainer
 from .Helpers.Engine import compFactory, levelId, System, ItemPosType, GetBlockEntityData, GetBlockName
 from .Helpers.Heat import RefreshHeat
-from ..Shared.Rules import CookingPot as CookingPotRules
 from ..Shared.Rules.Ticks import Pacer
 
 COOKING_POT = "arris:cooking_pot"
-INPUT_SLOTS = 6
-VESSEL_SLOT = 6
-RESULT_SLOT = 7
-# 一份菜的烹饪时长（秒）
-COOK_SECONDS = 10.0
+INPUT_SLOTS = PotContainer.INPUT_SLOTS
+COOK_SECONDS = HandCooking.COOK_SECONDS
 # 每个厨锅每 TICK_STEP 秒处理一次（约 5 Hz，真实时间节拍：不受 /time set、doDaylightCycle false 影响），计时按步长累加
 TICK_STEP = 0.2
 _pacer = Pacer(TICK_STEP)
@@ -53,94 +50,23 @@ def OnCookingPotNeighborChanged(args):
     RefreshHeat(blockEntityData, blockPos, neighborPos, args["dimensionId"], args["toBlockName"])
 
 
-def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
-    """把预览槽里煮好的成品转到产出格；需要容器的成品同时消耗容器格里等量的容器。"""
-    x, y, z = blockPos
-    previewList = blockEntityData["previewItemSlot"] or [{}]
-    previewItemSlot = previewList[0]
-    if not previewItemSlot or not previewItemSlot.get("newItemName"):
-        return
-    resultItemName = previewItemSlot["newItemName"]
-    resultAuxValue = previewItemSlot.get("newAuxValue", 0)
-    recipeDict = CookingPotRules.findRecipeByResult(resultItemName)
-    if recipeDict is None:
-        return
-    itemComp = compFactory.CreateItem(levelId)
-    resultItemSlot = itemComp.GetContainerItem(blockPos, RESULT_SLOT, dimensionId)
-    if resultItemSlot and resultItemSlot["newItemName"] != resultItemName:
-        return
-    resultCount = resultItemSlot["count"] if resultItemSlot else 0
-    maxStackSize = itemComp.GetItemBasicInfo(resultItemName, resultAuxValue)["maxStackSize"]
-    vessel = recipeDict.get("Vessel")
-    vesselItemSlot = None
-    if vessel:
-        vesselItemSlot = itemComp.GetContainerItem(blockPos, VESSEL_SLOT, dimensionId)
-        # 只比较物品名（与旧实现一致）
-        if not vesselItemSlot or vesselItemSlot.get("newItemName") != vessel[0]:
-            return
-    amount = CookingPotRules.transferAmount(previewItemSlot["count"], resultCount, maxStackSize,
-                                            vesselItemSlot["count"] if vesselItemSlot else None)
-    if amount <= 0:
-        return
-    if vesselItemSlot:
-        vesselItemSlot["count"] -= amount
-        itemComp.SpawnItemToContainer(vesselItemSlot if vesselItemSlot["count"] > 0 else {}, VESSEL_SLOT, blockPos, dimensionId)
-    resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount + amount, "enchantData": []}
-    itemComp.SpawnItemToContainer(resultDict, RESULT_SLOT, blockPos, dimensionId)
-    previewItemSlot["count"] -= amount
-    # 改了嵌套字典必须整体回写，否则区块卸载后恢复原值
-    blockEntityData["previewItemSlot"] = [previewItemSlot] if previewItemSlot["count"] > 0 else [{}]
-    System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
-
-
 @registerHandler("ServerBlockEntityTickEvent", match=COOKING_POT)
 def OnCookingPotTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if not _pacer.due((dimensionId, blockPos), time.time()):
+    now = time.time()
+    if not _pacer.due((dimensionId, blockPos), now):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    itemComp = compFactory.CreateItem(levelId)
-    inputItemSlot = [itemComp.GetContainerItem(blockPos, index, dimensionId) or {} for index in range(INPUT_SLOTS)]
-    MoveFinishedMeals(blockEntityData, blockPos, dimensionId)
-    if not any(inputItemSlot):
-        blockEntityData["timer"] = COOK_SECONDS
-        return
-    resultItem, pushItemList = CookingPotRules.matchRecipe(inputItemSlot)
-    if blockEntityData["timer"] is None:
-        # /setblock、结构等方式放出的厨锅没有走放置事件，这里补默认值
-        blockEntityData["timer"] = COOK_SECONDS
+    PotContainer.MoveFinishedMeals(blockEntityData, blockPos, dimensionId)
     if blockEntityData["heatEnable"] is None:
+        # /setblock、结构等方式放出的厨锅没有走放置事件，这里补上热源状态
         belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
         RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, GetBlockName(belowPos, dimensionId))
-    if not (blockEntityData["heatEnable"] and resultItem):
-        blockEntityData["timer"] = COOK_SECONDS
-        return
-    previewItemSlot = blockEntityData["previewItemSlot"] or [{}]
-    maxStackSize = itemComp.GetItemBasicInfo(resultItem["newItemName"], resultItem["newAuxValue"])["maxStackSize"]
-    if previewItemSlot[0] and previewItemSlot[0].get("count") >= maxStackSize:
-        return
-    if previewItemSlot[0] and resultItem["newItemName"] != previewItemSlot[0].get("newItemName"):
-        return
-    blockEntityData["timer"] -= TICK_STEP
-    if blockEntityData["timer"] > TICK_STEP:
-        return
-    blockEntityData["timer"] = COOK_SECONDS
-    for pushItem in pushItemList or []:
-        output = {"newItemName": pushItem[0], "newAuxValue": pushItem[1], "count": 1}
-        System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.0, args["posZ"] + 0.5))
-    for index, itemDict in enumerate(inputItemSlot):
-        if not itemDict:
-            continue
-        itemDict["count"] -= 1
-        itemComp.SpawnItemToContainer(itemDict, index, blockPos, dimensionId)
-    if not previewItemSlot[0]:
-        blockEntityData["previewItemSlot"] = [resultItem]
-    else:
-        previewItemSlot[0]["count"] += resultItem["count"]
-        blockEntityData["previewItemSlot"] = previewItemSlot
+    hand = HandCooking.handOf(dimensionId, blockPos, blockEntityData)
+    HandCooking.cook(hand, dimensionId, blockPos, blockEntityData, PotContainer.inputs(dimensionId, blockPos), now, TICK_STEP)
 
 
 @AllowCall
@@ -211,13 +137,13 @@ def OnCookingPotRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
+    HandCooking.forget(dimensionId, blockPos)
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    previewList = blockEntityData["previewItemSlot"] or [{}]
-    previewItemSlot = previewList[0]
-    if previewItemSlot and previewItemSlot.get("newItemName") and previewItemSlot.get("count", 0) > 0:
+    previewItemSlot = PotContainer.preview(blockEntityData)
+    if previewItemSlot:
         dropDict = {"newItemName": previewItemSlot["newItemName"], "newAuxValue": previewItemSlot.get("newAuxValue", 0),
                     "count": previewItemSlot["count"]}
         System.CreateEngineItemEntity(dropDict, dimensionId, (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5))
-        blockEntityData["previewItemSlot"] = [{}]
+        PotContainer.setPreview(blockEntityData, None)

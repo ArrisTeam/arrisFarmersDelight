@@ -66,8 +66,8 @@ def stirStroke(clock, spoon, who, now, x, z, heated, batch, openStars, at=None):
 class PotClock(object):
     """一口锅的烹饪计时：谁在搅、料是谁放的、煮到哪了、奖励零头攒了多少。"""
 
-    def __init__(self):
-        self.skill = StirSkill()     # 这口锅的搅拌评星
+    def __init__(self, realTime=False):
+        self.skill = StirSkill(realTime)     # 这口锅的搅拌评星（realTime 见 StirSkill）
         self.cookTime = 0.0          # 已煮的时间（配方秒）；到 total 出第一份
         self.pace = 0.0              # 上一步的速度倍率：批量速度、1（FD 原样）、0（还不知道）
         self.batch = 0               # 上一步按多少份算

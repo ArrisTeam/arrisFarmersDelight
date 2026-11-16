@@ -10,6 +10,9 @@
 厨师的钟(at)：客户端每次出手随包带上自己的时钟。包会被网络攒成一批到达，服务器自己也可能掉刻，
 所以手速按厨师的钟判；但钟每次最多比服务器的钟多走 SLACK 秒，同一服务器时刻到的包共享这份余量，
 灌一堆包也不会让星星涨得更快。服务器自己的时刻仍然决定"勺子是不是停了"。
+
+realTime=True（基岩版移植用）：服务器的钟是真实时间，几乎每个包的服务器时刻都不同，按"每个新时刻给一份余量"
+改过的客户端每个包都能多走 SLACK 秒。这时余量按真实时间回补、封顶 LEAD_MOST：厨师的钟累计最多领先服务器这么多。
 """
 import math
 
@@ -23,6 +26,7 @@ GRACE = 0.5              # 原 10 刻：停手后先喘一口气，再开始掉�
 WINDOW = 0.25            # 原 5 刻：一段笔画攒够这么久评一次分
 BREAK = 0.6              # 原 12 刻：停得比这久，下一段笔画重新开始
 SLACK = 0.5              # 原 10 刻：厨师的钟一次最多比服务器的钟多走这么多
+LEAD_MOST = SLACK + 0.6  # realTime：厨师的钟累计最多领先服务器的真实时间这么多（SLACK + 一段笔画的断档 BREAK）
 NARROW = 0.3             # 离中心不到这个比例算窄圈（宽度分为 0）
 WIDE = 0.7               # 离中心超过这个比例算宽圈（宽度分满）
 SLOWEST = 1.2            # rad/s：慢于此不得分
@@ -53,7 +57,8 @@ def _logRatio(speed, pace):
 class StirSkill(object):
     """一口锅当前的搅拌星级。move() 喂勺尖位置，stars()/grade() 读星数。"""
 
-    def __init__(self):
+    def __init__(self, realTime=False):
+        self.realTime = realTime     # 服务器的钟是真实时间（见模块说明）
         self._stars = 0.0
         self._open = 1
         self._settled = 0.0          # 最近一次 move 的服务器时刻
@@ -116,7 +121,9 @@ class StirSkill(object):
         if at is None or self._lastAt is None or stopped:
             self._allowance = SLACK
             return now if self._lastAt is None else self._lastAt + (now - self._lastAtServer)
-        if abs(now - self._lastAtServer) > EPS:
+        if self.realTime:
+            self._allowance = min(LEAD_MOST, self._allowance + max(0.0, now - self._lastAtServer))
+        elif abs(now - self._lastAtServer) > EPS:
             self._allowance = (now - self._lastAtServer) + SLACK
         step = clamp(at - self._lastAtRaw, 0.0, self._allowance)
         self._allowance -= step

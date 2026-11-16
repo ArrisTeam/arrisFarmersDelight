@@ -89,6 +89,30 @@ def testAFloodOfStrokesFillsNoFaster():
     assert abs(flood._lastAt - (second(100) + Stir.SLACK)) < 1.0e-9, flood._lastAt
 
 
+def testOnARealTimeServerClockAFloodGetsNoMoreThanTheCap():
+    """基岩版移植：服务器钟是 time.time()，灌的包各自落在不同时刻。HoD 的"每个新时刻一份余量"挡不住，realTime 挡得住。"""
+    def flood(skill):
+        for stroke in range(0, 201):
+            angle = stroke * 0.6
+            skill.move(5.0 + stroke * 0.001, math.cos(angle) * 0.9, math.sin(angle) * 0.9, True, 3, stroke * 0.1)
+        return skill
+    tickWise, realTime = flood(Stir.StirSkill()), flood(Stir.StirSkill(realTime=True))
+    end = 5.0 + 0.2
+    assert tickWise.grade(end) == 3, "不加上限时 0.2 秒灌出满星：%r" % tickWise.stars(end)
+    assert realTime.stars(end) < 1.0, "累计最多领先 LEAD_MOST 秒：%r" % realTime.stars(end)
+    assert realTime._lastAt - 5.0 <= 0.2 + Stir.LEAD_MOST + 1.0e-9, realTime._lastAt
+
+
+def testOnARealTimeServerClockHonestStirringStillFillsUp():
+    honest, bunched = Stir.StirSkill(realTime=True), Stir.StirSkill(realTime=True)
+    for tick in range(0, 201, 2):
+        x, z = onCircle(tick, 0.9)
+        honest.move(second(tick), x, z, True, 3, second(tick) + 7.0)
+        bunched.move(second(tick // 6 * 6 + 1), x, z, True, 3, second(tick))
+    assert honest.grade(second(200)) == 3, "got %r" % honest.stars(second(200))
+    assert bunched.grade(second(199)) == 3, "网络攒包照样三星：%r" % bunched.stars(second(199))
+
+
 def testTheCooksClockNeverRunsBack():
     skill = Stir.StirSkill()
     for index in range(0, 41):
