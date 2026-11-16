@@ -3,7 +3,7 @@
 import random
 
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, GetEngineTypeStr
+from .Helpers.Engine import compFactory
 from ..Shared.Data.Effects import negativeEffect
 
 COMFORT = "arris:comfort"
@@ -56,14 +56,3 @@ def OnPlayerDieRemoveEffects(args):
     effectComp = compFactory.CreateEffect(args["id"])
     for effect in (COMFORT, NOURISHMENT):
         effectComp.RemoveEffectFromEntity(effect)
-
-
-# 优先级 70：DamageEvent 里排在展示实体（100）之后、爬绳免摔（60）之前，与旧版模块加载顺序一致
-@registerHandler("DamageEvent", priority=70)
-def OnPlayerDamageRemoveEffects(args):
-    # 玩家受到伤害时失去舒适与滋养
-    entityId = args["entityId"]
-    if GetEngineTypeStr(entityId) == "minecraft:player":
-        effectComp = compFactory.CreateEffect(entityId)
-        for effect in (COMFORT, NOURISHMENT):
-            effectComp.RemoveEffectFromEntity(effect)
