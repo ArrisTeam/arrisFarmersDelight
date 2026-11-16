@@ -140,13 +140,13 @@ config = {
             "title": "竹篮",
             "namespace": "arris:basket",
             "auxValue": 0,
-            "content": "会自动收进落在里面的物品"
+            "content": "会自动收进落在里面和上面一格的掉落物\n接上红石信号时不再收"
         },
         {
             "title": "木篮",
             "namespace": "arris:wooden_basket",
             "auxValue": 0,
-            "content": "会自动收进落在里面的物品"
+            "content": "会自动收进落在里面和上面一格的掉落物\n接上红石信号时不再收"
         }
     ],
     "植物": [

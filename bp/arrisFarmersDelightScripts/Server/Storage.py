@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Storage - 橱柜开门声、篮子吸进掉落物、堆肥桶接受本模组物品（服务端）
+"""Storage - 橱柜开门声、堆肥桶接受本模组物品（服务端）
 
-橱柜与篮子是 netease:block_chest，界面与存储都由引擎负责。
+橱柜与篮子是 netease:block_chest，界面与存储都由引擎负责；篮子吸掉落物在 Basket.py（这里导入它来登记处理函数）。
 """
+from . import Basket  # noqa: F401 - 导入即登记
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, DestroyEntity, GetCarriedItem, GetEngineTypeStr
+from .Helpers.Engine import compFactory, levelId, GetCarriedItem
 from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerGrowthParticle
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Blocks import cabinetList
 from ..Shared.Data.Farming import ComposterItemDict
 from ..Shared.Rules.Ticks import probability
 
-BASKET = "arris:basket"
-BASKET_SLOTS = 27
 COMPOSTER = "minecraft:composter"
 COMPOSTER_FULL = 8
 
@@ -51,19 +50,3 @@ def OnUseComposter(args):
         ToAllPlayerPlaySound(dimensionId, center, "block.composter.fill_success")
         compFactory.CreateBlockState(levelId).SetBlockStates((x, y, z), blockStates, dimensionId)
 
-
-@registerHandler("OnEntityInsideBlockServerEvent", match=BASKET)
-def OnEntityInsideBasket(args):
-    # 掉落物进到篮子里时放进第一个空格
-    entityId = args["entityId"]
-    if GetEngineTypeStr(entityId) != "minecraft:item":
-        return
-    itemComp = compFactory.CreateItem(levelId)
-    itemDict = itemComp.GetDroppedItem(entityId)
-    blockPos = (args["blockX"], args["blockY"], args["blockZ"])
-    dimensionId = compFactory.CreateDimension(entityId).GetEntityDimensionId()
-    for index in range(BASKET_SLOTS):
-        if itemComp.GetContainerItem(blockPos, index, dimensionId) is None:
-            itemComp.SpawnItemToContainer(itemDict, index, blockPos, dimensionId)
-            DestroyEntity(entityId)
-            return

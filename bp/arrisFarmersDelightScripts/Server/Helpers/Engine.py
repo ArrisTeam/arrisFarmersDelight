@@ -40,3 +40,8 @@ def SetCarriedItem(playerId, itemDict):
 
 def ShowTip(playerId, text):
     compFactory.CreateGame(playerId).SetOneTipMessage(playerId, text)
+
+
+def GetLoadedEntities():
+    """所有维度里已加载的非玩家实体：{实体 id: {"dimensionId": 维度, "identifier": 类型名}}。"""
+    return serverApi.GetEngineActor()
