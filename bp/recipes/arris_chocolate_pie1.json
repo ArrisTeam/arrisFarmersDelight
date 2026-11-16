@@ -1,0 +1,64 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:chocolate_pie1"
+        },
+        "key": {
+            "C": {
+                "data": 0,
+                "item": "minecraft:cocoa_beans"
+            },
+            "F": {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            "H": {
+                "data": 0,
+                "item": "arris:pie_crust"
+            },
+            "I": {
+                "data": 0,
+                "item": "minecraft:sugar"
+            }
+        },
+        "pattern": [
+            "CCC",
+            "FFF",
+            "IHI"
+        ],
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:chocolate_pie_item"
+            },
+            {
+                "count": 3,
+                "data": 0,
+                "item": "minecraft:bucket"
+            }
+        ],
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "minecraft:cocoa_beans"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            {
+                "data": 0,
+                "item": "arris:pie_crust"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:sugar"
+            }
+        ]
+    }
+}

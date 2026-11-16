@@ -2,7 +2,7 @@
     "format_version": "1.12",
     "minecraft:recipe_shaped": {
         "description": {
-            "identifier": "rudph:chocolate_pie"
+            "identifier": "arris:chocolate_pie2"
         },
         "key": {
             "C": {
@@ -11,7 +11,7 @@
             },
             "F": {
                 "data": 0,
-                "item": "minecraft:wheat"
+                "item": "arris:milk_bottle"
             },
             "H": {
                 "data": 0,
@@ -27,11 +27,18 @@
             "FFF",
             "IHI"
         ],
-        "result": {
-            "count": 1,
-            "data": 0,
-            "item": "arris:chocolate_pie_item"
-        },
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:chocolate_pie_item"
+            },
+            {
+                "count": 3,
+                "data": 0,
+                "item": "minecraft:glass_bottle"
+            }
+        ],
         "tags": [
             "crafting_table"
         ],
@@ -42,7 +49,7 @@
             },
             {
                 "data": 0,
-                "item": "minecraft:wheat"
+                "item": "arris:milk_bottle"
             },
             {
                 "data": 0,
