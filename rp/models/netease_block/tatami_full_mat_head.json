@@ -1,0 +1,141 @@
+{
+    "format_version": "1.13.0",
+    "netease:block_geometry": {
+        "bones": [
+            {
+                "cubes": [
+                    {
+                        "origin": [
+                            -16,
+                            0,
+                            0
+                        ],
+                        "pivot": [
+                            -8,
+                            0,
+                            8
+                        ],
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "size": [
+                            16,
+                            2,
+                            16
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 2,
+                                "uv": [
+                                    0,
+                                    0
+                                ],
+                                "uv_size": [
+                                    16,
+                                    16
+                                ]
+                            },
+                            "east": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    14
+                                ],
+                                "uv_size": [
+                                    16,
+                                    2
+                                ]
+                            },
+                            "north": {
+                                "texture": 1,
+                                "uv": [
+                                    0,
+                                    7
+                                ],
+                                "uv_size": [
+                                    16,
+                                    2
+                                ]
+                            },
+                            "south": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    14
+                                ],
+                                "uv_size": [
+                                    16,
+                                    2
+                                ]
+                            },
+                            "up": {
+                                "texture": 3,
+                                "uv": [
+                                    16,
+                                    16
+                                ],
+                                "uv_size": [
+                                    -16,
+                                    -16
+                                ]
+                            },
+                            "west": {
+                                "texture": 0,
+                                "uv": [
+                                    0,
+                                    14
+                                ],
+                                "uv_size": [
+                                    16,
+                                    2
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "name": "bone",
+                "pivot": [
+                    -8,
+                    0,
+                    8
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "description": {
+            "identifier": "arris:tatami_full_mat_head",
+            "item_texture": "arris:tatami_full_mat_icon",
+            "textures": [
+                "arris:tatami_mat_side",
+                "arris:tatami_mat_half",
+                "arris:tatami_odd",
+                "arris:tatami_even"
+            ],
+            "textures_descriptions": [
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                }
+            ],
+            "use_ao": true
+        }
+    }
+}

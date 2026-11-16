@@ -1,0 +1,71 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:block": {
+        "components": {
+            "minecraft:block_light_absorption": {
+                "value": 0
+            },
+            "minecraft:block_light_emission": {
+                "emission": 0
+            },
+            "minecraft:destroy_time": {
+                "value": 0.3
+            },
+            "minecraft:explosion_resistance": {
+                "value": 0.3
+            },
+            "netease:aabb": {
+                "clip": {
+                    "max": [
+                        1.0,
+                        0.125,
+                        1.0
+                    ],
+                    "min": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                },
+                "collision": {
+                    "max": [
+                        1.0,
+                        0.125,
+                        1.0
+                    ],
+                    "min": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ]
+                }
+            },
+            "netease:connection": {
+                "blocks": []
+            },
+            "netease:face_directional": {
+                "type": "direction"
+            },
+            "netease:fuel": {
+                "duration": 10
+            },
+            "netease:neighborchanged_sendto_script": {
+                "value": true
+            },
+            "netease:redstone_property": {
+                "value": "break_on_push"
+            },
+            "netease:render_layer": {
+                "value": "alpha"
+            },
+            "netease:solid": {
+                "value": false
+            }
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:tatami_full_mat",
+            "register_to_creative_menu": true
+        }
+    }
+}

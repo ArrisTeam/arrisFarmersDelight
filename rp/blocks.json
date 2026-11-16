@@ -873,6 +873,14 @@
         "sound": "cloth",
         "textures": "arris:tatami_mat_half"
     },
+    "arris:tatami_full_mat": {
+        "netease_model": "arris:tatami_full_mat",
+        "sound": "cloth"
+    },
+    "arris:tatami_full_mat_head": {
+        "netease_model": "arris:tatami_full_mat_head",
+        "sound": "cloth"
+    },
     "arris:tatami_half_mat": {
         "netease_model": "arris:tatami_half_mat",
         "sound": "cloth"

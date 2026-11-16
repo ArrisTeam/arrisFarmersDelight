@@ -442,6 +442,12 @@
         "arris:sweet_berry_cheesecake_item": {
             "textures": "textures/items/sweet_berry_cheesecake"
         },
+        "arris:tatami_even": {
+            "textures": "textures/blocks/tatami_even"
+        },
+        "arris:tatami_full_mat_icon": {
+            "textures": "textures/blocks/full_tatami_mat"
+        },
         "arris:tatami_half_mat_icon": {
             "textures": "textures/blocks/half_tatami_mat"
         },
@@ -450,6 +456,9 @@
         },
         "arris:tatami_mat_side": {
             "textures": "textures/blocks/tatami_mat_side"
+        },
+        "arris:tatami_odd": {
+            "textures": "textures/blocks/tatami_odd"
         },
         "arris:tomato_crate_side": {
             "textures": "textures/blocks/tomato_crate_side"
