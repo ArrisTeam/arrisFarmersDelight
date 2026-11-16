@@ -142,6 +142,12 @@
         "arris:chocolate_pie_item": {
             "textures": "textures/items/chocolate_pie"
         },
+        "arris:pumpkin_pie": {
+            "textures": "textures/blocks/pumpkin_pie"
+        },
+        "arris:pumpkin_pie_icon": {
+            "textures": "textures/items/pumpkin_pie"
+        },
         "arris:cooking_pot_icon": {
             "textures": "textures/items/cooking_pot_icon"
         },

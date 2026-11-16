@@ -1,0 +1,69 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:block": {
+        "components": {
+            "minecraft:block_light_absorption": {
+                "value": 0
+            },
+            "minecraft:block_light_emission": {
+                "emission": 0
+            },
+            "minecraft:destroy_time": {
+                "value": 0.5
+            },
+            "minecraft:explosion_resistance": {
+                "value": 0.5
+            },
+            "netease:connection": {
+                "blocks": []
+            },
+            "minecraft:loot": {
+                "table": "loot_tables/air_loot.json"
+            },
+            "netease:aabb": {
+                "clip": {
+                    "max": [
+                        0.875,
+                        0.25,
+                        0.875
+                    ],
+                    "min": [
+                        0.125,
+                        0.0,
+                        0.125
+                    ]
+                },
+                "collision": {
+                    "max": [
+                        0.875,
+                        0.25,
+                        0.875
+                    ],
+                    "min": [
+                        0.125,
+                        0.0,
+                        0.125
+                    ]
+                }
+            },
+            "netease:face_directional": {
+                "type": "direction"
+            },
+            "netease:block_entity": {
+                "client_tick": false,
+                "movable": false,
+                "tick": false
+            },
+            "netease:solid": {
+                "value": false
+            },
+            "netease:render_layer": {
+                "value": "alpha"
+            }
+        },
+        "description": {
+            "identifier": "arris:pumpkin_pie",
+            "register_to_creative_menu": false
+        }
+    }
+}

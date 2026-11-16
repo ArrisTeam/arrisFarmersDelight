@@ -1,0 +1,33 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "arris:pumpkin_pie",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/blocks/pumpkin_pie"
+      },
+      "geometry": {
+        "default": "geometry.arris_pie"
+      },
+      "animations": {
+        "default": "animation.arris_pie.default",
+        "slice1": "animation.arris_pie.slice1",
+        "slice2": "animation.arris_pie.slice2",
+        "slice3": "animation.arris_pie.slice3",
+        "controller_slice": "controller.animation.pie.slice"
+      },
+      "scripts":{
+        "initialize": [
+          "variable.mod_pie = 0.0;"
+        ],
+        "animate": [
+          "controller_slice"
+        ]
+      },
+      "render_controllers": [ "controller.render.default" ]
+    }
+  }
+}

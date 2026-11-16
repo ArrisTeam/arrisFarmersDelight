@@ -220,6 +220,16 @@
         "sound": "cloth",
         "textures": "arris:chocolate_pie"
     },
+    "arris:pumpkin_pie": {
+        "client_entity": {
+            "block_icon": "arris:pumpkin_pie_icon",
+            "destroyed_textures": "arris:pumpkin_pie",
+            "hand_model_use_client_entity": true,
+            "identifier": "arris:pumpkin_pie"
+        },
+        "sound": "cloth",
+        "textures": "arris:pumpkin_pie"
+    },
     "arris:cooking_pot": {
         "client_entity": {
             "block_icon": "arris:cooking_pot_icon",
