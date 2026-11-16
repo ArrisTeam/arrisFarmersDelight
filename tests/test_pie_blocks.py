@@ -53,6 +53,9 @@ def testEveryPieBlockHasAnEmptyLootTableAndABlockEntity():
         components = block["components"]
         assert "netease:block_entity" in components, name
         assert _json(os.path.join(fdtest.BP, components["minecraft:loot"]["table"]))["pools"] == [], "JE 派方块自己不掉东西"
+        # JE 的四个派都是 PieBlock(Properties.copy(Blocks.CAKE))：硬度和爆炸抗性 0.5
+        assert components["minecraft:destroy_time"]["value"] == 0.5, name
+        assert components["minecraft:explosion_resistance"]["value"] == 0.5, name
 
 
 def testEveryPieHasTheSharedModelAndItsOwn32x32Atlas():
