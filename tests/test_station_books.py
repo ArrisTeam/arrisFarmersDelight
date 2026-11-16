@@ -64,6 +64,8 @@ def testCookingBooksListWhatThePanAndStoveTake():
     assert egg["item"]["newItemName"] == "arris:fried_egg"
     assert int(egg["note"].split()[0]) * 2 == int(bacon["note"].split()[0]), "蛋只煎一面"
     assert all(page["note"] for page in grill)
+    assert all(page["key"] != "minecraft:egg" for page in grill) and egg in pan, "炉灶的书不列蛋（HoD 的 StoveBook 只列烤架收的），煎锅的书列"
+    assert next(page for page in grill if page["key"] == "minecraft:beef")["note"] == "20 秒", "两面各 10 秒"
 
 
 def testWhatTheStationIsMakingNow():

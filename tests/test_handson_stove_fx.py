@@ -118,10 +118,8 @@ def testAPieceDoneOnBothSidesSteamsGlintsAndChimes():
     assert sound.volume == 0.3 and sound.pitch == 1.3
 
 
-def testPlacedRefusedAndTakenHaveTheirOwnSounds():
-    assert [(s.name, s.volume, s.pitch) for s in X.placed()] == [("lantern_place", 0.4, 1.1)]
+def testARefusedPieceBouncesBackWithAClink():
     assert [(s.name, s.volume, s.pitch) for s in X.refused()] == [("lantern_hit", 0.4, 1.3)]
-    assert [(s.name, s.volume, s.pitch) for s in X.taken()] == [("item_pickup", 0.3, 1.5)]
 
 
 if __name__ == "__main__":

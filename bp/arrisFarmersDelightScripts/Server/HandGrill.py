@@ -15,7 +15,8 @@ class StoveHand(object):
     def __init__(self):
         self.grill = Grill.Grill(GrillStation.PLACES)
         self.cook = None                 # 最后放料 / 翻面的玩家
-        self.finished = 0                # 两面烤好的件数（站点看它变了就报"烤好了"）
+        self.finished = 0                # 两面烤好的件数（累计）
+        self.just = []                   # 刚烤好、还没报给站点的烤位序号（站点每刻取走：报"烤好了"、放蒸汽和闪光）
 
 
 _hands = {}
@@ -62,13 +63,14 @@ def grill(hand, blockEntityData, dt):
             blockEntityData[str(place)] = {"itemDict": done, "cookTimer": COOK_TIMER}
             hand.grill.done(place)
             hand.finished += 1
+            hand.just = (hand.just + [place])[-GrillStation.PLACES:]       # 没人开站点时不取，只留最近几个
             changed = True
     return handled, changed
 
 
 def turn(hand, playerId, place, now, item):
-    """playerId 翻 place 上的这件：有能烤的东西、离这件上次翻够久才算。FD 原样烤着的从此归厨师、从生开始算。"""
-    hasFood = bool(item) and GrillStation.canGrill(item.get("newItemName"))
+    """playerId 翻 place 上的这件：有东西可烤（有营火配方就行，蛋也算）、离这件上次翻够久才算。FD 原样烤着的从此归厨师、从生开始算。"""
+    hasFood = bool(item) and GrillStation.hasRecipe(item.get("newItemName"))
     if not hand.grill.toss(place, now, hasFood):
         return False
     hand.cook = playerId

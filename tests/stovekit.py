@@ -1,0 +1,125 @@
+# -*- coding: utf-8 -*-
+"""stovekit - 炉灶站点离线测试的共用小工具（不是测试本身，跑器只收 test_*.py）：厨锅的假引擎（potfake）补上炉灶要的几个名字，
+真的 Manager 和炉灶站点逻辑装在一起，再给几个驱动用的函数：开站、点击、自定义动作、炉灶自己的一步、走一段时间。"""
+from __future__ import print_function
+
+import copy
+import sys
+
+import dgtest
+import fdtest
+import potfake
+
+fake = potfake.install()
+_engine = sys.modules[fdtest.SCRIPTS + ".Server.Helpers.Engine"]
+for _name, _value in (("GetEngineTypeStr", lambda entityId: "minecraft:player"), ("IsLiving", lambda entityId: True),
+                      ("ShowTip", lambda playerId, text: None)):
+    if not hasattr(_engine, _name):
+        setattr(_engine, _name, _value)
+
+GrillLogic = potfake.load("Compat.Diegesis.GrillLogic")
+HandGrill = potfake.load("Server.HandGrill")
+Stove = potfake.load("Server.Stove")
+BlockItems = potfake.load("Server.Helpers.BlockItems")
+Rules = fdtest.load("Shared.Rules.GrillStation")
+Manager = dgtest.load("Server.Manager")
+Registry = dgtest.load("Server.Registry")
+Protocol = dgtest.load("Shared.Protocol")
+Api = dgtest.load("Api.Server")
+
+STOVE = (10, 64, 10)
+BEEF, EGG, STICK = "minecraft:beef", "minecraft:egg", "minecraft:stick"
+ARGS = {"dimension": 0, "posX": STOVE[0], "posY": STOVE[1], "posZ": STOVE[2]}
+
+
+def setup(creative=False, covered=None):
+    """干净的假世界：一个点着的炉灶（方块实体数据初始化好）、玩家 a（炉灶北边，生存或创造）和 b（东边）；返回 (Manager, 炉灶的方块实体数据)。"""
+    fake.reset()
+    Registry.clearAll()
+    HandGrill._hands.clear()
+    Stove._pacer = Stove.Pacer(Stove.TICK_STEP)
+    GrillLogic.time = Stove.time = potfake.Clock(fake.world)
+    GrillLogic.register(Api)
+    fake.world.blocks[(0, STOVE)] = "arris:stove"
+    data = fake.blockEntities[(0, STOVE)] = potfake.BEData()
+    Stove.InitStoveData(data)
+    if covered:
+        fake.world.blocks[(0, (STOVE[0], STOVE[1] + 1, STOVE[2]))] = covered
+    fake.addPlayer("a", (10.5, 64.0, 8.5), creative=creative)
+    fake.addPlayer("b", (12.5, 64.0, 10.5))
+    return Manager.Manager(fake.world), data
+
+
+def click(target, button=0, kind="PICKUP"):
+    return {"type": "click", "target": target, "button": button, "click": kind}
+
+
+def inv(index):
+    return {"kind": "inventory", "index": index}
+
+
+def slot(index, group="grill"):
+    return {"kind": "station", "group": group, "index": index}
+
+
+def custom(name, **data):
+    return {"type": "custom", "name": name, "data": data}
+
+
+def do(manager, playerId, raw):
+    return manager.action(playerId, list(STOVE), raw)
+
+
+def opened(manager, playerId="a"):
+    """开站并返回 Opened 的负载。"""
+    assert manager.open(playerId, list(STOVE))
+    return [s[2] for s in fake.world.take(playerId, Protocol.EP_OPENED)][0]
+
+
+def effects(playerId="a"):
+    """取走并返回这位玩家收到的表现事件：[(名字, 数据)]。"""
+    return [(e[2]["name"], e[2]["data"]) for e in fake.world.take(playerId, Protocol.EP_EFFECT)]
+
+
+def stateData(playerId="a"):
+    """这位玩家收到的最新站点数据（没有新的返回 None）。"""
+    states = fake.world.take(playerId, Protocol.EP_STATE)
+    for _, _, payload in reversed(states):
+        shared = payload["state"].get("data")
+        if shared is not None:
+            return shared
+    return None
+
+
+def hand(playerId="a"):
+    return fake.world.players[playerId]["inv"][fake.world.players[playerId].get("selected", 0)]
+
+
+def items(data):
+    """炉灶方块实体数据里六个烤位的 (物品名, 数量) 或 None。"""
+    out = []
+    for place in range(6):
+        slotData = data[str(place)]
+        item = slotData.get("itemDict") if slotData else None
+        out.append((item["newItemName"], item["count"]) if item else None)
+    return out
+
+
+def names(data):
+    return [entry[0] if entry else None for entry in items(data)]
+
+
+def step(seconds, dt=0.05, manager=None):
+    """走 seconds 秒：炉灶自己每 0.25 秒一步（Server/Stove.OnStoveTick 的真处理函数），站点每 dt 秒一个 tick。"""
+    end, last = fake.world.time + seconds, None
+    while fake.world.time < end - 1e-9:
+        fake.world.time += dt
+        if last is None or fake.world.time - last >= Stove.TICK_STEP - 1e-9:
+            last = fake.world.time
+            Stove.OnStoveTick(copy.deepcopy(ARGS))
+        if manager is not None:
+            manager.tick(dt)
+
+
+def hand_of():
+    return HandGrill.handOf(0, STOVE)

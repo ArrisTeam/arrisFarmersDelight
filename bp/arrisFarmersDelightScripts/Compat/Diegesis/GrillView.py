@@ -1,167 +1,157 @@
 # -*- coding: utf-8 -*-
-"""GrillView - 炉灶站点的客户端表现：俯看灶台、六个烤位上的食物、翻面时跳起来转半圈、金线标出该翻的那件（客户端）
+"""GrillView - 炉灶站点里本人的那一层：JE 的机位、底部托盘拿放、点烤位翻面或取下、食谱书（客户端）
 
-对应 Hands-On Delight：client/StoveBehavior.java 的简化版：
-- 点一下烤位上的食物 = 翻面（turn）；烤好的点一下 = 取下（take）；点底部抽屉的格子 = 每个空烤位摆一件（place）；
-- 该翻面的那件（贴灶台那面熟了、上面还生）远端画一道金色虚线（近端那排的会被底部抽屉挡住，实机）；底部一行提示说下一步做什么。
-烤位按方块里的固定位置（Shared/Rules/BlockDisplay.STOVE_SLOTS）换到站点空间，从哪边打开都对得上。
-开站期间本客户端不画 Client/BlockItems 那份（hide），关站时还原。
+对应 Hands-On Delight：client/StoveBehavior.java 的 onEvent / onItemClick / onOpen / onEffect 和 scenes/stove.json（机位、命中盒）。
+烤架上的画面（六件、落下 / 翻面 / 取走的动作、热气蒸汽烟、声音）在 GrillPieces.py，这里把本人的手交给它，并照 JE 的规矩把点击变成动作：
+- 机位、飞入照场景文件：相机 (8, 50.5, -21) 看 (8, 16, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；没有提示行、没有抽屉（chrome 是 java）；
+- 底部托盘（前置包按 usable 列出背包里烤得了的食物）点一叠就拿到手上；拿着一叠点烤架：左键每个空位摆一件，右键只摆离光标最近的
+  空位那一个；Shift 点托盘里的食物直接整叠摆上去（槽规则放行，内核自己做）；
+- 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
+- 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
+  既不描边也不抬起，只有该翻的那件冒烟示意；这里补两样朴素的：光标悬着的那件抬起一点（Diegesis 给可交互节点的悬停抬起，0.6 px），
+  旁边写出它的名字。HOVER_NAME 改成 False 就不写名字。
+坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.py）；命中盒、世界里的展示和这里画的对得上。
 """
-import math
-
 from . import BookSources
+from .GrillPieces import Pieces
+from .GrillSpace import Space
 from ...Client import BlockItems
-from ...Client.Engine import compFactory, levelId, playerId
+from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules
+from ...Shared.Rules.HandsOn import StoveLayout
 
-CAMERA = {"pos": (8.0, 33.0, -2.0), "target": (8.0, 16.0, 8.0), "fov": 50.0}
-TOP_Y = 16.3                      # 食物躺在灶台顶面（1 格高）上
-FOOD_SCALE = 0.6
-HALF = 2.2                        # 烤位命中盒的半宽
-MARK_HALF = 1.8                   # 金线半长
-HOP_SECONDS = 0.45
-HOP_HEIGHT = 4.0
-HINT_SECONDS = 0.25
-FLASH_SECONDS = 2.0
-HINTS = {"not_food": "这个不能烤", "full": "灶台上没有空位了"}
+CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target"], "fov": StoveLayout.CAMERA["fov"],
+          "keepWidth": 16.0 / 9.0}
+FLIGHT_SECONDS = 0.4
+SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
+HOVER_NAME = True                                      # 悬着一件时旁边写它的名字（JE 没有；去掉就是 False）
+AGAIN = 0.6                                            # 自己翻的这一下已经演过了：服务端说"翻了"的 0.6 秒内不重复演（onEffect 里 TURNED）
+_names = {}
 
 
-def _one(item):
-    return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": 1}
+def nameOf(item):
+    """物品的显示名（引擎给的是 utf-8 字节串，别和 unicode 混）。"""
+    key = (item["newItemName"], int(item.get("newAuxValue") or 0))
+    if key not in _names:
+        info = compFactory.CreateItem(levelId).GetItemBasicInfo(key[0], key[1]) or {}
+        _names[key] = info.get("itemName") or key[0]
+    return _names[key]
+
+
+def _place(data):
+    """服务端发来的位置序号：0..5 的整数才算，别的是 None。"""
+    value = data.get("place") if isinstance(data, dict) else None
+    return int(value) if isinstance(value, (int, type(2 ** 64))) and not isinstance(value, bool) and 0 <= value < StoveLayout.PLACES else None
 
 
 class GrillViewMixin(object):
     """和前置包的 StationBehavior 拼成表现类（register 里用 type() 组装）。self.api 是前置包的 Api.Client。"""
 
     camera = CAMERA
+    flightSeconds = FLIGHT_SECONDS
+    chrome = "java"
+    workPlane = StoveLayout.WORK_PLANE         # 手上的物品栈画在 work_plane + carry_lift（2.5）的高度，stove.json 里 work_plane 是 17
 
     def __init__(self, view):
         super(GrillViewMixin, self).__init__(view)
-        self.pieces, self.marks, self.hops = {}, {}, {}
-        self.centers = None
-        self.clock = self.hintLeft = 0.0
-        self.flash, self.shown = None, None
+        self.space = Space(view)
+        self.pieces = Pieces(view, self.space)
+        self.hover = None                      # 光标悬着的那一件（序号），没有是 None
 
     # ---------------------------------------------------------------- 钩子
 
-    def pickables(self):
-        boxes = []
-        for place in range(Rules.PLACES):
-            x, y, z = self._center(place)
-            boxes.append(self.api.box("place", (x - HALF, y - 0.5, z - HALF), (x + HALF, y + 1.5, z + HALF), payload=place))
-        return boxes
+    def usable(self, item):
+        return Rules.usable(item.get("newItemName"))
+
+    def mayDrop(self, group, index, item):
+        return group == Rules.GROUP_GRILL and Rules.mayPlace(item)
 
     def onOpen(self):
-        BlockItems.hide(self.view.dimensionId, self.view.pos, True)
-        self._rebuild()
+        BlockItems.hide(self.view.dimensionId, self.view.pos, True)     # 开站期间本端不画世界里的那份，关站时还原
+        self.pieces.refresh()
         BookSources.attach(self.view, "grill")
 
     def onClose(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
+        self.view.tooltip(None)
 
     def onState(self, changes):
-        if changes.data:
-            self._rebuild()
-            BookSources.refresh(self.view)
+        self.pieces.refresh()
+        BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
-        if name == "drawer":
-            self.view.drawer(data.get("items") or [])
-        elif name == "turned" and isinstance(data.get("place"), int):
-            self.hops[data["place"]] = self.clock
-        elif name == "grilled":
-            self._flash("烤好了：点一下取下")
-        elif name == "hint":
-            self._flash(HINTS.get(data.get("key"), ""))
-
-    def onDrawer(self, index):
-        self.view.sendAction("place", {"slot": int(index)})
-
-    def onPointer(self, event):
-        if event.kind != "down" or event.hit is None:
-            return
-        place = event.hit.node.payload
-        slot = self._slot(place)
-        if slot.get("item"):
-            self.view.sendAction("take" if slot.get("done") else "turn", {"place": int(place)})
+        pieces, place = self.pieces, _place(data)
+        if name == "placed":
+            pieces.placed(data.get("places") if isinstance(data, dict) else None)
+        elif name == "refused":
+            pieces.refused(data.get("stack"))
+        elif name == "turned" and place is not None and pieces.clock - pieces.turnedAt[place] > AGAIN:
+            pieces.turned(place, data.get("up"))       # 自己翻的已经演过了
+        elif name == "unturned" and place is not None:
+            pieces.unturned(place)
+        elif name == "taken" and place is not None:
+            pieces.taken(place, data.get("stack"))
+        elif name == "grilled" and place is not None:
+            pieces.grilled(place)
 
     def frame(self, dt):
-        self.clock += dt
-        if self.hops:
-            self._place()
-        self.hintLeft -= dt
-        if self.hintLeft <= 0.0:
-            self.hintLeft = HINT_SECONDS
-            self._showHint()
+        self.pieces.frame(dt, self.hover)
+        item = self.pieces.shown[self.hover] if self.hover is not None else None
+        self.view.tooltip([nameOf(item)] if HOVER_NAME and item is not None and self.view.hand is None else None)
 
-    # ---------------------------------------------------------------- 画
+    # ---------------------------------------------------------------- 拾取
 
-    def _center(self, place):
-        """第 place 个烤位的中心（站点像素）：方块里的固定位置换到站点空间。"""
-        if self.centers is None:
-            px, py, pz = self.view.pos
-            self.centers = []
-            for index in range(Rules.PLACES):
-                fx, fz = Rules.slotCenter(index)
-                sx, _, sz = self.view.toStation(px + fx, py + 1.0, pz + fz)
-                self.centers.append((sx, TOP_Y, sz))
-        return self.centers[place]
+    def pickables(self):
+        """拿着东西时整个烤架面是一块（mouth）；手空着时只有烤位上的件能点（点件旁边什么也不发生）。"""
+        if self.view.hand is not None:
+            return [self.space.box(self.api, "mouth", *StoveLayout.MOUTH_BOX)]
+        boxes = []
+        for place in range(StoveLayout.PLACES):
+            if self.pieces.shown[place] is not None:
+                lo, hi = StoveLayout.pieceBox(place)
+                boxes.append(self.space.box(self.api, "piece", lo, hi, place))
+        return boxes
 
-    def _slot(self, place):
-        slots = self.view.data.get("slots") or []
-        slot = slots[place] if 0 <= place < len(slots) else None
-        return slot if isinstance(slot, dict) else {}
+    # ---------------------------------------------------------------- 指针
 
-    def _rebuild(self):
-        """哪个烤位换了东西就换那个道具；该翻的那件前面画金线。"""
-        props = self.view.props
-        for place in range(Rules.PLACES):
-            slot = self._slot(place)
-            item = slot.get("item") or {}
-            key = (item.get("newItemName"), item.get("newAuxValue") or 0) if item.get("newItemName") else None
-            old = self.pieces.get(place)
-            if (old[0] if old else None) != key:
-                if old:
-                    props.remove(old[1])
-                    del self.pieces[place]
-                if key:
-                    self.pieces[place] = (key, props.item(_one(item), self._center(place), flat=True, scale=FOOD_SCALE))
-            waits, mark = Rules.waitsToTurn(slot), self.marks.get(place)
-            if waits and mark is None:
-                x, y, z = self._center(place)
-                self.marks[place] = props.line((x - MARK_HALF, y - 0.2, z + HALF), (x + MARK_HALF, y - 0.2, z + HALF), hot=True)
-            elif not waits and mark is not None:
-                props.remove(mark)
-                del self.marks[place]
-        self._place()
-        self.hintLeft = 0.0
+    def onPointer(self, event):
+        key = event.hit.node.key if event.hit is not None else None
+        payload = event.hit.node.payload if event.hit is not None else None
+        if event.kind == "move":
+            self.hover = payload if key == "piece" and self.view.hand is None else None
+            return False
+        if event.kind != "down":
+            return False
+        if self.view.hand is not None:
+            if key != "mouth":
+                return False                   # 右键点在别处：内核把手上的放回背包
+            self._place(event)
+            return True
+        if key == "piece":
+            self._piece(event, payload)
+            return True
+        return False
 
-    def _place(self):
-        for place, (key, prop) in self.pieces.items():
-            lift, spin = 0.0, 0.0
-            start = self.hops.get(place)
-            if start is not None:
-                progress = (self.clock - start) / HOP_SECONDS
-                if progress >= 1.0:
-                    del self.hops[place]
-                else:
-                    lift, spin = HOP_HEIGHT * 4.0 * progress * (1.0 - progress), math.pi * progress
-            x, y, z = self._center(place)
-            prop.move(center=(x, y + lift, z), along=(math.cos(spin), math.sin(spin)))
-        for place in list(self.hops):
-            if place not in self.pieces:
-                del self.hops[place]
+    def _place(self, event):
+        """拿着一叠点烤架（StoveBehavior.onItemClick）：左键每个空位一件；右键只放离光标最近的空位那一个。"""
+        nearest = -1
+        if event.button == 1:
+            centers = [(x, z) for x, _, z in self.space.centers()]
+            nearest = StoveLayout.nearestFree(self.space.cursor(event.ray), centers, self.pieces.free())
+        self.view.sendAction("place", StoveLayout.placeRequest(event.button, nearest))
 
-    def _flash(self, text):
-        self.flash = (text, self.clock + FLASH_SECONDS)
-        self.hintLeft = 0.0
-
-    def _showHint(self):
-        flashing = self.flash is not None and self.clock < self.flash[1]
-        text = self.flash[0] if flashing else Rules.statusText(self.view.data)
-        if text != self.shown:
-            self.shown = text
-            self.view.hint(text)
+    def _piece(self, event, place):
+        """点烤位上的一件（StoveBehavior.onEvent）：右键取下；烤好的取下；否则翻面，它在空中的那一下不发。"""
+        pieces = self.pieces
+        item = pieces.shown[place]
+        if item is None:
+            return
+        action = StoveLayout.pieceClick(event.button, Rules.isDone(item["newItemName"]), pieces.clock - pieces.turnedAt[place])
+        if action == StoveLayout.TAKE:
+            self.view.sendAction("take", {"place": place})
+        elif action == StoveLayout.TURN:
+            self.view.sendAction("turn", {"place": place})
+            pieces.turned(place)
 
 
 def opensStation(pos, dimensionId):
@@ -174,7 +164,11 @@ def opensStation(pos, dimensionId):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
+    炉灶站点要前置包 API 2（托盘、手上的物品栈）：太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。"""
+    if getattr(api, "API_VERSION", 0) < 2:
+        return None
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
-    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, canOpen=opensStation)
+    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation)
     return behaviorClass

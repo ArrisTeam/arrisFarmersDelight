@@ -5,11 +5,12 @@
 （与机械动力的置物台、传送带同一种做法）。坐标是方块内的格（原点在方块西北下角），方向是世界的 (dx, dz)。
 - 砧板：一件。食物平躺在板面中央；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
-- 炉灶：六个烤位（3 x 2），每格一件小号的平躺食物。
+- 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物。
 - 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。
 """
 import math
 
+from .HandsOn import StoveLayout
 from .Ticks import posHash
 
 KIND_BOARD = "board"
@@ -20,14 +21,14 @@ BOARD_TOP = 1.0 / 16.0
 SKILLET_FLOOR = 1.5 / 16.0
 STOVE_TOP = 1.0
 LAYER_STEP = 0.037
-STOVE_SLOTS = ((0.25, 0.27), (0.5, 0.27), (0.75, 0.27), (0.25, 0.73), (0.5, 0.73), (0.75, 0.73))
+STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六个烤位的位置（炉灶朝北的那一份），开着站点时画面对得上
 TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 FOOD_SCALE = 1.2
 BLOCK_SCALE = 1.0
 TOOL_SCALE = 1.0
 SKILLET_SCALE = 1.0
-STOVE_SCALE = 0.6
+STOVE_SCALE = StoveLayout.SIZE / 8.0         # 一件 5 像素宽（贴图缩放 1 时边长 8 像素）
 TOOL_ROLL = 135.0          # 竖立的工具在贴图平面内顺时针转 135 度：刀尖朝下（实机标定）
 TOOL_DEPTH = 0.32          # 工具视觉中心离板面多高：刀尖略扎进板里
 
@@ -121,12 +122,15 @@ def skilletLayout(item, seed):
 
 
 def stoveLayout(slots):
-    """slots：{"0": 物品或 None/{}, ...}。"""
+    """slots：{"0": 物品或 None/{}, ...}。每件各转一点（StoveLayout.yawOf，HoD 场景里"手放的、没有两件同向"），
+    转的是世界里的方向，所以开着站点的人从哪一侧看，画面都和这里对得上。"""
     placements = []
     for index, (x, z) in enumerate(STOVE_SLOTS):
         item = slots.get(str(index))
         if isItem(item):
-            placements.append(Placement(_single(item), (x, STOVE_TOP + 0.015, z), True, (1.0, 0.0), 0.0, STOVE_SCALE))
+            turn = math.radians(StoveLayout.yawOf(index))
+            placements.append(Placement(_single(item), (x, STOVE_TOP + 0.015, z), True, (math.cos(turn), -math.sin(turn)), 0.0,
+                                        STOVE_SCALE))
     return placements
 
 
