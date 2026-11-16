@@ -401,8 +401,12 @@ def testTheServersChopEffectFliesDustInTheFoodsColourAndTheLastOneSendsTheFoodAw
     board, data = _across()
     behavior, view = _open(board, data=data)
     behavior.onEffect("chopped", {"at": 8.0, "at_x": 6.5, "spot": 0.5, "angle": 0.0, "tool": KNIFE, "item": "arris:cabbage", "yaw": 0})
-    assert len(view.dust) == 1 and view.dust[0][0] == "arris_diegesis:dust" and view.dust[0][3] == 4 and view.dust[0][2] is not None
-    assert abs(view.dust[0][1][0] - 6.5) < 1e-6 and abs(view.dust[0][1][2] - 8.0) < 1e-6, "碎屑落在刀刃的位置"
+    assert len(C.engine.particles) == 1 and C.engine.particles[0]["id"] == "arris:board_dust"
+    puff = C.engine.particles[0]
+    assert puff["vars"]["variable.count"] == 4 and puff["vars"]["variable.tint_set"] == 1.0, "刀：4 颗，染食物的颜色"
+    assert abs(puff["vars"]["variable.vy"] - 0.25) < 1e-9 and puff["vars"]["variable.vx"] == 0.0 and abs(puff["vars"]["variable.spread"] - 0.075) < 1e-9,         "初速 (0, 4, 0) 像素每秒、散布 1.2 像素，换成格"
+    station = view.toStation(*puff["pos"])
+    assert abs(station[0] - 6.5) < 1e-6 and abs(station[1] - 1.625) < 1e-6 and abs(station[2] - 8.0) < 1e-6, "碎屑落在刀刃的位置、食物顶面（平躺的图标：板面 + 0.625）"
     view.state.board = None
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
     behavior.onEffect("chopped", {"at": 8.0, "tool": KNIFE, "item": "arris:cabbage", "yaw": 0, "count": 2, "done": True})
@@ -417,8 +421,13 @@ def testADustPositionFromAnotherSideIsTurnedToMine():
     board, data = _across()
     behavior, view = _open(board, data=data)
     behavior.onEffect("chopped", {"at": 12.0, "at_x": 8.0, "tool": KNIFE, "item": "arris:cabbage", "yaw": 180})
-    sx, sy, sz = view.dust[0][1]
+    sx, sy, sz = view.toStation(*C.engine.particles[0]["pos"])
     assert abs(sx - 8.0) < 1e-6 and abs(sz - 4.0) < 1e-6, "对面的人在 z = 12 落刀：从我这边看在 z = 4"
+    C.engine.particles[:] = []
+    behavior.onEffect("chopped", {"at": 12.0, "at_x": 8.0, "tool": "minecraft:iron_axe", "item": "minecraft:oak_log", "yaw": 180, "stroke": "strip",
+                                  "block": True, "yields": ["minecraft:stripped_oak_log"]})
+    vars = C.engine.particles[0]["vars"]
+    assert abs(vars["variable.vz"] - 3.0 / 16.0) < 1e-9 and abs(vars["variable.vy"] - 1.0 / 16.0) < 1e-9 and abs(vars["variable.vx"]) < 1e-9,         "削皮的碎屑往他身前（站点里 -z）飘：对面的人在南边，世界里就是往南"
 
 
 def testARefusedStackBouncesAndAnUnansweredChopIsTakenBack():

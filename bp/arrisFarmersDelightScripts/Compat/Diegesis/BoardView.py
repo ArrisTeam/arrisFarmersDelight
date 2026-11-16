@@ -12,17 +12,16 @@
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
 from . import BookSources
-from . import BoardEffects
+from . import BoardEffects, BoardFx
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
 from .BoardFx import KNOCK, play
 from .BoardGlow import BoardGlow, placeable
 from .BoardInv import isKnife, offhand, selectedSlot, typeOf
 from ...Client import BlockItems
-from ...Client.Engine import clientApi, compFactory, levelId
+from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
 from ...Shared.Rules import BoardStation as Rules
-from ...Shared.Rules import PotModelMath
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
@@ -81,10 +80,7 @@ class BoardViewMixin(object):
 
     def center(self):
         """板面中心（站点像素 x, z）：FD 的板底座在方块自己坐标的 (6.5, 8)，按方块朝向和玩家这一侧换算。"""
-        block = compFactory.CreateBlockInfo(levelId).GetBlock(self.view.pos)
-        facing = PotModelMath.facingOf(block[1] if block else 0)
-        world = PotModelMath.localPoint(facing, self.view.pos, Scene.BASE_X, 0.0, Scene.BASE_Z)
-        station = self.view.toStation(*world)
+        station = self.view.toStation(*BoardFx.centerOf(self.view.pos))
         return station[0], station[2]
 
     # ---------------------------------------------------------------- 钩子

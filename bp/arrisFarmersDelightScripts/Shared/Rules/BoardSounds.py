@@ -109,7 +109,7 @@ def chopped(data, rng=random.random):
     不是最后一刀：刀口上的那一声（刀、削皮 0.8，别的 0.6，音调 0.95 + 0.15 * 随机）；
     最后一刀：FD 的切声，再（被切的不是方块、而且不是刀 / 剪 / 削皮）一声材质的破坏声，最后切好的东西飞给厨师的那一声。"""
     tool, item, yields = _text(data.get("tool")), _text(data.get("item")), _names(data.get("yields"))
-    kind = data.get("stroke") if data.get("stroke") in Cutting.STROKES else Cutting.strokeKind([tool], yields)
+    kind = _text(data.get("stroke")) if _text(data.get("stroke")) in Cutting.STROKES else Cutting.strokeKind([tool], yields)
     block = bool(data.get("block"))
     material = materialOf(item, yields)
     if not data.get("done"):

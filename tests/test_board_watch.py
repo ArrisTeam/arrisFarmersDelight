@@ -80,7 +80,7 @@ def testARefusedStackKnocksOnce():
 
 def testAnOnlookerHearsTheSameSoundsFromTheBoard():
     C.engine.reset()
-    C.BoardWatch.enable()
+    C.BoardWatch.enable(C.Geometry)
     C.BoardWatch.OnBoardLook(_look("chopped", **_chopped(done=True, count=2)))
     assert [(sound[0], sound[1]) for sound in C.engine.played] == [("ambient.cutting_board.knife", 0.8), ("random.pop", 0.35)]
     x, y, z = C.engine.playedAt[0]
@@ -97,7 +97,7 @@ def testAnOnlookerHearsTheSameSoundsFromTheBoard():
 
 def testAnOnlookerIgnoresWhatIsNotForThem():
     C.engine.reset()
-    C.BoardWatch.enable()
+    C.BoardWatch.enable(C.Geometry)
     good = _look("placed", at=1)
     for bad in (dict(good, dimensionId=1), dict(good, pos=[1, 2]), dict(good, pos=[1, 2, "3"]), dict(good, pos=[True, 2, 3]), dict(good, pos="x"),
                 dict(good, event="refused"), dict(good, event="board_book"), dict(good, event=["placed"]), dict(good, event=None), "junk", None, 5, [good]):
@@ -113,7 +113,7 @@ def testTheBroadcastIsDeadUntilTheBoardStationIsRegisteredByTheBoot():
     C.BoardWatch._state["on"] = False
     C.BoardWatch.OnBoardLook(_look("placed", at=1))
     assert C.engine.played == [], "没装前置包（ClientBoot 没调 enable）：什么也不放"
-    C.BoardWatch.enable()
+    C.BoardWatch.enable(C.Geometry)
     C.BoardWatch.OnBoardLook(_look("placed", at=1))
     assert len(C.engine.played) == 1
 

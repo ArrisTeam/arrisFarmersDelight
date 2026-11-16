@@ -17,7 +17,7 @@ def OnLoadClientAddonScriptsAfter(args=None):
     api = clientApi.ImportModule(API_MODULE)
     if api is not None and getattr(api, "API_VERSION", 0) >= MIN_API_VERSION:
         if BoardView.register(api) is not None:
-            BoardWatch.enable()                   # 砧板站点登记了：旁边别人用的砧板，也听得到切菜声（服务端的 BoardLook 发过来）
+            BoardWatch.enable(api.Geometry)       # 砧板站点登记了：旁边别人用的砧板，也听得到切菜声、看得到碎屑（服务端的 BoardLook 发过来）
         if api.API_VERSION >= POT_API_VERSION:
             PotView.register(api)
             PotScenes.enable(BrothColors.get)     # 厨锅从此按 HoD 的样子画：开盖、汤面、漂着的料（谁都看得见）

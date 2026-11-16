@@ -36,7 +36,7 @@ class FakeClientEngine(object):
         self.molang = {}                                  # 方块实体的 molang 变量（砧板的描边）
         self.block = ("arris:cutting_board", 2)          # direction 2 = 朝北
         self.dimension = 0
-        self.particles = []                              # 主包自己放的粒子（旁观的人那边没有站点视图）：(标识, 位置, {变量})
+        self.particles = []                              # 主包自己放的粒子：{"id": 标识, "pos": 位置, "vars": {变量: 值}}
 
     # ---- 组件（工厂按需返回自己：下面这些方法就是组件的接口）
     def GetItemBasicInfo(self, name, aux=0):
@@ -63,6 +63,14 @@ class FakeClientEngine(object):
 
     def SetBlockEntityMolangValue(self, pos, name, value):
         self.molang[name] = value
+        return True
+
+    def Create(self, identifier, pos):
+        self.particles.append({"id": identifier, "pos": tuple(pos), "vars": {}})
+        return len(self.particles)
+
+    def SetVariable(self, particleId, name, value):
+        self.particles[particleId - 1]["vars"][name] = value
         return True
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, entityId):
