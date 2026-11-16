@@ -62,3 +62,29 @@ def eatsPumpkinPie(aimsAtBlock, sneaking, sneakToPlace):
     """原版南瓜派右键时还能不能吃：准星对着方块、而且这一下该放方块时不吃（JE：useOn 返回放置的结果，放不下是 FAIL，
     不会再落到"吃"）；对着空气，或者配置要求潜行而没潜行，照常吃。"""
     return not (aimsAtBlock and placesPumpkinPie(sneaking, sneakToPlace))
+
+
+# 水平朝向下标：0 南(+z)、1 西(-x)、2 北(-z)、3 东(+x)，与玩家的 yaw（0 朝南、90 朝西、180 朝北、-90 朝东）
+# 和 netease:face_directional 的 direction 状态（south 0、west 1、north 2、east 3）是同一套编号
+FACING_VECTORS = ((0, 0, 1), (-1, 0, 0), (0, 0, -1), (1, 0, 0))
+
+
+def facingOfYaw(yaw):
+    """玩家面朝的水平方向下标（JE 的 Direction.fromYRot：floor(yaw / 90 + 0.5) & 3）。"""
+    return int(math.floor(yaw / 90.0 + 0.5)) & 3
+
+
+def directionOfFacing(facing):
+    """玩家面朝 facing 时放下的 direction 状态：方块的"前面"朝向玩家，也就是朝向的反方向（官方文档：玩家放置时 north 贴图面向玩家）。"""
+    return (facing + 2) & 3
+
+
+def facingOfDirection(direction):
+    """direction 状态对应的放置者面朝方向（directionOfFacing 的逆，同一个公式）。"""
+    return (direction + 2) & 3
+
+
+def stepFacing(pos, facing, steps=1):
+    """pos 沿水平朝向 facing 走 steps 格。"""
+    dx, dy, dz = FACING_VECTORS[facing & 3]
+    return (pos[0] + dx * steps, pos[1] + dy * steps, pos[2] + dz * steps)
