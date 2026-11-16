@@ -45,14 +45,33 @@ def testLogsAreStrippedWithAnAxeAndMeatIsCutWithAKnife():
     assert Rules.strokeOf(_recipe("minecraft:beef")) == Cutting.TOOL_CUT
 
 
-def testToolsFitLikeTheClassicBoard():
+def testToolsFollowJava():
     beef, log = _recipe("minecraft:beef"), _recipe("minecraft:oak_log")
     assert Rules.fitsTool("arris:iron_knife", "sword", beef, _isKnife)
+    assert Rules.fitsTool("othermod:jade_knife", "sword", beef, lambda name: True), "带刀标签的下游刀能切刀切的配方"
     assert not Rules.fitsTool("minecraft:iron_axe", "axe", beef, _isKnife)
     assert Rules.fitsTool("minecraft:iron_axe", "axe", log, _isKnife)
     assert Rules.fitsTool("othermod:obsidian_axe", "axe", log, _isKnife), "斧类物品都能削皮"
-    assert Rules.fitsTool("arris:flint_knife", "sword", log, _isKnife), "经典玩法里刀什么都能切"
+    assert not Rules.fitsTool("arris:flint_knife", "sword", log, _isKnife), "JE：原木要斧头削，刀不行"
     assert not Rules.fitsTool("", None, beef, _isKnife)
+    gravel, saddle = _recipe("minecraft:gravel"), _recipe("minecraft:saddle")
+    assert Rules.fitsTool("minecraft:iron_shovel", "shovel", gravel, _isKnife)
+    assert not Rules.fitsTool("arris:iron_knife", "sword", gravel, _isKnife)
+    assert Rules.fitsTool("minecraft:shears", "shears", saddle, _isKnife)
+    assert Rules.fitsTool("minecraft:stone_pickaxe", "pickaxe", _recipe("minecraft:brick_block"), _isKnife)
+    assert Rules.fitsTool("minecraft:golden_hoe", "hoe", _recipe("minecraft:oak_chest_boat"), _isKnife)
+    assert Rules.isKnifeRecipe(beef) and not Rules.isKnifeRecipe(log) and not Rules.isKnifeRecipe(saddle)
+
+
+def testChanceOutputsAndFortune():
+    cabbages = _recipe("arris:wild_cabbages")
+    rolls = iter([0.1, 0.9, 0.4, 0.6])
+    assert Rules.resultsFor(cabbages, 4, roll=lambda: next(rolls)) == [("arris:cabbage_seeds", 0, 4), ("minecraft:yellow_dye", 0, 4)]
+    assert Rules.resultsFor(cabbages, 2, roll=lambda: 0.55, fortune=1) == [("arris:cabbage_seeds", 0, 2), ("minecraft:yellow_dye", 0, 4)]
+    assert Rules.resultsFor(cabbages, 2, roll=lambda: 0.55) == [("arris:cabbage_seeds", 0, 2)], "一个都没掷中的不列"
+    assert Rules.fortuneOf({"enchantData": [(9, 1), (18, 3)]}) == 3 and Rules.fortuneOf({}) == 0 and Rules.fortuneOf(None) == 0
+    planks = _recipe("minecraft:wooden_door")["itemList"][0]
+    assert planks == {"itemName": "minecraft:oak_planks", "count": 1, "chance": 0.75}
 
 
 def testPickToolPrefersTheHandThenOffhandThenInventory():

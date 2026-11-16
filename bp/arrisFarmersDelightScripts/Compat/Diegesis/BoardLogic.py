@@ -156,7 +156,7 @@ class BoardLogicMixin(object):
         wears = not IsCreative(playerId) and bool(info) and (info.get("maxDurability") or 0) > 0
         batch = Cutting.batchSize(item["count"], Rules.toolLeft(toolItem) if wears else None)
         if batch > 0:
-            for name, aux, count in Rules.resultsFor(self.recipe, batch):
+            for name, aux, count in Rules.resultsFor(self.recipe, batch, fortune=Rules.fortuneOf(toolItem)):
                 BoardTools.give(playerId, self.station.dimensionId, name, aux, count)
             if wears:
                 BoardTools.wearTool(playerId, self.station.dimensionId, self.station.pos, where, toolItem, batch)

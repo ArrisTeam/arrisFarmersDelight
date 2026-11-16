@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""CuttingBoard - 砧板：放上一件物品、用对的工具切、空手取回（服务端）
+"""CuttingBoard - 砧板：放上一叠物品、用对的工具一件件切、空手取回（服务端）
 
-板上的东西只存在方块实体数据 cuttingDict（带数量：站点模式能放一叠，这里一次切一件）；
-画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
+照 JE：手里那一叠整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
+工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），带 chance 的产物按概率给。
+板上的东西只存在方块实体数据 cuttingDict（带数量）；画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
 from .EventRegistry import registerHandler
 from .Helpers import BoardDish
@@ -10,8 +11,9 @@ from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType, IsKnife
-from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, SetCarriedDurability
+from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data.Cutting import CuttingBoardDict
+from ..Shared.Rules import CuttingStation
 
 CUTTING_BOARD = "arris:cutting_board"
 # 这些类型的物品可以单纯摆在砧板上（不切）
@@ -59,43 +61,69 @@ def OnServerCuttingBoardBlockUse(args):
         PublishBoard(dimensionId, blockPos, None)
 
 
+def _kind(item):
+    return (item["newItemName"], item.get("newAuxValue") or 0)
+
+
 def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
-    x, y, z = blockPos
     itemType = GetItemType(carriedDict)
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
-        # 砧板上有东西：拿着对的工具就切一件
-        result = CuttingBoardDict.get((cuttingDict["newItemName"], cuttingDict["newAuxValue"]))
-        if not result:
+        if _kind(carriedDict) == _kind(cuttingDict):
+            _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)     # 同一种：接着叠
             return
-        itemName = carriedDict["newItemName"]
-        isToolType = "item_type" in result and itemType == result.get("item_type")
-        if itemName in result["tool"] or isToolType or IsKnife(itemName):
-            for resultDict in result["itemList"]:
-                System.CreateEngineItemEntity(resultDict, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
-            ToAllPlayerPlaySound(dimensionId, blockPos, "ambient.cutting_board.knife")
-            SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
-            # 站点模式能在板上放一叠：经典玩法一次切一件，切完最后一件才清空
-            left = (cuttingDict.get("count") or 1) - 1
-            if left > 0:
-                cuttingDict["count"] = left
-                blockEntityData["cuttingDict"] = cuttingDict
-            else:
-                blockEntityData["cuttingDict"] = None
-            PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"])
+        result = CuttingBoardDict.get(_kind(cuttingDict))
+        if not result:
+            ShowTip(playerId, "这东西可不能切啊……")
+        elif CuttingStation.fitsTool(carriedDict["newItemName"], itemType, result, IsKnife):
+            _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId)
+        else:
+            ShowTip(playerId, "或许得换个工具……")
         return
-    # 砧板是空的：放上一件
-    itemName = carriedDict["newItemName"]
-    if itemName == "arris:skillet_item":
+    if carriedDict["newItemName"] == "arris:skillet_item":
         return
-    if itemType in _PLACEABLE_TYPES or (itemName, carriedDict["newAuxValue"]) in CuttingBoardDict:
-        ToAllPlayerPlaySound(dimensionId, blockPos, "dig.wood")
-        SetNotCreateItem(playerId, carriedDict)
-        carriedDict["count"] = 1
-        blockEntityData["cuttingDict"] = carriedDict
-        PublishBoard(dimensionId, blockPos, carriedDict)
+    if itemType in _PLACEABLE_TYPES or _kind(carriedDict) in CuttingBoardDict:
+        _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)
     else:
         ShowTip(playerId, "这东西可不能切啊……")
+
+
+def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
+    """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。"""
+    board = blockEntityData["cuttingDict"]
+    info = compFactory.CreateItem(levelId).GetItemBasicInfo(carriedDict["newItemName"], _kind(carriedDict)[1]) or {}
+    room = max(1, info.get("maxStackSize") or 64) - (board["count"] if board else 0)
+    moved = min(carriedDict["count"], room)
+    if moved <= 0:
+        return
+    stack = dict(board) if board else {"newItemName": carriedDict["newItemName"], "newAuxValue": _kind(carriedDict)[1]}
+    stack["count"] = (board["count"] if board else 0) + moved
+    blockEntityData["cuttingDict"] = stack
+    if not IsCreative(playerId):
+        left = dict(carriedDict)
+        left["count"] -= moved
+        SetCarriedItem(playerId, left if left["count"] > 0 else None)
+    ToAllPlayerPlaySound(dimensionId, blockPos, "dig.wood")
+    PublishBoard(dimensionId, blockPos, stack)
+
+
+def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId):
+    """切一件：产物掉在板上方（带 chance 的按概率），工具掉一点耐久，提示还剩几个。"""
+    x, y, z = blockPos
+    fortune = CuttingStation.fortuneOf(carriedDict)
+    for name, aux, count in CuttingStation.resultsFor(result, 1, fortune=fortune):
+        System.CreateEngineItemEntity({"newItemName": name, "newAuxValue": aux, "count": count}, dimensionId,
+                                      (x + 0.5, y + 0.5, z + 0.5))
+    ToAllPlayerPlaySound(dimensionId, blockPos, "ambient.cutting_board.knife")
+    SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
+    left = (cuttingDict.get("count") or 1) - 1
+    if left > 0:
+        cuttingDict["count"] = left
+        blockEntityData["cuttingDict"] = cuttingDict
+        ShowTip(playerId, "还剩%d个……" % left)
+    else:
+        blockEntityData["cuttingDict"] = None
+    PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"])
 
 
 @registerHandler("BlockRemoveServerEvent", match=CUTTING_BOARD)
