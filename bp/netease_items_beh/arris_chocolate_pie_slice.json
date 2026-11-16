@@ -12,7 +12,7 @@
                     }
                 ],
                 "nutrition": 3,
-                "saturation_modifier": "poor"
+                "saturation_modifier": 0.3
             },
             "netease:customtips": {
                 "value": "§9速度 (00:30)"

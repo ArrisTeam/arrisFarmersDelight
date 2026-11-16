@@ -4,7 +4,7 @@
         "components": {
             "minecraft:food": {
                 "nutrition": 8,
-                "saturation_modifier": "high",
+                "saturation_modifier": 0.9,
                 "using_converts_to": "minecraft:stick"
             },
             "minecraft:max_stack_size": 64,

@@ -4,7 +4,7 @@
         "components": {
             "minecraft:food": {
                 "nutrition": 6,
-                "saturation_modifier": "low",
+                "saturation_modifier": 0.4,
                 "using_converts_to": "minecraft:bowl",
                 "effects": [
                     {

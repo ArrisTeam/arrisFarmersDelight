@@ -12,7 +12,7 @@
                     }
                 ],
                 "nutrition": 10,
-                "saturation_modifier": "good",
+                "saturation_modifier": 0.6,
                 "using_converts_to": "minecraft:bowl"
             },
             "netease:customtips": {

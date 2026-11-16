@@ -13,7 +13,7 @@
                     }
                 ],
                 "nutrition": 3,
-                "saturation_modifier": "poor",
+                "saturation_modifier": 0.2,
                 "using_converts_to": "minecraft:stick"
             },
             "netease:customtips": {

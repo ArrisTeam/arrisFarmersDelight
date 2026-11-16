@@ -4,7 +4,7 @@
         "components": {
             "minecraft:food": {
                 "nutrition": 2,
-                "saturation_modifier": "poor"
+                "saturation_modifier": 0.4
             },
             "minecraft:seed": {
                 "crop_result": "arris:onions_stage0",

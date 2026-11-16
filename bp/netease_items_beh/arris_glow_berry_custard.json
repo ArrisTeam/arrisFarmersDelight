@@ -4,7 +4,7 @@
         "components": {
             "minecraft:food": {
                 "nutrition": 7,
-                "saturation_modifier": "normal",
+                "saturation_modifier": 0.6,
                 "using_converts_to": "minecraft:glass_bottle"
             },
             "minecraft:max_stack_size": 16,

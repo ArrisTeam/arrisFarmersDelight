@@ -11,8 +11,8 @@
                         "name": "arris:comfort"
                     }
                 ],
-                "nutrition": 14,
-                "saturation_modifier": "supernatural",
+                "nutrition": 12,
+                "saturation_modifier": 0.8,
                 "using_converts_to": "minecraft:bowl"
             },
             "netease:customtips": {
