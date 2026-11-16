@@ -200,5 +200,22 @@ def testTheClientsHearOfEveryStepNotEveryTick():
     assert pan.dueToSend(), "批量变了"
 
 
+def testTheStateSurvivesARestart():
+    """HoD 的 Frying.save / load：锅里的食物接着煎，站点关了、玩家走了、服务器重启都不丢。"""
+    pan = Fry.Frying()
+    assert pan.save() is None, "什么都没发生过：没东西可存"
+    pan.layByHand()
+    pan.resize(3)
+    pan.down, pan.up = 0.75, 0.125
+    saved = pan.save()
+    assert saved == {"byHand": True, "down": 0.75, "up": 0.125, "batch": 3}
+    again = Fry.Frying().load(saved)
+    assert again.byHand and again.down == 0.75 and again.up == 0.125 and again.batch == 3
+    fresh = Fry.Frying().load(None)
+    assert not fresh.byHand and (fresh.down, fresh.up, fresh.batch) == (0.0, 0.0, 0)
+    junk = Fry.Frying().load({"byHand": "yes", "down": "x", "up": 7, "batch": 10 ** 6})
+    assert not junk.byHand and junk.down == 0.0 and junk.up == 1.0 and junk.batch == 0, "不对的类型当没有，进度夹进 0..1"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

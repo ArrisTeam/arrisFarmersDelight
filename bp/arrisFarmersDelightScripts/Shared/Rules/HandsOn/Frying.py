@@ -48,6 +48,10 @@ def sideSeconds(skilletTime, batch, times=1.0, quantize=True):
     return roundToTick(seconds) if quantize else max(TICK, seconds)
 
 
+def _fraction(value):
+    return min(1.0, max(0.0, float(value))) if isinstance(value, (int, float)) and not isinstance(value, bool) and value == value else 0.0
+
+
 def syncStep(done):
     """进度同步给客户端时的量化：熟了是 1，否则向下取到 1/32 的整数倍。"""
     return 1.0 if done >= 1.0 else math.floor(done / SYNC_STEP) * SYNC_STEP
@@ -131,6 +135,21 @@ class Frying(object):
             self.down = min(1.0, self.down * scale)
             self.up = min(1.0, self.up * scale)
         self.batch = batch
+
+    def save(self):
+        """存进方块实体数据的样子（HoD 的 Frying.save）：既没手放过也没煎过就没有东西可存，返回 None。"""
+        if not (self.byHand or self.down > 0.0 or self.up > 0.0):
+            return None
+        return {"byHand": self.byHand, "down": float(self.down), "up": float(self.up), "batch": int(self.batch)}
+
+    def load(self, data):
+        """从方块实体数据读回（HoD 的 Frying.load）：缺的键当 0，不对的类型当没有。"""
+        get = data.get if hasattr(data, "get") else (lambda key, default=None: default)
+        self.byHand = get("byHand") is True
+        self.down, self.up = _fraction(get("down")), _fraction(get("up"))
+        batch = get("batch")
+        self.batch = int(batch) if isinstance(batch, (int, float)) and not isinstance(batch, bool) and 0 <= batch <= 64 else 0
+        return self
 
     def stateKey(self):
         steps = floorInt(self.down * STEPS) * (STEPS + 1) + floorInt(self.up * STEPS)

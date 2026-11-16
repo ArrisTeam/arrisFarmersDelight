@@ -166,7 +166,8 @@ def _cookPages(sideSeconds):
 
 
 def panPages():
-    return _cookPages(PanStation.sideSeconds(1))
+    """煎锅的书：每道都是两面的时间（SkilletBook：2 * sideTicks；蛋不翻面、从下往上煎透，用的也是两面的时间）。"""
+    return [dict(page, note=_seconds(2 * PanStation.sideSeconds(1))) for page in _cookPages(PanStation.sideSeconds(1))]
 
 
 def grillPages():
