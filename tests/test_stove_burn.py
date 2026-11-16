@@ -98,11 +98,20 @@ def testFrostWalkerBootsAreRecognised():
 
 
 def testEveryJavaExemptionStopsTheBurn():
-    assert StoveBurn.burns(True, False, True, False)
-    assert not StoveBurn.burns(False, False, True, False)      # 没碰到烤架区
-    assert not StoveBurn.burns(True, True, True, False)        # 潜行
-    assert not StoveBurn.burns(True, False, False, False)      # 不是生物
-    assert not StoveBurn.burns(True, False, True, True)        # 冰霜行者
+    plain, frost = (lambda: False), (lambda: True)
+    assert StoveBurn.burns(True, False, True, plain)
+    assert not StoveBurn.burns(False, False, True, plain)      # 没碰到烤架区
+    assert not StoveBurn.burns(True, True, True, plain)        # 潜行
+    assert not StoveBurn.burns(True, False, False, plain)      # 不是生物
+    assert not StoveBurn.burns(True, False, True, frost)       # 冰霜行者
+
+
+def testBootsAreOnlyReadWhenTheOtherConditionsHold():
+    reads = []
+    asked = lambda: reads.append(1) or False
+    assert not StoveBurn.burns(False, False, True, asked) and not StoveBurn.burns(True, True, True, asked) and not StoveBurn.burns(True, False, False, asked)
+    assert reads == []
+    assert StoveBurn.burns(True, False, True, asked) and reads == [1]
 
 
 # ---- 接线 ----

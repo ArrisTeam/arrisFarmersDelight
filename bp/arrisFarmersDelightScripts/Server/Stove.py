@@ -145,7 +145,7 @@ def OnStandOnStove(args):
     if foot is None or not size:
         return
     stovePos = (args["blockX"], args["blockY"], args["blockZ"])
-    frostWalker = StoveBurn.hasFrostWalker(compFactory.CreateItem(entityId).GetEquItemEnchant(StoveBurn.FOOT_SLOT))
+    frostWalker = lambda: StoveBurn.hasFrostWalker(compFactory.CreateItem(entityId).GetEquItemEnchant(StoveBurn.FOOT_SLOT))
     if StoveBurn.burns(StoveBurn.touchesGrill(stovePos, foot, size[0], size[1]), False, True, frostWalker):
         compFactory.CreateHurt(entityId).Hurt(StoveBurn.DAMAGE, BURN_CAUSE, None, None, False)
 

@@ -41,5 +41,8 @@ def hasFrostWalker(enchants):
 
 
 def burns(touching, sneaking, living, frostWalker):
-    """JE 的几条豁免合起来：都不豁免才烫。防火（fireImmune）由伤害类型 magma 交给引擎判（fire_immune 对 magma 无敌）。"""
-    return bool(touching and living and not sneaking and not frostWalker)
+    """JE 的几条豁免合起来：都不豁免才烫。防火（fireImmune）由伤害类型 magma 交给引擎判（fire_immune 对 magma 无敌）。
+
+    frostWalker 是个不带参数的函数（读鞋子的附魔要问引擎，前面的条件已经不烫了就不读）。
+    """
+    return bool(touching and living and not sneaking and not frostWalker())
