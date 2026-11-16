@@ -12,10 +12,14 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Dishes（砧板摆盘的菜谱，tools/gen_dishes.py 从合成配方生成）
                         Remainders（原料用掉后剩下的容器：JE 的合成剩余物 + 厨锅的特例表）
                         CraftReturns（无序合成配方补还的剩余物，tools/gen_crafts.py 从合成配方生成）
+                        FoodColors  BrothColors（按贴图算的颜色：切菜碎屑、汤色、碎料色、倒进锅里的液体色，tools/gen_food_colors.py / gen_broth_colors.py 生成）
+                        PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
-                        PotStation（厨锅站点：份数、放料、按配方把料摆进几格、取回、徽章与提示文字）
+                        PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
+                        PotLookState（厨锅"看上去是什么样"的广播怎么读）  PotModelMath（方块朝向、勺子骨骼的位移和欧拉角）
+                        PotPiecesLook（汤里的碎料交给着色器的数：配料槽、出现 / 缩走的钟）  PotItem（拆下来的锅带着菜）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）
                         GrillStation（炉灶站点：六个烤位在哪、一面多久、该翻的那件、提示文字）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
@@ -35,7 +39,9 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Basket（篮子吸掉落物：收集区、往 27 格里塞的次序、冷却） RopeReel（卷绳子：整根绳子最下面一节）
                         NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
                         TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
-    HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
+    HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
+                        厨锅的表现也在这里（纯计算，Pot 开头的那些）：汤面（水位、汤色、沸腾）、勺子的手感、漂着的料、碎料、
+                        出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
@@ -50,6 +56,8 @@ Server/                 服务端
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
   CropTicks FarmWorld   作物随机刻（照 JE 的生长概率）与它读写世界的那一层；OrganicCompost MushroomColony Straw 同属种植
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
+  PotLook               厨锅的世界外观广播：锅里有什么、勺子在哪、煮到哪，发给 32 格内的人，静态部分写进方块实体数据
+  PotServe              盛菜：取一份、记"做过几份"、给经验；主手拿着容器右键直接盛
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
   HandGrill             炉灶手放的每一件（HoD Grill）：逐件两面分开烤、等翻面、烤好留在灶台上；右键放的照 FD 原样
   CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数
@@ -75,7 +83,9 @@ Compat/
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
                         BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；
-                        PotLogic + PotSync（服务端）+ PotView + PotSpoon（客户端）= 厨锅站点；
+                        PotLogic + PotSync + PotScoop（服务端）+ PotView + PotHud（客户端，开着站点的人）= 厨锅站点；
+                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx（客户端）= 谁都看得见的锅里场景：开盖、汤面、
+                        漂着的料、碎料、勺子、气泡蒸汽和声音（docs/diegesis/DESIGN.md §10）；
                         PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
                         GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
                         DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台摆出砧板菜的配方时拦下）；
