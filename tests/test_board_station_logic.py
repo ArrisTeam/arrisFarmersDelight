@@ -237,7 +237,8 @@ def testAKnifeThatBreaksStopsTheBatchAndLeavesItsSlotEmpty():
     assert _chop(manager, 0)
     assert K.board(data) == (CABBAGE, 7) and K.count("arris:cabbage_leaf") == 10, "刀还剩 5 次：只切 5 个"
     assert _inv(7) is None, "刀坏了，那一格是空的（产物没有落进去被盖掉）"
-    assert len([c for c in fake.calls if c[1] == "OnPlaySound"]) >= sounds + 2, "刀声和破碎声"
+    heard = [c[2][0]["soundName"] for c in fake.calls if c[1] == "OnPlaySound"][sounds:]
+    assert heard == ["random.break"], "服务端只放刀坏了的破碎声；刀声由站点两边的客户端按声音表放（BoardSounds）"
 
 
 def _unbreaking(slot, level, picks):

@@ -32,8 +32,11 @@ class FakeClientEngine(object):
         self.selected = 0
         self.offhand = None
         self.played = []
+        self.playedAt = []                                # 每一声放在哪（和 played 一一对应）
         self.molang = {}                                  # 方块实体的 molang 变量（砧板的描边）
         self.block = ("arris:cutting_board", 2)          # direction 2 = 朝北
+        self.dimension = 0
+        self.particles = []                              # 主包自己放的粒子（旁观的人那边没有站点视图）：(标识, 位置, {变量})
 
     # ---- 组件（工厂按需返回自己：下面这些方法就是组件的接口）
     def GetItemBasicInfo(self, name, aux=0):
@@ -52,6 +55,9 @@ class FakeClientEngine(object):
     def GetBlock(self, pos):
         return self.block
 
+    def GetCurrentDimension(self):
+        return self.dimension
+
     def SetEnableBlockEntityAnimations(self, pos, enable):
         return True
 
@@ -61,6 +67,7 @@ class FakeClientEngine(object):
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, entityId):
         self.played.append((name, volume, pitch))
+        self.playedAt.append(tuple(pos))
         return "id"
 
 
@@ -104,6 +111,7 @@ _install()
 BoardView = fdtest.load("Compat.Diegesis.BoardView")
 BoardDraw = fdtest.load("Compat.Diegesis.BoardDraw")
 BoardFx = fdtest.load("Compat.Diegesis.BoardFx")
+BoardWatch = fdtest.load("Compat.Diegesis.BoardWatch")
 BlockItems = fdtest.load("Client.BlockItems")
 Geometry = dgtest.load("Shared.Geometry")
 KernelSchema = dgtest.load("Shared.Schema")

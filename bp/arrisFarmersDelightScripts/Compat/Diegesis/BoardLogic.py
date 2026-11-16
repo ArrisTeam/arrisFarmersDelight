@@ -11,15 +11,15 @@
     take {}                           取回：有层拿最上一层，否则板上的整个还给厨师
     assemble {}                       层凑成的菜做成（BoardAssemble.py）
     bookFill {"key", "sets"}          食谱书里点的菜：从背包放料（BoardAssemble.fill）
-表现事件（给站点里的人）：chopped {at, at_x, spot, angle, tool, item, yaw, count, done}、placed {at}、refused {stack}、taken {stack, at, carved}、
-carved、assembled {layers, finish, block}。站点数据 data：marks（已切几刀）、plan / style / spots / angles / stroke（板上的东西怎么切）、
+表现事件（给站点里的人，附近旁观的人也收一份声音 / 碎屑用的，BoardEmit）：chopped {at, at_x, spot, angle, tool, item, yaw, stroke, block, yields, count, done}、
+placed {at}、refused {stack}、taken {stack, at, carved}、carved、assembled {layers, finish, block}。声音由两边的客户端按 Shared/Rules/BoardSounds 自己放。站点数据 data：marks（已切几刀）、plan / style / spots / angles / stroke（板上的东西怎么切）、
 dish（层现在能做成的那道菜的物品名，没有是空串）。
 """
 from . import BoardAssemble, BoardChop, BoardGive, BoardSlots, BoardTools
+from .BoardEmit import emit
 from .BookFill import setsOf
 from ...Server.Helpers.BlockItems import DropLegacyDisplays
 from ...Server.Helpers.Engine import GetBlockEntityData
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.Player import GiveOrDropItem
 from ...Server.Helpers import BoardDish as Store
 from ...Shared.Data.Cutting import CuttingBoardDict
@@ -32,7 +32,6 @@ from ...Shared.Rules.HandsOn import Cutting
 
 REACH = 6.0
 RECHECK_SECONDS = 0.25
-SOUNDS = {Place.PLACED: "dig.wood", Place.TAKEN: "armor.equip_leather", Place.CARVED: "dig.wood"}
 
 
 class BoardLogicMixin(object):
@@ -118,9 +117,7 @@ class BoardLogicMixin(object):
         for item in result.give:
             BoardGive.give(self, item)
         for event, data in result.events:
-            self.station.effect(event, data)
-            if event in SOUNDS:
-                ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, SOUNDS[event])
+            emit(self, event, data)
         if result.restart:
             self.restart()
         if result.finish:

@@ -145,7 +145,7 @@ class Cutter(object):
         if self.run is not None:
             for event in self.run.step(dt):
                 if event == "snip":
-                    BoardFx.play(BoardFx.SHEARS, self.owner.view.toWorld(*self._at(0.0, 3.0)))
+                    BoardFx.play(BoardFx.snipBite(), self.owner.view.toWorld(*self._at(0.0, 3.0)))
                 elif event == "impact":
                     self._impact()
                 elif event == "done":

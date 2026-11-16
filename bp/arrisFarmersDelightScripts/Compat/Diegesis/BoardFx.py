@@ -3,11 +3,12 @@
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 chopped（1395-1453）、pop 里的面粉和闪光（1642-1651）、敲一声（WOOD_HIT）。
 粒子是前置包自带的 arris_diegesis:dust（HoD 的 DiegesisParticles.DUST，按 0xRRGGBB 染色、个数可调）和 arris_diegesis:glint；
-声音经 CustomAudio，名字是原版的。刀声（最后一刀之前每一刀、最后一刀）由服务端对所有人播（BoardChop），这里只放只有本人听得到的：
-敲一声、拿起来的轻响。
+声音经 CustomAudio，名字是原版的；放什么、多大声在 Shared/Rules/BoardSounds（站点里的人 BoardEffects 和旁观的人 BoardWatch 用同一张表），
+这里只管放；剪刀头两口和敲一声只有本人听得到，在 BoardCutter / BoardView 里直接放。
 """
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.FoodColors import FoodColors
+from ...Shared.Rules.BoardSounds import BOUNCE, KNOCK, snipBite  # noqa: F401 （别的模块从这里拿）
 from ...Shared.Rules.HandsOn import Cutting
 
 DUST, GLINT = "arris_diegesis:dust", "arris_diegesis:glint"
@@ -19,10 +20,6 @@ TOOL_COLORS = {Cutting.TOOL_CHOP: 0x9C7F4E, Cutting.TOOL_STRIP: 0x6B5034, Cuttin
                Cutting.TOOL_PRY: 0x9C7F4E, Cutting.TOOL_SNIP: 0x8B5A2B}
 FLOUR = 0xEDE3CC
 DEFAULT_COLOR = 0xE0D0A0
-KNOCK = ("hit.wood", 0.25, 1.6)             # WOOD_HIT：刀敲在食物上（没落在刀口线上）
-BOUNCE = ("hit.wood", 0.4, 1.4)             # 板不收：弹回的那一声
-PICKUP = ("random.pop", 0.3, 1.5)           # ITEM_PICKUP：拿走东西的轻响
-SHEARS = ("mob.sheep.shear", 0.3, 1.3)      # 剪刀前两口各响一声（最后一口是切，所有人听到）
 
 
 def play(sound, world):

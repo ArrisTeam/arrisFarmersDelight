@@ -10,8 +10,8 @@
   一层最多一叠（桶只放一个，所以一份）；原样留下的配料（面团的水桶）放一件就够。放完就做成这道菜（书里点的）。
 """
 from . import BoardGive
+from .BoardEmit import emit
 from .BoardSlots import stack
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Shared.Rules import DishStation as Dishes
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.BoardStation import BATCH, BOARD_MAX, keyOf
@@ -59,9 +59,8 @@ def assemble(logic, playerId):
             result["count"] -= there
     BoardGive.give(logic, result)
     logic.restart()
-    logic.station.effect("assembled", {"layers": [_wire(dict(layer, count=1)) for layer in layers], "block": Dishes.isBlockResult(name),
-                                       "finish": Dishes.finishOf(dish)})
-    ToAllPlayerPlaySound(logic.station.dimensionId, logic.station.pos, "random.pop")
+    emit(logic, "assembled", {"layers": [_wire(dict(layer, count=1)) for layer in layers], "block": Dishes.isBlockResult(name),
+                              "finish": Dishes.finishOf(dish)})
     return True
 
 
@@ -145,7 +144,6 @@ def fill(logic, playerId, key, sets):
     layers = layers + [stack(_one(kind, 1 if kind in keeps else count)) for kind in missing]
     logic.setLayers(layers)
     logic.restart()
-    logic.station.effect("placed", {"at": len(layers) - 1})
-    ToAllPlayerPlaySound(logic.station.dimensionId, logic.station.pos, "dig.wood")
+    emit(logic, "placed", {"at": len(layers) - 1})
     finishIfWanted(logic, playerId)
     return True

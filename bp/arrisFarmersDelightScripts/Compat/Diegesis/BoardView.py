@@ -2,7 +2,7 @@
 """BoardView - 切菜板站点里本人的那一层：托盘拿放、点板、落刀、取回、摆盘、食谱书（客户端）
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 onEvent / onItemClick / onInventoryShiftClick / usable / onEffect / frame。
-板上的画面（食物、层、落下 / 拿走 / 弹回的动画）在 BoardDraw.py，刀和虚线在 BoardCutter.py，声音和碎屑在 BoardFx.py。照 JE 的规矩：
+板上的画面（食物、层、落下 / 拿走 / 弹回的动画）在 BoardDraw.py，刀和虚线在 BoardCutter.py，服务端表现事件的处理在 BoardEffects.py，声音和碎屑在 BoardFx.py。照 JE 的规矩：
 - 机位照 scenes/cutting_board.json：相机 (7.5, 35.5, -21) 看 (7.5, 1, 8)，视野 30，0.4 秒，窗口窄时保住左右；没有提示行、没有关闭按钮（chrome = java）；
 - 底部托盘（前置包按 usable 列出背包里能切的、能摆盘的、切东西用的工具）拿一叠到手上点板 = 放上去（左键整叠、右键一个），Shift 点托盘 = 整叠直接放上去，
   右键开站时手里的食物也直接放；手上拿着刀、或手空着背包里有刀（选中格 -> 副手 -> 背包），光标移到食物上刀吸附下一刀的虚线，点一下落刀；
@@ -12,9 +12,10 @@
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
 from . import BookSources
+from . import BoardEffects
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
-from .BoardFx import KNOCK, BOUNCE, PICKUP, dustAt, flourAt, play
+from .BoardFx import KNOCK, play
 from .BoardGlow import BoardGlow, placeable
 from .BoardInv import isKnife, offhand, selectedSlot, typeOf
 from ...Client import BlockItems
@@ -23,7 +24,6 @@ from ...Shared.Rules import BoardClick as Click
 from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules import PotModelMath
 from ...Shared.Rules.HandsOn import BoardScene as Scene
-from ...Shared.Rules.HandsOn import Cutting
 
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
 CARRY_SIZE, CARRY_HIDDEN = 3.2, 0.01                    # 光标栈上的东西画多大；收起来时缩成一个点（不为 0：零矩阵不稳）
@@ -206,36 +206,8 @@ class BoardViewMixin(object):
     # ---------------------------------------------------------------- 服务端的表现事件
 
     def onEffect(self, name, data):
-        if self.draw is None:
-            return
-        if name == "chopped":
-            self._chopped(data)
-        elif name == "refused":
-            if self.cutter.pending.refused():
-                self.draw.refresh(self.board(), self.layers())
-            stack = data.get("stack")
-            if stack:
-                self.draw.bounced(stack)
-            play(BOUNCE, self.view.toWorld(self.draw.cx, Scene.TOP, self.draw.cz))
-        elif name == "taken":
-            if (data.get("stack") or {}).get("newItemName"):
-                self.draw.taken(data["stack"], int(data.get("at", -1)), bool(data.get("carved")))
-            play(PICKUP, self.view.toWorld(self.draw.cx, Scene.TOP, self.draw.cz))
-        elif name == "assembled":
-            made = [layer for layer in data.get("layers") or [] if layer]
-            self.draw.assembled(made)
-            flourAt(self.view, (self.draw.cx, Scene.TOP + 1.0, self.draw.cz))
-
-    def _chopped(self, data):
-        """一刀（所有看得见板的人）：碎屑；最后一刀切开的食物飘走。位置是操作者那边的站点像素，转到本人这边。"""
-        stroke = Cutting.strokeKind([data.get("tool") or ""], [])
-        item = data.get("item") or ""
-        point = (data.get("at_x") if data.get("at_x") is not None else self.draw.cx, Scene.TOP + 2.0, data.get("at") if data.get("at") is not None else self.draw.cz)
-        geometry = self.api.Geometry
-        world = geometry.stationPointToWorld(int(data.get("yaw") or 0), point[0], point[1], point[2], self.view.pos[0], self.view.pos[1], self.view.pos[2])
-        dustAt(self.view, self.view.toStation(*world), self.view.data.get("stroke") or stroke, item)
-        if data.get("done"):
-            self.draw.gone({"newItemName": item, "newAuxValue": 0, "count": 1})
+        if self.draw is not None:
+            BoardEffects.onEffect(self, name, data)
 
 
 def register(api):
