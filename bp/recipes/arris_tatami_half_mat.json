@@ -8,11 +8,11 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:tatami"
+                "item": "arris:tatami_full_mat"
             }
         ],
         "result": {
-            "count": 4,
+            "count": 2,
             "data": 0,
             "item": "arris:tatami_half_mat"
         },

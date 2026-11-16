@@ -92,6 +92,10 @@ FAMILIES = {
     ("arris:cooking_pot", 1): [[one("minecraft:brick", 2), one("minecraft:wooden_shovel"), one("minecraft:iron_ingot", 5),
                                 one("minecraft:water_bucket")]],
     ("arris:tatami", 2): [[one("arris:canvas", 2), one("arris:straw", 2)]],
+    ("arris:tatami", 1): [[one("arris:tatami_full_mat", 2)]],                     # tatami_block_from_full
+    ("arris:tatami_full_mat", 2): [[one("arris:tatami")]],                        # full_tatami_mat
+    ("arris:tatami_full_mat", 1): [[one("arris:tatami_half_mat", 2)]],            # full_tatami_mat_from_halves
+    ("arris:tatami_half_mat", 2): [[one("arris:tatami_full_mat")]],               # half_tatami_mat（JE 没有榻榻米方块直接拆短垫）
     ("arris:cabbage", 1): [[one("arris:cabbage_leaf", 2)]],
     ("arris:canvas", 1): [[one("arris:straw", 4)], [one("arris:canvas_rug", 2)]],
     ("arris:rope", 4): [[one("arris:straw", 2)], [one("arris:safety_net")]],
