@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PotStation - 厨锅站点的纯规则：站点声明（schema）、放料规则、份数、下锅就沉的料、徽章与提示文字（双端）
+"""PotStation - 厨锅站点的纯规则：站点声明（schema）、放料规则、份数、下锅就沉的料（双端）
 
 对应 Hands-On Delight：station/CookingPotStation.java（schema、isDish）与 station/PotLogic.java 的 mayPlace / servingsLeft /
 sinks / containerSlot。选菜与把料摆回格子在 PotLayout.py（StationRecipes 的移植），下锅就沉的料表在 Shared/Data/PotSunk.py。
@@ -9,7 +9,6 @@ sinks / containerSlot。选菜与把料摆回格子在 PotLayout.py（StationRec
 食材格是 6 项的列表，每项是物品字典（newItemName / newAuxValue / count）或空（None / {}）。
 """
 from .CookingPot import isIngredient, isVessel, vesselOf  # noqa: F401 - 站点的放料判定、盛菜容器
-from .HandsOn.PotCooking import FD_WAY, WAITING
 from .PotLayout import INPUT_SLOTS, choose, countOf, keyOf, kindsOf, lay, layout, planFill  # noqa: F401 - 站点和测试从这里取
 from ..Data.PotSunk import SUNK
 
@@ -98,33 +97,3 @@ def servingsLeft(slots):
 
 def foodCount(slots):
     return sum(countOf(slot) for slot in slots)
-
-
-def badgeOf(data):
-    """站点同步来的数据 -> 焦点界面顶部的徽章（星星、菜、进度）；锅里没菜可做也没菜可盛时 None。"""
-    if data.get("meals"):
-        grade = data.get("grade") or 0
-        return {"item": data.get("meal"), "stars": grade, "open": max(grade, data.get("open") or 1), "progress": None}
-    if data.get("dish"):
-        return {"item": data.get("dish"), "stars": data.get("stars") or 0.0, "open": data.get("open") or 1,
-                "progress": data.get("progress") or 0.0}
-    return None
-
-
-def statusText(data):
-    """站点同步来的数据 -> 焦点界面底部的一行提示（星星和进度在徽章上）。mode 是锅上一步的煮法（WAITING / FD_WAY / STIRRED）。"""
-    if data.get("meals"):
-        need = "（要%s）" % data.get("vesselName") if data.get("vesselName") else ""
-        return "点锅边浮着的菜盛出 %d 份%s   拖动勺子接着搅" % (data["meals"], need)
-    if not any(keyOf(slot) for slot in data.get("inputs") or []):
-        return "点下方物品栏把食材放进锅里   潜行右键 = 原来的界面"
-    if not data.get("dish"):
-        return "这些料凑不出菜：点锅里的料取回"
-    if not data.get("heated"):
-        return "锅下面没有热源：放在炉灶、营火或岩浆块上"
-    if data.get("mode") == FD_WAY:
-        return "锅在自己一份一份地煮   拖动勺子搅拌：整批一起煮"
-    batch = data.get("batch") or 0
-    if data.get("mode") == WAITING:
-        return "拖动勺子搅拌才会煮   这批 %d 份" % batch
-    return "搅拌中   这批 %d 份，还要 %d 秒" % (batch, data.get("left") or 0)

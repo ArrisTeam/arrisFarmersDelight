@@ -1,243 +1,207 @@
 # -*- coding: utf-8 -*-
-"""PotView - 厨锅站点的客户端表现：俯看锅里、漂着的料、跟手的勺子、上方的菜、底部的物品栏抽屉（客户端）
+"""PotView - 厨锅站点里本人的那一层：握勺柄搅、点料取回、拿着料点锅口放、盛出，和右侧的徽章（客户端）
 
-对应 Hands-On Delight：client/PotBehavior.java 的简化版（基岩版没有液面、拖尾和粒子，只用客户端掉落物）：
-- 在锅里按住拖动 = 搅拌；短按一下 = 勺子留在手里跟着鼠标转，再点一下放下。勺尖每 0.12 秒报一次服务端（stir）；
-- 短按漂着的料 = 取回那种料（take）；煮好后锅边浮着那道菜，点它 = 盛出（scoop）；点底部抽屉的格子 = 把快捷栏那叠放进锅（add）；
-- 顶部徽章（前置包的 view.badge）显示在煮的菜、星星和进度，底部一行提示说下一步做什么。
-锅身 12×10×12 像素，汤面是 y = 10 的顶面，开口约 8 像素见方。站点坐标见前置包（16 = 1 格，玩家在北面）。
-勺尖在线上用世界朝向（以方块中心为原点、除以 SPOON_REACH），从不同方向打开的人看到的勺子在同一处。
-勺子的手感（跟手、带着料转、报服务端的节奏）在 PotSpoon.py。开站期间把厨锅模型自带的木勺藏起来（只在本客户端，
-variable.mod_ladle_hidden），手里的勺子换成跟手的道具；关站时还原。
+对应 Hands-On Delight：client/PotBehavior.java 的 onEvent 和只给本人看的部分。锅里的画面（汤面、漂着的料、勺子、气泡、声音）
+是谁都看得见的世界场景（PotScene.py），这里只把本人的手交给它，并照 JE 的规矩把点击变成动作：
+- 机位、飞入照 HoD 的 scenes/cooking_pot.json：相机 (8, 41, -21) 看 (8, 6.5, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；
+- 勺子只能抓露在锅沿上面的柄：按住拖动搅，一按一松不到 0.3 秒勺子留在手里随光标搅，再按一下放下。勺尖由场景按 HoD 的
+  手感算，每 0.12 秒报一次服务端（stir，世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）；
+- 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
+  （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
+- 手空着：点漂着的料 = 那一格拿到手上（右键一半、Shift 直接进背包）；汤煮好了、背包里有容器，光标在汤上会悬出那只容器，
+  点一下盛一份；汤里只有化掉的东西（牛奶、鸡蛋、糖）时点汤 = 取回最后放的那样。
+徽章、悬停提示、悬着的容器和它浸进汤里的动作在 PotHud.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
+两边经世界坐标换算。
 """
-import math
-
-from . import BookSources
-from .PotSpoon import SPOON_REACH, SpoonHand
-from ...Client.Engine import compFactory, levelId
+from . import BookSources, PotScenes
+from .PotHud import PotHud
+from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import PotStation as Rules
+from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotSpoonMotion
 
-CAMERA = {"pos": (8.0, 27.0, -1.5), "target": (8.0, 10.0, 7.5), "fov": 50.0}
-SOUP_Y = 10.0
-MIDDLE = 8.0
-DRIFT = 2.2                       # 料漂在离锅心这么远的一圈上
-FOOD_SCALE = 0.42                 # 料的贴图约 3.4 像素见方
-FOOD_LIFT = 0.3
-FOOD_HALF = 1.6                   # 料的命中盒半宽
-SPOON_ITEM = {"newItemName": "minecraft:wooden_shovel", "newAuxValue": 0, "count": 1}
-SPOON_SCALE = 0.8
-SPOON_ROLL = 135.0                # 竖立、柄朝上、勺头朝下（同砧板的刀，实机标定）
-SPOON_TIP = 4.0 * SPOON_SCALE * math.sqrt(2.0)
-SPOON_DIP = 1.2                   # 搅的时候勺头没进汤面多深
-SPOON_LIFT = 1.5                  # 靠着时抬出汤面多高
-LADLE_HIDDEN = "variable.mod_ladle_hidden"   # 厨锅模型里 ladle 骨骼的开关（rp/entity/cooking_pot.json）
-DISH_AT = (15.0, 13.0, 9.0)       # 煮好的菜浮在东边把手上方（画面左侧）；远端上方会和顶部徽章叠在一起（实机）
-DISH_SCALE = 0.7
-CLICK_SECONDS = 0.3               # 比这短、几乎没挪的按一下算"点"
-CLICK_TRAVEL = 0.6
-HINT_SECONDS = 0.25
-FLASH_SECONDS = 2.5
-SOUP_BOX = ((3.5, 8.0, 3.5), (12.5, 10.0, 12.5))
-HINTS = {
-    "not_food": "这个不能下锅",
-    "full": "锅里放不下了",
-    "need_vessel": "背包里没有盛菜的容器",
-    "missing": "背包里的料凑不齐这道菜",
-    "pot_busy": "锅里有这道菜用不上的料：先点锅里的料取回",
-    "no_recipe": "",
-}
-
-
-def _one(item):
-    return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": 1}
+CAMERA = {"pos": (8.0, 41.0, -21.0), "target": (8.0, 6.5, 8.0), "fov": 30.0, "keepWidth": 16.0 / 9.0}
+FLIGHT_SECONDS = 0.4
+SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
+MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时整口锅都是它
+SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))
+ITEM_HALF, ITEM_TALL = 1.6, 0.3                     # 漂着的料的命中盒：左右各 1.6，上下各 0.3
+START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 
 
 class PotViewMixin(object):
     """和前置包的 StationBehavior 拼成表现类（register 里用 type() 组装）。self.api 是前置包的 Api.Client。"""
 
     camera = CAMERA
+    flightSeconds = FLIGHT_SECONDS
+    chrome = "java"
+    workPlane, carryLift, carrySize = 10.0, 2.5, 3.2
 
     def __init__(self, view):
         super(PotViewMixin, self).__init__(view)
-        self.foods, self.foodKeys, self.foodTotal = [], None, None
-        self.dish, self.dishKey, self.spoon = None, None, None
-        self.hand = SpoonHand()
-        self.stroking = self.sticky = False
-        self.pending, self.pressedAt = None, 0.0
-        self.clock = self.hintLeft = 0.0
-        self.flash, self.shown = None, None
+        self.scene = None
+        self.gesture = PotSpoonMotion.SpoonGesture()
+        self.hud = PotHud(self)
+        self.clock = 0.0
+        self.hover = (None, None)
 
     # ---------------------------------------------------------------- 钩子
 
-    def pickables(self):
-        boxes = []
-        for slot, prop in self.foods:
-            x, _, z = prop.center
-            boxes.append(self.api.box("slot", (x - FOOD_HALF, SOUP_Y, z - FOOD_HALF),
-                                      (x + FOOD_HALF, SOUP_Y + 1.5, z + FOOD_HALF), payload=slot))
-        if self.dish is not None and self.view.data.get("meals"):
-            half = 4.0 * DISH_SCALE
-            boxes.append(self.api.box("dish", (DISH_AT[0] - half, DISH_AT[1] - 1.0, DISH_AT[2] - half),
-                                      (DISH_AT[0] + half, DISH_AT[1] + 1.0, DISH_AT[2] + half)))
-        boxes.append(self.api.box("soup", SOUP_BOX[0], SOUP_BOX[1]))
-        return boxes
+    def usable(self, item):
+        return Rules.usable(Rules.keyOf(item))
+
+    def mayDrop(self, group, index, item):
+        return group == Rules.GROUP_INGREDIENTS and Rules.mayPlace(item)
 
     def onOpen(self):
-        self._hideLadle(True)
-        self._rebuild()
+        self.scene = PotScenes.ensure(self.view.dimensionId, self.view.pos)
+        if self.scene is not None:
+            self.scene.onSend = self._send
+            self.scene.startsOf = self._starts
         BookSources.attach(self.view, "pot")
 
     def onClose(self):
-        self._hideLadle(False)
+        self.gesture.reset()
+        self.hud.close()
+        scene, self.scene = self.scene, None
+        if scene is not None:
+            scene.hand, scene.aim, scene.onSend, scene.startsOf = False, None, None, None
 
     def onState(self, changes):
-        if changes.data:
-            self._rebuild()
-            BookSources.refresh(self.view)
+        BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
-        if name == "drawer":
-            self.view.drawer(data.get("items") or [])
-        elif name == "served":
-            grade, bonus = int(data.get("grade") or 0), int(data.get("bonus") or 0)
-            extra = "，多送 %d 份" % bonus if bonus > 0 else ""
-            self._flash("出锅了：%d 星%s" % (grade, extra))
-        elif name == "scooped":
-            self._flash("盛好了")
-        elif name == "hint":
-            text = HINTS.get(data.get("key"), "")
-            vessel = self.view.data.get("vesselName")
-            self._flash(text + ("（%s）" % vessel if data.get("key") == "need_vessel" and vessel else ""))
-
-    def onDrawer(self, index):
-        self.view.sendAction("add", {"slot": int(index)})
-
-    def onPointer(self, event):
-        key = event.hit.node.key if event.hit is not None else None
-        if event.kind == "down":
-            if self.sticky:
-                self.sticky = self.stroking = False
-            elif key == "dish":
-                self.view.sendAction("scoop")
-            elif key in ("slot", "soup"):
-                self.pending = event.hit.node.payload if key == "slot" else None
-                self.stroking, self.pressedAt = True, self.clock
-                self.hand.press()
-                self._aim(event.ray)
-        elif event.kind == "move":
-            if self.stroking:
-                self._aim(event.ray)
-        elif event.kind == "up" and self.stroking and not self.sticky:
-            quick = self.clock - self.pressedAt < CLICK_SECONDS and self.hand.travel < CLICK_TRAVEL
-            if quick and self.pending is not None:
-                self.view.sendAction("take", {"slot": int(self.pending)})
-                self.stroking = False
-            elif quick:
-                self.sticky = True
-            else:
-                self.stroking = False
-            self.pending = None
+        if self.scene is not None and name in ("scooped", "served"):
+            self.scene.event(name, data)      # 开着站点的人不收旁观者那条广播，这里补给场景
+        self.hud.effect(name, data)
 
     def frame(self, dt):
         self.clock += dt
-        data = self.view.data
-        synced = self._fromWire(data.get("spoon")) if data.get("stirring") else None
-        if self.hand.step(dt, self.stroking, bool(data.get("stirring")), synced, bool(data.get("heated"))):
-            x, z = self._toWire(self.hand.tip)
-            self.view.sendAction("stir", {"x": x, "z": z, "at": round(self.clock, 3)})
-        self._place()
-        self.hintLeft -= dt
-        if self.hintLeft <= 0.0:
-            self.hintLeft = HINT_SECONDS
-            self._showHint()
-            self._hideLadle(True)        # 方块实体在客户端重建（区块重载、刚进世界）时 initialize 会把它清回 0
+        if self.scene is not None:
+            self.hud.frame(dt)
 
-    # ---------------------------------------------------------------- 勺子
+    # ---------------------------------------------------------------- 坐标
+
+    def toLocal(self, point):
+        """站点像素 -> 锅自己的坐标（像素）。"""
+        return self.scene.local(*self.view.toWorld(point[0], point[1], point[2]))
+
+    def toStation(self, x, y, z):
+        """锅自己的坐标 -> 站点像素。"""
+        return self.view.toStation(*self.scene.world(x, y, z))
+
+    def _box(self, key, lo, hi, payload=None):
+        a, b = self.toStation(*lo), self.toStation(*hi)
+        return self.api.box(key, tuple(min(a[i], b[i]) for i in range(3)), tuple(max(a[i], b[i]) for i in range(3)), payload=payload)
+
+    def pickables(self):
+        scene = self.scene
+        if scene is None or scene.look is None:
+            return []
+        if self.view.hand is not None:
+            return [self.api.box("mouth", MOUTH[0], MOUTH[1])]
+        lo, hi = scene.spoon.pickAabb()
+        boxes = [self._box("ladle", (8.0 + lo[0], lo[1], 8.0 + lo[2]), (8.0 + hi[0], hi[1], 8.0 + hi[2]))]
+        drift, look = scene.drift, scene.look
+        for slot in range(len(look.items)):
+            if look.items[slot] is not None and drift.visible[slot] and not drift.waiting[slot]:
+                x, y, z = drift.x[slot], drift.y[slot], drift.z[slot]
+                boxes.append(self._box("item", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
+                                       (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF), slot))
+        if look.served is not None:
+            x, y, z = PotDriftExtras.servedAt(scene.liquid.surfaceY())
+            boxes.append(self.api.box("served", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
+                                      (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF)))
+        boxes.append(self.api.box("soup", SOUP[0], SOUP[1]))
+        return boxes
+
+    # ---------------------------------------------------------------- 指针
+
+    def onPointer(self, event):
+        scene = self.scene
+        if scene is None or scene.look is None:
+            return False
+        key = event.hit.node.key if event.hit is not None else None
+        payload = event.hit.node.payload if event.hit is not None else None
+        if event.kind == "move":
+            self.hover = (key, payload)
+            self._aim(event.ray)
+            return False
+        if event.kind == "up":
+            if not self.gesture.stroking:
+                return False
+            if not self.gesture.up(self.clock):
+                scene.hand = False            # 拖完了：放下勺子；一按一松的"点"则留在手里
+            return True
+        if self.gesture.heldByClick:          # 勺子留在手里：这一按把它放下
+            self.gesture.down(self.clock)
+            scene.hand = False
+            return True
+        if self.view.hand is not None:
+            return self._withStack(event, key)
+        if key in ("item", "served"):
+            target = (self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload)) if key == "item"
+                      else self.api.stationTarget(Rules.GROUP_SERVED, 0))
+            self.view.click(target, event.button, self.api.QUICK_MOVE if event.quick else self.api.PICKUP)
+            return True
+        if event.button != 0:
+            return False
+        if key == "ladle":
+            self.gesture.down(self.clock)
+            scene.hand = True
+            self._aim(event.ray)
+            return True
+        if key == "soup":
+            return self.hud.soupClick(event)
+        return False
+
+    def _withStack(self, event, key):
+        """手上拿着东西点锅：盛这道菜的容器 = 盛一份（Shift 全盛）；别的 = 放进第一格放得下的（左键整叠、右键一个）。"""
+        if key != "mouth":
+            return False                      # 右键点在别处：内核把手上的放回背包
+        meal = self.view.data.get("meal")
+        vessel = self.view.data.get("vessel") or {}
+        if meal and vessel.get("newItemName") and self.view.hand.get("newItemName") == vessel["newItemName"]:
+            if event.button == 0:
+                self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
+                self.hud.bowlWentIn(event.point)
+            return True
+        return self.view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
 
     def _aim(self, ray):
-        point = self.api.Geometry.planeAtHeight(ray, SOUP_Y) if ray is not None else None
-        if point is not None:
-            self.hand.aim(point[0] - MIDDLE, point[2] - MIDDLE)
-
-    def _toWire(self, tip):
-        wx, _, wz = self.view.toWorld(MIDDLE + tip[0], SOUP_Y, MIDDLE + tip[1])
-        px, _, pz = self.view.pos
-        return round((wx - px - 0.5) * 16.0 / SPOON_REACH, 3), round((wz - pz - 0.5) * 16.0 / SPOON_REACH, 3)
-
-    def _fromWire(self, spoon):
-        if not isinstance(spoon, (list, tuple)) or len(spoon) != 2:
+        """光标落在液面上的哪一点（锅自己的坐标，相对锅心）：握着勺子时勺尖往那去。"""
+        scene = self.scene
+        point = self.api.Geometry.planeAtHeight(ray, scene.liquid.surfaceY()) if ray is not None else None
+        if point is None:
+            scene.aim = None
             return None
-        px, py, pz = self.view.pos
-        sx, _, sz = self.view.toStation(px + 0.5 + spoon[0] * SPOON_REACH / 16.0, py + SOUP_Y / 16.0,
-                                        pz + 0.5 + spoon[1] * SPOON_REACH / 16.0)
-        return (sx - MIDDLE, sz - MIDDLE)
+        x, _, z = self.toLocal(point)
+        scene.aim = (x - 8.0, z - 8.0)
+        return scene.aim
 
-    # ---------------------------------------------------------------- 画
+    def _send(self, x, z, at):
+        self.view.sendAction("stir", {"x": round(x, 3), "z": round(z, 3), "at": round(at, 3)})
 
-    def _rebuild(self):
-        """锅里的料、上方的菜变了就换道具；勺子只建一次。"""
-        data, props = self.view.data, self.view.props
-        inputs = data.get("inputs") or []
-        total = sum(item.get("count") or 0 for item in inputs if item)
-        if self.foodTotal is not None and total > self.foodTotal and getattr(self.view, "particles", None):
-            self.view.particles("arris_diegesis:splash", (MIDDLE, SOUP_Y, MIDDLE))      # Diegesis 的水花：料落进锅里
-        self.foodTotal = total
-        keys = [(slot, Rules.keyOf(item)) for slot, item in enumerate(inputs) if Rules.keyOf(item)]
-        if keys != self.foodKeys:
-            for _, prop in self.foods:
-                props.remove(prop)
-            self.foods = [(slot, props.item(_one(inputs[slot]), (MIDDLE, SOUP_Y + FOOD_LIFT, MIDDLE), flat=True,
-                                            scale=FOOD_SCALE)) for slot, _ in keys]
-            self.foodKeys = keys
-        meal = data.get("meal") if data.get("meals") else None     # 浮在锅上方的菜只在有得盛时出现（在煮的菜在徽章上）
-        dishKey = Rules.keyOf(meal) if meal else None
-        if dishKey != self.dishKey:
-            if self.dish is not None:
-                props.remove(self.dish)
-            self.dish = props.item(_one(meal), DISH_AT, flat=True, scale=DISH_SCALE) if dishKey else None
-            self.dishKey = dishKey
-        if self.spoon is None:
-            self.spoon = props.item(SPOON_ITEM, self._spoonCenter(), flat=False, facing=(0.0, -1.0), roll=SPOON_ROLL,
-                                    scale=SPOON_SCALE)
-        self._place()
-        self.hintLeft = 0.0
-
-    def _spoonCenter(self):
-        tip = self.hand.tip
-        return (MIDDLE + tip[0], SOUP_Y - SPOON_DIP + SPOON_TIP + self.hand.lift * SPOON_LIFT, MIDDLE + tip[1])
-
-    def _place(self):
-        count = len(self.foods)
-        for index, (slot, prop) in enumerate(self.foods):
-            angle = self.hand.turn + 2.0 * math.pi * index / max(1, count)
-            radius = DRIFT if count > 1 else 0.9
-            bob = 0.15 * math.sin(2.2 * self.clock + index * 1.7)
-            prop.move(center=(MIDDLE + math.cos(angle) * radius, SOUP_Y + FOOD_LIFT + bob, MIDDLE + math.sin(angle) * radius),
-                      along=(-math.sin(angle), math.cos(angle)))
-        if self.spoon is not None:
-            self.spoon.move(center=self._spoonCenter())
-        if self.dish is not None:
-            self.dish.move(center=(DISH_AT[0], DISH_AT[1] + 0.3 * math.sin(1.6 * self.clock), DISH_AT[2]))
-
-    def _hideLadle(self, hidden):
-        compFactory.CreateBlockInfo(levelId).SetBlockEntityMolangValue(tuple(self.view.pos), LADLE_HIDDEN,
-                                                                       1.0 if hidden else 0.0)
-
-    def _flash(self, text):
-        self.flash = (text, self.clock + FLASH_SECONDS)
-        self.hintLeft = 0.0
-
-    def _showHint(self):
-        flashing = self.flash is not None and self.clock < self.flash[1]
-        text = self.flash[0] if flashing else Rules.statusText(self.view.data)
-        if text != self.shown:
-            self.shown = text
-            self.view.hint(text)
-        self.view.badge(Rules.badgeOf(self.view.data))
+    def _starts(self, count):
+        """一次放进 count 件：各从屏幕底边的一点出发（投到液面上方 9 像素的平面上），返回相对锅心的 (x, z) 列表。"""
+        size = compFactory.CreateGame(levelId).GetScreenSize()
+        height = self.scene.liquid.surfaceY() + PotDrift.ARRIVE_FROM
+        starts = []
+        for index in range(count):
+            screen = (size[0] * (0.5 + (index - (count - 1) / 2.0) * START_SPREAD), size[1] * START_BOTTOM) if size else None
+            ray = self.view.rayAt(screen) if screen else None
+            point = self.api.Geometry.planeAtHeight(ray, height) if ray is not None else None
+            if point is None:
+                starts.append(None)
+                continue
+            x, _, z = self.toLocal(point)
+            starts.append((x - 8.0, z - 8.0))
+        return starts
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
     behaviorClass = type("CookingPotBehavior", (PotViewMixin, api.StationBehavior), {"api": api})
-    api.registerBehavior(Rules.STATION_ID, Rules.POT_BLOCKS, behaviorClass)
+    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    api.registerBehavior(Rules.STATION_ID, Rules.POT_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit),
+                         canOpen=PotScenes.opensStation)
     return behaviorClass

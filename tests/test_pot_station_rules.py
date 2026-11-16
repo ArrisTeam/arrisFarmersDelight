@@ -109,32 +109,5 @@ def testTheContainerComesFromTheSelectedHotbarSlotFirstThenFromTheStartOfTheInve
     assert Rules.containerSlot(window, 0, "minecraft:bowl") == -1, "数量是 0 的不算"
 
 
-def testTheBadgeShowsTheDishWhileCookingAndTheMealWhenDone():
-    assert Rules.badgeOf({"inputs": [{}] * 6}) is None
-    cooking = {"dish": _item(("arris:tomato_sauce", 0), 1), "stars": 1.4, "open": 2, "progress": 0.25}
-    assert Rules.badgeOf(cooking) == {"item": cooking["dish"], "stars": 1.4, "open": 2, "progress": 0.25}
-    done = dict(cooking, meals=8, meal=_item(("arris:tomato_sauce", 0), 8), grade=3, open=2)
-    badge = Rules.badgeOf(done)
-    assert badge["item"] == done["meal"] and badge["stars"] == 3 and badge["progress"] is None
-    assert badge["open"] == 3, "出锅时的星数总是亮着"
-
-
-def testTheHintFollowsThePot():
-    empty = {"inputs": [{}] * 6}
-    assert "放进锅里" in Rules.statusText(empty)
-    junk = {"inputs": [_item(ONION, 1)], "dish": {}}
-    assert "凑不出" in Rules.statusText(junk)
-    cold = {"inputs": [_item(TOMATO, 1)], "dish": _item(("arris:tomato_sauce", 0), 1), "heated": False}
-    assert "热源" in Rules.statusText(cold)
-    waiting = dict(cold, heated=True, mode=PotCooking.WAITING, batch=8, progress=0.25, stars=1.0, open=2)
-    assert "搅拌才会煮" in Rules.statusText(waiting) and "8 份" in Rules.statusText(waiting)
-    stirred = dict(waiting, mode=PotCooking.STIRRED, left=12)
-    assert "还要 12 秒" in Rules.statusText(stirred)
-    assert all("%" not in Rules.statusText(d) for d in (waiting, stirred)), "标签会把 % 当格式符吞掉"
-    assert "自己" in Rules.statusText(dict(waiting, mode=PotCooking.FD_WAY))
-    ready = dict(stirred, meals=5, vesselName="碗")
-    assert "盛出 5 份" in Rules.statusText(ready) and "碗" in Rules.statusText(ready)
-
-
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
