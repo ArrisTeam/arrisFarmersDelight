@@ -3,9 +3,11 @@
 
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
+炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻；右键放上去的照这里每件 7 秒烤好弹出。
 """
 import time
 
+from . import HandGrill
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, ShowTip
@@ -16,12 +18,13 @@ from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
 STOVE_SLOTS = 6
-# 每个烤位 7 秒：计时从 7 倒数到 0，1 Hz 采样
-COOK_TIMER = 7
+# 每个烤位 7 秒：计时从 7 倒数到 0
+COOK_TIMER = HandGrill.COOK_TIMER
 # 拿着这些物品点炉灶时什么都不做（它们是要放到炉灶上的方块）
 _PASS_ITEMS = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
-# 每个炉灶每秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响）
-_pacer = Pacer(1.0)
+# 每个炉灶每 TICK_STEP 秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响），计时按步长累加
+TICK_STEP = 0.25
+_pacer = Pacer(TICK_STEP)
 
 
 def InitStoveData(blockEntityData):
@@ -80,6 +83,9 @@ def OnServerStoveItemUse(args):
         slotItem = dict(itemDict)
         slotItem["count"] = 1
         blockEntityData[str(freeIndex)] = {"itemDict": slotItem, "cookTimer": COOK_TIMER}
+        hand = HandGrill.peek(dimensionId, (x, y, z))
+        if hand is not None:
+            hand.grill.farmersDelightsWay(freeIndex)
         SetNotCreateItem(playerId, itemDict)
         PublishStove(dimensionId, (x, y, z), blockEntityData)
         ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
@@ -98,12 +104,13 @@ def OnStoveTick(args):
     if not blockEntityData:
         return
     EnsureStoveData(blockEntityData)
-    finished = False
+    hand = HandGrill.peek(dimensionId, blockPos)
+    handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP) if hand is not None else (set(), False)
     for index in range(STOVE_SLOTS):
         data = blockEntityData[str(index)]
-        if not (data and data.get("itemDict")):
+        if index in handled or not (data and data.get("itemDict")):
             continue
-        data["cookTimer"] = (data.get("cookTimer") or COOK_TIMER) - 1
+        data["cookTimer"] = (data.get("cookTimer") or COOK_TIMER) - TICK_STEP
         blockEntityData[str(index)] = data
         if data["cookTimer"] > 0:
             continue
@@ -125,6 +132,7 @@ def OnStoveRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
+    HandGrill.forget(dimensionId, blockPos)
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
