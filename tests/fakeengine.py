@@ -138,7 +138,7 @@ class FakeWorld(object):
         return {"AddActorComponent": lambda name, value: self.components.setdefault(target, {}).__setitem__(name, value) or True}
 
     def _Pos(self, target):
-        return {"GetFootPos": lambda: self.players[target]["pos"]}
+        return {"GetFootPos": lambda: self.players[target]["pos"] if target in self.players else self.entities[target].get("pos", (5.5, 64.0, 5.5))}
 
     def _Dimension(self, target):
         return {"GetEntityDimensionId": lambda: DIMENSION}

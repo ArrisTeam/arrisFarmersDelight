@@ -147,6 +147,12 @@ def _onPlayerAttackEntity(args):
     dispatch("PlayerAttackEntityEvent", args)
 
 
+@Listen("PlayerInteractServerEvent")
+def _onPlayerInteract(args):
+    # 玩家右键实体（读回 cancel 可取消）；匹配键是手里的物品名
+    dispatch("PlayerInteractServerEvent", args, _itemName(args))
+
+
 @Listen("DamageEvent")
 def _onDamage(args):
     dispatch("DamageEvent", args)
