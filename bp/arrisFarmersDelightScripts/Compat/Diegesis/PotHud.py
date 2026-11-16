@@ -8,12 +8,15 @@
   牌是内核的 view.plate：每样东西一张贴图（rp/textures/ui/pot_badge/），没亮满的星和没走完的条靠图片裁切；
 - 悬着的容器：汤煮好了、手空着、背包里有盛它的容器，光标在锅心 5 像素内就悬出那只容器；点一下它浸进汤里、盛满、
   提起来滴着汤、朝屏幕下方端走（同时发 scoop，容器从背包里扣）。基岩版的掉落物不能半透明，悬着的容器是实的。
+- 取回沉下去的东西（offerTakeBack）：没有悬着的碗、汤里有倒进去 / 打进去 / 化掉的料，整个汤面接点击（PotView 里薄薄的一层 sunk，
+  漂着的料比它高、照旧点得到）；光标在汤面上时悬出要取回的那样（液体是它的空容器，蛋和糖是它自己），点一下取回最后放的。
 """
 import math
 
 from . import PotFx
 from .PotSceneFx import play
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
+from ...Shared.Data import Remainders
 from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotBadge, PotServe
 
@@ -49,6 +52,7 @@ class PotHud(object):
         self.badge = PotBadge.PotBadge()
         self.offered = None                 # 悬着的容器：[掉落物 id, 物品名]
         self.offer = None                   # PotServe.offerOf 的结果
+        self.takesBack = False              # 汤面接不接"取回"的点击（PotServe.takeBackOf 的 enabled）
         self.dip = None                     # 正在盛的那一下：[PotServe.Dip, 掉落物 id, 换成成品了没有]
         self.scoopedAt = -10.0
 
@@ -122,19 +126,35 @@ class PotHud(object):
         aim = scene.aim
         cursor = (8.0 + aim[0], 8.0 + aim[1]) if aim is not None else None
         spoon = owner.gesture.stroking or owner.hover[0] == "ladle"
-        self.offer = PotServe.offerOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, owner.view.hand is not None,
-                                      vessel is not None, False, self.dip is not None)
-        if self.offer is None or vessel is None:
+        carrying = owner.view.hand is not None
+        self.offer = PotServe.offerOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, vessel is not None, False,
+                                      self.dip is not None)
+        shown, place = (vessel, self.offer) if vessel is not None else (None, None)
+        back = self._sunkItem() if self.offer is None else None
+        self.takesBack, hung = PotServe.takeBackOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, self.offer is not None,
+                                                   back is not None, self.dip is not None, owner.hover[0] == "sunk")
+        if hung is not None:
+            shown, place = Remainders.potRemainderOf(back) or back, hung       # 液体悬的是它的空容器，蛋和糖是它自己
+        if place is None or shown is None:
             self._dropOffered()
             return
-        if self.offered is None or self.offered[1] != vessel:
+        if self.offered is None or self.offered[1] != shown:
             self._dropOffered()
-            entityId = self._prop(vessel, self.offer["pos"])
+            entityId = self._prop(shown, place["pos"])
             if entityId is None:
                 return
-            self.offered = [entityId, vessel]
-        x, y, z = self.offer["pos"]
-        scene.placeProp(self.offered[0], x, y, z, 0.0, 0.0, 0.0, self.offer["size"] / 3.2)
+            self.offered = [entityId, shown]
+        x, y, z = place["pos"]
+        scene.placeProp(self.offered[0], x, y, z, 0.0, 0.0, 0.0, place["size"] / 3.2)
+
+    def _sunkItem(self):
+        """最后一个装着沉下去的料的格子里是什么（物品名），没有是 None。"""
+        look = self.owner.scene.look
+        for slot in sorted(self.owner.view.data.get("sunk") or [], reverse=True):
+            item = look.items[slot] if 0 <= slot < len(look.items) else None
+            if item:
+                return item["newItemName"]
+        return None
 
     def _prop(self, name, pos):
         scene = self.owner.scene
@@ -146,8 +166,16 @@ class PotHud(object):
             self.owner.scene.removeProp(self.offered[0])
             self.offered = None
 
+    def sunkClick(self):
+        """手空着点汤面（没有悬着的碗）：取回最后放进去的那样沉下去的料。"""
+        if not self.takesBack:
+            return False
+        self.owner.view.sendAction("take_back", {})
+        self._dropOffered()
+        return True
+
     def soupClick(self, event):
-        """手空着点汤：悬着容器就盛一份（Shift 全盛）；汤里只有化掉的东西就取回最后放的那样。"""
+        """手空着点汤、悬着容器：盛一份（Shift 全盛）。"""
         view, scene = self.owner.view, self.owner.scene
         if self.offer is not None and self.offered is not None:
             view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": True})
@@ -156,9 +184,6 @@ class PotHud(object):
                                self.offer["scale"], self.offer["size"], scene.liquid.color)
             self.dip, self.offered, self.offer = [dip, self.offered[0], False], None, None
             self.scoopedAt = self.owner.clock
-            return True
-        if view.data.get("sunk") and not view.data.get("meal"):
-            view.sendAction("take_back", {})
             return True
         return False
 

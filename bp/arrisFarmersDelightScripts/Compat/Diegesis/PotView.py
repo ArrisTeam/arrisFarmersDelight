@@ -25,7 +25,8 @@ CAMERA = {"pos": (8.0, 41.0, -21.0), "target": (8.0, 6.5, 8.0), "fov": 30.0, "ke
 FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
 MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时整口锅都是它
-SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))
+SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))          # 悬着碗的时候才接点击（offerBowl 里 soup.setEnabled）
+SUNK_HALF = 0.3                                     # 取回沉下去的料：贴着汤面上下各 0.3 的一层（sunk 节点），漂着的料比它高
 ITEM_HALF, ITEM_TALL = 1.6, 0.3                     # 漂着的料的命中盒：左右各 1.6，上下各 0.3
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）
@@ -117,7 +118,11 @@ class PotViewMixin(object):
             x, y, z = PotDriftExtras.servedAt(scene.liquid.surfaceY())
             boxes.append(self.api.box("served", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
                                       (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF)))
-        boxes.append(self.api.box("soup", SOUP[0], SOUP[1]))
+        if self.hud.offer is not None and self.hud.offered is not None:
+            boxes.append(self.api.box("soup", SOUP[0], SOUP[1]))
+        elif self.hud.takesBack:
+            level = scene.liquid.surfaceY()
+            boxes.append(self.api.box("sunk", (SOUP[0][0], level - SUNK_HALF, SOUP[0][2]), (SOUP[1][0], level + SUNK_HALF, SOUP[1][2])))
         return boxes
 
     # ---------------------------------------------------------------- 指针
@@ -165,6 +170,8 @@ class PotViewMixin(object):
             return True
         if key == "soup":
             return self.hud.soupClick(event)
+        if key == "sunk":
+            return self.hud.sunkClick()
         return False
 
     def _withStack(self, event, key):
