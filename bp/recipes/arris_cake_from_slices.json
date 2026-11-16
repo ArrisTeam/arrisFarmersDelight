@@ -1,0 +1,23 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:cake_from_slices"
+        },
+        "ingredients": [
+            {
+                "count": 7,
+                "data": 0,
+                "item": "arris:cake_slice"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "minecraft:cake"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

@@ -1,0 +1,32 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:sweet_berry_cheesecake_from_slices"
+        },
+        "key": {
+            "S": {
+                "data": 0,
+                "item": "arris:sweet_berry_cheesecake_slice"
+            }
+        },
+        "pattern": [
+            "SS",
+            "SS"
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:sweet_berry_cheesecake_item"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:sweet_berry_cheesecake_slice"
+            }
+        ]
+    }
+}
