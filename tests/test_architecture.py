@@ -101,7 +101,7 @@ PACKS = {
     },
 }
 DIEGESIS_PURE = {"Server/Manager.py", "Server/Station.py", "Server/Registry.py", "Server/Session.py",
-                 "Server/Runtime.py", "Server/Sync.py", "Server/Dispatch.py", "Client/Registry.py", "Client/Shot.py",
+                 "Server/Runtime.py", "Server/Sync.py", "Server/Dispatch.py", "Server/Upkeep.py", "Client/Registry.py", "Client/Shot.py",
                  "Client/Hub.py", "Client/PropMath.py", "Api/Server.py"}
 
 
