@@ -10,13 +10,16 @@
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
   （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
 - 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
-  和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只容器，点一下盛一份；汤里只有化掉的东西（牛奶、鸡蛋、糖）时
-  点汤 = 取回最后放的那样。拿在手上的东西点托盘的格子放回背包。
-徽章、悬停提示、悬着的容器和它浸进汤里的动作在 PotHud.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
+  和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只半透明的容器，点一下盛一份；汤里有倒进去 / 打进去 / 化掉的
+  东西（牛奶、鸡蛋、糖）时光标在汤面上悬出要取回的那样，点一下取回最后放的。拿在手上的东西点托盘的格子放回背包。
+- 触屏（view.input，规矩在前置包的 Shared/Input.py）：没有悬停，一下点完指针就离开（onLeave），悬着的东西收起；点在汤面上
+  没做事的那一下让容器 / 要取回的那样悬出来，再点一下才做；刚盛过、取回过的留在老地方等着接着点。勺子一按一松不留在手里。
+徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
 from . import BookSources, PotScenes
 from .PotHud import PotHud
+from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotSpoonMotion
@@ -45,8 +48,9 @@ class PotViewMixin(object):
         self.scene = None
         self.gesture = PotSpoonMotion.SpoonGesture()
         self.hud = PotHud(self)
+        self.serve = PotOffer(self)
         self.clock = 0.0
-        self.hover = (None, None)
+        self.hover, self.ray = (None, None), None       # 光标底下是什么、光标的射线（站点空间）
         self.picked = None                    # 刚从哪一格拿起来的：(目标, 什么时候)，紧跟着再按一下就是双击
 
     # ---------------------------------------------------------------- 钩子
@@ -68,6 +72,7 @@ class PotViewMixin(object):
     def onClose(self):
         self.gesture.reset()
         self.hud.close()
+        self.serve.close()
         scene, self.scene = self.scene, None
         if scene is not None:
             scene.hand, scene.aim, scene.onSend, scene.startsOf, scene.viewFrame = False, None, None, None, None
@@ -84,6 +89,7 @@ class PotViewMixin(object):
     def frame(self, dt):
         self.clock += dt
         if self.scene is not None:
+            self.serve.frame(dt)
             self.hud.frame(dt)
             self.scene.model.glow(self.hover[0] == "ladle" and self.view.hand is None and not self.scene.hand)
 
@@ -119,9 +125,9 @@ class PotViewMixin(object):
             x, y, z = PotDriftExtras.servedAt(scene.liquid.surfaceY())
             boxes.append(self.api.box("served", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
                                       (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF)))
-        if self.hud.offer is not None and self.hud.offered is not None:
+        if self.serve.offer is not None and self.serve.offered is not None:
             boxes.append(self.api.box("soup", SOUP[0], SOUP[1]))
-        elif self.hud.takesBack:
+        elif self.serve.takesBack:
             level = scene.liquid.surfaceY()
             boxes.append(self.api.box("sunk", (SOUP[0][0], level - SUNK_HALF, SOUP[0][2]), (SOUP[1][0], level + SUNK_HALF, SOUP[1][2])))
         return boxes
@@ -135,13 +141,14 @@ class PotViewMixin(object):
         key = event.hit.node.key if event.hit is not None else None
         payload = event.hit.node.payload if event.hit is not None else None
         if event.kind == "move":
-            self.hover = (key, payload)
+            self.hover, self.ray = (key, payload), event.ray
             self._aim(event.ray)
             return False
         if event.kind == "up":
             if not self.gesture.stroking:
                 return False
-            if not self.gesture.up(self.clock):
+            if not self.gesture.up(self.clock) or self.view.input == self.api.TOUCH:
+                self.gesture.reset()          # 触屏没有跟着走的光标：一按一松也放下
                 scene.hand = False            # 拖完了：放下勺子；一按一松的"点"则留在手里
             return True
         if self.gesture.heldByClick:          # 勺子留在手里：这一按把它放下
@@ -170,10 +177,15 @@ class PotViewMixin(object):
             self._aim(event.ray)
             return True
         if key == "soup":
-            return self.hud.soupClick(event)
+            return self.serve.soupClick(event)
         if key == "sunk":
-            return self.hud.sunkClick()
+            return self.serve.sunkClick()
         return False
+
+    def onLeave(self):
+        """触屏：一下点完、手指抬起，没有悬着的光标——悬停才有的东西收起；刚盛过 / 取回过的留着，下一只还悬在老地方。"""
+        if self.scene is not None and self.serve.dip is None:
+            self.hover, self.ray, self.scene.aim = (None, None), None, None
 
     def _withStack(self, event, key):
         """手上拿着东西点锅：盛这道菜的容器 = 盛一份（Shift 全盛）；别的 = 放进第一格放得下的（左键整叠、右键一个）。"""
@@ -184,7 +196,7 @@ class PotViewMixin(object):
         if meal and vessel.get("newItemName") and self.view.hand.get("newItemName") == vessel["newItemName"]:
             if event.button == 0:
                 self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
-                self.hud.bowlWentIn(event.point)
+                self.serve.bowlWentIn(event.point)
             return True
         return self.view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
 

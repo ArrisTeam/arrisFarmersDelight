@@ -9,6 +9,7 @@ from ...Shared.Data.BrothColors import BrothColors
 
 API_MODULE = "arrisDiegesisScripts.Api.Client"
 MIN_API_VERSION = 1
+POT_API_VERSION = 3                           # 和 ServerBoot 的同一个数：厨锅站点两端一起有、一起没有
 
 
 @Listen("LoadClientAddonScriptsAfter")
@@ -16,7 +17,8 @@ def OnLoadClientAddonScriptsAfter(args=None):
     api = clientApi.ImportModule(API_MODULE)
     if api is not None and getattr(api, "API_VERSION", 0) >= MIN_API_VERSION:
         BoardView.register(api)
-        PotView.register(api)
-        PotScenes.enable(BrothColors.get)     # 厨锅从此按 HoD 的样子画：开盖、汤面、漂着的料（谁都看得见）
+        if api.API_VERSION >= POT_API_VERSION:
+            PotView.register(api)
+            PotScenes.enable(BrothColors.get)     # 厨锅从此按 HoD 的样子画：开盖、汤面、漂着的料（谁都看得见）
         PanView.register(api)
         GrillView.register(api)
