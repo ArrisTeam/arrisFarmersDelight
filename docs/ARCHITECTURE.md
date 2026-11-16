@@ -40,7 +40,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；31 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ModServer.py          导入全部玩法模块；33 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
@@ -53,6 +53,7 @@ Server/                 服务端
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
   HandGrill             炉灶手放的每一件（HoD Grill）：逐件两面分开烤、等翻面、烤好留在灶台上；右键放的照 FD 原样
   CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数
+  CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
   Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
@@ -151,6 +152,22 @@ def OnServerSkilletBlockUse(args):
 3. 去掉 `netease:listen_block_remove` 后方块和物品图标照常画，拆厨锅时 `OnCookingPotRemove` 照常把预览格里的成品掉出来。
 4. 热源、进度箭头、预览框随烹饪变化；食谱书的搜索、选中、换变体、"添加食材"（食材或空格不够时什么都不动）。
 5. 携带版的两页与手柄焦点；活塞推动的厨锅、`/setblock` 出来的厨锅、断热源、成品格满了。
+
+## 厨锅物品带着菜（对照 JE）
+
+JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格里那叠菜"写进厨锅物品的 `BlockEntityTag`，放回去照样在；食材格、容器格、
+成品格里的东西照常掉出来；创造模式拆不出物品；物品堆叠 1；方块 `strength(0.5F, 6.0F)`。这边（`Server/CookingPotItem.py` + `Shared/Rules/PotItem.py`）：
+
+- 方块的战利品表是空的（`air_loot.json`），厨锅物品由脚本在 `BlockRemoveServerEvent` 里掉：预览槽里煮好还没装碗的那叠菜记进物品字典的 `extraId`
+  （`arris_pot_meal|物品名|aux|份数`），悬停文字写进 `customTips`（JE 的"装有 N 份：" + 菜名，前面留着 `%name%%category%…` 那几个占位符）。
+  玩家是创造模式时（`ServerPlayerTryDestroyBlockEvent` 记一笔）不掉；那一格这时是移动中的方块（活塞推着走）不算拆。
+  和煎锅一样，命令 / 脚本把厨锅换掉也会掉一口锅（方块没了的事件里分不出是谁拆的）。
+- 放置：引擎放方块的时候看不到物品，所以放置前（`ServerEntityTryPlaceBlockEvent`，`ModServer` 新挂的监听）读手里那口锅的 `extraId` 记一笔，
+  方块实体建好（`ServerPlaceBlockEntityEvent`）时写进预览槽；记录按位置、5 秒过期（放置被取消就作废）。
+- 实机核对过（3.10）：装着 3 份番茄酱的厨锅拆掉，背包里是一口带 `extraId` 和"装有3份：番茄酱"的厨锅，没有散落的番茄酱、没有多掉一口锅；
+  右键放回去预览槽里还是 3 份。没核对的：活塞推厨锅（脚本摆的活塞没伸出来，没测成）、爆炸、悬停文字在界面里的样子。
+- 没做：JE 的 `FoodServingRecipe`（带着菜的厨锅和碗一起放进合成格直接盛出一份）——基岩版的合成结果由客户端按配方 JSON 算，按物品数据变的配方写不出来；
+  物品上的份数条（`isBarVisible`）；空锅的悬停文字"空"（方块物品没有地方写缺省的悬停文字）。
 
 ## 合成与合成剩余物（对照 JE）
 
