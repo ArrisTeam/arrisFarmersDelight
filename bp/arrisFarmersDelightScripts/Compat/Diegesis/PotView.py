@@ -12,6 +12,7 @@ variable.mod_ladle_hidden），手里的勺子换成跟手的道具；关站时�
 """
 import math
 
+from . import BookSources
 from .PotSpoon import SPOON_REACH, SpoonHand
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import PotStation as Rules
@@ -41,6 +42,9 @@ HINTS = {
     "not_food": "这个不能下锅",
     "full": "锅里放不下了",
     "need_vessel": "背包里没有盛菜的容器",
+    "missing": "背包里的料凑不齐这道菜",
+    "pot_busy": "锅里有这道菜用不上的料：先点锅里的料取回",
+    "no_recipe": "",
 }
 
 
@@ -81,6 +85,7 @@ class PotViewMixin(object):
     def onOpen(self):
         self._hideLadle(True)
         self._rebuild()
+        BookSources.attach(self.view, "pot")
 
     def onClose(self):
         self._hideLadle(False)
@@ -88,6 +93,7 @@ class PotViewMixin(object):
     def onState(self, changes):
         if changes.data:
             self._rebuild()
+            BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
         if name == "drawer":

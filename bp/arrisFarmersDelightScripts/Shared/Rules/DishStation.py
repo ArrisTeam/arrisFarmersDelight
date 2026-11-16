@@ -31,6 +31,22 @@ def _accepts(ingredient, layer):
     return ingredient == layer
 
 
+def dishes():
+    """全部摆盘的菜（索引的拷贝）：{"ingredients", "base"（底座在 ingredients 里的下标）, "kind", "result", "count"}。"""
+    return [dict(dish) for dish in _dishes]
+
+
+def targetOf(layers):
+    """板上现有的层朝着哪道菜去：做成了的那道，否则第一道还能接上的；空板或接不上返回 None。"""
+    done = completed(layers) if layers else None
+    if done is not None:
+        return done
+    for dish in _dishes if layers else ():
+        if Assembly.fits([dish], list(layers), _accepts):
+            return dish
+    return None
+
+
 def isDishResult(itemName):
     """这个成品是不是改在砧板上做（前置包在场时工作台不出它）。"""
     return itemName in _results

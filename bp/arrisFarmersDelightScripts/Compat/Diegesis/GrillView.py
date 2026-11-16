@@ -9,6 +9,7 @@
 """
 import math
 
+from . import BookSources
 from ...Client import BlockItems
 from ...Shared.Rules import GrillStation as Rules
 
@@ -52,6 +53,7 @@ class GrillViewMixin(object):
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
         self._rebuild()
+        BookSources.attach(self.view, "grill")
 
     def onClose(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
@@ -59,6 +61,7 @@ class GrillViewMixin(object):
     def onState(self, changes):
         if changes.data:
             self._rebuild()
+            BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
         if name == "drawer":

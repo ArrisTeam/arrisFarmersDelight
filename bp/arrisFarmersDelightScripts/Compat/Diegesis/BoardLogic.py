@@ -21,7 +21,7 @@ from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, G
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
 from ...Shared.Data.Cutting import CuttingBoardDict
-from . import BoardTools, DishBoard
+from . import BoardTools, BookFill, DishBoard
 from ...Shared.Rules import CuttingStation as Rules
 from ...Shared.Rules.HandsOn import Cutting
 
@@ -75,6 +75,12 @@ class BoardLogicMixin(object):
         board = self._blockData()
         if name == "lay" and board is not None and _isMark(data.get("slot")) and 0 <= data["slot"] < DishBoard.HOTBAR:
             key = DishBoard.lay(self, playerId, data["slot"], board)
+            accepted = key is None
+            if key:
+                self.station.effect("hint", {"key": key}, only=playerId)
+            self._publish()
+        elif name == "bookFill":
+            key = BookFill.fillDish(self, playerId, data.get("key"), data.get("sets"), board)
             accepted = key is None
             if key:
                 self.station.effect("hint", {"key": key}, only=playerId)

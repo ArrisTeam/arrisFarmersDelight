@@ -9,6 +9,7 @@
 import math
 
 from .PanGesture import PanGesture
+from . import BookSources
 from ...Client import BlockItems
 from ...Shared.Rules import PanStation as Rules
 
@@ -50,6 +51,7 @@ class PanViewMixin(object):
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
         self._rebuild()
+        BookSources.attach(self.view, "pan")
 
     def onClose(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
@@ -57,6 +59,7 @@ class PanViewMixin(object):
     def onState(self, changes):
         if changes.data:
             self._rebuild()
+            BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
         if name == "drawer":

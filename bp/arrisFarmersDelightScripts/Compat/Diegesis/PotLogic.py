@@ -8,13 +8,13 @@
     add   {"slot": 0..8}    把快捷栏第 slot 格整叠放进锅（只收配方里有的食材），按配方摆开
     take  {"slot": 0..5}    取回锅里第 slot 格那种料
     scoop {}                盛出煮好的菜：产出格里装好的直接拿，预览槽里的用背包里的容器装
-表现事件：drawer {"items"}（只发给本人：快捷栏里能下锅的料）、served {"grade", "bonus"}、scooped {}、hint {"key"}（只发给本人）。
-同步的数据见 PotSync.py。
+    bookFill {"key", "sets"} 食谱书里点的菜：从背包放 1 / 16 份料（BookFill.fillPot）
+表现事件：drawer {"items"}（只发给本人：快捷栏里能下锅的料）、served、scooped、hint {"key"}（只发给本人）；数据见 PotSync.py。
 """
 import copy
 import time
 
-from . import PotSync
+from . import BookFill, PotSync
 from ...Server import HandCooking
 from ...Server.Helpers import PotContainer
 from ...Server.Helpers.Engine import compFactory, GetBlockEntityData, ItemPosType
@@ -80,6 +80,10 @@ class PotLogicMixin(object):
             self._take(playerId, data.get("slot"))
         elif name == "scoop":
             self._scoop(playerId)
+        elif name == "bookFill":
+            key = BookFill.fillPot(self, playerId, data.get("key"), data.get("sets"), _maxStack)
+            if key:
+                self.station.effect("hint", {"key": key}, only=playerId)
         else:
             return False
         self._sendDrawer(playerId)

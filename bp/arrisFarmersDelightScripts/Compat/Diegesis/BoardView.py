@@ -8,6 +8,7 @@
 """
 import math
 
+from . import BookSources
 from ...Shared.Rules import CuttingStation as Rules
 from ...Shared.Rules import DishStation
 from ...Shared.Rules.HandsOn import Cutting
@@ -28,6 +29,9 @@ HINTS = {
     "take": "点击取回",
     "only_food": "只有能切的食材、或能打底的（面包、碗、签子……）才能放上砧板",
     "no_layer": "这个放不上去：不是哪道菜的下一层",
+    "missing": "背包里的料凑不齐这道菜",
+    "board_busy": "砧板上有别的东西：先拿走再照书摆",
+    "no_recipe": "",
 }
 
 
@@ -63,10 +67,12 @@ class BoardViewMixin(object):
 
     def onOpen(self):
         self._redraw()
+        BookSources.attach(self.view, "board")
 
     def onState(self, changes):
         if changes.data:
             self._redraw()
+            BookSources.refresh(self.view)
 
     def onEffect(self, name, data):
         if name == "tool":
