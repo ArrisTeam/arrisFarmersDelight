@@ -374,7 +374,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   没有碰撞、`netease:pathable`），右键由 `Server/RopeFences.py` 换成另一个并写回朝向（`Shared/Rules/RopeFence.toggleGate`：从门背面开会先转向，
   和 JE `FenceGateBlock.use` 一致），声音是 `leashknot.break`（打开）/ `leashknot.place`（关上），即 JE 的 `entity.leash_knot.*`。
   两侧都是墙时模型换成"在墙里"的样子（JE `in_wall`，这里按"两侧都是墙"，名单是原版的 26 种墙）。门的碰撞 / 选取框写在 `direction`
-  未旋转的坐标里，靠引擎随朝向转（同 `tikstudio` 的竖半砖 JSON 的写法）。
+  未旋转的坐标里，靠引擎随朝向转（本机别的附加包里带 `direction` 的竖半砖等方块都是这么写不对称碰撞盒的，引擎源码里盒子也是存成以方块中心为原点的，
+  但这一条没有实机核实过）。
 - 模型里的零厚度片（栅栏的臂、门的布）用一个面双面渲染：栅栏臂贴图左右镜像对称，所以背面和 JE 的另一个面完全一样；门的布两面颜色略有差别，
   所以北、南各出一片并错开 1/16 像素（网易模型坐标的最小刻度）。
 - 没做的：拴绳（JE 的 `use` 里 `LeadItem.bindPlayerMobs`）、红石开关门、`waterlogged`、栅栏只连"门轴向对得上"的门（现在连所有朝向）、
