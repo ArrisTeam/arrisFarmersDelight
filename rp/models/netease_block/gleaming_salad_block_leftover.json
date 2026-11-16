@@ -1,0 +1,406 @@
+{
+    "format_version": "1.13.0",
+    "netease:block_geometry": {
+        "bones": [
+            {
+                "cubes": [
+                    {
+                        "origin": [
+                            -13,
+                            0,
+                            3
+                        ],
+                        "size": [
+                            10,
+                            2,
+                            10
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    3,
+                                    3
+                                ],
+                                "uv_size": [
+                                    10,
+                                    10
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    14
+                                ],
+                                "uv_size": [
+                                    10,
+                                    2
+                                ]
+                            },
+                            "north": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    14
+                                ],
+                                "uv_size": [
+                                    10,
+                                    2
+                                ]
+                            },
+                            "south": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    14
+                                ],
+                                "uv_size": [
+                                    10,
+                                    2
+                                ]
+                            },
+                            "up": {
+                                "texture": 1,
+                                "uv": [
+                                    13,
+                                    13
+                                ],
+                                "uv_size": [
+                                    -10,
+                                    -10
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    14
+                                ],
+                                "uv_size": [
+                                    10,
+                                    2
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "origin": [
+                            -14,
+                            2,
+                            2
+                        ],
+                        "size": [
+                            12,
+                            4,
+                            1
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    2,
+                                    13
+                                ],
+                                "uv_size": [
+                                    12,
+                                    1
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    13,
+                                    10
+                                ],
+                                "uv_size": [
+                                    1,
+                                    4
+                                ]
+                            },
+                            "north": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    12,
+                                    4
+                                ]
+                            },
+                            "south": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    12,
+                                    4
+                                ]
+                            },
+                            "up": {
+                                "texture": 3,
+                                "uv": [
+                                    14,
+                                    3
+                                ],
+                                "uv_size": [
+                                    -12,
+                                    -1
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    1,
+                                    4
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "origin": [
+                            -3,
+                            2,
+                            3
+                        ],
+                        "size": [
+                            1,
+                            4,
+                            10
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    2,
+                                    3
+                                ],
+                                "uv_size": [
+                                    1,
+                                    10
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    10
+                                ],
+                                "uv_size": [
+                                    10,
+                                    4
+                                ]
+                            },
+                            "up": {
+                                "texture": 3,
+                                "uv": [
+                                    3,
+                                    13
+                                ],
+                                "uv_size": [
+                                    -1,
+                                    -10
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    10
+                                ],
+                                "uv_size": [
+                                    10,
+                                    4
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "origin": [
+                            -14,
+                            2,
+                            3
+                        ],
+                        "size": [
+                            1,
+                            4,
+                            10
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    13,
+                                    3
+                                ],
+                                "uv_size": [
+                                    1,
+                                    10
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    10
+                                ],
+                                "uv_size": [
+                                    10,
+                                    4
+                                ]
+                            },
+                            "up": {
+                                "texture": 3,
+                                "uv": [
+                                    14,
+                                    13
+                                ],
+                                "uv_size": [
+                                    -1,
+                                    -10
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    3,
+                                    10
+                                ],
+                                "uv_size": [
+                                    10,
+                                    4
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "origin": [
+                            -14,
+                            2,
+                            13
+                        ],
+                        "size": [
+                            12,
+                            4,
+                            1
+                        ],
+                        "uv": {
+                            "down": {
+                                "texture": 0,
+                                "uv": [
+                                    2,
+                                    2
+                                ],
+                                "uv_size": [
+                                    12,
+                                    1
+                                ]
+                            },
+                            "east": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    1,
+                                    4
+                                ]
+                            },
+                            "north": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    12,
+                                    4
+                                ]
+                            },
+                            "south": {
+                                "texture": 2,
+                                "uv": [
+                                    2,
+                                    10
+                                ],
+                                "uv_size": [
+                                    12,
+                                    4
+                                ]
+                            },
+                            "up": {
+                                "texture": 3,
+                                "uv": [
+                                    14,
+                                    14
+                                ],
+                                "uv_size": [
+                                    -12,
+                                    -1
+                                ]
+                            },
+                            "west": {
+                                "texture": 2,
+                                "uv": [
+                                    13,
+                                    10
+                                ],
+                                "uv_size": [
+                                    1,
+                                    4
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "name": "bone",
+                "pivot": [
+                    0,
+                    0,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ],
+        "description": {
+            "identifier": "arris:gleaming_salad_block_leftover",
+            "textures": [
+                "arris:tray_bottom",
+                "arris:gleaming_salad_leftovers",
+                "arris:gleaming_salad_bowl",
+                "arris:gleaming_salad"
+            ],
+            "textures_descriptions": [
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                },
+                {
+                    "length": 16,
+                    "width": 16
+                }
+            ],
+            "use_ao": true
+        }
+    }
+}

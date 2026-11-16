@@ -4,7 +4,7 @@
 
 JE 的对应文件在 data/farmersdelight/loot_tables/blocks/。这里只守住"改过的事实"：
 - 蔬菜箱、米袋、稻米捆、稻草捆破坏后掉自己（原来掉 9 个内容物，拆箱靠合成表）；
-- 大菜（烤鸡、南瓜盅、牧羊人派、蜜汁火腿、饭卷拼盘）：整只破坏掉自己，吃过的掉剩下的
+- 大菜（烤鸡、南瓜盅、牧羊人派、闪亮沙拉、蜜汁火腿、饭卷拼盘）：整只破坏掉自己，吃过的掉剩下的
   （碗；烤鸡再加骨粉，火腿再加骨头；南瓜盅吃过的什么都不掉）。
 """
 from __future__ import print_function
@@ -27,6 +27,7 @@ FEAST_LEFTOVERS = {
     "roast_chicken_block": [("minecraft:bowl", 1, 1), ("minecraft:bone_meal", 1, 1)],
     "stuffed_pumpkin_block": [],
     "shepherds_pie_block": [("minecraft:bowl", 1, 1)],
+    "gleaming_salad_block": [("minecraft:bowl", 1, 1)],
     "honey_glazed_ham_block": [("minecraft:bowl", 1, 1), ("minecraft:bone", 1, 1)],
     "rice_roll_medley_block": [("minecraft:bowl", 1, 1)],
 }

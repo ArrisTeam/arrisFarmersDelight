@@ -271,6 +271,26 @@
             "west": "arris:dark_oak_cabinet_side"
         }
     },
+    "arris:gleaming_salad_block_leftover": {
+        "netease_model": "arris:gleaming_salad_block_leftover",
+        "sound": "wood"
+    },
+    "arris:gleaming_salad_block_stage0": {
+        "netease_model": "arris:gleaming_salad_block_stage0",
+        "sound": "wood"
+    },
+    "arris:gleaming_salad_block_stage1": {
+        "netease_model": "arris:gleaming_salad_block_stage1",
+        "sound": "wood"
+    },
+    "arris:gleaming_salad_block_stage2": {
+        "netease_model": "arris:gleaming_salad_block_stage2",
+        "sound": "wood"
+    },
+    "arris:gleaming_salad_block_stage3": {
+        "netease_model": "arris:gleaming_salad_block_stage3",
+        "sound": "wood"
+    },
     "arris:honey_glazed_ham_block_leftover": {
         "netease_model": "arris:honey_glazed_ham_block_leftover",
         "sound": "cloth"

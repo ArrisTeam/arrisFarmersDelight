@@ -178,6 +178,21 @@
         "arris:dark_oak_cabinet_top": {
             "textures": "textures/blocks/dark_oak_cabinet_top"
         },
+        "arris:gleaming_salad": {
+            "textures": "textures/blocks/gleaming_salad"
+        },
+        "arris:gleaming_salad_block_icon": {
+            "textures": "textures/blocks/gleaming_salad_block"
+        },
+        "arris:gleaming_salad_bowl": {
+            "textures": "textures/blocks/gleaming_salad_bowl"
+        },
+        "arris:gleaming_salad_details": {
+            "textures": "textures/blocks/gleaming_salad_details"
+        },
+        "arris:gleaming_salad_leftovers": {
+            "textures": "textures/blocks/gleaming_salad_leftovers"
+        },
         "arris:honey_glazed_ham_body": {
             "textures": "textures/blocks/honey_glazed_ham_body"
         },

@@ -1,0 +1,96 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:block": {
+        "components": {
+            "minecraft:block_light_absorption": {
+                "value": 0
+            },
+            "minecraft:block_light_emission": {
+                "emission": 0.8
+            },
+            "minecraft:destroy_time": {
+                "value": 0.5
+            },
+            "minecraft:explosion_resistance": {
+                "value": 0.5
+            },
+            "minecraft:loot": {
+                "table": "loot_tables/gleaming_salad_block.json"
+            },
+            "minecraft:max_stack_size": {
+                "value": 1
+            },
+            "netease:aabb": {
+                "clip": [
+                    {
+                        "max": [
+                            0.8125,
+                            0.125,
+                            0.8125
+                        ],
+                        "min": [
+                            0.1875,
+                            0.0,
+                            0.1875
+                        ]
+                    },
+                    {
+                        "max": [
+                            0.875,
+                            0.375,
+                            0.875
+                        ],
+                        "min": [
+                            0.125,
+                            0.125,
+                            0.125
+                        ]
+                    }
+                ],
+                "collision": [
+                    {
+                        "max": [
+                            0.8125,
+                            0.125,
+                            0.8125
+                        ],
+                        "min": [
+                            0.1875,
+                            0.0,
+                            0.1875
+                        ]
+                    },
+                    {
+                        "max": [
+                            0.875,
+                            0.375,
+                            0.875
+                        ],
+                        "min": [
+                            0.125,
+                            0.125,
+                            0.125
+                        ]
+                    }
+                ]
+            },
+            "netease:face_directional": {
+                "type": "direction"
+            },
+            "netease:redstone_property": {
+                "value": "break_on_push"
+            },
+            "netease:render_layer": {
+                "value": "alpha"
+            },
+            "netease:solid": {
+                "value": false
+            }
+        },
+        "description": {
+            "category": "arris_farmers_delight",
+            "identifier": "arris:gleaming_salad_block_stage0",
+            "register_to_creative_menu": true
+        }
+    }
+}
