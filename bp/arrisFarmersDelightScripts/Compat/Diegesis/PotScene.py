@@ -57,6 +57,7 @@ class PotScene(object):
         self.aim = None
         self.onSend = None
         self.startsOf = None                  # startsOf(件数) -> 一次放进好几件时各从哪飞进来（PotView 按屏幕底边算）
+        self.cursorOn = None                  # cursorOn(高度) -> 开着站点的人的光标落在那一层的哪一点（锅自己的坐标 (x, z)）或 None（PotView 给）
         self.brothOf = None                   # 菜名 -> 汤色 0xRRGGBB（PotScenes 装上）
         self.pieces = PotPiecesLook.PiecesClock()
         self.piecesShown = 0                  # 上回要浮几块：多出来的每块咕噜一声（PotBehavior.pieces）

@@ -50,19 +50,21 @@ class PotHands(object):
             return
         name = item["newItemName"]
         kind = kindOf(name)
-        start = self._frame()[0](*self._startPoint())
+        start = self._frame()[0](*self._startPoint(slot))
         color = 0xFF000000 | (PouredColors.get(name) or MainColors.get(name) or PotLiquid.FALLBACK)
         motion = PotServeHands.goesIn(kind, slot, start, scene.liquid.surfaceY(), RIM_TOP, random.random, name.endswith("_bucket"), color)
         self.going[slot] = {"motion": motion, "kind": kind, "name": name, "props": {}, "rings": 0.0}
 
-    def _startPoint(self):
-        """手从哪来（锅自己的坐标）：开着站点的人是屏幕底边那一点，旁观的人是锅口正上方。"""
+    def _startPoint(self, slot):
+        """手从哪来（锅自己的坐标；PotBehavior.java:786-790、859）：一次放好几件的，轮到的那一件从各自的出发点来（屏幕底边一字排开）；
+        放一件的，开着站点的人那一下手从光标落在液面上方那一层的点来，没有光标（触屏点完）是锅口正上方；旁观的人也是锅口正上方。"""
         scene = self.scene
         height = scene.liquid.surfaceY() + PotDrift.ARRIVE_FROM
-        starts = scene.startsOf(1) if scene.startsOf is not None else None
-        if starts and starts[0] is not None:
-            return (8.0 + starts[0][0], height, 8.0 + starts[0][1])
-        return (8.0, height + 4.0, 8.0)
+        staged = scene.drift.arrivals.takeStart(slot)
+        if staged is not None:
+            return (8.0 + staged[0], height, 8.0 + staged[1])
+        cursor = scene.cursorOn(height) if scene.cursorOn is not None else None
+        return (cursor[0], height, cursor[1]) if cursor is not None else (8.0, height, 8.0)
 
     def _frame(self):
         """(锅坐标 -> 场景坐标, 场景坐标 -> 锅坐标, 场景坐标 -> 世界)：开着站点的人用他的站点坐标，别人用锅自己的。"""

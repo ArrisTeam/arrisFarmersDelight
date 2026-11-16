@@ -46,11 +46,13 @@ class Arrivals(object):
         self.startZ = [0.0] * slots
         self.sinking = [False] * slots
         self.again = [0] * slots          # 手忙着时又放进来的次数：手走完再来一次（PotBehavior 的 again）
+        self.staged = [False] * slots     # 这格是一次放进好几件里会沉的一件：手从 startX / startZ 出发（FromPlayer），轮到它时 takeStart 取一次
 
     def clear(self, slot):
         """这格空了（或安静地重画）：不再到达，排着队的手也不来了（PotBehavior.java:725-727、734）。"""
         self.arriving[slot] = False
         self.again[slot] = 0
+        self.staged[slot] = False
 
     def more(self, slot, events, busy):
         """这格里又放进了同种的、会沉的东西（个数涨了）：手还忙着（busy）、或这一格还在等轮到，就记一次，手走完再来一次；否则马上来一次
@@ -65,6 +67,14 @@ class Arrivals(object):
         if self.again[slot] > 0:
             self.again[slot] -= 1
             events.append((EVENT_POUR, slot))
+
+    def takeStart(self, slot):
+        """这格的手从哪出发（相对锅心的 x、z）：一次放进好几件、轮到它那一刻的 FromPlayer 出发点；放进一件的、第一件（走 splashIn 的）、
+        同一格再来一只手的返回 None（手从光标来）。只给一次。"""
+        if not self.staged[slot]:
+            return None
+        self.staged[slot] = False
+        return (self.startX[slot], self.startZ[slot])
 
     def waiting(self, slot):
         """还在等轮到自己：Java 这时料已经画在圈里的位置上，只是不能点（setEnabled(false)）。"""
@@ -92,8 +102,10 @@ class Arrivals(object):
                 self.startX[slot] = start[0] if start is not None else 0.0
                 self.startZ[slot] = start[1] if start is not None else 0.0
                 self.sinking[slot] = sinks
+                self.staged[slot] = sinks
             else:
                 self.arriving[slot] = False
+                self.staged[slot] = False
                 events.append((EVENT_POUR if sinks else EVENT_LANDED, slot))
 
     def advance(self, dt, present, events):
@@ -114,7 +126,12 @@ class Arrivals(object):
                 events.append((EVENT_POUR, i))
             elif self.age[i] >= ARRIVE_TIME:
                 self.arriving[i] = False
-                events.append((EVENT_LANDED, i))
+                if self.sinking[i]:
+                    # 第一件（错开 0 秒）：Java 里 -0.0 不小于 0，不走"轮到了"那一支，飞满 0.4 秒后走 splashIn，会沉的也是一只手，从光标来（786-790）
+                    self.staged[i] = False
+                    events.append((EVENT_POUR, i))
+                else:
+                    events.append((EVENT_LANDED, i))
 
     def blend(self, slot, x, y, z, out):
         """把落点 (x, y, z)（相对锅心的 x、z，y 是落点的高度）换成飞行中此刻的位置，写进 out[0..3] = (x, y, z, 额外的俯仰角)。

@@ -59,7 +59,7 @@ class PotOffer(object):
         if self.dip is not None:
             self._dipping(dt, surface)
         vessel = self._vessel() if self.dip is None else None
-        cursor = self._cursor(surface + PotServe.OFFER_LIFT)
+        cursor = self.cursorOn(surface + PotServe.OFFER_LIFT)
         spoon = owner.gesture.stroking or owner.hover[0] == "ladle"
         carrying = owner.view.hand is not None
         self.offer = PotServe.offerOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, vessel is not None,
@@ -97,7 +97,7 @@ class PotOffer(object):
             self.ladled = None
         return self.dip is not None or owner.clock - self.scoopedHere <= PotServe.BYSTANDER_WINDOW
 
-    def _cursor(self, height):
+    def cursorOn(self, height):
         """光标射线落在这个高度的水平面上的哪一点（锅自己的坐标 (x, z)，PotBehavior 的 view.cursorOn）：悬着的东西正好在光标底下。
         没有光标（触屏点完之后）None。"""
         owner = self.owner
@@ -109,7 +109,7 @@ class PotOffer(object):
 
     def overSoup(self):
         """光标在不在汤上（锅心 5 像素内，PotBehavior.bowlOverSoup）。"""
-        cursor = self._cursor(self.owner.scene.liquid.surfaceY())
+        cursor = self.cursorOn(self.owner.scene.liquid.surfaceY())
         half, centre = PotServe.POT_HALF, PotServe.POT_CENTER
         return cursor is not None and abs(cursor[0] - centre) < half and abs(cursor[1] - centre) < half
 

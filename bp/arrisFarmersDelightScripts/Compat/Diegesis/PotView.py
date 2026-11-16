@@ -68,6 +68,7 @@ class PotViewMixin(object):
         if self.scene is not None:
             self.scene.onSend = self._send
             self.scene.startsOf = self._starts
+            self.scene.cursorOn = self.serve.cursorOn
             self.scene.viewFrame = (self.toStation, lambda x, y, z: self.toLocal((x, y, z)), self.view.toWorld)
         BookSources.attach(self.view, "pot")
 
@@ -77,7 +78,7 @@ class PotViewMixin(object):
         self.serve.close()
         scene, self.scene = self.scene, None
         if scene is not None:
-            scene.hand, scene.aim, scene.onSend, scene.startsOf, scene.viewFrame = False, None, None, None, None
+            scene.hand, scene.aim, scene.onSend, scene.startsOf, scene.cursorOn, scene.viewFrame = False, None, None, None, None, None
             scene.model.glow(False)
 
     def onState(self, changes):

@@ -369,6 +369,36 @@ def testSinkersPourWhenTheirTurnComes():
     assert drift.events == [(D.EVENT_LANDED, 0)]
 
 
+def testTheFirstSinkerOfSeveralPoursAfterItsFlightTimeAndItsHandComesFromTheCursor():
+    # PotBehavior.java:746-756、851-865：错开 0 秒那件的年龄是 -0.0，-0.0 < 0 为假，不走"轮到了"那一支，飞满 0.4 秒才走 splashIn；
+    # 会沉的在 splashIn 里也是一只手（goesIn(view, index, cursorOn(height))），不是只噗一声
+    drift = D.PotDrift()
+    present = [False] * 6
+    drift.arrive([0, 1], starts=[(4.0, -2.0), (-3.0, 5.0)], sinking=[True, True])
+    drift.step(0.2, 0.2, present, SURFACE)                       # 晚 0.16 秒出发的第二件轮到了
+    assert drift.events == [(D.EVENT_POUR, 1)], drift.events
+    assert drift.arrivals.takeStart(1) == (-3.0, 5.0), "轮到的那一刻从各自的出发点来"
+    assert drift.arrivals.takeStart(1) is None, "只给一次"
+    del drift.events[:]
+    drift.step(0.1, 0.3, present, SURFACE)
+    assert drift.events == []
+    drift.step(0.15, 0.45, present, SURFACE)                     # 第一件飞满 0.4 秒
+    assert drift.events == [(D.EVENT_POUR, 0)], "会沉的第一件也是一只手，不是只噗一声"
+    assert drift.arrivals.takeStart(0) is None, "它的手从光标来"
+    assert not drift.arrivals.arriving[0]
+
+
+def testOnlyTheSinkersAmongSeveralKeepAStartForTheirHand():
+    drift = D.PotDrift()
+    drift.arrive([0, 1, 2], starts=[(1.0, 1.0), (2.0, 2.0), (3.0, 3.0)], sinking=[False, True, False])
+    assert [drift.arrivals.takeStart(i) for i in range(3)] == [None, (2.0, 2.0), None]
+    drift.arrive([4], sinking=[True])
+    assert drift.arrivals.takeStart(4) is None, "一次放一件：手从光标来"
+    drift.arrive([0, 1], starts=[(1.0, 1.0), (2.0, 2.0)], sinking=[True, True])
+    drift.clear(1)
+    assert drift.arrivals.takeStart(1) is None, "格子空了：不再有出发点"
+
+
 def testAnotherOfTheSameSinkerGetsItsOwnHandAndNeverGetsLost():
     # PotBehavior.java:757-763（more / again）、1428-1431：手闲着马上再来一只，忙着就排队，走完再来；手忙着时又放了几回就来几只
     drift = D.PotDrift()
