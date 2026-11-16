@@ -72,6 +72,28 @@ def testShiftClickMovesTheWholeStackIntoTheFirstSlotsAndRightClickPutsOne():
     assert K.shape(K.cells())[0] == ("arris:onion", 21) and manager.sessions["a"].hand["count"] == 4
 
 
+def testAWholeStackThrownInComesBackTheWayAContainerGivesIt():
+    """一下子丢进 64 个：按菜摆成两格各 32；点一格 = 那一格整叠到手上，双击（PICKUP_ALL）= 两格都收到手上，再点背包的格子放回；
+    Shift 点 = 那一格直接进背包（Diegesis 的 FocusInput.clickItem，和原版容器一样）。"""
+    manager, data = K.setup()
+    fake.give("a", 3, TOMATO, 64)
+    K.opened(manager)
+    assert K.do(manager, "a", K.click(K.inv(3))) and K.do(manager, "a", K.click(K.slot(0)))
+    manager.tick(0.05)
+    assert K.shape(K.cells())[:3] == [(TOMATO, 32), (TOMATO, 32), None]
+    assert K.do(manager, "a", K.click(K.slot(0)))
+    assert manager.sessions["a"].hand["count"] == 32 and K.shape(K.cells())[:2] == [None, (TOMATO, 32)]
+    assert K.do(manager, "a", K.click(K.slot(0), kind="PICKUP_ALL"))
+    assert manager.sessions["a"].hand["count"] == 64 and K.shape(K.cells())[:2] == [None, None], "双击：两格都收到手上"
+    assert K.do(manager, "a", K.click(K.inv(3)))
+    assert manager.sessions["a"].hand is None and fake.world.players["a"]["inv"][3]["count"] == 64, "点背包的格子放回去"
+    assert K.do(manager, "a", K.click(K.inv(3))) and K.do(manager, "a", K.click(K.slot(0)))
+    manager.tick(0.05)
+    assert K.do(manager, "a", K.click(K.slot(0), kind="QUICK_MOVE")) and K.do(manager, "a", K.click(K.slot(1), kind="QUICK_MOVE"))
+    assert K.shape(K.cells())[:2] == [None, None] and manager.sessions["a"].hand is None
+    assert sum(stack["count"] for stack in fake.world.players["a"]["inv"] if stack) == 64, "Shift 点：各自直接进背包"
+
+
 def testTheServedSlotIsTakeOnlyAndTakingFromItCountsAsServed():
     manager, data = K.setup()
     fake.setContainer(POT, 7, "arris:dumplings", 6)

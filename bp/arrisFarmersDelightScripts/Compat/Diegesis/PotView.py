@@ -9,8 +9,9 @@
   手感算，每 0.12 秒报一次服务端（stir，世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）；
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
   （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
-- 手空着：点漂着的料 = 那一格拿到手上（右键一半、Shift 直接进背包）；汤煮好了、背包里有容器，光标在汤上会悬出那只容器，
-  点一下盛一份；汤里只有化掉的东西（牛奶、鸡蛋、糖）时点汤 = 取回最后放的那样。
+- 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
+  和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只容器，点一下盛一份；汤里只有化掉的东西（牛奶、鸡蛋、糖）时
+  点汤 = 取回最后放的那样。拿在手上的东西点托盘的格子放回背包。
 徽章、悬停提示、悬着的容器和它浸进汤里的动作在 PotHud.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
@@ -27,6 +28,7 @@ MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时�
 SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))
 ITEM_HALF, ITEM_TALL = 1.6, 0.3                     # 漂着的料的命中盒：左右各 1.6，上下各 0.3
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
+DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）
 
 
 class PotViewMixin(object):
@@ -44,6 +46,7 @@ class PotViewMixin(object):
         self.hud = PotHud(self)
         self.clock = 0.0
         self.hover = (None, None)
+        self.picked = None                    # 刚从哪一格拿起来的：(目标, 什么时候)，紧跟着再按一下就是双击
 
     # ---------------------------------------------------------------- 钩子
 
@@ -139,12 +142,19 @@ class PotViewMixin(object):
             self.gesture.down(self.clock)
             scene.hand = False
             return True
+        picked, self.picked = self.picked, None
+        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < DOUBLE_CLICK:
+            # 双击：锅里和背包里同一种的都收到手上（FocusInput.clickItem 的 PICKUP_ALL）；手上的东西服务端可能还没发回来，以"刚拿起过"为准
+            self.view.click(picked[0], 0, self.api.PICKUP_ALL)
+            return True
         if self.view.hand is not None:
             return self._withStack(event, key)
         if key in ("item", "served"):
             target = (self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload)) if key == "item"
                       else self.api.stationTarget(Rules.GROUP_SERVED, 0))
             self.view.click(target, event.button, self.api.QUICK_MOVE if event.quick else self.api.PICKUP)
+            if event.button == 0 and not event.quick:
+                self.picked = (target, self.clock)
             return True
         if event.button != 0:
             return False
