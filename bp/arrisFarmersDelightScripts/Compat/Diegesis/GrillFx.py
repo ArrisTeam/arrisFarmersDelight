@@ -7,7 +7,8 @@ glint 闪光，diegesisRp/particles）和本包 / 原版的声音。JE 的粒子
 - steam：蒸汽，白色按 ARGB 的透明度，大小 1；
 - smoke（PAN_SMOKE）：同一张蒸汽的帧，灰白（0xC8C6C2）、透明度 0x58、大小放大到 JE 的 2.2 / 0.8 倍、活 2 秒；
 - glint：闪光；
-- heat（热浪，HEAT）：没有对应的粒子定义（diegesisRp 里只有 heat.png 的贴图），暂时不放。
+- heat（热浪，HEAT）：煎锅用的同一个粒子 arris:pan_heat（rp/particles/arris_pan_heat.json，HoD 的 heat 四帧，淡白 0x48、3.5 倍、活 0.8~1.3 秒，
+  照 PanFx.STYLES 的 heat），点着的烤架每秒 1.6 个，空烤架也有（JE 的 heat() 不看有没有东西）。
 声音是农夫乐事自己的煎锅声（rp/sounds/skillet，定义自带 20 倍 / 2 倍的音量，这里除回去）和原版的方块声，JE 用的灯笼的三种声音
 （LANTERN_STEP / PLACE / HIT）在基岩版里是 block.lantern.*。粒子是一次性的：每颗按 spread 把速度各抖一点再放。
 """
@@ -18,6 +19,8 @@ from ...Shared.Rules.HandsOn import StoveFx
 
 STEAM = "arris_diegesis:steam"
 GLINT = "arris_diegesis:glint"
+HEAT = "arris:pan_heat"
+HEAT_ARGB, HEAT_SCALE, HEAT_LIFE = 0x48FFFFFF, 3.5, (0.8, 1.3)        # 同 PanFx.STYLES["heat"]
 SMOKE_SCALE = 2.2 / 0.8          # JE 的烟（1.8 ~ 2.6 px）比蒸汽（0.6 ~ 1.0 px）大这么多倍
 SMOKE_LIFE = 2.0
 SMOKE_COLOR = 0xC8C6C2
@@ -66,6 +69,8 @@ def _style(spawn):
         return GLINT, color, None, 1.0, None
     if spawn.kind == "smoke":
         return STEAM, SMOKE_COLOR, SMOKE_ALPHA, SMOKE_SCALE, SMOKE_LIFE
+    if spawn.kind == "heat":
+        return HEAT, HEAT_ARGB & 0xFFFFFF, ((HEAT_ARGB >> 24) & 0xFF) / 255.0, HEAT_SCALE, random.uniform(*HEAT_LIFE)
     return None
 
 

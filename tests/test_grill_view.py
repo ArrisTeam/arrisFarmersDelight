@@ -407,14 +407,23 @@ def testAPieceWaitingToBeTurnedSmokesAndAnotherOneGrillingSteams():
     colours = [value for _, name, value in factory.recorder.variables if name == "variable.tint_r"]
     assert any(abs(value - 0xC8 / 255.0) < 1.0e-6 for value in colours), "该翻的那件冒烟（灰白）"
     assert [p for p in factory.recorder.played if p[0] == "ambient.skillet.sizzle" and p[2] > 0.0]
-    big = [value for _, name, value in factory.recorder.variables if name == "variable.scale" and value > 2.0]
+    big = [value for particleId, name, value in factory.recorder.variables
+           if name == "variable.scale" and value > 2.0 and factory.recorder.created[particleId - 1][0] == "arris_diegesis:steam"]
     assert big, "烟比蒸汽大"
 
 
-def testNothingHeatsUpWhenNothingIsOnTheGrill():
+def testAnEmptyLitGrillOnlyShimmersWithHeat():
+    """JE 的 heat()：点着的烤架不管有没有东西都一阵阵热浪（每秒 1.6 个，煎锅那个 arris:pan_heat 粒子）；没有东西就没有蒸汽、烟和嗞嗞声。"""
     view = make()
     run(view, 5.0)
-    assert factory.recorder.played == [] and factory.recorder.created == []
+    assert factory.recorder.played == []
+    kinds = [identifier for identifier, _ in factory.recorder.created]
+    assert 6 <= len(kinds) <= 10 and set(kinds) == {"arris:pan_heat"}, kinds
+    values = dict((name, value) for _, name, value in factory.recorder.variables)
+    assert values["variable.scale"] == 3.5 and abs(values["variable.alpha"] - 0x48 / 255.0) < 1.0e-9
+    assert 0.8 <= values["variable.life"] <= 1.3 and values["variable.speed_set"] == 1.0
+    lifted = [pos[1] for _, pos in factory.recorder.created]
+    assert all(STOVE[1] + 1.0 + 1.9 / 16.0 <= y <= STOVE[1] + 1.0 + 4.1 / 16.0 for y in lifted), "高出烤架面 2~4 像素"
 
 
 def testHoveringAPieceGivesNoFeedbackAsInJava():
