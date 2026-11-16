@@ -4,11 +4,13 @@
 CanCookedFoodDict / CanProvideHeatBlockList / StoveList 是对外联动契约的一部分
 （下游经 ArrisFarmersDelightInterface 追加），对象身份不得改变。
 """
-# 可以烹饪的食物及输出结果字典
+# 可以烹饪的食物及输出结果字典：JE 的营火烹饪配方（煎锅、炉灶、手持煎锅都照营火配方）——
+# 原版 9 条（牛肉、鸡肉、鳕鱼、海带、羊肉、猪排、土豆、兔肉、鲑鱼）加 FD 的 7 条（蛋、肉馅、鸡块、鳕鱼片、鲑鱼片、培根、羊排），共 16 条，时间都是 600 刻
 CanCookedFoodDict = {
     "minecraft:beef": "minecraft:cooked_beef",
     "minecraft:chicken": "minecraft:cooked_chicken",
     "minecraft:cod": "minecraft:cooked_cod",
+    "minecraft:kelp": "minecraft:dried_kelp",
     "minecraft:mutton": "minecraft:cooked_mutton",
     "minecraft:porkchop": "minecraft:cooked_porkchop",
     "minecraft:potato": "minecraft:baked_potato",
