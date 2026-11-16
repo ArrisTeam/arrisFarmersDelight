@@ -15,6 +15,9 @@
                 "saturation_modifier": 0.4,
                 "using_converts_to": "minecraft:bowl"
             },
+            "netease:customtips": {
+                "value": "§c反胃 (00:12)"
+            },
             "minecraft:max_stack_size": 16,
             "minecraft:use_duration": 32
         },
