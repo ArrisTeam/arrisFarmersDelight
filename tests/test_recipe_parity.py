@@ -75,9 +75,6 @@ FAMILIES = {
                                   [one("arris:apple_pie_slice", 4)]],
     ("arris:sweet_berry_cheesecake_item", 1): [[one("minecraft:sweet_berries", 6), anyOf("milk", 2, True), CRUST],
                                                [one("arris:sweet_berry_cheesecake_slice", 4)]],
-    # 南瓜派的成品是原版的 minecraft:pumpkin_pie（JE 的 FD 也是）：派皮做 2 个，4 片拼回 1 个
-    ("minecraft:pumpkin_pie", 2): [[one("arris:pumpkin_slice", 4), one("minecraft:egg"), one("minecraft:sugar"), CRUST]],
-    ("minecraft:pumpkin_pie", 1): [[one("arris:pumpkin_pie_slice", 4)]],
     ("arris:shepherds_pie_block_stage0", 1): [[one("minecraft:baked_potato", 2), anyOf("milk"), anyOf("cooked_mutton", 3, True),
                                                one("arris:onion", 2), BOWL]],
     ("arris:honey_glazed_ham_block_stage0", 1): [[one("minecraft:sweet_berries", 4), one("minecraft:honey_bottle"),
@@ -101,6 +98,9 @@ FAMILIES = {
     ("minecraft:lead", 1): [[one("arris:straw", 5)]],
     ("minecraft:packed_mud", 2): [[one("arris:straw"), one("minecraft:mud", 2)]],
     ("minecraft:paper", 1): [[one("arris:tree_bark", 3)]],
+    # 南瓜派的成品是原版的 minecraft:pumpkin_pie（JE 的 FD 也是）：派皮做 2 个，4 片拼回 1 个
+    ("minecraft:pumpkin_pie", 2): [[one("arris:pumpkin_slice", 4), one("minecraft:egg"), one("minecraft:sugar"), CRUST]],
+    ("minecraft:pumpkin_pie", 1): [[one("arris:pumpkin_pie_slice", 4)]],
     ("minecraft:pumpkin_seeds", 1): [[one("arris:pumpkin_slice")]],
     # 蛋糕：三桶奶是原版自带的配方，本包补带奶瓶的三种组合
     ("minecraft:cake", 1): [[one("arris:cake_slice", 7)]] + [
@@ -115,14 +115,14 @@ LAYOUTS = [
     (tuple("arris:chocolate_pie%d" % index for index in range(1, 7)), "ccc|mmm|xOx"),
     (tuple("arris:sweet_berry_cheesecake%d" % index for index in range(1, 4)), "sss|sss|mOm"),
     (("arris:apple_pie",), "###|aaa|xOx"),
-    (("arris:pumpkin_pie_from_pie_crust",), "cec|csc| O "),
     (("arris:cake_from_milk_bottle",) + tuple("arris:cake_from_milk_bottle%d" % index for index in range(2, 6)), "mmm|ses|www"),
-    (("arris:apple_pie_from_slices", "arris:chocolate_pie_from_slices", "arris:sweet_berry_cheesecake_from_slices",
-      "arris:pumpkin_pie_from_slices"), "##|##"),
+    (("arris:apple_pie_from_slices", "arris:chocolate_pie_from_slices", "arris:sweet_berry_cheesecake_from_slices"), "##|##"),
     (("arris:painting_from_canvas",), "sss|scs|sss"),
     (("arris:scaffolding_from_canvas",), "b#b|b b|b b"),
     (("arris:lead_from_straw",), "ss |ss |  s"),
     (("arris:tatami",), "cs|sc"),
+    (("arris:pumpkin_pie_from_pie_crust",), "cec|csc| O "),
+    (("arris:pumpkin_pie_from_slices",), "##|##"),
     (("arris:cooking_pot",), "bSb|iWi|iii"),
     (("arris:kelp_roll", "arris:kelp_roll2", "arris:kelp_roll3", "arris:kelp_roll4", "arris:kelp_roll5"), "RXR|###"),
 ]
