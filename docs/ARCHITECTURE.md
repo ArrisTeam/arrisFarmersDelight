@@ -10,6 +10,8 @@ dolorLayouts.py         布局的绑定表：vendor 时从仓库根 layouts/*.js
 Shared/                 双端共用；不导入引擎、QuModLibs、Server、Client —— 离线可测
   Data/                 纯数据表：Cooking  Cutting  CookingPotRecipes  Farming  Food  Blocks  Effects  Mobs  MobLoot  Slicing  ChestLoot  GuideBook
                         Dishes（砧板摆盘的菜谱，tools/gen_dishes.py 从合成配方生成）
+                        Remainders（原料用掉后剩下的容器：JE 的合成剩余物 + 厨锅的特例表）
+                        CraftReturns（无序合成配方补还的剩余物，tools/gen_crafts.py 从合成配方生成）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
@@ -26,6 +28,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         FarmEdits（随机刻 / 骨粉要改哪些方块） BoneMealRules（骨粉照 JE） WildSpread（野生作物骨粉蔓延）
                         CompostRules（有机肥堆沤） ColonyRules（蘑菇菌落） RichSoilRules（沃土催熟与湿度） StrawRules（刀收草秆）
                         Sparkle（闪亮沙拉的闪光粒子：哪些阶段冒、概率 0.05 × 份数、冒在哪）
+                        Crafting（工作台合成：格子里摆的是哪条配方、实际做了几份、剩余物放回哪）
+                        Backstabbing（背刺魔咒：物品上几级、是不是从背后打的、伤害乘多少）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
@@ -45,6 +49,8 @@ Server/                 服务端
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
   ChestLoot             战利品箱第一次打开时追加 FD 的物品（JE 的 add_loot_table），原版战利品表一个字不动
+  CraftReturns          工作台合成后补还无序配方的剩余物（读合成格，照 JE 放回原格 / 进背包）
+  Backstabbing          背刺魔咒：玩家从背后打中目标时在 DamageEvent 里加伤害
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
@@ -61,7 +67,7 @@ Compat/
                         PotLogic + PotSync（服务端）+ PotView + PotSpoon（客户端）= 厨锅站点；
                         PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
                         GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
-                        DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台不再出砧板菜）；
+                        DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台摆出砧板菜的配方时拦下）；
                         BookSources（客户端，把各站点的食谱书交给前置包）+ BookFill（服务端，照书从背包放料）；
                         未安装则不做任何事
 ```
@@ -136,6 +142,36 @@ def OnServerSkilletBlockUse(args):
 4. 热源、进度箭头、预览框随烹饪变化；食谱书的搜索、选中、换变体、"添加食材"（食材或空格不够时什么都不动）。
 5. 携带版的两页与手柄焦点；活塞推动的厨锅、`/setblock` 出来的厨锅、断热源、成品格满了。
 
+## 合成与合成剩余物（对照 JE）
+
+JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶桶 / 水桶剩空桶，蜂蜜瓶、FD 的饮料剩玻璃瓶，FD 的碗装食物和番茄酱剩碗。
+表只有一份：`Shared/Data/Remainders.py`（`CRAFT`；厨锅另认 `POT_OVERRIDES`，即 JE 的 `INGREDIENT_REMAINDER_OVERRIDES`）。三处都按它还：
+
+- **厨锅**：`Shared/Rules/CookingPot.pushItemsOf`，出一份吐出配料剩下的容器（番茄酱进锅会吐碗）。
+- **工作台**（`Server/CraftReturns.py`）：照 JE 的 `ResultSlot.onTake`——做完一份，每格原料的剩余物放回原来那格（那格空了才放得回，同种就叠上去），
+  否则进背包，背包满了掉在脚下。
+  - 有序配方把剩余物写进 `result` 数组，引擎自己给（原版蛋糕就是这样还桶的）。
+  - 无序配方的 `result` 数组引擎只认第一项，由脚本补：`CraftItemOutputChangeServerEvent` 时读合成格（`GetPlayerUIItem`，2×2 是槽位 28..31、3×3 是 32..40），
+    对上 `Shared/Data/CraftReturns.py`（`tools/gen_crafts.py` 从 `bp/recipes` 生成：成品 -> 原料名、一份几个、哪种原料剩什么），下一刻再读一遍格子，
+    按每格真的少了几件算做了几份（`Shared/Rules/Crafting.craftsDone`：被取消、请求被拒都是 0 份；同一刻玩家又挪走别的格子也不会多算，上限是取出个数 ÷ 一份个数）。
+  - JE 的面团配方（`DoughRecipe`）把水桶原样留下：表里它的剩余物是水桶自己，做完水桶回到原来那格。
+  - `Food.shapedRecipeContainerDict` 是 linkage 的旧接口（下游包按成品名登记"还一个容器"），生成的表里没有的成品才走它；表不能清空——
+    `Interface` / `Obtain` 对空容器返回 `False`。本包留在里面的条目由 `tests/test_recipe_rules.py` 核对和生成的表一致。
+- **砧板摆盘**（前置包在场）：`tools/gen_dishes.py` 给每道菜算 `extras`（换成了别的东西的容器）和 `keeps`（原样留下的配料，即面团的水桶）。
+  照 HoD 的 `Assembling.make`：`keeps` 的那层每轮都放回去，不限做几份（一桶水揉完一整叠小麦），做完整层还给厨师（`DishStation.roundsOf / leftOf`）。
+
+配方的写法也照 JE：JE 是无序的这边也是无序（面团、牛奶瓶倒回桶、蜂蜜火腿、牧羊人派、填馅马铃薯……）；标签占好几格的各格可以混着放
+（熟羊肉 / 熟羊排、奶桶 / 奶瓶——有序配方把每种位置组合各写一份，左右镜像引擎自己认，只写一边）。`tests/test_recipe_parity.py` 逐条对照 JE。
+
+前置包在场时工作台不再出砧板菜（`Compat/Diegesis/DishCrafts.py`）：拦的是"配方"不是"成品"——取结果时读合成格，格子里的原料正好是这道菜在砧板上的某条配方才取消
+（`DishStation.isDishCraft`）。切片拼回整个派（一种原料）、原版自己的南瓜派配方、创造模式从物品栏拿东西（合成格对不上）都不拦。
+
+实机核对过的引擎事实（3.10，`Server/Debug/McdkCraftTest.py`）：
+- `CraftItemOutputChangeServerEvent` 一次合成请求只发一次，这时 `GetPlayerUIItem` 读到的还是合成前的格子；下一刻每格已经扣掉。
+- 潜行点结果格一次做多份时 `itemDict.count` 是总数（做 3 份、一份 1 个就是 3）；成品堆叠是 1 的（奶桶）会拆成几次请求、各发一次事件。
+- `CreateBlockInfo(playerId).OpenWorkBench()` 不靠方块打开工作台，同一刻就能 `SetPlayerUIItem(playerId, 32..40, …, False, False)` 摆格子（没开界面时返回 False）；
+  槽位 0 是鼠标上拿着的东西。服务端摆的格子，开界面后第一次摆客户端不出结果，摆第二遍才出（玩家自己放的没有这个问题）。
+
 ## 战利品、刀与喂养（对照 JE）
 
 - 刀杀死生物的额外掉落、玩家杀僵尸 / 灾厄村民掉洋葱：`Server/Tools.py` 在 `EntityDieLoottableServerEvent` 里把物品接在列表后面并置 `dirty`；
@@ -170,13 +206,19 @@ def OnServerSkilletBlockUse(args):
    `ServerItemTryUseEvent` / `ClientItemTryUseEvent` 里拦）；对着空气右键照常吃。放下的方块图集、四口动画、拿刀切 / 拆掉的切片数、饥饿值满时点派没反应、
    创造模式中键拾取给什么（JE 是原版南瓜派，这边多半给 `arris:pumpkin_pie` 方块物品）。
 
+- 背刺魔咒（JE 的 `BackstabbingEnchantment`）：`bp/netease_enchants/` 和 `rp/netease_enchants/` 各放一份 `arris_backstabbing.json`
+  （最高 3 级、稀有度 uncommon、`cost` = JE 的 `getMinCost`：15 / 24 / 33），规则在 `Shared/Rules/Backstabbing.py`，`Server/Backstabbing.py` 在 `DamageEvent` 里
+  把伤害乘 级 × 0.2 + 1.2：伤害来源是玩家、主手物品的 `modEnchantData` 里有它、伤害来的位置（近战是玩家，弹射物是弹射物）在目标视线背后
+  （来袭方向归一化后去掉竖直分量，和视线的点积 < -0.5）。JE 的魔咒类别是"刀"；网易的自定义魔咒只能从固定槽位里选，刀是 `netease:weapon` 的 sword 类型，
+  所以原版的剑在附魔台上也可能出背刺（效果和 JE 一样只看主手物品上有没有它）。实机：`Server/Debug/McdkBackstabTest.py`（背后 5 → 9，正面 5 → 5）。
+
 ## 闪亮沙拉（JE 1.3 盛宴，对照 JE）
 
 - 方块 `arris:gleaming_salad_block_stage0..3` + `_leftover`（`bp/netease_blocks/gleaming_salad_block/`）= JE `GleamingSaladBlock` 的 servings 4..1 与 0。
   盛菜走 `platePackagedFoodDict` 的通用流程（拿碗右键盛一碗 `arris:gleaming_salad`，4 份盛完留空盘，空盘再点一下收走），战利品整份掉自己、其余掉一个碗，
   整份方块物品堆叠 1（`minecraft:max_stack_size`）、被活塞推时破坏（`netease:redstone_property: break_on_push` = `PushReaction.DESTROY`，官方只认这一个值）。
   硬度 / 抗爆 0.5、声音木头；发光 = 份数 × 3；轮廓和碰撞是 JE 写死的两个盒子（`Block.box(3,0,3,13,2,13)` 与 `(2,2,2,14,6,14)`，不随份数变）。
-- 配方是 JE 的 9 格无序配方（发光浆果 ×2、蜂蜜瓶、番茄、金胡萝卜、甜菜根、卷心菜 ×2、碗），蜂蜜瓶的玻璃瓶走 `shapedRecipeContainerDict`；
+- 配方是 JE 的 9 格无序配方（发光浆果 ×2、蜂蜜瓶、番茄、金胡萝卜、甜菜根、卷心菜 ×2、碗），蜂蜜瓶的玻璃瓶由 `Server/CraftReturns.py` 按生成的表补还（见“合成与合成剩余物”）；
   前置包在场时和别的盛宴一样改在砧板上摆（`tools/gen_dishes.py` 的 `DISH_RESULTS`，碗打底、9 层）。
 - 模型：JE 的 `models/block/gleaming_salad_block_stage0..3 / leftovers.json` 用 `tools/je_model_to_netease.py` 原样转成网易方块模型
   （`py -3 tools/je_model_to_netease.py --je <JE 模型> --id arris:xxx [--icon arris:xxx_icon] --map JE贴图名=terrain_texture短名 … --out <输出>`，
@@ -225,6 +267,9 @@ def OnServerSkilletBlockUse(args):
   内容以服务端广播为准。
 - 客户端掉落物（`AddDropItemToWorld`）：轴心在贴图底边中点，缩放 1 时半格；`SetDropItemTransform` 的 `rot=(x,y,z)` 是
   R = Rz·Rx·Ry，"躺平后再绕竖轴转"要先拼矩阵再换算（`ItemPose.engineEuler`）。
+- 新加的自定义魔咒（`netease_enchants/`）、方块、物品定义要**完整重启游戏**才登记，重进存档不够（配方 JSON 重进存档就生效）。
+- 服务端取消 `ServerItemUseOnEvent`（`ret`）拦不住客户端接着"使用物品"（吃）：原版南瓜派对着方块按住右键，放下一个之后还会吃掉一个。
+  要在客户端 `ClientItemTryUseEvent` 里取消（`Client/Input.py`：准星对着方块时不吃，`CreateCamera.PickFacing()` 的 `type == "Block"`）。
 - QuMod 的 RPC 端点按裸函数名注册：服务端端点一律 `@AllowCall` + `@InjectHttpPlayerId`，玩家身份只认注入的，坐标、维度、背包下标都要校验。
 
 ## 新增内容的清单
@@ -258,6 +303,10 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
 - 场景交互前置包（`diegesisBp/arrisDiegesisScripts/`）的测试也在这里：`dgtest.py`（导入 + 假的引擎端口 FakeWorld）、
   `dgkit.py` / `dgfixtures.py`（内核测试的断言与站点夹具），`test_diegesis_*.py`。`test_architecture.py` 同时守两个包。
+- 合成：`test_recipe_rules.py`（配方 JSON 的静态检查、生成的 `CraftReturns` 表是否最新）、`test_recipe_parity.py`（对照 JE 的做法 / 摆法 / 剩余物）、
+  `test_crafting_rules.py`（`Shared/Rules/Crafting.py` 和 `Server/CraftReturns.py`，`fakeengine.py` 的假合成格驱动）；背刺：`test_backstabbing.py`。
 - 游戏内自检：`Server/Debug/McdkSelfTest.py`（`mcdk_test_run()` / 约 15 秒后 `mcdk_test_collect()`），含切菜板站点用例
-  （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。
+  （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。同目录还有 `McdkDishTest`（砧板摆盘、一桶水揉一叠面团）、
+  `McdkBookTest`（食谱书放料）、`McdkPotTest` / `McdkPanTest` / `McdkGrillTest`（三个站点的烹饪）、`McdkCraftTest`（工作台合成：摆格子、
+  点结果格、核对剩余物和拦截，要用 mc_input 点）、`McdkBackstabTest`（背刺），调用方法写在各文件头。几个自检别同时跑（共用玩家脚边的位置）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
