@@ -2,21 +2,23 @@
     "format_version": "1.10",
     "minecraft:item": {
         "components": {
+            "minecraft:max_damage": 250,
             "minecraft:max_stack_size": 1,
             "minecraft:use_duration": 20.0,
             "netease:customtips": {
-                "value": "§7除了用来做饭,好像还可以..."
+                "value": "§8§o潜行可放置"
             },
             "netease:weapon": {
-                "attack_damage": 5,
-                "enchantment": 0,
-                "level": 0,
+                "attack_damage": 7,
+                "enchantment": 14,
+                "level": 2,
                 "speed": 0,
                 "type": "sword"
             }
         },
         "description": {
             "category": "arris_farmers_delight",
+            "custom_item_type": "weapon",
             "identifier": "arris:skillet_item",
             "register_to_create_menu": true
         }

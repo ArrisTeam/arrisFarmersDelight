@@ -29,6 +29,18 @@
             }
          ]
       },
+      "ambient.skillet.attack_weak" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/skillet/attack_weak",
+               "pitch" : 0.9,
+               "volume" : 1.6,
+               "weight" : 10
+            }
+         ]
+      },
       "ambient.skillet.sizzle" : {
          "category" : "ambient",
          "sounds" : [
