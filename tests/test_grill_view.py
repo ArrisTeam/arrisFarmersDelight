@@ -272,21 +272,6 @@ def testRightClickingElsewhereWithAStackInHandIsLeftToTheKernelToPutAway():
     assert world.actions()[-1]["click"] == "PUT_AWAY"
 
 
-def testNoNameTooltipWhileTheHandHoldsSomething():
-    """悬停开关打开时（早先的替代做法）：手上拿着东西不写名字。"""
-    view = make(pieces={1: item(BEEF)})
-    GrillView.HOVER = True
-    try:
-        view.pointer("move", screenOf(view, 1))
-        run(view, 0.1)
-        assert view.overlay.lines == ["minecraft:beef"]
-        view.setHand(item(BEEF, 3))
-        run(view, 0.1)
-        assert view.overlay.lines is None
-    finally:
-        GrillView.HOVER = False
-
-
 # ---------------------------------------------------------------- 效果
 
 def testANewPieceDropsOnToTheHotGrillAndHisses():
@@ -432,23 +417,14 @@ def testNothingHeatsUpWhenNothingIsOnTheGrill():
     assert factory.recorder.played == [] and factory.recorder.created == []
 
 
-def testHoveringAPieceGivesNoFeedbackAsInJavaAndTheSwitchBringsTheLiftAndNameBack():
-    """JE 的烤件不是可交互节点：悬停不抬起、不描边、没有提示。HOVER 开关打开是早先的替代做法（抬 0.6 像素 + 名字）。"""
+def testHoveringAPieceGivesNoFeedbackAsInJava():
+    """JE 的烤件不是可交互节点（stove.json 里 piece_N 只有碰撞盒）：悬停不抬起、不描边、没有提示。"""
     view = make(pieces={2: item(BEEF)})
     rest = center(drops()[0])[1]
     view.pointer("move", screenOf(view, 2))
     run(view, 0.6)
-    assert abs(center(drops()[0])[1] - rest) < 0.002 and not view.overlay.lines, "照 JE：悬着什么都不变"
-    GrillView.HOVER = True
-    try:
-        run(view, 0.6)
-        assert center(drops()[0])[1] > rest + 0.02, "抬起 0.6 像素"
-        assert view.overlay.lines == ["minecraft:beef"], "旁边写出它的名字"
-        view.pointer("move", (3.0, 3.0))
-        run(view, 0.6)
-        assert abs(center(drops()[0])[1] - rest) < 0.002, "光标走开放下"
-    finally:
-        GrillView.HOVER = False
+    assert abs(center(drops()[0])[1] - rest) < 0.002 and not view.overlay.lines, "悬着什么都不变"
+    assert not hasattr(GrillView, "HOVER") and not hasattr(GrillView, "nameOf"), "早先的抬起 + 名字的替代做法已经删掉"
 
 
 def testAnOldFrontDoorGetsNoBehavior():

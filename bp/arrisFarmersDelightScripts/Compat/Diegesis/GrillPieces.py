@@ -139,8 +139,8 @@ class Pieces(object):
 
     # ---------------------------------------------------------------- 每帧
 
-    def frame(self, dt, hovered):
-        """前进 dt 秒：状态、动作、虚影、热气。hovered 是光标悬着的那件（或 None）。每帧都对一遍状态（JE 每刻 refresh）：
+    def frame(self, dt):
+        """前进 dt 秒：状态、动作、虚影、热气。每帧都对一遍状态（JE 每刻 refresh）：
         翻到一半被服务端退回、状态比效果晚到这类，下一帧就画回服务端说的样子。"""
         self.clock += dt
         self.refresh()
@@ -148,7 +148,7 @@ class Pieces(object):
             self.began = True
             self._arrivePending()
         for place in range(PLACES):
-            for name in self.motion[place].update(dt, hovered == place):
+            for name in self.motion[place].update(dt):
                 self._event(place, name)
             self.pose(place)
         self.ghosts.frame(dt)

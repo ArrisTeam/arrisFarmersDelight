@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""StoveMotion（烤架上一件的动作）：落下、翻面跳起转半圈、取走的虚影、被拒绝弹回、悬停抬起。数字来自 Hands-On Delight 的
+"""StoveMotion（烤架上一件的动作）：落下、翻面跳起转半圈、取走的虚影、被拒绝弹回（悬停没有任何反馈：烤件不是可交互节点）。数字来自 Hands-On Delight 的
 client/StoveBehavior.java（land 235-243、turned 378-399、taken 501-517、REFUSED 482-490）和 Diegesis 的 Tween / Easing / NodeInstance。"""
 from __future__ import print_function
 
@@ -16,11 +16,11 @@ def near(a, b, eps=1.0e-6):
     assert abs(a - b) <= eps, "%r != %r" % (a, b)
 
 
-def run(node, seconds, hovered=False):
+def run(node, seconds):
     """走 seconds 秒（每步 0.01），返回按先后到点的事件名。"""
     fired = []
     for _ in range(int(round(seconds / DT))):
-        fired += node.update(DT, hovered)
+        fired += node.update(DT)
     return fired
 
 
@@ -139,15 +139,12 @@ def testARefusedPieceDropsToTheGrillThenBouncesBackAndIsGone():
     near(offset[2], M.REFUSE_BACK, 0.01)
 
 
-def testAHoveredPieceLiftsAPixelAndLetsGoAgain():
+def testAPieceAtRestDoesNotMoveAtAll():
+    """JE 的烤件不是可交互节点：没有悬停抬起（NodeInstance.java:808 只抬 isInteractive 的节点）。"""
     piece = M.Piece()
-    run(piece, 1.0, hovered=True)
-    near(piece.pose()[0][1], M.HOVER_LIFT, 1.0e-3)
-    run(piece, 1.0, hovered=False)
-    assert piece.pose()[0][1] < 1.0e-3
-    half = M.Piece()
-    run(half, M.HOVER_HALF_LIFE, hovered=True)
-    near(half.pose()[0][1], M.HOVER_LIFT / 2.0, 0.01)       # 半衰期 0.06 秒：走完一半
+    run(piece, 1.0)
+    assert piece.pose() == ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1.0)
+    assert not hasattr(M, "HOVER_LIFT") and not hasattr(piece, "hover")
 
 
 def testTheStickerLiesFlatFacingUpAndTheNodeAnglesTurnItLikeTheScene():

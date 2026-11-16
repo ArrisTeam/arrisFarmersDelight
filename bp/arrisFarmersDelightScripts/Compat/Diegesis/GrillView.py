@@ -8,8 +8,7 @@
   空位那一个；Shift 点托盘里的食物直接整叠摆上去（槽规则放行，内核自己做）；
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
-  既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意。这里照 JE：悬停不给任何反馈（HOVER = False；改成 True 就是悬着的那件
-  抬起 0.6 像素、旁边写出它的名字，早先加过的替代做法，留着开关）。
+  既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
 坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.py）；命中盒、世界里的展示和这里画的对得上。
 """
 from . import BookSources
@@ -24,18 +23,7 @@ CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target
           "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
-HOVER = False                                          # 悬着的那件抬起一点、旁边写名字（JE 没有：烤件不是可交互节点）
 AGAIN = 0.6                                            # 自己翻的这一下已经演过了：服务端说"翻了"的 0.6 秒内不重复演（onEffect 里 TURNED）
-_names = {}
-
-
-def nameOf(item):
-    """物品的显示名（引擎给的是 utf-8 字节串，别和 unicode 混）。"""
-    key = (item["newItemName"], int(item.get("newAuxValue") or 0))
-    if key not in _names:
-        info = compFactory.CreateItem(levelId).GetItemBasicInfo(key[0], key[1]) or {}
-        _names[key] = info.get("itemName") or key[0]
-    return _names[key]
 
 
 def _place(data):
@@ -55,7 +43,6 @@ class GrillViewMixin(object):
     def __init__(self, view):
         super(GrillViewMixin, self).__init__(view)
         self.space = self.pieces = None        # onOpen 里建：服务端的 Opened 可能改了朝向（view.yaw），之后才算坐标
-        self.hover = None                      # 光标悬着的那一件（序号），没有是 None
 
     # ---------------------------------------------------------------- 钩子
 
@@ -74,7 +61,6 @@ class GrillViewMixin(object):
 
     def onClose(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
-        self.view.tooltip(None)
 
     def onState(self, changes):
         if self.pieces is not None:
@@ -101,10 +87,7 @@ class GrillViewMixin(object):
     def frame(self, dt):
         if self.pieces is None:
             return
-        hover = self.hover if HOVER else None
-        self.pieces.frame(dt, hover)
-        item = self.pieces.shown[hover] if hover is not None else None
-        self.view.tooltip([nameOf(item)] if item is not None and self.view.hand is None else None)
+        self.pieces.frame(dt)
 
     # ---------------------------------------------------------------- 拾取
 
@@ -126,9 +109,6 @@ class GrillViewMixin(object):
     def onPointer(self, event):
         key = event.hit.node.key if event.hit is not None else None
         payload = event.hit.node.payload if event.hit is not None else None
-        if event.kind == "move":
-            self.hover = payload if key == "piece" and self.view.hand is None else None
-            return False
         if event.kind != "down":
             return False
         if self.view.hand is not None:

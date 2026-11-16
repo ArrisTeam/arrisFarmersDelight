@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""StoveMotion - 烤架上一件的动作：落到烤架上、翻面（跳起来转半圈）、被取走、被拒绝弹回；悬停时抬起一点（双端，纯计算）
+"""StoveMotion - 烤架上一件的动作：落到烤架上、翻面（跳起来转半圈）、被取走、被拒绝弹回（双端，纯计算）
 
 移植自 Hands-On Delight：client/StoveBehavior.java 的 land（235-243）、turned（378-399）、taken（501-517）、onEffect 里的 REFUSED（482-490），
 和 Diegesis 的 impl/client/anim/Tween.java / Easing.java（一段缓动：inOutCubic，跳的时候 y 上再加 height * sin(pi * 线性进度)）、
-impl/client/scene/NodeInstance.java（节点的欧拉角先 Y 再 X 再 Z；可交互的节点悬停时抬起 0.6 像素，半衰期 0.06 秒）。
+impl/client/scene/NodeInstance.java（节点的欧拉角先 Y 再 X 再 Z）。烤件不是可交互节点（stove.json 里 piece_N 只有碰撞盒），悬停没有抬起、
+描边、提示（NodeInstance.java:808 只抬 isInteractive 的节点），这里也没有。
 时间是秒，长度是像素，角度是度；位置是相对这一件自己的落点的偏移（JE 节点的 moveTo / hopTo 就是偏移）。
 
 Motion 是一个节点的三条缓动（偏移、转角、缩放）加一串"过多久发个事件"；Piece 在它上面做烤位上的件的几套动作，
@@ -26,8 +27,6 @@ AWAY_RISE, AWAY_ARC = 2.5, 1.5
 REFUSE_START = LAND_FROM + 2.0   # 被拒绝的虚影从这么高落下（485 行），0.09 秒落到 1.5 px 高、再用 0.22 秒往后（-z）弹到 6 px 高（486-488 行）
 REFUSE_DOWN, REFUSE_DROP_TIME = 1.5, 0.09
 REFUSE_BOUNCE_TIME, REFUSE_BOUNCE_ARC, REFUSE_BACK = 0.22, 1.2, -6.0
-HOVER_LIFT = 0.6             # 悬停时抬起多高，px（NodeInstance.computeLocal，809 行）
-HOVER_HALF_LIFE = 0.06       # 抬起 / 放下的半衰期，秒（NodeInstance.HOVER_HALF_LIFE）
 EPS = 1.0e-6                 # 事件到点的容差（秒）：逐帧减出来的 0.2 差一点点才到 0 也算到了
 TILT = 90.0                  # 翻到一半时转到的角度：立起来、侧着对镜头（rotateTo(90, ...)，385 行）
 
@@ -36,13 +35,6 @@ def inOutCubic(t):
     """Easing.inOutCubic：慢起慢停。"""
     t = min(1.0, max(0.0, t))
     return 4.0 * t * t * t if t < 0.5 else 1.0 - math.pow(-2.0 * t + 2.0, 3.0) / 2.0
-
-
-def approach(current, target, halfLife, dt):
-    """Easing.approach：每过 halfLife 秒走完剩下的一半。"""
-    if halfLife <= 0.0:
-        return target
-    return target + (current - target) * math.pow(0.5, dt / halfLife)
 
 
 class Tween(object):
@@ -86,7 +78,6 @@ class Motion(object):
         self.rotation = Tween(0.0, yaw, 0.0)
         self.scale = Tween(1.0, 1.0, 1.0)
         self.timers = []                      # [[还要多久, 事件名]]
-        self.hover = 0.0                      # 悬停的抬起量 0..1
 
     def moveTo(self, x, y, z, seconds):
         self.offset.start(x, y, z, seconds)
@@ -108,12 +99,11 @@ class Motion(object):
         """偏移的缓动还没走完（NodeInstance.isMoving）：画的人这时候不要把位置和转角摆回原位。"""
         return self.offset.running
 
-    def update(self, dt, hovered=False):
+    def update(self, dt):
         """前进 dt 秒；返回这一步到点的事件名（按先后）。"""
         self.offset.update(dt)
         self.rotation.update(dt)
         self.scale.update(dt)
-        self.hover = approach(self.hover, 1.0 if hovered else 0.0, HOVER_HALF_LIFE, dt)
         fired, waiting = [], []
         for entry in self.timers:
             entry[0] -= dt
@@ -122,9 +112,9 @@ class Motion(object):
         return [entry[1] for entry in fired]
 
     def pose(self):
-        """(偏移 x y z（含悬停抬起）, 转角 x y z, 缩放)：画的人加在落点上。"""
+        """(偏移 x y z, 转角 x y z, 缩放)：画的人加在落点上。"""
         x, y, z = self.offset.current
-        return ((x, y + HOVER_LIFT * self.hover, z), tuple(self.rotation.current), self.scale.current[0])
+        return ((x, y, z), tuple(self.rotation.current), self.scale.current[0])
 
 
 class Piece(Motion):
@@ -166,8 +156,8 @@ class Piece(Motion):
         self.after(FLIGHT / 2.0, "swap")
         self.after(FLIGHT, "turned")
 
-    def update(self, dt, hovered=False):
-        fired = Motion.update(self, dt, hovered)
+    def update(self, dt):
+        fired = Motion.update(self, dt)
         for name in fired:
             if name == "appear":
                 self._land()
@@ -212,8 +202,8 @@ class Ghost(Motion):
         self.after(REFUSE_DROP_TIME, "bounce")
         self.after(REFUSE_DROP_TIME + REFUSE_BOUNCE_TIME, "gone")
 
-    def update(self, dt, hovered=False):
-        fired = Motion.update(self, dt, hovered)
+    def update(self, dt):
+        fired = Motion.update(self, dt)
         for name in fired:
             if name == "bounce":
                 self.hopTo(0.0, REFUSE_START, REFUSE_BACK, REFUSE_BOUNCE_ARC, REFUSE_BOUNCE_TIME)
