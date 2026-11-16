@@ -99,6 +99,15 @@ def testVesselNamesFollowTheRecipeTable():
     assert "test:jar" not in Book.vesselNames()
 
 
+def testVesselAndIngredientRoles():
+    assert Book.isPureVessel("minecraft:bowl") and not Book.isAmbiguous("minecraft:bowl")
+    # 卷心菜叶是饺子、卷心菜卷的容器，也是别的食谱的食材
+    assert Book.isAmbiguous("arris:cabbage_leaf") and not Book.isPureVessel("arris:cabbage_leaf")
+    assert "minecraft:carrot" in Book.ingredientNames()
+    assert not Book.isPureVessel("minecraft:carrot") and not Book.isAmbiguous("minecraft:carrot")
+    assert not Book.isPureVessel(None) and not Book.isAmbiguous(None)
+
+
 def testKeyOfIgnoresUserDataAndEmptyStacks():
     assert Book.keyOf(None) is None
     assert Book.keyOf({}) is None

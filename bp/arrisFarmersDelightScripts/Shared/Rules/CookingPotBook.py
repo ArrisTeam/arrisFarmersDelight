@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""CookingPotBook - 厨锅食谱书的规则：格号、搜索、选中食谱的展示内容、按配方补食材的计划（双端，纯规则）
+"""CookingPotBook - 厨锅食谱书的规则：格号、搜索、选中食谱的展示内容、容器与食材的分辨、按配方补食材的计划（双端，纯规则）
 
 厨锅容器是 netease:block_container 的 8 个格子：0-5 食材，6 容器（碗、玻璃瓶……），7 成品。
 食谱表是 Shared/Data/CookingPotRecipes.CookingPotRecipeList，下游模组会在运行时往里追加，所以这里每次现读、不缓存。
+下游追加的食谱没人校验形状，而这里的函数在服务端界面的定时刷新里跑（出错会让所有开着界面的人都收不到更新），
+所以形状不对的食谱（缺成品、变体不是 (物品名, aux) 的列表）一律当没有，不报错。
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 
@@ -28,16 +30,39 @@ def _chars(value):
     return value if isinstance(value, _TEXT) else u""
 
 
+def _pair(value):
+    """(物品名, aux)：名字是文字，aux 是整数。"""
+    return (isinstance(value, (tuple, list)) and len(value) == 2 and isinstance(value[0], (str, _TEXT))
+            and isinstance(value[1], int))
+
+
+def _wellFormed(recipe):
+    """食谱字典的形状对不对：成品 (物品名, aux)、至少一个变体、每个变体是非空的 (物品名, aux) 列表、容器可以没有。"""
+    if not isinstance(recipe, dict) or not _pair(recipe.get("CookResult")):
+        return False
+    rows = recipe.get("Recipe")
+    if not isinstance(rows, (tuple, list)) or not rows:
+        return False
+    if not all(isinstance(row, (tuple, list)) and row and all(_pair(item) for item in row) for row in rows):
+        return False
+    return not recipe.get("Vessel") or _pair(recipe["Vessel"])
+
+
+def _recipes():
+    return [recipe for recipe in CookingPotRecipeList if _wellFormed(recipe)]
+
+
 def visibleRecipes(search):
     """搜索词过滤后的食谱：表里的下标，保持表的顺序。搜索词为空是全部；按食谱名包含判断，不分大小写。"""
     word = _chars(search).lower()
     return [index for index, recipe in enumerate(CookingPotRecipeList)
-            if not word or word in _chars(recipe.get("text")).lower()]
+            if _wellFormed(recipe) and (not word or word in _chars(recipe.get("text")).lower())]
 
 
 def recipeAt(index):
-    """表里第 index 条食谱；越界为 None。"""
-    return CookingPotRecipeList[index] if 0 <= index < len(CookingPotRecipeList) else None
+    """表里第 index 条食谱；越界或形状不对为 None。"""
+    recipe = CookingPotRecipeList[index] if 0 <= index < len(CookingPotRecipeList) else None
+    return recipe if _wellFormed(recipe) else None
 
 
 def pickedRecipe(search, picked):
@@ -59,7 +84,22 @@ def variantOf(recipe, variant):
 
 def vesselNames():
     """现有食谱用到的容器物品名（碗、玻璃瓶……）；下游追加的食谱也算。"""
-    return frozenset(recipe["Vessel"][0] for recipe in CookingPotRecipeList if recipe.get("Vessel"))
+    return frozenset(recipe["Vessel"][0] for recipe in _recipes() if recipe.get("Vessel"))
+
+
+def ingredientNames():
+    """现有食谱的食材物品名（任何一个变体里出现过的）。"""
+    return frozenset(item[0] for recipe in _recipes() for row in recipe["Recipe"] for item in row)
+
+
+def isPureVessel(name):
+    """只当容器用的东西（碗、玻璃瓶）：Shift 点击只往容器格放，不往食材格放，不然会混进食材把配方搅乱。"""
+    return name in vesselNames() and name not in ingredientNames()
+
+
+def isAmbiguous(name):
+    """既是某个食谱的容器、又是别的食谱的食材（卷心菜叶）：Shift 点击当食材放，只有容器格里已经是它时才续上。"""
+    return name in vesselNames() and name in ingredientNames()
 
 
 def _stack(item, count=1):
@@ -67,7 +107,7 @@ def _stack(item, count=1):
 
 
 def listRows(indices):
-    """食谱列表每行显示的物品：成品，一份。"""
+    """食谱列表每行显示的物品：成品，一份。indices 是 visibleRecipes 给的下标。"""
     return [_stack(recipeAt(index)["CookResult"]) for index in indices]
 
 

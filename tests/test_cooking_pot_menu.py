@@ -6,6 +6,8 @@
 """
 from __future__ import print_function
 
+import copy
+
 import fdtest
 
 Book = fdtest.load("Shared.Rules.CookingPotBook")
@@ -77,12 +79,18 @@ def _viewer(menu):
 
 
 def _call(menu, state, viewer, name, *args):
-    """执行动作并提交（成了返回 True）；被拒返回错误码。"""
+    """
+    执行动作并提交（成了返回 True）；被拒返回错误码。照服务端会话的写法（Session.handleCall）：被拒时工作副本整个丢掉，
+    这位查看者的状态回到调用之前。
+    """
     action = menu.actions[name]
     ctx = Ctx(state, viewer)
+    saved = copy.deepcopy(viewer)
     try:
         action.handler(menu, ctx, *args)
     except Actions.Refused as refused:
+        viewer.clear()
+        viewer.update(saved)
         return refused.code
     state.apply(ctx.ws)
     return True
@@ -150,6 +158,38 @@ def testShiftClickNeverFillsTheVesselSlotWithFood():
     assert _shiftClick(state, (HOTBAR, 0))
     assert state.get(("vessel", 0)) is None   # 食材格满了也不会往容器格里塞，余下的换到背包的另一半（与箱子一样）
     assert state.get((HOTBAR, 0)) is None and state.get((INVENTORY, 0))["count"] == 3
+
+
+def testShiftClickNeverPutsAVesselThatDoesNotFitIntoTheIngredientSlots():
+    state = State(_menu())
+    state.put(("vessel", 0), _item("minecraft:glass_bottle", 3))   # 容器格里是别的容器
+    state.put((HOTBAR, 0), _item("minecraft:bowl", 64))
+    assert _shiftClick(state, (HOTBAR, 0))   # 食材格不收只当容器的碗：照箱子的规矩换到背包的另一半
+    assert state.get(("vessel", 0))["newItemName"] == "minecraft:glass_bottle"
+    assert [state.get(("ingredients", index)) for index in range(6)] == [None] * 6
+    assert state.get((INVENTORY, 0))["newItemName"] == "minecraft:bowl"
+    # 容器格是同种但满了：同样不往食材格落
+    state = State(_menu())
+    state.put(("vessel", 0), _item("minecraft:bowl", 64))
+    state.put((HOTBAR, 0), _item("minecraft:bowl", 10))
+    assert _shiftClick(state, (HOTBAR, 0))
+    assert [state.get(("ingredients", index)) for index in range(6)] == [None] * 6
+    assert state.get((INVENTORY, 0))["count"] == 10 and state.get(("vessel", 0))["count"] == 64
+
+
+def testShiftClickTreatsAnItemThatIsBothVesselAndIngredientAsFood():
+    leaf = "arris:cabbage_leaf"   # 饺子、卷心菜卷的容器，也是别的食谱的食材
+    assert Book.isAmbiguous(leaf) and not Book.isPureVessel(leaf) and Book.isPureVessel("minecraft:bowl")
+    state = State(_menu())
+    state.put((HOTBAR, 0), _item(leaf, 4))
+    assert _shiftClick(state, (HOTBAR, 0))
+    assert state.get(("vessel", 0)) is None and state.get(("ingredients", 0))["count"] == 4   # 当食材放
+    # 容器格里已经放着它时才续上
+    state = State(_menu())
+    state.put(("vessel", 0), _item(leaf, 2))
+    state.put((HOTBAR, 0), _item(leaf, 4))
+    assert _shiftClick(state, (HOTBAR, 0))
+    assert state.get(("vessel", 0))["count"] == 6 and state.get(("ingredients", 0)) is None
 
 
 def testShiftClickTakesTheOutputBackToTheInventory():
@@ -318,7 +358,7 @@ def testAddFoodIsAllOrNothingWhenAnIngredientIsMissing():
         raise AssertionError("应该被拒")
     except Actions.Refused as refused:
         assert refused.code == "missing"
-    # 被拒的动作整体不提交：会话丢掉这份工作副本，真实格子原样
+    assert ctx.ws.changes == {}   # 先查后做：被拒之前工作副本里一格都没动（不靠会话丢掉它）
     assert state.get((HOTBAR, 0))["count"] == 4 and state.get(("ingredients", 0)) is None
 
 
@@ -362,7 +402,90 @@ def testAddFoodDoesNothingWhenEverythingIsAlreadyThereAndFull():
     state.put(("ingredients", 0), _item("minecraft:red_mushroom", 64))
     state.put(("ingredients", 1), _item("minecraft:brown_mushroom", 64))
     state.put((HOTBAR, 0), _item("minecraft:red_mushroom", 4))
-    assert _call(menu, state, viewer, "addFood") == "full"
+    assert _call(menu, state, viewer, "addFood") == "nothing"   # 已有的格子都满了、没有要放进空格的：什么都没动
+
+
+def testSearchWithTheSameTextKeepsTheSelection():
+    # 边打边提交的文本框在输入结束时总会再发一次（字没变也发；点列表一行或按钮时它失去焦点）：不能把刚选中的食谱清掉
+    menu = _menu()
+    viewer = _viewer(menu)
+    state = State(menu)
+    assert _call(menu, state, viewer, "search", "蘑菇") is True
+    assert _call(menu, state, viewer, "pick", 0) is True
+    assert _call(menu, state, viewer, "search", "蘑菇") is True   # 同样的字：什么都不动
+    assert viewer["picked"] == 0 and viewer["search"] == "蘑菇"
+    assert _call(menu, state, viewer, "search", "蘑") is True   # 字变了才清掉选中
+    assert viewer["picked"] == -1
+
+
+def testAddFoodSkipsSourcesThatCannotLeaveTheirSlot():
+    menu = _menu()
+    viewer = _viewer(menu)
+    _pickStew(menu, viewer, variant=0)   # 红蘑菇 ×2
+    locked = _item("minecraft:red_mushroom", 5)
+    locked["userData"] = {"minecraft:item_lock": {"__type__": 1, "__value__": 1}}   # 锁在格子里
+    state = State(menu)
+    state.put((HOTBAR, 0), locked)
+    state.put((HOTBAR, 1), _item("minecraft:red_mushroom", 2))
+    assert _call(menu, state, viewer, "addFood") is True
+    assert state.get((HOTBAR, 0))["count"] == 5 and state.get((HOTBAR, 1)) is None   # 用的是第二堆
+    state = State(menu)
+    state.put((HOTBAR, 0), locked)   # 只有锁住的那一堆：拿不到
+    assert _call(menu, state, viewer, "addFood") == "missing"
+
+
+def testAddFoodBooksEveryTakeAgainstTheStackItComesFrom():
+    menu = _menu()
+    viewer = _viewer(menu)
+    _pickStew(menu, viewer, variant=0)   # 红蘑菇 ×2：占两个格子，要拿两个
+    state = State(menu)
+    state.put((HOTBAR, 0), _item("minecraft:red_mushroom", 1))   # 一堆只有一个
+    ctx = Ctx(state, viewer)
+    try:
+        menu.actions["addFood"].handler(menu, ctx)
+        raise AssertionError("一个红蘑菇不够两格")
+    except Actions.Refused as refused:
+        assert refused.code == "missing"
+    assert ctx.ws.changes == {}
+    state.put((INVENTORY, 0), _item("minecraft:red_mushroom", 1))   # 再来一堆就够了（两堆各出一个）
+    assert _call(menu, state, viewer, "addFood") is True
+    assert state.get((HOTBAR, 0)) is None and state.get((INVENTORY, 0)) is None
+    assert state.get(("ingredients", 0))["count"] == 1 and state.get(("ingredients", 1))["count"] == 1
+
+
+def testAddFoodGivesTheRequiredIngredientsPriorityOverTopUps():
+    menu = _menu()
+    viewer = _viewer(menu)
+    _pickStew(menu, viewer, variant=0)   # 红蘑菇 ×2
+    state = State(menu)
+    state.put(("ingredients", 0), _item("minecraft:red_mushroom", 2))   # 已有一格：这一格是"再加一个"
+    state.put((HOTBAR, 0), _item("minecraft:red_mushroom", 1))   # 背包里只有一个：先给必须放的第二格
+    assert _call(menu, state, viewer, "addFood") is True
+    assert state.get(("ingredients", 0))["count"] == 2 and state.get(("ingredients", 1))["count"] == 1
+
+
+def testRecipesWithTheWrongShapeAreIgnored():
+    # 下游模组经联动接口追加的食谱没人校验形状；界面数据在会话的定时刷新里算，出错会让所有开着界面的人都收不到更新
+    table = Recipes.CookingPotRecipeList
+    broken = [{"text": "没有成品", "Recipe": [[("test:a", 0)]]},
+              {"text": "变体不是列表", "Recipe": "oops", "CookResult": ("test:b", 0)},
+              {"text": "食材缺 aux", "Recipe": [[("test:a",)]], "CookResult": ("test:b", 0)},
+              {"text": "容器不对", "Recipe": [[("test:a", 0)]], "CookResult": ("test:b", 0), "Vessel": 7},
+              {"text": "没有变体", "Recipe": [], "CookResult": ("test:b", 0)},
+              None]
+    count = len(table)
+    table.extend(broken)
+    try:
+        shown = Book.visibleRecipes("")
+        assert shown == list(range(count))   # 形状不对的一条都不列
+        assert Book.visibleRecipes("没有") == [] and Book.recipeAt(count) is None
+        assert "test:a" not in Book.ingredientNames() and 7 not in Book.vesselNames()
+        menu = _menu()
+        viewer = _viewer(menu)
+        values = menu.viewerValues(_Instance(), viewer)
+        assert len(values["recipes"]) == count
+    finally:
+        del table[count:]
 
 
 def testActionsOnlyTakeValuesFromTheirSchema():
