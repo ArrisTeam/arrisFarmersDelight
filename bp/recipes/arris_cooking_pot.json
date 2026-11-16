@@ -27,11 +27,18 @@
             "IEI",
             "III"
         ],
-        "result": {
-            "count": 1,
-            "data": 0,
-            "item": "arris:cooking_pot"
-        },
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:cooking_pot"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:bucket"
+            }
+        ],
         "tags": [
             "crafting_table"
         ],
