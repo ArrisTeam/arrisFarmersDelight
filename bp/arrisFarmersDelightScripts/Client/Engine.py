@@ -11,6 +11,16 @@ from ..QuModLibs.Client import clientApi, levelId, playerId, Call  # noqa: F401
 compFactory = clientApi.GetEngineCompFactory()
 
 
+def addDropItem(item, dimensionId, pos):
+    """在世界里放一件只有本端看得见的掉落物（站点和方块上摆着的东西都是它），返回实体 id，没建成 None。
+    掉落物脚下有一团影子，落在实体的位置上而不是画出来的位置上，摆着看就是旁边多出一块黑：建好就关掉。"""
+    entityId = compFactory.CreateItem(levelId).AddDropItemToWorld(item, dimensionId, pos, 0, 0)
+    if not entityId:
+        return None
+    compFactory.CreateModel(entityId).SetEntityShadowShow(False)
+    return entityId
+
+
 def unwrap(nbtValue, default=None):
     """{"__type__": t, "__value__": v} → v；None 或缺字段返回 default。"""
     if not nbtValue:

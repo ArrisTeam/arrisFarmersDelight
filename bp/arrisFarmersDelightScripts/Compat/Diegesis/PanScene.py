@@ -15,7 +15,7 @@ import random
 
 from .PanFx import PanFx
 from .PanModel import PanModel
-from ...Client.Engine import compFactory, levelId
+from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Rules import ItemPose, PanLookState, PanModelMath, PanPose, PanStation
 from ...Shared.Rules.HandsOn.PanShow import PanShow
 
@@ -138,8 +138,8 @@ class PanScene(object):
         if kind is None:
             return
         if prop is None:
-            entityId = itemComp.AddDropItemToWorld({"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}, self.dimensionId,
-                                                   self.world(PanModelMath.SCENE_PAN), 0, 0)
+            entityId = addDropItem({"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}, self.dimensionId,
+                                   self.world(PanModelMath.SCENE_PAN))
             if not entityId:
                 return
             prop = self.props[name] = [entityId, kind]

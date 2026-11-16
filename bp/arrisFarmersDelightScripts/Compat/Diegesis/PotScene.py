@@ -16,7 +16,7 @@ from . import PotFx
 from .PotHands import PotHands
 from .PotModel import PotModel
 from .PotSceneFx import SceneFx, play
-from ...Client.Engine import compFactory, levelId
+from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Data.BrothColors import PouredColors
 from ...Shared.Data.FoodColors import FoodColors
 from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook
@@ -188,7 +188,7 @@ class PotScene(object):
                 continue
             if prop is None:
                 one = {"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}
-                entityId = itemComp.AddDropItemToWorld(one, self.dimensionId, self.world(pose[0], pose[1], pose[2]), 0, 0)
+                entityId = addDropItem(one, self.dimensionId, self.world(pose[0], pose[1], pose[2]))
                 if not entityId:
                     continue
                 prop = self.props[slot] = [entityId, kind]

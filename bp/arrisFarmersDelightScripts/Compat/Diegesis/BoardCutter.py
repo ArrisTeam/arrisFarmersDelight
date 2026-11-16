@@ -18,6 +18,8 @@ from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import BoardStroke as Stroke
 from ...Shared.Rules.HandsOn import Cutting
 
+MARK_LIFT = 0.25       # 虚线画在食物顶面上方这么高（像素）：实机上掉落物的顶面比算出来的高 0.15 左右，一段虚线又只有 0.04 厚，贴着面会陷进食物里
+
 
 class Cutter(object):
     def __init__(self, owner):
@@ -99,7 +101,7 @@ class Cutter(object):
             self.line = None
         if key is None:
             return
-        height = draw.surface() + 0.03
+        height = draw.surface() + MARK_LIFT
         a, b = (draw.cx + ends[0][0], height, draw.cz + ends[0][1]), (draw.cx + ends[1][0], height, draw.cz + ends[1][1])
         if self.line is None:
             self.line = [view.props.line(a, b, hot=False), key, 0.0]

@@ -30,6 +30,7 @@ class World(object):
 
     def reset(self):
         self.drops = {}                 # 掉落物 id -> {"item", "dim", "at", "pivot", "euler", "scale"}
+        self.shadows = {}               # 实体 id -> 影子开着吗（SetEntityShadowShow 设过的才有）
         self.deleted = []
         self.molang = {}                # (坐标, 变量名) -> 值
         self.armed = set()
@@ -67,6 +68,9 @@ class Comp(object):
         drop = world.drops[entityId]
         drop["pivot"], drop["euler"], drop["scale"] = tuple(pivot), tuple(euler), scale
         return True
+
+    def SetEntityShadowShow(self, flag):
+        world.shadows[self.owner] = bool(flag)
 
     def DeleteClientDropItemEntity(self, entityId):
         world.deleted.append(entityId)
@@ -149,6 +153,14 @@ def _install():
     engine.clientApi = NS(ImportModule=lambda name: None, PushScreen=lambda *a: None, GetEngineCompFactory=lambda: Factory())
     engine.unwrapDeep = unwrapDeep
     engine.blockEntityExData = lambda pos: world.exData.get(tuple(pos), {})
+
+    def addDropItem(item, dimensionId, pos):
+        """Client/Engine.addDropItem 的替身：建掉落物、关影子。"""
+        entityId = Comp(None).AddDropItemToWorld(item, dimensionId, pos)
+        Comp(entityId).SetEntityShadowShow(False)
+        return entityId
+
+    engine.addDropItem = addDropItem
     sys.modules[PACKAGE + ".Client.Engine"] = engine
     qu = PACKAGE + ".QuModLibs"
     package = types.ModuleType(qu)
@@ -204,6 +216,7 @@ class FakeView(object):
         self.state = NS(getItems=lambda group: list(self.items))
         self.booked = None
         self.rays = {}
+        self.input, self.fitting = "mouse", 0             # 输入方式；fits() 的回答（放得进的那一格，放不进 None）
 
     def toWorld(self, x, y, z):
         return self.geometry.stationPointToWorld(self.yaw, x, y, z, self.pos[0], self.pos[1], self.pos[2])
@@ -213,6 +226,9 @@ class FakeView(object):
 
     def rayAt(self, screen):
         return self.rays.get(tuple(screen))
+
+    def fits(self, group):
+        return self.fitting
 
     def sendAction(self, name, data=None):
         self.actions.append((name, data))
@@ -235,7 +251,7 @@ def makeApi():
         node.setBox(lo, hi)
         return node
 
-    return NS(box=box, Geometry=geometry, StationBehavior=registry.StationBehavior, Pick=pick, API_VERSION=2, JAVA_FLIGHT=0.4,
+    return NS(box=box, Geometry=geometry, StationBehavior=registry.StationBehavior, Pick=pick, API_VERSION=2, JAVA_FLIGHT=0.4, TOUCH="touch",
               Schema=dgtest.load("Shared.Schema"), registered=[], registerBehavior=lambda *args, **kwargs: None)
 
 

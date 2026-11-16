@@ -13,7 +13,7 @@ import random
 
 from . import PotFx
 from .PotSceneFx import play
-from ...Client.Engine import compFactory, levelId
+from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Data import PotSunk, Remainders
 from ...Shared.Data.BrothColors import MainColors, PouredColors
 from ...Shared.Rules import ItemPose
@@ -129,7 +129,7 @@ class PotHands(object):
             prop = None
         if prop is None:
             one = {"newItemName": name, "newAuxValue": 0, "count": 1}
-            entityId = compFactory.CreateItem(levelId).AddDropItemToWorld(one, scene.dimensionId, where, 0, 0)
+            entityId = addDropItem(one, scene.dimensionId, where)
             if not entityId:
                 return
             prop = entry["props"][node] = [entityId, name]

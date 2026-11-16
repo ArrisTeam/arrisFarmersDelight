@@ -14,7 +14,7 @@ view.ghost（界面上一件半透明的物品，钉在那个点的投影上，�
 """
 from . import PotFx
 from .PotSceneFx import play
-from ...Client.Engine import clientApi, compFactory, levelId, playerId
+from ...Client.Engine import addDropItem, clientApi, compFactory, levelId, playerId
 from ...Shared.Data import Remainders
 from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotServe, PotSounds
@@ -112,7 +112,7 @@ class PotOffer(object):
     def _prop(self, name, pos):
         scene = self.owner.scene
         one = {"newItemName": name, "newAuxValue": 0, "count": 1}
-        return compFactory.CreateItem(levelId).AddDropItemToWorld(one, scene.dimensionId, scene.world(*pos), 0, 0) or None
+        return addDropItem(one, scene.dimensionId, scene.world(*pos))
 
     def _dropOffered(self):
         if self.offered is not None:

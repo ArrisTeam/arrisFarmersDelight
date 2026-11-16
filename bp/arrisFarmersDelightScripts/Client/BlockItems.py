@@ -8,7 +8,7 @@
 内容一律以广播为准。站点自己画某个方块上的东西时（煎锅站点要让食物翻面）用 hide 让本端先不画，还原时按最后一份内容重画。
 """
 from ..QuModLibs.Client import AllowCall, Listen
-from .Engine import compFactory, levelId, unwrapDeep, blockEntityExData
+from .Engine import addDropItem, compFactory, levelId, unwrapDeep, blockEntityExData
 from ..Shared.Data.Cooking import StoveList
 from ..Shared.Rules import BlockDisplay, ItemPose, PotModelMath
 from ..Shared.Rules.HandsOn import BoardScene
@@ -91,7 +91,7 @@ def show(dimensionId, pos, kind, items):
         else:
             matrix = ItemPose.uprightMatrix(placement.direction[0], placement.direction[1], placement.roll)
         pivot = ItemPose.pivotFor(center, matrix, placement.scale)
-        entityId = itemComp.AddDropItemToWorld(placement.item, dimensionId, pivot, 0, 0)
+        entityId = addDropItem(placement.item, dimensionId, pivot)
         if entityId:
             itemComp.SetDropItemTransform(entityId, pivot, ItemPose.engineEuler(matrix), float(placement.scale))
             shown.append(entityId)
