@@ -14,6 +14,7 @@ from ...QuModLibs.Server import serverApi, levelId, System, Call, DestroyEntity 
 
 compFactory = serverApi.GetEngineCompFactory()
 ItemPosType = serverApi.GetMinecraftEnum().ItemPosType
+EntityType = serverApi.GetMinecraftEnum().EntityType
 
 
 def GetBlockEntityData(dimensionId, blockPos):
@@ -45,3 +46,9 @@ def ShowTip(playerId, text):
 def GetLoadedEntities():
     """所有维度里已加载的非玩家实体：{实体 id: {"dimensionId": 维度, "identifier": 类型名}}。"""
     return serverApi.GetEngineActor()
+
+
+def IsLiving(entityId):
+    """是不是生物（JE 的 LivingEntity：玩家、怪物、动物、盔甲架……；掉落物、船、矿车、箭不是）。"""
+    entityType = compFactory.CreateEngineType(entityId).GetEngineType()
+    return bool(entityType) and (entityType & EntityType.Mob) == EntityType.Mob

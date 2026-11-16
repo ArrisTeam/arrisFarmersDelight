@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """RopeAndNet - 绳子攀爬、敲钟、卷绳子，安全网弹跳，爬绳时免摔落伤害与不踩坏耕地（服务端）
 
-绳子照 JE 的 RopeBlock，规则在 Shared/Rules/RopeReel.py。
+绳子与安全网照 JE 的 RopeBlock / SafetyNetBlock，规则在 Shared/Rules/RopeReel.py、NetBounce.py。
 """
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, GetEngineTypeStr
+from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, GetEngineTypeStr, IsLiving
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, IsCreative
 from ..Shared.Data import Blocks
 from ..Shared.Data.Blocks import canClimbList
-from ..Shared.Rules import RopeReel
+from ..Shared.Rules import NetBounce, RopeReel
 import math
 
 ROPE = "arris:rope"
@@ -58,28 +58,21 @@ def OnTrampleFarmlandOnRope(args):
         args["cancel"] = True
 
 
-def _bounce(fallDistance):
-    if fallDistance <= 10:
-        return fallDistance * 0.1
-    if fallDistance <= 50:
-        return fallDistance * 0.05
-    return fallDistance * 0.01
-
-
 @registerHandler("OnBeforeFallOnBlockServerEvent", match=SAFETY_NET)
 def OnFallOnSafetyNet(args):
-    # 落在安全网上的实体弹起来并取消伤害；潜行的玩家不弹
+    # JE SafetyNetBlock：潜行的玩家照常摔（不弹）；其余一点摔落伤害都没有，竖直速度反过来乘 0.6（生物）/ 0.8（别的实体）
     entityId = args["entityId"]
-    fallDistance = args["fallDistance"]
-    if fallDistance <= 0.5:
+    isPlayer = GetEngineTypeStr(entityId) == "minecraft:player"
+    if isPlayer and compFactory.CreatePlayer(entityId).isSneaking() is not False:
         return
-    if GetEngineTypeStr(entityId) == "minecraft:player":
-        if compFactory.CreatePlayer(entityId).isSneaking() is not False:
-            return
-        compFactory.CreateActorMotion(entityId).SetPlayerMotion((0, _bounce(fallDistance), 0))
-    else:
-        compFactory.CreateActorMotion(entityId).SetMotion((0, _bounce(fallDistance), 0))
     args["cancel"] = True
+    speed = NetBounce.bounceSpeed(args["fallDistance"], IsLiving(entityId))
+    if speed <= 0:
+        return
+    if isPlayer:
+        compFactory.CreateActorMotion(entityId).SetPlayerMotion((0, speed, 0))
+    else:
+        compFactory.CreateActorMotion(entityId).SetMotion((0, speed, 0))
 
 
 def _reelRope(args):
