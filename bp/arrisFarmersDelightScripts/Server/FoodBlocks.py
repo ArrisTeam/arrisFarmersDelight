@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
-"""FoodBlocks - 放在地上的食物：派切块吃、盘装食物用碗盛（服务端）"""
+"""FoodBlocks - 放在地上的食物：派切块吃（手里拿刀则切下一片）、盘装食物用碗盛（服务端）"""
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, ShowTip
+from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerBlockMolang
+from .Helpers.Items import IsKnife
 from .Helpers.Placement import FacingOfAux
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, GiveOrDropItem
 from ..Shared.Data.Food import pieList, platePackagedFoodDict
+from ..Shared.Data.Slicing import PIE_BITES, SLICE_SOUND, pieSliceItems
 
 # 一个派 4 块；每吃一块：速度效果 30 秒、饥饿值 +3
-PIE_SLICES = 4.0
 PIE_HUNGER = 3
+
+
+def _takeBite(dimensionId, blockPos, blockEntityData):
+    # 派少一块（吃掉或被刀切下）：记口数、同步画面，最后一块没了就拆掉方块
+    blockEntityData["blockStatus"] = (blockEntityData["blockStatus"] or 0.0) + 1
+    blockStatus = blockEntityData["blockStatus"]
+    ToAllPlayerBlockMolang(blockPos, "variable.mod_pie", blockStatus)
+    if blockStatus >= PIE_BITES:
+        compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 0, dimensionId)
 
 
 @registerHandler("ServerBlockUseEvent", match=pieList)
@@ -22,15 +32,20 @@ def OnEatPie(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    blockEntityData["blockStatus"] = (blockEntityData["blockStatus"] or 0.0) + 1
-    blockStatus = blockEntityData["blockStatus"]
+    handItemDict = GetCarriedItem(playerId)
+    sliceItem = pieSliceItems.get(args["blockName"])
+    if sliceItem and handItemDict and IsKnife(handItemDict["newItemName"]):
+        # 手里拿着刀：切下一片掉在派上，不吃、不耗刀（JE 的 PieBlock.cutSlice）
+        _takeBite(dimensionId, blockPos, blockEntityData)
+        System.CreateEngineItemEntity({"newItemName": sliceItem, "newAuxValue": 0, "count": 1}, dimensionId,
+                                      (blockPos[0] + 0.5, blockPos[1] + 0.3, blockPos[2] + 0.5))
+        ToAllPlayerPlaySound(dimensionId, blockPos, SLICE_SOUND)
+        return
     ToAllPlayerPlaySound(dimensionId, blockPos, "random.eat")
     compFactory.CreateEffect(playerId).AddEffectToEntity("speed", 30, 1, False)
     playerComp = compFactory.CreatePlayer(playerId)
     playerComp.SetPlayerHunger(playerComp.GetPlayerHunger() + PIE_HUNGER)
-    ToAllPlayerBlockMolang(blockPos, "variable.mod_pie", blockStatus)
-    if blockStatus == PIE_SLICES:
-        compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 0, dimensionId)
+    _takeBite(dimensionId, blockPos, blockEntityData)
 
 
 @registerHandler("ServerBlockUseEvent", match=platePackagedFoodDict)
