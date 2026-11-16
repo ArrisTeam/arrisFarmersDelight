@@ -13,9 +13,8 @@
 import copy
 import time
 
-from ...Server.Helpers.DisplayEntity import CuttingBoardDisplayEntity
-from ...Server.Helpers.Engine import compFactory, levelId, DestroyEntity, GetBlockEntityData, GetCarriedItem, \
-    SetCarriedItem, ItemPosType
+from ...Server.Helpers.BlockItems import DropLegacyDisplays, PublishBoard
+from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ItemPosType
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.Items import GetItemType, IsKnife
 from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
@@ -101,8 +100,7 @@ class BoardLogicMixin(object):
             rest["count"] -= board["count"]
             SetCarriedItem(playerId, rest if rest["count"] > 0 else None)
         data["cuttingDict"] = board
-        CuttingBoardDisplayEntity(board, playerId, {"blockEntityData": data, "blockPos": self.station.pos,
-                                                    "blockAuxValue": self._blockAux(), "dimensionId": self.station.dimensionId})
+        PublishBoard(self.station.dimensionId, self.station.pos, board)
         ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "dig.wood")
         self._restart(board)
         return True
@@ -140,6 +138,7 @@ class BoardLogicMixin(object):
         rest["count"] -= batch
         if rest["count"] > 0:
             data["cuttingDict"] = rest
+            PublishBoard(self.station.dimensionId, self.station.pos, rest)
         else:
             self._clearBoard(data)
             rest = None
@@ -199,17 +198,10 @@ class BoardLogicMixin(object):
         item = data["cuttingDict"] if data else None
         return item if item and item.get("count", 0) > 0 else None
 
-    def _blockAux(self):
-        block = compFactory.CreateBlockInfo(levelId).GetBlockNew(self.station.pos, self.station.dimensionId)
-        return block["aux"] if block else 0
-
-    @staticmethod
-    def _clearBoard(data):
-        entityId = data["displayEntityId"]
-        if entityId:
-            DestroyEntity(entityId)
-        data["displayEntityId"] = None
+    def _clearBoard(self, data):
+        DropLegacyDisplays(data)
         data["cuttingDict"] = None
+        PublishBoard(self.station.dimensionId, self.station.pos, None)
 
     def _restart(self, item):
         """板上换了东西（或刚开站）：重新查配方、重布刀口，并同步给使用者。"""

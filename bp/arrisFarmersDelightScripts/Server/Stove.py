@@ -2,15 +2,17 @@
 """Stove - 炉灶顶上的 6 个烤位：放入、逐个烤熟弹出、破坏时掉落（服务端）
 
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
+烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 """
 import time
 
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockEntityData, GetBlockName, ShowTip
-from .Helpers.DisplayEntity import StoveDisplayEntity
+from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
+from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
+from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
 STOVE_SLOTS = 6
@@ -25,15 +27,12 @@ _pacer = Pacer(1.0)
 def InitStoveData(blockEntityData):
     """炉灶 6 个烤位的默认数据；/setblock、结构放出的炉灶没走放置事件，用到时补上。"""
     blockEntityData["cookingIndex"] = 0
-    displayEntityDict = {}
     for index in range(STOVE_SLOTS):
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
-        displayEntityDict[str(index)] = None
-    blockEntityData["displayEntityDict"] = displayEntityDict
 
 
 def EnsureStoveData(blockEntityData):
-    if blockEntityData["displayEntityDict"] is None:
+    if blockEntityData[str(STOVE_SLOTS - 1)] is None:
         InitStoveData(blockEntityData)
 
 
@@ -46,12 +45,11 @@ def OnServerStoveCreate(args):
 
 def _freeSlot(blockEntityData):
     """从 cookingIndex 开始找第一个空烤位；都满了返回 None。"""
-    displayEntityDict = blockEntityData["displayEntityDict"]
     start = blockEntityData["cookingIndex"] or 0
     for offset in range(STOVE_SLOTS):
         index = (start + offset) % STOVE_SLOTS
         slotData = blockEntityData[str(index)]
-        if not displayEntityDict.get(str(index)) and not (slotData and slotData.get("itemDict")):
+        if not (slotData and slotData.get("itemDict")):
             return index
     return None
 
@@ -69,6 +67,7 @@ def OnServerStoveItemUse(args):
     if not blockEntityData:
         return
     EnsureStoveData(blockEntityData)
+    DropLegacyDisplays(blockEntityData)
     if GetBlockName((x, y + 1, z), dimensionId) != "minecraft:air":
         ShowTip(playerId, "炉灶上方有方块阻挡...")
         return
@@ -77,11 +76,12 @@ def OnServerStoveItemUse(args):
     if freeIndex is None:
         return
     if itemDict["newItemName"] in CanCookedFoodDict:
-        blockEntityData["cookingIndex"] = freeIndex
-        blockEntityData[str(freeIndex)] = {"itemDict": itemDict, "cookTimer": COOK_TIMER}
+        # 烤位上只放一件；先存一份数量为 1 的拷贝，SetNotCreateItem 会就地改手里那件的数量
+        slotItem = dict(itemDict)
+        slotItem["count"] = 1
+        blockEntityData[str(freeIndex)] = {"itemDict": slotItem, "cookTimer": COOK_TIMER}
         SetNotCreateItem(playerId, itemDict)
-        data = {"blockEntityData": blockEntityData, "blockPos": (x, y, z), "blockAuxValue": args["blockAuxValue"], "dimensionId": dimensionId}
-        StoveDisplayEntity(itemDict, playerId, data)
+        PublishStove(dimensionId, (x, y, z), blockEntityData)
         ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
         blockEntityData["cookingIndex"] = (freeIndex + 1) % STOVE_SLOTS
     elif itemDict["newItemName"] not in _PASS_ITEMS:
@@ -98,6 +98,7 @@ def OnStoveTick(args):
     if not blockEntityData:
         return
     EnsureStoveData(blockEntityData)
+    finished = False
     for index in range(STOVE_SLOTS):
         data = blockEntityData[str(index)]
         if not (data and data.get("itemDict")):
@@ -112,12 +113,9 @@ def OnStoveTick(args):
         output = {"itemName": cookedName, "auxValue": rawDict.get("newAuxValue", 0), "count": 1} if cookedName else rawDict
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
         System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
-        displayEntityDict = blockEntityData["displayEntityDict"]
-        entityId = displayEntityDict.get(str(index))
-        if entityId:
-            DestroyEntity(entityId)
-        displayEntityDict[str(index)] = None
-        blockEntityData["displayEntityDict"] = displayEntityDict
+        finished = True
+    if finished:
+        PublishStove(dimensionId, blockPos, blockEntityData)
     if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
         blockEntityData["cookingIndex"] = 0
 
@@ -135,6 +133,5 @@ def OnStoveRemove(args):
         itemDict = data.get("itemDict") if data else None
         if itemDict:
             System.CreateEngineItemEntity(itemDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
-    for entityId in (blockEntityData["displayEntityDict"] or {}).values():
-        if entityId:
-            DestroyEntity(entityId)
+    DropLegacyDisplays(blockEntityData)
+    Publish(dimensionId, blockPos, KIND_STOVE, {})

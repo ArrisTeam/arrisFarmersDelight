@@ -20,6 +20,17 @@ def unwrap(nbtValue, default=None):
     return nbtValue
 
 
+def unwrapDeep(nbtValue):
+    """整棵 NBT 形式的值逐层解包（字典、列表里的值也包着）。"""
+    if isinstance(nbtValue, dict):
+        if "__value__" in nbtValue and "__type__" in nbtValue:
+            return unwrapDeep(nbtValue["__value__"])
+        return dict((key, unwrapDeep(value)) for key, value in nbtValue.items())
+    if isinstance(nbtValue, list):
+        return [unwrapDeep(value) for value in nbtValue]
+    return nbtValue
+
+
 def blockEntityExData(blockPos):
     """客户端方块实体数据的 exData 字典（没有返回 {}）。"""
     blockEntityData = compFactory.CreateBlockInfo(levelId).GetBlockEntityData(blockPos)

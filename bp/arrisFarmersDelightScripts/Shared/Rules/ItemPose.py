@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+"""ItemPose - 客户端掉落物的姿态换算：意图（平躺 / 竖立）-> 旋转矩阵 -> SetDropItemTransform 的三个角（双端，纯规则）
+
+实机标定（3.10，2026-11-16）：物品贴图轴心在底边中点，缩放 1 时边长半格；rot = (0, 0, 0) 竖立、正面朝 -Z；
+rot = (x, y, z) 表示 R = Rz(z)·Rx(x)·Ry(y)。坐标是格，方向是世界的 (dx, dz)。
+与场景交互前置包的 Client/PropMath.py 同一套（两个包互不依赖，各带一份）；离线测试见 tests/test_block_display.py。
+"""
+import math
+
+ITEM_SPAN = 8.0   # 缩放 1 时贴图边长（站点像素）
+
+
+def _rx(deg):
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    return [[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]]
+
+
+def _ry(deg):
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    return [[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]]
+
+
+def _rz(deg):
+    c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    return [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]
+
+
+def _mul(a, b):
+    return [[sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def engineEuler(m):
+    """旋转矩阵 -> SetDropItemTransform 的 (x, y, z) 度，按 R = Rz(z)·Rx(x)·Ry(y) 分解。"""
+    x = math.degrees(math.asin(max(-1.0, min(1.0, m[2][1]))))
+    if abs(m[2][1]) > 1.0 - 1.0e-12:   # 万向锁：Y 与 Z 合成一个转角，全记在 Z 上
+        return (x, 0.0, math.degrees(math.atan2(m[1][0], m[0][0])))
+    return (x, math.degrees(math.atan2(-m[2][0], m[2][2])), math.degrees(math.atan2(-m[0][1], m[1][1])))
+
+
+def flatMatrix(alongX, alongZ):
+    """平躺、贴图横向（u 轴）沿世界方向 (alongX, alongZ)：Ry(α)·Rx(90)，u 轴落在 (cos α, 0, -sin α)。"""
+    return _mul(_ry(math.degrees(math.atan2(-alongZ, alongX))), _rx(90.0))
+
+
+def uprightMatrix(facingX, facingZ, roll):
+    """竖立、正面朝世界方向 (facingX, facingZ)、在贴图平面内顺时针转 roll 度：Ry(β)·Rz(roll)。"""
+    return _mul(_ry(math.degrees(math.atan2(-facingX, -facingZ))), _rz(roll))
+
+
+def pivotFor(center, matrix, scale):
+    """视觉中心 -> 轴心（贴图底边中点）：中心 = 轴心 + R·(0, 半边长, 0)。坐标是格。"""
+    half = ITEM_SPAN / 16.0 * scale * 0.5
+    return (center[0] - matrix[0][1] * half, center[1] - matrix[1][1] * half, center[2] - matrix[2][1] * half)

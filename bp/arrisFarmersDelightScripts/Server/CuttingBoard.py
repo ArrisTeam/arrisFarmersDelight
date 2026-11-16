@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""CuttingBoard - 砧板：放上一件物品、用对的工具一击切完、空手取回（服务端）"""
+"""CuttingBoard - 砧板：放上一件物品、用对的工具切、空手取回（服务端）
+
+板上的东西只存在方块实体数据 cuttingDict（带数量：站点模式能放一叠，这里一次切一件）；
+画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
+"""
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockEntityData, GetCarriedItem, \
-    SetCarriedItem, ShowTip
-from .Helpers.DisplayEntity import CuttingBoardDisplayEntity
+from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
+from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType, IsKnife
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, SetCarriedDurability
@@ -39,9 +42,10 @@ def OnServerCuttingBoardBlockUse(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
+    DropLegacyDisplays(blockEntityData)
     carriedDict = GetCarriedItem(playerId, True)
     if carriedDict:
-        _useWithItem(args, blockEntityData, carriedDict, blockPos, dimensionId, playerId)
+        _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId)
         return
     # 空手：取回砧板上的物品
     cuttingDict = blockEntityData["cuttingDict"]
@@ -49,19 +53,15 @@ def OnServerCuttingBoardBlockUse(args):
         SetCarriedItem(playerId, cuttingDict)
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cuttingDict"] = None
-    displayEntityId = blockEntityData["displayEntityId"]
-    if displayEntityId:
-        DestroyEntity(displayEntityId)
-        blockEntityData["displayEntityId"] = None
+        PublishBoard(dimensionId, blockPos, None)
 
 
-def _useWithItem(args, blockEntityData, carriedDict, blockPos, dimensionId, playerId):
+def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
     x, y, z = blockPos
     itemType = GetItemType(carriedDict)
-    displayEntityId = blockEntityData["displayEntityId"]
     cuttingDict = blockEntityData["cuttingDict"]
-    if displayEntityId and cuttingDict:
-        # 砧板上有东西：拿着对的工具就切
+    if cuttingDict:
+        # 砧板上有东西：拿着对的工具就切一件
         result = CuttingBoardDict.get((cuttingDict["newItemName"], cuttingDict["newAuxValue"]))
         if not result:
             return
@@ -77,10 +77,9 @@ def _useWithItem(args, blockEntityData, carriedDict, blockPos, dimensionId, play
             if left > 0:
                 cuttingDict["count"] = left
                 blockEntityData["cuttingDict"] = cuttingDict
-                return
-            DestroyEntity(displayEntityId)
-            blockEntityData["cuttingDict"] = None
-            blockEntityData["displayEntityId"] = None
+            else:
+                blockEntityData["cuttingDict"] = None
+            PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"])
         return
     # 砧板是空的：放上一件
     itemName = carriedDict["newItemName"]
@@ -91,8 +90,7 @@ def _useWithItem(args, blockEntityData, carriedDict, blockPos, dimensionId, play
         SetNotCreateItem(playerId, carriedDict)
         carriedDict["count"] = 1
         blockEntityData["cuttingDict"] = carriedDict
-        data = {"blockEntityData": blockEntityData, "blockPos": blockPos, "blockAuxValue": args["aux"], "dimensionId": dimensionId}
-        CuttingBoardDisplayEntity(carriedDict, playerId, data)
+        PublishBoard(dimensionId, blockPos, carriedDict)
     else:
         ShowTip(playerId, "该物品无法放置在砧板上...")
 
@@ -104,9 +102,8 @@ def OnCuttingBoardRemove(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    displayEntityId = blockEntityData["displayEntityId"]
-    if displayEntityId:
-        DestroyEntity(displayEntityId)
+    DropLegacyDisplays(blockEntityData)
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
         System.CreateEngineItemEntity(cuttingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+    PublishBoard(dimensionId, blockPos, None)

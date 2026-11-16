@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """Skillet - 放置的煎锅：放入一叠食物、逐个煎熟弹出、取回（服务端）
 
-煎锅物品放成方块的逻辑在 Server/ItemToBlock.py（与派共用一份）。
+煎锅物品放成方块的逻辑在 Server/ItemToBlock.py（与派共用一份）。锅里的东西只存在方块实体数据 cookingDict，
+画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 """
 import time
 
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockEntityData, GetBlockName, GetCarriedItem, \
-    SetCarriedItem, ShowTip
-from .Helpers.DisplayEntity import SkilletDisplayCount, SkilletDisplayEntity
+from .Helpers.BlockItems import DropLegacyDisplays, PublishSkillet
+from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
+    ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
+from ..Shared.Rules.BlockDisplay import skilletLayers
 from ..Shared.Rules.Ticks import Pacer
 
 SKILLET = "arris:skillet"
@@ -35,14 +37,14 @@ def OnServerSkilletBlockUse(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
+    DropLegacyDisplays(blockEntityData)
     carriedDict = GetCarriedItem(playerId, True)
     if carriedDict:
-        if blockEntityData["displayEntityList"]:
+        if blockEntityData["cookingDict"]:
             return
         if carriedDict["newItemName"] in CanCookedFoodDict:
             blockEntityData["cookingDict"] = carriedDict
-            data = {"blockEntityData": blockEntityData, "blockPos": blockPos, "blockAuxValue": args["aux"], "dimensionId": dimensionId}
-            SkilletDisplayEntity(carriedDict, playerId, data)
+            PublishSkillet(dimensionId, blockPos, carriedDict)
             if not IsCreative(playerId):
                 SetCarriedItem(playerId, None)
             blockEntityData["cookTimer"] = COOK_TIMER
@@ -60,11 +62,7 @@ def OnServerSkilletBlockUse(args):
         SetCarriedItem(playerId, cookingDict)
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cookingDict"] = None
-    displayEntityList = blockEntityData["displayEntityList"]
-    if displayEntityList:
-        for entityId in displayEntityList:
-            DestroyEntity(entityId)
-        blockEntityData["displayEntityList"] = None
+        PublishSkillet(dimensionId, blockPos, None)
     blockEntityData["cookTimer"] = COOK_TIMER
 
 
@@ -114,24 +112,19 @@ def OnSkilletTick(args):
     blockEntityData["cookTimer"] -= 1.0
     if blockEntityData["cookTimer"] > 1.0:
         return
+    layersBefore = skilletLayers(cookingDict["count"])
     cookingDict["count"] -= 1
-    displayEntityList = list(blockEntityData["displayEntityList"] or [])
-    # 数量变少后多出来的那几层展示实体删掉（从最上层开始）
-    keep = SkilletDisplayCount(cookingDict["count"])
-    while len(displayEntityList) > keep:
-        DestroyEntity(displayEntityList.pop())
     blockEntityData["cookTimer"] = COOK_TIMER
     output = {"itemName": CanCookedFoodDict[cookingDict["newItemName"]], "auxValue": cookingDict.get("newAuxValue", 0), "count": 1}
     System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 0.3, args["posZ"] + 0.5))
     if cookingDict["count"] <= 0:
-        for entityId in displayEntityList:
-            DestroyEntity(entityId)
-        blockEntityData["displayEntityList"] = None
         blockEntityData["cookingDict"] = None
+        PublishSkillet(dimensionId, blockPos, None)
     else:
         # 改了嵌套字典必须整体回写：只改取回来的字典，区块卸载后数量会恢复原样（刷熟食）
         blockEntityData["cookingDict"] = cookingDict
-        blockEntityData["displayEntityList"] = displayEntityList
+        if skilletLayers(cookingDict["count"]) != layersBefore:
+            PublishSkillet(dimensionId, blockPos, cookingDict)
 
 
 @registerHandler("BlockRemoveServerEvent", match=SKILLET)
@@ -142,8 +135,8 @@ def OnSkilletRemove(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    for entityId in blockEntityData["displayEntityList"] or []:
-        DestroyEntity(entityId)
+    DropLegacyDisplays(blockEntityData)
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
         System.CreateEngineItemEntity(cookingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+    PublishSkillet(dimensionId, blockPos, None)

@@ -13,6 +13,7 @@ import time
 
 from ..EventRegistry import handlerNames
 from ..Helpers.Engine import compFactory, levelId, serverApi, GetBlockEntityData, GetBlockName, ItemPosType
+from ..Helpers import BlockItems
 from ..Helpers.Player import ResetPlayerUsedCD
 from .. import CookingPot, CuttingBoard, Skillet
 from ..BoneMeal import ApplyBoneMeal
@@ -75,6 +76,12 @@ def caseBoneMeal(playerId, base):
     return _result("bone_meal", grew and after in ("arris:cabbages_stage2", "arris:cabbages_stage3"), started, block=after)
 
 
+def _shownItem(payloads, pos):
+    """最后一次广播给这个方块的物品（客户端据此渲染）；没有广播过返回 False。"""
+    found = [p for p in payloads if tuple(p["pos"]) == tuple(pos)]
+    return found[-1]["items"].get("0") if found else False
+
+
 def caseCuttingBoard(playerId, base):
     started = time.time()
     x, y, z, dim = base[0] + 2, base[1], base[2], base[3]
@@ -83,13 +90,16 @@ def caseCuttingBoard(playerId, base):
     args = {"blockName": "arris:cutting_board", "x": x, "y": y, "z": z, "dimensionId": dim, "playerId": playerId, "aux": 0}
     _carry(playerId, "arris:cabbage")
     ResetPlayerUsedCD(playerId)
+    BlockItems.startRecording()
     CuttingBoard.OnServerCuttingBoardBlockUse(dict(args))
     data = GetBlockEntityData(dim, (x, y, z))
-    placed = bool(data and data["cuttingDict"] and data["displayEntityId"])
+    shown = _shownItem(BlockItems.stopRecording(), (x, y, z))
+    placed = bool(data and data["cuttingDict"] and shown and shown.get("newItemName") == "arris:cabbage")
     _carry(playerId, "arris:iron_knife")
     ResetPlayerUsedCD(playerId)
+    BlockItems.startRecording()
     CuttingBoard.OnServerCuttingBoardBlockUse(dict(args))
-    cut = bool(data and not data["cuttingDict"] and not data["displayEntityId"])
+    cut = bool(data and not data["cuttingDict"] and _shownItem(BlockItems.stopRecording(), (x, y, z)) == {})
     return _result("cutting_board", placed and cut, started, placed=placed, cut=cut)
 
 
@@ -100,14 +110,15 @@ def caseSkillet(playerId, base):
     _set((x, y, z), "arris:skillet", dim)
     _carry(playerId, "minecraft:beef", 3)
     ResetPlayerUsedCD(playerId)
+    BlockItems.startRecording()
     Skillet.OnServerSkilletBlockUse({"blockName": "arris:skillet", "x": x, "y": y, "z": z, "dimensionId": dim,
                                      "playerId": playerId, "aux": 0})
+    shown = _shownItem(BlockItems.stopRecording(), (x, y, z))
     data = GetBlockEntityData(dim, (x, y, z))
     cooking = data["cookingDict"] if data else None
-    displays = data["displayEntityList"] if data else None
-    ok = bool(cooking and cooking["count"] == 3 and displays and len(displays) == 2 and data["heatEnable"] is True)
+    ok = bool(cooking and cooking["count"] == 3 and shown and shown.get("count") == 3 and data["heatEnable"] is True)
     _async["skillet"] = {"pos": (x, y, z), "dim": dim, "started": started}
-    return _result("skillet_start", ok, started, count=cooking and cooking["count"], displays=len(displays or []),
+    return _result("skillet_start", ok, started, count=cooking and cooking["count"], shown=shown,
                    heat=data["heatEnable"] if data else None)
 
 
@@ -142,7 +153,7 @@ def caseCuttingBoardStation(playerId, base):
     _carry(playerId, "arris:iron_knife")
     cut = manager.action(playerId, pos, _custom("use", {"mark": 0}))
     gained = _inventoryCount(playerId, "arris:minced_beef") - before
-    cleared = bool(data) and not data["cuttingDict"] and not data["displayEntityId"]
+    cleared = bool(data) and not data["cuttingDict"]
     closed = manager.close(playerId, "self test")
     ok = opened and placed and onBoard == 3 and cut and gained == 6 and cleared and closed
     return _result("cutting_board_station", ok, started, opened=opened, placed=placed, onBoard=onBoard, cut=cut,
@@ -187,12 +198,11 @@ def mcdk_test_collect():
     if skillet:
         data = GetBlockEntityData(skillet["dim"], skillet["pos"])
         cooking = data["cookingDict"] if data else None
-        displays = data["displayEntityList"] if data else None
-        # 每份 6 秒：还在煎时数量应已减少；3 份全煎完时数据与展示实体都应清空
-        finished = data is not None and cooking is None and not displays
-        ok = finished or bool(cooking and cooking["count"] < 3 and len(displays or []) <= 2)
+        # 每份 6 秒：还在煎时数量应已减少；3 份全煎完时数据应清空
+        finished = data is not None and cooking is None
+        ok = finished or bool(cooking and cooking["count"] < 3)
         results.append({"case": "skillet_cooked", "ok": ok, "finished": finished, "count": cooking and cooking["count"],
-                        "displays": len(displays or []), "seconds": int(time.time() - skillet["started"])})
+                        "seconds": int(time.time() - skillet["started"])})
     pot = _async.pop("cooking_pot", None)
     if pot:
         result = compFactory.CreateItem(levelId).GetContainerItem(pot["pos"], CookingPot.RESULT_SLOT, pot["dim"])
