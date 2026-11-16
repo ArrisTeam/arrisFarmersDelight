@@ -4,21 +4,20 @@
     "description": {
       "identifier": "arris:scatter_wild_rice_feature"
     },
-    "iterations": 3,
+    "iterations": 96,
     "x": {
-      "distribution": "gaussian",
-      "extent": [ -8, 8 ]
+      "distribution": "triangle",
+      "extent": [ -7, 7 ]
     },
     "y": {
-      "distribution": "gaussian",
-      "extent": [ -4, 4 ]
+      "distribution": "triangle",
+      "extent": [ -3, 3 ]
     },
     "z": {
-      "distribution": "gaussian",
-      "extent": [ -8, 8 ]
+      "distribution": "triangle",
+      "extent": [ -7, 7 ]
     },
     "coordinate_eval_order": "zyx",
-    "project_input_to_floor": false,
     "places_feature": "arris:wild_rice_feature"
   }
 }
