@@ -30,6 +30,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Sparkle（闪亮沙拉的闪光粒子：哪些阶段冒、概率 0.05 × 份数、冒在哪）
                         Crafting（工作台合成：格子里摆的是哪条配方、实际做了几份、剩余物放回哪）
                         Backstabbing（背刺魔咒：物品上几级、是不是从背后打的、伤害乘多少）
+                        SkilletRules（煎锅照 JE：烹饪时间含火焰附加的换算、手持热源范围、攻击冷却挑音效、耐久磨损、存取煎锅物品、创造拆煎锅记录）
+                        SkilletHandRules（手持煎锅烹饪：右键按住的上报与记录、一次烹饪的计时、滋滋声概率）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
@@ -41,6 +43,8 @@ Server/                 服务端
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
+  SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
+  SkilletHand           手持煎锅烹饪：主手煎锅、副手食物，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
   CropTicks FarmWorld   作物随机刻（照 JE 的生长概率）与它读写世界的那一层；OrganicCompost MushroomColony Straw 同属种植
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
@@ -55,7 +59,8 @@ Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
   Endpoints.py          服务端调用的 4 个客户端端点
-  BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染） Input.py
+  BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
+  Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
   BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
   CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
@@ -245,6 +250,51 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
    官方文档说 `trigger_rate` = 1 时 16 格内几乎每秒触发一次），不合就只调四个方块 JSON 的 `trigger_rate`（`test_gleaming_sparkle.py` 里"概率等于 0.05 × 份数"那条跟着改）。
 6. 无序配方做出整份方块后返回玻璃瓶；砧板一次做多份时 `DishBoard.give` 按堆叠 1 拆开给；创造栏和背包里的方块物品是平面图标（`item_texture`）。
 
+## 煎锅（对照 JE，FD 1.3.4）
+
+JE 数值（SkilletItem / SkilletBlock / SkilletBlockEntity）：铁档（Tiers.IRON）耐久 250、附魔能力 14、修复材料铁锭；攻击修饰符 5.0 + 2.0 = 7
+（加在玩家基础 1 上，实际 8）、攻击速度 4.0 - 3.1 = 0.9、攻击击退 +1；打一下、挖一块磨损 1 点；只有潜行才放成方块；放下去的那件连耐久 / 附魔 / 名字
+存在方块实体里（火焰附加缩短方块煎的时间），拆掉由战利品表原样掉出（创造模式不掉）。一件食物煎多久 = `SkilletBlock.getSkilletCookingTime(营火配方 600 刻, 火焰附加)`：
+float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）。`Shared/Rules/SkilletRules.cookingTicks` 逐位照抄（含 Mth.clamp 的取法，`tests/test_skillet_rules.py`）。
+
+- 物品 JSON（`netease_items_beh/arris_skillet_item.json`）：`custom_item_type: weapon` 才会读 `netease:weapon`（以前没写，攻击 / 附魔能力 / 修复都没生效），
+  `max_damage` 250（基岩版"损伤 > 最大耐久才坏"，与小刀、原版基岩工具同一个约定，不再减一）、`enchantment` 14、`level` 2（网易文档：铁砧用铁锭修）、
+  `attack_damage` 7（取 JE 的修饰符，按"加在玩家基础 1 上"理解，实际 8，待实机核）、提示改成 JE 的"潜行可放置"。
+- 放置：`SkilletItem.OnUseSkilletItem`（`ServerItemUseOnEvent`，优先级 98.5）只有潜行才放，不潜行直接拦下（不让 ItemToBlock 当普通方块物品放，也不取消引擎的 `ret`，
+  右键箱子照样开箱）。放置本身仍调 `ItemToBlock.OnPlaceItemAsBlock`；放好后把那件煎锅（`SkilletRules.storeItem`：名字、附加值、耐久、附魔、提示、额外 ID、用户数据，
+  元组换列表、py2 的 unicode 换 str）记进方块实体数据 `skilletItem`，方块实体还没建好就先挂在待办里，等 `ServerPlaceBlockEntityEvent` 再写。
+- 拆掉：方块的战利品表改成空的（`air_loot.json`），`Skillet.OnSkilletRemove`（`BlockRemoveServerEvent`）调 `SkilletItem.dropStored` 掉出存着的那件；
+  创造模式在 `ServerPlayerTryDestroyBlockEvent` 记一笔（`SkilletRules.BreakMarks`，按位置、5 秒过期），方块真没了时认这笔记录不掉煎锅；
+  没存过的（/setblock、旧存档）掉一把新的。方块的火焰附加读 `skilletItem`，`Skillet._timerStart` 换成倒计时起点（秒数 + 1）。
+- 含水的煎锅（液体层 `GetLiquidBlock` 有水）：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE `cookingTick`）；
+  放非食物仍是"这东西可不能被烹饪……"（JE 先查配方，所以泡着水也先报这句；锅里有东西时同样报）。
+- 手持烹饪（`SkilletHand`）：基岩版没有"按住使用"的服务端事件，由客户端在主手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
+  每 0.2 秒报一次，`RightClickReleaseClientEvent` 报松开（`Client/Input.py` + `SkilletHandRules.HoldReporter`，RPC `SkilletUseHeld`）；服务端按最后一次"按着"的时间判断还按不按着
+  （超过 0.8 秒没消息就当松手）。每次"按着"没有在煎的话就是 JE 的 `use()`：主手煎锅，着火或脚下 3x3x3 有热源（只看方块名，不看营火 / 炉灶点没点着，与 JE 一致），
+  副手食物在 `CanCookedFoodDict`（= JE 营火配方 16 条，补上了海带），头没泡在水里（脚 + 1.62 那一格的液体层）→ 开始；副手没食物 / 不能煎提示"用另一只手拿着原料！"，
+  泡在水里提示"在水里可没法煎啊……"，没热源什么都不说；潜行时不提示（潜行右键方块是放煎锅，JE 那一下不走 `use()`）。按满 6 / 4 / 3 秒做好：副手少 1 件（创造模式也扣，JE 就是这样）、
+  成品进背包（`GiveOrDropItem`，满了掉脚下）、不磨损煎锅；中途松手、换主手物品、掉线什么都不做——食物到做好那一刻才从副手拿走，所以不会丢东西
+  （JE 是开始就拿走、松手放回背包）。按住不放，下一次"按着"的报告接着煎下一件（JE 按住右键每 4 刻重新使用）。滋滋声每刻 1/50（每 0.25 步 9.6%），只发给自己（JE 是本地声音）。
+- 耐久：`ItemDurabilityChangedServerEvent`（`ModServer` 新挂的监听）里 `SkilletRules.wearAfter`：一次磨损超过 1 点就改回 1（基岩版自定义武器打一下磨损 2 点，原版剑 1 点），
+  修复不动，引擎说不能改（`canChange` 假）时不动。**挖方块不另外扣**：引擎对自定义物品挖方块是扣 0 点还是 2 点这里没法核实，加一道脚本扣可能重复，
+  所以交给引擎（扣 2 点时上面的夹取会把它压成 1 点）。
+- 打人：JE 的攻击速度 0.9 次 / 秒、冷却不够伤害变小、击退 +1，基岩版都没有（没有攻击冷却；`DamageEvent` 只能开关击退，`SetMobKnockback` 的方向约定离线核不了，所以没做击退）。
+  只保留 JE 的声音分档：`PlayerAttackEntityEvent` 里按距上次挥煎锅的时间挑 `attack_strong`（够 0.8 × 22.2 刻 ≈ 0.89 秒）或 `attack_weak`（音量 0.8、音调 0.9，
+  `sound_definitions.json` 里补了定义）。JE 里切物品也会重置冷却，这里不管。
+- 没做：JE 的进度条（客户端物品装饰，基岩版画不了）、翻面动作（左键翻面，纯画面）、煎锅里的食物在手上的渲染、同种食物往锅里叠加（`ItemStackHandler.insertItem`，现在锅里有东西就不收了）、
+  `minecraft:lava_cauldron`（基岩版是 `cauldron` 加 `cauldron_liquid` 状态，热源表按方块名，认不出）、含水放置（现在只往空气里放）。
+
+待实机验证（写完这一版时没进过游戏）：
+
+1. 主手煎锅副手生牛肉站在营火旁：按住右键 6 秒后副手少 1 个、背包多 1 个熟牛肉；中途松手什么都没变；松手后不按右键不会自己煎；火焰附加 I / II 是 4 / 3 秒；
+   `RightClickBeforeClientEvent` / `RightClickReleaseClientEvent` / 每 0.2 秒的上报确实到服务端（手柄、触屏"新交互键"也算，经典触屏的长按可能要另外接 `HoldBeforeClientEvent` / `TapOrHoldReleaseClientEvent`）。
+2. 潜行右键方块放出煎锅，不潜行右键不放；放完不会在炉灶边冒"用另一只手拿着原料！"；站在炉灶 / 营火旁右键箱子仍然开箱。
+3. 带附魔、磨损过的煎锅放下再拆，掉出来的还是那一把（耐久、附魔、改名都在）；创造模式拆不掉煎锅；爆炸 / 命令拆会掉。
+4. 煎锅物品的数值：新煎锅打僵尸一下掉 8 点血（`attack_damage` 7 加玩家基础 1；若掉 7 点就改成 8）；打一下耐久只少 1；铁砧用铁锭能修；附魔台能出火焰附加 / 锋利等；
+   3D 手持模型（`attachables/skillet_item.json`）在变成武器类物品后姿势没变。
+5. 放下的煎锅：火焰附加 I / II 煎一件 4 / 3 秒；水能不能流进煎锅所在的格（`GetLiquidBlock` 读到水）——能的话放食物提示、锅里的东西浮出来。
+6. 打人音效：连点是轻击、隔 1 秒再打是重击。
+
 ## 引擎坑（踩过的）
 
 - 方块实体数据（`GetBlockEntityData`）是引擎对象，不是 dict：没有 `.get()`，缺键读出来是 `None`，用 `data["k"] or 缺省值`。
@@ -271,6 +321,9 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 - 服务端取消 `ServerItemUseOnEvent`（`ret`）拦不住客户端接着"使用物品"（吃）：原版南瓜派对着方块按住右键，放下一个之后还会吃掉一个。
   要在客户端 `ClientItemTryUseEvent` 里取消（`Client/Input.py`：准星对着方块时不吃，`CreateCamera.PickFacing()` 的 `type == "Block"`）。
 - QuMod 的 RPC 端点按裸函数名注册：服务端端点一律 `@AllowCall` + `@InjectHttpPlayerId`，玩家身份只认注入的，坐标、维度、背包下标都要校验。
+- `OnScriptTickClient` 这类每帧事件引擎不带参数，处理函数写 `def f(args=None)`（Strata 沙箱 `script inspect` 抓到的）；`ItemPosType`：背包 0、副手 1、主手 2、盔甲 3。
+- Netease 没有"按住使用"的服务端事件（据引擎反编译，武器类物品的 `use` 不会 `startUsingItem`，没实机核），要知道玩家有没有按住右键只能让客户端报告
+  （`RightClickBeforeClientEvent` / `RightClickReleaseClientEvent` + 每帧事件里的心跳，服务端对超时的当松手）。
 
 ## 新增内容的清单
 
