@@ -34,6 +34,35 @@ def _liquid(self, pos, dim=0):
 potfake.Comp.GetLiquidBlock = _liquid
 
 
+def _setBlockNew(self, pos, blockDict, handling=0, dim=0, *rest):
+    """游戏内自检要放方块：煎锅顺带建出方块实体数据。"""
+    fake.world.blocks[(dim, tuple(pos))] = blockDict["name"]
+    if blockDict["name"] == "arris:skillet":
+        fake.blockEntities[(dim, tuple(pos))] = potfake.BEData()
+    return True
+
+
+def _allItems(self, posType, getUserData=False):
+    return copy.deepcopy(fake.world.players[self.owner]["inv"])
+
+
+def _setAllItems(self, changes):
+    for (posType, slot), item in changes.items():
+        fake.world.players[self.owner]["inv"][slot] = copy.deepcopy(item)
+    return True
+
+
+potfake.Comp.SetBlockNew, potfake.Comp.GetPlayerAllItems, potfake.Comp.SetPlayerAllItems = _setBlockNew, _allItems, _setAllItems
+
+
+def exposeManager(manager):
+    """让游戏内自检里的 serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime").getManager() 拿到这个 Manager。"""
+    import sys
+    engine = sys.modules[potfake.PACKAGE + ".Server.Helpers.Engine"]
+    runtime = type("Runtime", (), {"getManager": staticmethod(lambda: manager)})
+    engine.serverApi.ImportModule = lambda name: runtime if name.endswith("Server.Runtime") else None
+
+
 def setup(heated=True, fireAspect=0, creative=False):
     """干净的假世界：一口煎锅（可烧着）、玩家 a（锅北边）和 b（锅东边）；返回 (Manager, 锅的方块实体数据)。"""
     fake.reset()

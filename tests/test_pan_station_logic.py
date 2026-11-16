@@ -398,5 +398,27 @@ def testTheSecondPlayerSeesTheSameSlotAndNothingDuplicates():
     assert updates, "另一位使用者的状态镜像跟着变（pan 槽组绑在方块上）"
 
 
+def testTheInGameSelfTestRunsCleanAgainstTheFakeEngine():
+    """Server/Debug/McdkPanStationTest 是给游戏里的 execute_code 用的；这里用同一套假引擎把它整条跑一遍，至少代码本身没有拼写错误、
+    每一步的预期和离线的行为一致（真引擎里的方块实体、背包、广播还要进游戏跑）。"""
+    manager, _ = P.setup()
+    P.exposeManager(manager)
+    fake.world.players["a"]["pos"] = (10.5, 64.0, 8.5)
+    selftest = P.potfake.load("Server.Debug.McdkPanStationTest")
+    selftest.time = P.potfake.Clock(fake.world)
+    result = selftest.mcdk_test_pan_station()
+    assert result["ok"], result
+    assert result["checks"]["library_cannot_take"] and result["checks"]["tossed_once"] and result["checks"]["taken"] and result["checks"]["save_shape"]
+
+
+def testTheSelfTestSkipsWithoutThePrerequisite():
+    manager, _ = P.setup()
+    import sys
+    engine = sys.modules[P.potfake.PACKAGE + ".Server.Helpers.Engine"]
+    engine.serverApi.ImportModule = lambda name: None
+    selftest = P.potfake.load("Server.Debug.McdkPanStationTest")
+    assert selftest.mcdk_test_pan_station() == {"case": "pan_station", "ok": True, "skipped": "diegesis not installed or no player"}
+
+
 if __name__ == "__main__":
     raise SystemExit(P.dgtest.run(globals()))
