@@ -115,7 +115,8 @@ def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensi
         System.CreateEngineItemEntity({"newItemName": name, "newAuxValue": aux, "count": count}, dimensionId,
                                       (x + 0.5, y + 0.5, z + 0.5))
     ToAllPlayerPlaySound(dimensionId, blockPos, "ambient.cutting_board.knife")
-    SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
+    if not CuttingStation.ignoresWear(carriedDict):          # "耐久"附魔免掉的这一下不磨（JE 的 hurtAndBreak）
+        SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
     left = (cuttingDict.get("count") or 1) - 1
     if left > 0:
         cuttingDict["count"] = left

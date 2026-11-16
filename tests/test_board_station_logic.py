@@ -8,6 +8,8 @@ theTopLayerComesBack、aToolIsStuckIntoTheBoardFromTheStation、whatTheHandHeldS
 """
 from __future__ import print_function
 
+import random
+
 import dgtest
 import boardkit as K
 from boardkit import fake
@@ -236,6 +238,41 @@ def testAKnifeThatBreaksStopsTheBatchAndLeavesItsSlotEmpty():
     assert K.board(data) == (CABBAGE, 7) and K.count("arris:cabbage_leaf") == 10, "刀还剩 5 次：只切 5 个"
     assert _inv(7) is None, "刀坏了，那一格是空的（产物没有落进去被盖掉）"
     assert len([c for c in fake.calls if c[1] == "OnPlaySound"]) >= sounds + 2, "刀声和破碎声"
+
+
+def _unbreaking(slot, level, picks):
+    """背包第 slot 格的刀带上"耐久"附魔；picks 是耐久附魔掷骰子的结果（换掉 random.randint）。"""
+    fake.world.players["a"]["inv"][slot]["enchantData"] = [(17, level)]
+    saved = random.randint
+    random.randint = lambda low, high: picks(low, high)
+    return saved
+
+
+def testAnUnbreakingKnifeCutsPastItsDurabilityAndLosesNoneOfIt():
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, CABBAGE, 12)
+    _knife(7, 5)
+    saved = _unbreaking(7, 3, lambda low, high: high)               # 每一下都免磨
+    try:
+        assert _chop(manager, 0)
+    finally:
+        random.randint = saved
+    assert K.board(data) is None and K.count("arris:cabbage_leaf") == 24, "耐久只剩 5 的刀把 12 个都切了"
+    assert _inv(7)["durability"] == 5, "一点没磨"
+
+
+def testAnUnbreakingKnifeStillBreaksWhenTheRollsSayWear():
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, CABBAGE, 12)
+    _knife(7, 5)
+    saved = _unbreaking(7, 3, lambda low, high: low)                # 每一下都要磨
+    try:
+        assert _chop(manager, 0)
+    finally:
+        random.randint = saved
+    assert K.board(data) == (CABBAGE, 7) and K.count("arris:cabbage_leaf") == 10 and _inv(7) is None, "和没有附魔一样：切 5 个、刀坏了"
 
 
 def testCreativeModeWearsNothing():

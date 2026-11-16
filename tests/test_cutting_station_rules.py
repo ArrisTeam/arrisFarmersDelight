@@ -3,6 +3,8 @@
 """切菜板站点的规则适配（Shared/Rules/CuttingStation.py）：真实配方表上的刀口计划、工具判定、整批产物。"""
 from __future__ import print_function
 
+import random
+
 import fdtest
 
 Rules = fdtest.load("Shared.Rules.CuttingStation")
@@ -76,13 +78,52 @@ def testToolsFollowJava():
 
 def testChanceOutputsAndFortune():
     cabbages = _recipe("arris:wild_cabbages")
-    rolls = iter([0.1, 0.9, 0.4, 0.6])
-    assert Rules.resultsFor(cabbages, 4, roll=lambda: next(rolls)) == [("arris:cabbage_seeds", 0, 4), ("minecraft:yellow_dye", 0, 4)]
+    rolls = [0.1, 0.9, 0.4, 0.6]
+    assert Rules.resultsFor(cabbages, 2, roll=lambda: rolls.pop(0)) == [("arris:cabbage_seeds", 0, 2), ("minecraft:yellow_dye", 0, 2)],         "每件切出的 2 个染料各掷一次：4 次里中 2 次 = 2 个（JE ChanceResult.rollOutput）"
     assert Rules.resultsFor(cabbages, 2, roll=lambda: 0.55, fortune=1) == [("arris:cabbage_seeds", 0, 2), ("minecraft:yellow_dye", 0, 4)]
     assert Rules.resultsFor(cabbages, 2, roll=lambda: 0.55) == [("arris:cabbage_seeds", 0, 2)], "一个都没掷中的不列"
     assert Rules.fortuneOf({"enchantData": [(9, 1), (18, 3)]}) == 3 and Rules.fortuneOf({}) == 0 and Rules.fortuneOf(None) == 0
     planks = _recipe("minecraft:wooden_door")["itemList"][0]
     assert planks == {"itemName": "minecraft:oak_planks", "count": 1, "chance": 0.75}
+
+
+def testEachItemOfAChanceResultIsRolledOnItsOwn():
+    # 数量 2、概率 50% 的染料：切一件得 0 / 1 / 2 个，大约 25 / 50 / 25%（以前是 0 或 2 各一半）
+    dye = _recipe("arris:wild_cabbages")["itemList"][1]
+    assert dye["count"] == 2 and dye["chance"] == 0.5
+    rng = random.Random(20261117)
+    seen = {}
+    for _ in range(2000):
+        got = Rules.countOf(dye, 1, roll=rng.random)
+        seen[got] = seen.get(got, 0) + 1
+    assert sorted(seen) == [0, 1, 2], seen
+    assert 800 < seen[1] < 1200 and 350 < seen[0] < 650 and 350 < seen[2] < 650, seen
+    assert Rules.countOf({"count": 2}, 5) == 10 and Rules.countOf({"count": 3, "chance": 1.0}, 2) == 6, "没有概率的照旧每件都给"
+    assert Rules.countOf(dye, 3, roll=lambda: 0.99, fortune=5) == 6, "时运加成封顶 100%：每一个都中"
+
+
+def testUnbreakingSkipsSomeWearAndTheBatchStopsWhenTheToolBreaks():
+    assert Rules.unbreakingOf({"enchantData": [(9, 1), (17, 3)]}) == 3 and Rules.unbreakingOf({}) == 0 and Rules.unbreakingOf(None) == 0
+    assert Rules.wearFor(12, 5) == (5, 5), "没有附魔：磨一件少一点耐久，耐久用完批就停"
+    assert Rules.wearFor(40, None) == (Rules.BATCH, 0), "创造模式 / 不会坏的工具：整批 16 件，不磨"
+    assert Rules.wearFor(3, 100) == (3, 3)
+    assert Rules.wearFor(0, 5) == (0, 0) and Rules.wearFor(5, 0) == (0, 0)
+    picks = [0, 1, 2, 0, 0]                # 等级 2：取到 0 才磨（1 / 3），1、2 是免掉的（2 / 3）
+    assert Rules.wearFor(12, 3, 2, pick=lambda low, high: picks.pop(0)) == (5, 3), "耐久 3 的刀在第 5 件上坏了：磨 3 次、切 5 件"
+    assert not picks
+    assert Rules.wearFor(12, 5, 3, pick=lambda low, high: high) == (12, 0), "每一下都免磨：12 件切完，耐久没动"
+    asked = []
+    assert Rules.wearFor(2, 5, 0, pick=lambda low, high: asked.append(1) or 0) == (2, 2) and not asked, "没有附魔不掷骰子"
+
+
+def testTheUnbreakingRollIsLevelOverLevelPlusOne():
+    knife = {"enchantData": [(17, 2)]}
+    assert Rules.ignoresWear(knife, pick=lambda low, high: 1) and Rules.ignoresWear(knife, pick=lambda low, high: 2)
+    assert not Rules.ignoresWear(knife, pick=lambda low, high: 0)
+    assert not Rules.ignoresWear({}, pick=lambda low, high: 5) and not Rules.ignoresWear(None), "没有附魔总是磨"
+    rng = random.Random(7)
+    freed = sum(1 for _ in range(3000) if Rules.ignoresWear(knife, pick=rng.randint))
+    assert 1850 < freed < 2150, freed         # 2 / 3
 
 
 def testPickToolPrefersTheHandThenOffhandThenInventory():

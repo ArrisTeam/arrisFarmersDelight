@@ -5,8 +5,8 @@
 - 板上有东西、刀口序号正好是下一个、离上一刀不到 0.15 秒（3 刻）的拒绝（refused，客户端据此撤回画好的切口）；间隔从这一刻起算，工具不对也算；
 - 刀是光标栈上切得了的，光标栈空着就是背包里第一个切得了的（BoardTools.findTool），找不到也拒绝；
 - 不是最后一刀：发 chopped {at, spot, angle, tool, item}，所有人听到刀声；
-- 最后一刀：重布刀口，整叠最多 16 件一件件切（每件结算一次产物、磨损一次工具，不超过工具的剩余耐久），工具那一格先写回、产物后给厨师，
-  板上剩下的留着；发 chopped 多带 count / done。创造模式不磨损。
+- 最后一刀：重布刀口，整叠最多 16 件一件件切（每件结算一次产物、磨损一次工具，"耐久"附魔免掉的不磨，磨到工具坏了批就停），
+  工具那一格先写回、产物后给厨师，板上剩下的留着；发 chopped 多带 count / done。创造模式不磨损。
 """
 import time
 
@@ -14,7 +14,6 @@ from . import BoardGive, BoardTools
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.Player import IsCreative
 from ...Shared.Rules import CuttingStation as Rules
-from ...Shared.Rules.HandsOn import Cutting
 
 KNIFE_SOUND = "ambient.cutting_board.knife"
 YAWS = (0, 90, 180, 270)
@@ -67,12 +66,12 @@ def chop(logic, playerId, data):
 def _cutTheStack(logic, playerId, item, where, tool, look):
     """最后一刀（506-522）：整叠最多 16 件一起切开。"""
     wears = not IsCreative(playerId) and BoardTools.maxDurability(tool) > 0
-    batch = Cutting.batchSize(item["count"], BoardTools.usesLeft(tool) if wears else None)
+    batch, spent = Rules.wearFor(item["count"], BoardTools.usesLeft(tool) if wears else None, Rules.unbreakingOf(tool))
     if batch <= 0:
         return refuse(logic)
     pieces = Rules.resultsFor(logic.recipe, batch, fortune=Rules.fortuneOf(tool))
     if wears:
-        worn, broke = BoardTools.worn(tool, batch)
+        worn, broke = BoardTools.worn(tool, spent)
         BoardGive.writeTool(logic, playerId, where, worn, broke)
     for name, aux, count in pieces:
         BoardGive.give(logic, {"newItemName": name, "newAuxValue": aux, "count": count})

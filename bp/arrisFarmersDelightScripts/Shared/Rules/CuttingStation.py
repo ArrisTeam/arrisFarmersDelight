@@ -6,7 +6,8 @@ HoD 的切法规则在 HandsOn/Cutting.py；这里只做农夫乐事配方表（
   面团切面条，卷切等宽片，其余横切；
 - 工具判定照 JE，经典玩法同一套（fitsTool）：配方列出的工具、配方要求的物品类型（斧 / 镐 / 锹 / 锄）；
   刀切的配方另认任何刀（带 arris:knife 标签的下游刀），别的配方刀不行（JE 的原木要斧头削）；
-- 带 chance 的产物每切一件掷一次（JE 的 ChanceResult），工具上每级时运加 FORTUNE_BONUS；
+- 带 chance 的产物每切一件、产物的每一个都各掷一次（JE 的 ChanceResult.rollOutput），工具上每级时运加 FORTUNE_BONUS；
+  工具每切一件磨一点耐久，"耐久"附魔每级让磨损有 level / (level + 1) 的概率免掉（JE 的 hurtAndBreak -> ItemStack.hurt）；
 - 板上能放一整叠（物品的最大堆叠，BoardStation.BOARD_MAX）；最后一刀切透其中的 BATCH（= HoD 一刀切透的整批 16）件，件数受工具剩余耐久限制。
 """
 import random
@@ -17,7 +18,8 @@ from .HandsOn import Cutting
 STATION_ID = "arris:cutting_board"
 BOARD_BLOCKS = ["arris:cutting_board"]   # 站点绑定的方块（两端共用同一个列表；附属包的砧板追加到这里）
 BATCH = Cutting.BATCH            # 最后一刀一次切透的件数
-FORTUNE_ID = 18                  # 时运的附魔编号（网易 EnchantType）
+FORTUNE_ID = 18                  # 时运的附魔编号（网易 EnchantType.MiningLoot）
+UNBREAKING_ID = 17               # 耐久的附魔编号（EnchantType.MiningDurability，在时运前面一个）
 FORTUNE_BONUS = 0.1              # JE 配置 cuttingBoardFortuneBonus：每级时运给有概率的产物加 10%
 # HoD 的 cut_in_wedges 标签：各种派、蛋糕、披萨、奶酪轮，还有南瓜和西瓜（南瓜 4 片 = 2 刀楔形，西瓜 9 片 = 3 刀楔形）
 _WEDGE_WORDS = frozenset(("pie", "cake", "cheesecake", "pizza", "tart", "quiche", "pumpkin", "melon"))
@@ -69,22 +71,52 @@ def fitsTool(itemName, itemType, recipe, isKnife):
     return isKnifeRecipe(recipe) and bool(isKnife(itemName))
 
 
-def fortuneOf(item):
-    """工具上时运的等级（物品字典的 enchantData：[(附魔编号, 等级), ...]），没有是 0。"""
+def enchantLevel(item, enchantId):
+    """工具上某个附魔的等级（物品字典的 enchantData：[(附魔编号, 等级), ...]），没有是 0。"""
     for entry in (item or {}).get("enchantData") or ():
-        if entry and len(entry) >= 2 and int(entry[0]) == FORTUNE_ID:
+        if entry and len(entry) >= 2 and int(entry[0]) == enchantId:
             return int(entry[1])
     return 0
 
 
+def fortuneOf(item):
+    return enchantLevel(item, FORTUNE_ID)
+
+
+def unbreakingOf(item):
+    return enchantLevel(item, UNBREAKING_ID)
+
+
+def ignoresWear(item, pick=None):
+    """这一下切要不要免磨损（"耐久"附魔：每级让磨损有 level / (level + 1) 的概率免掉，JE 的 shouldIgnoreDurabilityDrop：
+    random.nextInt(level + 1) > 0）。没有附魔就总是磨。pick(0, level) 取 0..level 的整数，测试里可以换掉。"""
+    level = unbreakingOf(item)
+    return level > 0 and (pick or random.randint)(0, level) > 0
+
+
+def wearFor(count, left, level=0, pick=None):
+    """板上有 count 件、工具还剩 left 点耐久（None 是不磨损：创造模式、不会坏的工具）、耐久附魔 level 级，最后一刀这一批：
+    (切了几件, 磨掉几点耐久)。一件一件切，每件磨一点（免磨的不磨）；耐久磨到 0 刀就坏了，批在那里停（BoardLogic.chop 的循环）。"""
+    most = min(BATCH, max(0, int(count)))
+    if left is None:
+        return most, 0
+    done = spent = 0
+    while done < most and left - spent > 0:
+        done += 1
+        if level <= 0 or (pick or random.randint)(0, level) == 0:
+            spent += 1
+    return done, spent
+
+
 def countOf(entry, batch, roll=random.random, fortune=0):
-    """一种产物切 batch 件得几个：没有 chance 的每件都给；有 chance 的每件各掷一次（时运每级加 FORTUNE_BONUS）。"""
+    """一种产物切 batch 件得几个：没有 chance 的每件都给；有 chance 的每件的每一个各掷一次（时运每级加 FORTUNE_BONUS）：
+    JE 的 ChanceResult.rollOutput 对数量 n 的产物循环 n 次、每次没掷中就少一个，所以数量 2、概率 50% 的染料是 0 / 1 / 2 个（25 / 50 / 25%），不是 0 或 2。"""
     each = entry.get("count", 1)
     chance = entry.get("chance")
     if chance is None or chance >= 1.0:
         return each * batch
     hit = min(1.0, float(chance) + fortune * FORTUNE_BONUS)
-    return each * sum(1 for _ in range(batch) if roll() < hit)
+    return sum(1 for _ in range(each * batch) if roll() < hit)
 
 
 def pickTool(candidates, recipe, isKnife, itemTypeOf):
