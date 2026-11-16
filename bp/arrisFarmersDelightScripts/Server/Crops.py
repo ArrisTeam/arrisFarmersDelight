@@ -2,7 +2,8 @@
 """Crops - 作物：下方没了就掉落、种水稻、蘑菇放上有机肥 / 沃土、采摘番茄 / 卷心菜叶（服务端）
 
 随机刻生长见 Server/CropTicks.py，骨粉见 Server/BoneMeal.py，沃土 / 沃土耕地见 Server/RichSoil.py，
-野生作物见 Server/WildCrops.py。有机肥、蘑菇菌落、刀收稻草三个模块没有别处引用，在文件末尾导入即登记。
+蘑菇菌落见 Server/MushroomColony.py，野生作物见 Server/WildCrops.py。随机刻生长、有机肥（OrganicCompost）、
+刀收稻草（Straw）三个模块没有别处引用，在文件末尾导入即登记。
 """
 import random
 
@@ -173,5 +174,5 @@ def OnRiceUse(args):
         ApplyBoneMeal(playerId, carriedDict, args["blockName"], (args["x"], args["y"], args["z"]), args["dimensionId"])
 
 
-# 这三个模块没有别处引用，在这里导入即登记
+# 随机刻生长、有机肥、刀收稻草：没有别处引用，在这里导入即登记
 from . import CropTicks, OrganicCompost, Straw  # noqa: E402,F401
