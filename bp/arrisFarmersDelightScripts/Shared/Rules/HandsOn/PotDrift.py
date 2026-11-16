@@ -76,6 +76,14 @@ class PotDrift(object):
         """第 slot 格空了：取消它的到达（PotBehavior.java:725-727）。"""
         self.arrivals.clear(slot)
 
+    def more(self, slot, busy):
+        """第 slot 格里又放进了同种的、会沉的东西：见 Arrivals.more。busy：这格的手正忙着。"""
+        self.arrivals.more(slot, self.events, busy)
+
+    def handDone(self, slot):
+        """第 slot 格的手走完了：排着队的还有就再来一次，见 Arrivals.handDone。"""
+        self.arrivals.handDone(slot, self.events)
+
     def setFacing(self, facing):
         """场景朝向变了（换了个人从另一边打开）：圈跟着反转同样的角度，料留在世界里原来的位置。facing：度。对应 PotBehavior.java:1283-1288。"""
         if facing != self.shownFacing:

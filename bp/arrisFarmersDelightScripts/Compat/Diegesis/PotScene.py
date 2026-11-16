@@ -81,6 +81,8 @@ class PotScene(object):
         if arrived:
             starts = self.startsOf(len(arrived)) if self.startsOf is not None and len(arrived) > 1 else None
             self.drift.arrive(arrived, starts, [slot in look.sunk for slot in arrived])
+        for slot in PotLookState.grewBetween(old, look):         # 第二个蛋叠进第一个的格子：照样再来一只手
+            self.drift.more(slot, slot in self.hands.going)
         self._retarget(PotLookState.progressAt(look, self.clock))
         if old is None:
             self.liquid.snap(self._amount())  # 刚看到这口锅：水不从锅底涨上来

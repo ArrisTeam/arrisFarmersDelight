@@ -90,6 +90,7 @@ class PotHands(object):
                     self._event(entry, event, dt, near)
                 self._drop(entry)
                 del self.going[slot]
+                scene.drift.handDone(slot)        # 手忙着时又放进来的：再来一只
 
     def clear(self):
         for entry in self.going.values():

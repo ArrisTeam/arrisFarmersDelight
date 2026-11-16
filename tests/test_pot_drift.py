@@ -369,6 +369,38 @@ def testSinkersPourWhenTheirTurnComes():
     assert drift.events == [(D.EVENT_LANDED, 0)]
 
 
+def testAnotherOfTheSameSinkerGetsItsOwnHandAndNeverGetsLost():
+    # PotBehavior.java:757-763（more / again）、1428-1431：手闲着马上再来一只，忙着就排队，走完再来；手忙着时又放了几回就来几只
+    drift = D.PotDrift()
+    drift.more(0, False)
+    assert drift.events == [(D.EVENT_POUR, 0)], "手闲着：马上再来一只"
+    del drift.events[:]
+    drift.more(0, True)
+    drift.more(0, True)
+    assert drift.events == [] and drift.arrivals.again[0] == 2, "手忙着：排着，不丢"
+    drift.handDone(0)
+    assert drift.events == [(D.EVENT_POUR, 0)] and drift.arrivals.again[0] == 1
+    del drift.events[:]
+    drift.handDone(0)
+    assert drift.events == [(D.EVENT_POUR, 0)] and drift.arrivals.again[0] == 0
+    del drift.events[:]
+    drift.handDone(0)
+    assert drift.events == [], "排的队走完了：手走完就是走完了"
+
+
+def testAStackThatIsStillWaitingForItsTurnQueuesToo():
+    drift = D.PotDrift()
+    drift.arrive([0, 1], starts=[None, None], sinking=[True, True])
+    assert drift.arrivals.waiting(1)
+    del drift.events[:]
+    drift.more(1, False)
+    assert drift.events == [] and drift.arrivals.again[1] == 1, "还在等轮到自己：当手忙着"
+    drift.clear(1)
+    assert drift.arrivals.again[1] == 0, "格子空了：排着队的也不来了（PotBehavior.java:734）"
+    drift.handDone(1)
+    assert drift.events == []
+
+
 def testFlightCurveIsThePrintedOne():
     arrivals = A.Arrivals(6)
     events = []

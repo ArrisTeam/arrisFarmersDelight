@@ -45,10 +45,26 @@ class Arrivals(object):
         self.startX = [0.0] * slots
         self.startZ = [0.0] * slots
         self.sinking = [False] * slots
+        self.again = [0] * slots          # 手忙着时又放进来的次数：手走完再来一次（PotBehavior 的 again）
 
     def clear(self, slot):
-        """这格空了（或安静地重画）：不再到达（PotBehavior.java:725-727）。"""
+        """这格空了（或安静地重画）：不再到达，排着队的手也不来了（PotBehavior.java:725-727、734）。"""
         self.arriving[slot] = False
+        self.again[slot] = 0
+
+    def more(self, slot, events, busy):
+        """这格里又放进了同种的、会沉的东西（个数涨了）：手还忙着（busy）、或这一格还在等轮到，就记一次，手走完再来一次；否则马上来一次
+        （PotBehavior.java:757-763 的 again / splashIn）。一次放进来多个算一次手；手忙着时又放了几回就排几次，不丢。"""
+        if busy or self.waiting(slot):
+            self.again[slot] += 1
+        else:
+            events.append((EVENT_POUR, slot))
+
+    def handDone(self, slot, events):
+        """这格的手走完了：排着队的还有就再来一次（PotBehavior.java:1428-1431）。"""
+        if self.again[slot] > 0:
+            self.again[slot] -= 1
+            events.append((EVENT_POUR, slot))
 
     def waiting(self, slot):
         """还在等轮到自己：Java 这时料已经画在圈里的位置上，只是不能点（setEnabled(false)）。"""

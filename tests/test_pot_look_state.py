@@ -59,6 +59,19 @@ def testArrivalsAndRemovalsBetweenTwoLooks():
     assert State.arrivedBetween(None, new) == [] and State.emptiedBetween(None, new) == [], "刚看到的锅：料本来就在里面"
 
 
+def testASinkersStackGrowingIsPickedOutBetweenTwoLooks():
+    # PotBehavior.java:721-723：sinks(now) && isSameItem(now, shown[i]) && now.getCount() > shown[i].getCount()
+    def items(egg, sugar, tomato):
+        return [_item("minecraft:egg", egg), _item("minecraft:sugar", sugar), _item("arris:tomato", tomato), {}, {}, {}]
+    old = State.decode(_payload(items=items(1, 2, 3), sunk=[0, 1]), 0.0)
+    assert State.grewBetween(old, State.decode(_payload(items=items(2, 2, 5), sunk=[0, 1]), 1.0)) == [0], "糖没变；番茄浮着，叠多了没有动作"
+    assert State.grewBetween(old, State.decode(_payload(items=items(1, 2, 3), sunk=[0, 1]), 1.0)) == []
+    assert State.grewBetween(old, State.decode(_payload(items=items(1, 1, 3), sunk=[0, 1]), 1.0)) == [], "少了不算"
+    other = State.decode(_payload(items=[_item("minecraft:sugar", 9)] + items(1, 2, 3)[1:], sunk=[0, 1]), 1.0)
+    assert State.grewBetween(old, other) == [], "换成了别的东西：不是叠上去的"
+    assert State.grewBetween(None, old) == [], "刚看到的锅：什么都不算"
+
+
 def testProgressIsExtrapolatedBetweenUpdates():
     look = State.decode(_payload(), 10.0)
     assert abs(State.progressAt(look, 12.0) - 0.45) < 1.0e-9

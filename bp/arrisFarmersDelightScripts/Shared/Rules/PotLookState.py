@@ -102,6 +102,20 @@ def arrivedBetween(old, new):
     return [slot for slot in range(SLOTS) if old.items[slot] is None and new.items[slot] is not None]
 
 
+def grewBetween(old, new):
+    """从 old 到 new 个数涨了的下锅就沉的格子（同一种、数量多了：第二个蛋叠在第一个的格子里）。old 为 None 时一个都不算。
+    会沉的才算（PotBehavior.refresh 的 sinks(now) && isSameItem && count 涨了）：浮着的料叠多了没有任何动作。"""
+    if old is None:
+        return []
+    grown = []
+    for slot in range(SLOTS):
+        before, now = old.items[slot], new.items[slot]
+        if before is not None and now is not None and slot in new.sunk and (before["newItemName"], before["newAuxValue"]) == (
+                now["newItemName"], now["newAuxValue"]) and now["count"] > before["count"]:
+            grown.append(slot)
+    return grown
+
+
 def emptiedBetween(old, new):
     """从 old 到 new 被拿空的格子。"""
     if old is None:
