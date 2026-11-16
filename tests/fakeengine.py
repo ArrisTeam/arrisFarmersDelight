@@ -169,6 +169,9 @@ class FakeWorld(object):
     def _Pos(self, target):
         return {"GetFootPos": lambda: self.players[target]["pos"] if target in self.players else self.entities[target].get("pos", (5.5, 64.0, 5.5))}
 
+    def _Rot(self, target):
+        return {"GetRot": lambda: (self.entities.get(target) or {}).get("rot", (0.0, 0.0))}
+
     def _Dimension(self, target):
         return {"GetEntityDimensionId": lambda: DIMENSION}
 

@@ -1,0 +1,10 @@
+{
+    "netease:enchant": {
+        "identifier": "arris:backstabbing",
+        "description": "enchantment.arris.backstabbing",
+        "primary_slots": ["sword"],
+        "cost": [15, 24, 33],
+        "frequency": "uncommon",
+        "max_level": 3
+    }
+}
