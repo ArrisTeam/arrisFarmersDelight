@@ -136,13 +136,15 @@ def madeOf(playerId, dishName):
     cache = _made.get(playerId)
     if cache is None:
         raw = compFactory.CreateExtraData(playerId).GetExtraData(MADE_KEY)
-        cache = _made[playerId] = dict(raw) if isinstance(raw, dict) else {}
+        cache = _made[playerId] = {}
+        if isinstance(raw, dict):
+            cache.update((PotContainer.plain(name), done) for name, done in raw.items())     # 写回去的键得是 str
     return int(cache.get(dishName) or 0)
 
 
 def addMade(playerId, dishName, count):
     total = madeOf(playerId, dishName) + count
-    _made[playerId][dishName] = total
+    _made[playerId][PotContainer.plain(dishName)] = total
     compFactory.CreateExtraData(playerId).SetExtraData(MADE_KEY, dict(_made[playerId]))
     return total
 

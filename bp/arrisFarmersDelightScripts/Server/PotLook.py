@@ -51,7 +51,7 @@ def attend(dimensionId, blockPos, users):
 def _wire(item):
     if not item or (item.get("count") or 0) <= 0 or not item.get("newItemName"):
         return {}
-    return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": item["count"]}
+    return {"newItemName": PotContainer.plain(item["newItemName"]), "newAuxValue": item.get("newAuxValue") or 0, "count": item["count"]}
 
 
 def _signature(wire):

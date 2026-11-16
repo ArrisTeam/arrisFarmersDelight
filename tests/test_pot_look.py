@@ -78,6 +78,15 @@ def testTheMirrorLeavesOutTheEmptyPartsAndKeepsTheSixItemCells():
     assert "dish" not in mirror and "served" not in mirror and _emptyParts(mirror) == []
 
 
+def testTheNamesInTheMirrorAndThePayloadAreAlwaysPlainStrings():
+    manager, data = K.setup()
+    _watched()
+    data["previewItemSlot"] = [{"newItemName": u"arris:tomato_sauce", "newAuxValue": 0, "count": 2}]    # py2：读回来的可能是 unicode
+    K.run(manager, 0.5)
+    for meal in (data["potLook"]["meal"], _looks()[-1][1]["meal"]):
+        assert meal == {"newItemName": SAUCE, "newAuxValue": 0, "count": 2} and type(meal["newItemName"]) is str
+
+
 def testTheMirrorFollowsEveryChangeOfTheStaticPart():
     manager, data = K.setup()
     _watched()

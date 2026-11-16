@@ -230,5 +230,23 @@ def testStirringCanBeSwitchedOffAndTheFoodTheCookPutInCooksByItself():
         _restore(before)
 
 
+def testNamesThatGoIntoTheBlockEntityDataOrTheExtraDataAreAlwaysPlainStrings():
+    manager, data = K.setup()
+    unicodeName = u"arris:tomato_sauce"                 # py2：引擎读回来的字符串可能是 unicode，写回去引擎只打日志、不存
+    K.PotContainer.addUsed(data, unicodeName, 2)
+    data["potUsed"] = dict([(unicodeName, 2)])
+    K.PotContainer.addUsed(data, SAUCE, 1)
+    assert data["potUsed"] == {SAUCE: 3} and [type(name) for name in data["potUsed"]] == [str]
+    HandCooking.addMade("a", unicodeName, 3)
+    saved = fake.extra[("a", HandCooking.MADE_KEY)]
+    assert saved == {SAUCE: 3} and [type(name) for name in saved] == [str]
+    fake.extra[("b", HandCooking.MADE_KEY)] = {unicodeName: 5}       # 存档里读回来的
+    assert HandCooking.madeOf("b", SAUCE) == 5
+    HandCooking.addMade("b", SAUCE, 1)
+    assert fake.extra[("b", HandCooking.MADE_KEY)] == {SAUCE: 6}
+    assert [type(name) for name in fake.extra[("b", HandCooking.MADE_KEY)]] == [str], "读回来的 unicode 键写回去前也转成 str"
+    assert type(K.PotContainer.plain(unicodeName)) is str and K.PotContainer.plain(SAUCE) == SAUCE
+
+
 if __name__ == "__main__":
     raise SystemExit(dgtest.run(globals()))

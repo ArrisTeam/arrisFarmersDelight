@@ -19,6 +19,12 @@ USED_KEY = "potUsed"
 
 
 _maxStacks = {}      # (物品名, aux) -> 堆叠上限：运行中不会变，锅每步都要问
+_TEXT = type(u"")    # py2 的 unicode；py3 里就是 str
+
+
+def plain(text):
+    """要写进方块实体数据或玩家 ExtraData 的名字转成 str：值和键是 py2 的 unicode 时引擎只打日志、不存（见 Engine.py 的说明）。"""
+    return text.encode("utf-8") if _TEXT is not str and isinstance(text, _TEXT) else text
 
 
 def maxStackOf(itemName, auxValue=0):
@@ -125,8 +131,8 @@ def cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItemList, 
 
 def addUsed(blockEntityData, resultName, times):
     """记下这道菜又煮了 times 份（FD 的 usedRecipeTracker；整体回写才会存档）。"""
-    used = dict(blockEntityData[USED_KEY] or {})
-    used[resultName] = used.get(resultName, 0) + times
+    used = dict((plain(name), count) for name, count in (blockEntityData[USED_KEY] or {}).items())
+    used[plain(resultName)] = used.get(plain(resultName), 0) + times
     blockEntityData[USED_KEY] = used
 
 
