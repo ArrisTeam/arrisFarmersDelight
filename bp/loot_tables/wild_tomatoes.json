@@ -1,68 +1,70 @@
 {
     "pools": [
         {
-            "entries": [
+            "rolls": 1,
+            "conditions": [
                 {
-                    "functions": [
-                        {
-                            "count": {
-                                "max": 1,
-                                "min": 1
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
-                        }
-                    ],
-                    "name": "arris:tomato_seeds",
-                    "type": "item",
-                    "weight": 1
+                    "condition": "random_chance",
+                    "chance": 0.2
                 }
             ],
-            "rolls": 1
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:tomato",
+                    "functions": [
+                        {
+                            "function": "set_count",
+                            "count": 0,
+                            "conditions": [
+                                {
+                                    "condition": "match_tool",
+                                    "item": "minecraft:shears",
+                                    "count": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         },
         {
+            "rolls": 1,
             "entries": [
                 {
+                    "type": "item",
+                    "name": "arris:tomato_seeds",
                     "functions": [
                         {
-                            "count": {
-                                "max": 1,
-                                "min": 1
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
+                            "function": "set_count",
+                            "count": 0,
+                            "conditions": [
+                                {
+                                    "condition": "match_tool",
+                                    "item": "minecraft:shears",
+                                    "count": 1
+                                }
+                            ]
                         }
-                    ],
-                    "name": "arris:tomato",
-                    "type": "item",
-                    "weight": 2
-                },
+                    ]
+                }
+            ]
+        },
+        {
+            "rolls": 1,
+            "conditions": [
                 {
-                    "functions": [
-                        {
-                            "count": {
-                                "max": 0,
-                                "min": 0
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
-                        }
-                    ],
-                    "name": "minecraft:apple",
-                    "type": "item",
-                    "weight": 8
+                    "condition": "match_tool",
+                    "item": "minecraft:shears",
+                    "count": 1
                 }
             ],
-            "rolls": 1
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:wild_tomatoes"
+                }
+            ]
         }
     ]
 }

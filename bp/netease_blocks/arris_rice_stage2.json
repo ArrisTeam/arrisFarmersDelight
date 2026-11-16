@@ -12,7 +12,7 @@
                 "value": 0.0
             },
             "minecraft:loot": {
-                "table": "loot_tables/wild_rice.json"
+                "table": "loot_tables/rice_crop.json"
             },
             "netease:aabb": {
                 "clip": {

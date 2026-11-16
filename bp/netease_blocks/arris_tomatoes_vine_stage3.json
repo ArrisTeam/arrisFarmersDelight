@@ -9,7 +9,7 @@
                 "emission": 0
             },
             "minecraft:loot": {
-                "table": "loot_tables/mature_tomatoes.json"
+                "table": "loot_tables/mature_tomato_vines.json"
             },
             "netease:aabb": {
                 "clip": {

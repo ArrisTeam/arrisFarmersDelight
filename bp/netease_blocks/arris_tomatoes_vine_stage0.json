@@ -9,7 +9,7 @@
                 "emission": 0
             },
             "minecraft:loot": {
-                "table": "loot_tables/immaturate_tomatoes.json"
+                "table": "loot_tables/air_loot.json"
             },
             "netease:aabb": {
                 "clip": {

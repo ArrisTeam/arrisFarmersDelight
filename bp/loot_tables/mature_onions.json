@@ -1,27 +1,36 @@
 {
     "pools": [
         {
+            "rolls": 1,
             "entries": [
                 {
-                    "functions": [
-                        {
-                            "count": {
-                                "max": 4,
-                                "min": 3
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
-                        }
-                    ],
-                    "name": "arris:onion",
                     "type": "item",
-                    "weight": 1
+                    "name": "arris:onion"
                 }
-            ],
-            "rolls": 1
+            ]
+        },
+        {
+            "rolls": 1,
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:onion"
+                }
+            ]
+        },
+        {
+            "rolls": 3,
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:onion",
+                    "weight": 4
+                },
+                {
+                    "type": "empty",
+                    "weight": 3
+                }
+            ]
         }
     ]
 }

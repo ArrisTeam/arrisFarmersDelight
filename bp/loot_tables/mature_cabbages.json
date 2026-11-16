@@ -1,50 +1,36 @@
 {
     "pools": [
         {
+            "rolls": 1,
             "entries": [
                 {
-                    "functions": [
-                        {
-                            "count": {
-                                "max": 1,
-                                "min": 1
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
-                        }
-                    ],
-                    "name": "arris:cabbage",
                     "type": "item",
-                    "weight": 1
+                    "name": "arris:cabbage"
                 }
-            ],
-            "rolls": 1
+            ]
         },
         {
+            "rolls": 1,
             "entries": [
                 {
-                    "functions": [
-                        {
-                            "count": {
-                                "max": 3,
-                                "min": 2
-                            },
-                            "function": "set_count"
-                        },
-                        {
-                            "data": 0,
-                            "function": "set_data"
-                        }
-                    ],
-                    "name": "arris:cabbage_seeds",
                     "type": "item",
-                    "weight": 1
+                    "name": "arris:cabbage_seeds"
                 }
-            ],
-            "rolls": 1
+            ]
+        },
+        {
+            "rolls": 3,
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:cabbage_seeds",
+                    "weight": 4
+                },
+                {
+                    "type": "empty",
+                    "weight": 3
+                }
+            ]
         }
     ]
 }
