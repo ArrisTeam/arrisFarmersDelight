@@ -164,6 +164,10 @@ class PanViewMixin(object):
             self._flush()
             return True
         self.ray = event.ray
+        if self.stroking:                              # 上一次按住没等到抬起（松手在窗口外）：先收尾
+            self.stroking = False
+            scene.show.strokeEnd()
+            self._flush()
         if self.view.hand is not None:
             return self._withStack(event, key)
         if key == "handle" and not event.quick:       # Shift 点穿过锅柄（strokes）去够后面的

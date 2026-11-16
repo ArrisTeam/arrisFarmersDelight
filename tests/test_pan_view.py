@@ -175,6 +175,15 @@ def testWithAStackInHandAClickOutsideThePanIsLeftToTheKernel():
     assert view.actions == []
 
 
+def testAPressThatNeverGotItsReleaseIsEndedByTheNextPress():
+    behavior, view = make()
+    event(behavior, "down", (8.0, 2.0, 22.0))
+    assert behavior.stroking
+    event(behavior, "down", (8.0, 1.0, 8.0), button=1)               # 松手在窗口外：抬起没送到，下一次按下先把上一把收掉
+    assert not behavior.stroking and not behavior.scene.show.stroke.held
+    assert view.actions[-1] == ("take", {}), "然后照常处理这一下（右键点食物 = 取）"
+
+
 def testShiftClickOnTheHandleReachesThroughToTheFood():
     behavior, view = make()
     assert event(behavior, "down", (8.0, 2.0, 22.0), quick=True) is True
