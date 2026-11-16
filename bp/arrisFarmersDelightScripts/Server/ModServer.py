@@ -108,6 +108,11 @@ def _onBeforeFallOnBlock(args):
     dispatch("OnBeforeFallOnBlockServerEvent", args, args.get("blockName"))
 
 
+@Listen("OnStandOnBlockServerEvent")
+def _onStandOnBlock(args):
+    dispatch("OnStandOnBlockServerEvent", args, args.get("blockName"))
+
+
 @Listen("MobGriefingBlockServerEvent")
 def _onMobGriefingBlock(args):
     dispatch("MobGriefingBlockServerEvent", args, args.get("blockName"))

@@ -31,6 +31,9 @@
             "netease:listen_block_remove": {
                 "value": true
             },
+            "netease:on_stand_on": {
+                "send_python_event": true
+            },
             "netease:solid": {
                 "value": true
             },

@@ -4,16 +4,18 @@
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻；右键放上去的照这里每件 30 秒烤好弹出。
+站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
 """
 import time
 
 from . import HandGrill
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
-from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, ShowTip
+from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
+from ..Shared.Rules import StoveBurn
 from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
@@ -25,6 +27,9 @@ _PASS_ITEMS = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
 # 每个炉灶每 TICK_STEP 秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响），计时按步长累加
 TICK_STEP = 0.25
 _pacer = Pacer(TICK_STEP)
+# 烫伤的伤害类型：基岩版里最接近 JE hot_floor 的是 magma（岩浆块），fire_immune 的实体引擎对它免疫；
+# 死亡信息是引擎的"死了"，网易的 Hurt 接口给不了 JE 那句"被烤的酥脆"
+BURN_CAUSE = "magma"
 
 
 def InitStoveData(blockEntityData):
@@ -125,6 +130,24 @@ def OnStoveTick(args):
         PublishStove(dimensionId, blockPos, blockEntityData)
     if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
         blockEntityData["cookingIndex"] = 0
+
+
+@registerHandler("OnStandOnBlockServerEvent", match=StoveList)
+def OnStandOnStove(args):
+    # JE AbstractStoveBlock.burnEntitySteppingOnStove：StoveList 里都是点燃的炉灶；每刻来一次，扎得太密由无敌帧（10 刻）挡着
+    entityId = args["entityId"]
+    if not IsLiving(entityId):
+        return
+    if GetEngineTypeStr(entityId) == "minecraft:player" and compFactory.CreatePlayer(entityId).isSneaking() is not False:
+        return                                              # 潜行（读不到也按潜行算）：isSteppingCarefully
+    foot = compFactory.CreatePos(entityId).GetFootPos()
+    size = compFactory.CreateCollisionBox(entityId).GetSize()
+    if foot is None or not size:
+        return
+    stovePos = (args["blockX"], args["blockY"], args["blockZ"])
+    frostWalker = StoveBurn.hasFrostWalker(compFactory.CreateItem(entityId).GetEquItemEnchant(StoveBurn.FOOT_SLOT))
+    if StoveBurn.burns(StoveBurn.touchesGrill(stovePos, foot, size[0], size[1]), False, True, frostWalker):
+        compFactory.CreateHurt(entityId).Hurt(StoveBurn.DAMAGE, BURN_CAUSE, None, None, False)
 
 
 @registerHandler("BlockRemoveServerEvent", match=StoveList)
