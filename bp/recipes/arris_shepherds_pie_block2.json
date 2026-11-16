@@ -1,0 +1,72 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:shepherds_pie_block2"
+        },
+        "key": {
+            "B": {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            "C": {
+                "data": 0,
+                "item": "minecraft:baked_potato"
+            },
+            "F": {
+                "data": 0,
+                "item": "minecraft:cooked_mutton"
+            },
+            "H": {
+                "data": 0,
+                "item": "minecraft:bowl"
+            },
+            "I": {
+                "data": 0,
+                "item": "arris:onion"
+            }
+        },
+        "pattern": [
+            "CBC",
+            "FFF",
+            "IHI"
+        ],
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:shepherds_pie_block_stage0"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:glass_bottle"
+            }
+        ],
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:baked_potato"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:cooked_mutton"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:bowl"
+            },
+            {
+                "data": 0,
+                "item": "arris:onion"
+            }
+        ]
+    }
+}
