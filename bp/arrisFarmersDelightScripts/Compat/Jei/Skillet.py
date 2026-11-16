@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from .Registry import GetJeiApiModule, SetHoverText
 from ...Shared.Data.Cooking import CanCookedFoodDict
+from ...Shared.Rules.PanStation import SKILLET_SECONDS  # 一件要多久（JE：煎锅 6 秒、炉灶按营火配方 30 秒）
 
 def RegisterSkilletRecipes():
     registry = GetJeiApiModule()
@@ -44,6 +45,7 @@ class SkilletRecipe:
 
     def OnCreate(self):
         """创建配方UI时调用"""
+        self.recipeControl.GetChildByPath("/bg/timer").asLabel().SetText("%d 秒" % SKILLET_SECONDS)
         outputItem = self.recipeData["output"]
         inputItem = self.recipeData["input"]
         inputRender = self.recipeControl.GetChildByPath("/bg/jeiInputItemRender/item_cell/item/item_renderer")
