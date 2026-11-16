@@ -42,19 +42,22 @@ def testReporterSendsHeldWhileTheSkilletIsInHandAndTheButtonIsDown():
     reporter = Hand.HoldReporter()
     assert reporter.press(0.0, carrying=False) is None and reporter.down is False       # 拿别的东西右键：不报
     assert reporter.press(10.0, carrying=True) is True and reporter.down is True
-    assert reporter.tick(10.1, True) is None                                           # 没到 HOLD_BEAT
-    assert reporter.tick(10.0 + Hand.HOLD_BEAT + 0.001, True) is True
-    assert reporter.tick(10.0 + Hand.HOLD_BEAT + 0.05, True) is None
-    assert reporter.tick(10.0 + 2 * Hand.HOLD_BEAT + 0.01, True) is True
+    asked = []
+    carrying = lambda: asked.append(1) or True                                         # noqa: E731
+    assert reporter.tick(10.1, carrying) is None and asked == []                       # 没到 HOLD_BEAT：不去问手里拿的什么
+    assert reporter.tick(10.0 + Hand.HOLD_BEAT + 0.001, carrying) is True and len(asked) == 1
+    assert reporter.tick(10.0 + Hand.HOLD_BEAT + 0.05, carrying) is None and len(asked) == 1
+    assert reporter.tick(10.0 + 2 * Hand.HOLD_BEAT + 0.01, carrying) is True
     assert reporter.release() is False and reporter.down is False
-    assert reporter.release() is None and reporter.tick(99.0, True) is None            # 松开之后不再报
+    assert reporter.release() is None and reporter.tick(99.0, carrying) is None         # 松开之后不再报
 
 
 def testReporterReleasesWhenTheSkilletLeavesTheHand():
     reporter = Hand.HoldReporter()
     reporter.press(0.0, True)
-    assert reporter.tick(0.05, False) is False and reporter.down is False              # 按住时换了物品：当场报松开
-    assert reporter.tick(1.0, False) is None and reporter.tick(1.0, True) is None
+    assert reporter.tick(0.05, lambda: False) is None                                  # 还没到该报告的时候
+    assert reporter.tick(0.3, lambda: False) is False and reporter.down is False       # 按住时换了物品：下一次报告时报松开
+    assert reporter.tick(1.0, lambda: False) is None and reporter.tick(1.0, lambda: True) is None
 
 
 if __name__ == "__main__":

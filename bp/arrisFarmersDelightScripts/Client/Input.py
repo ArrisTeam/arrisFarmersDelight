@@ -51,16 +51,16 @@ def _reportSkilletHold(held):
 
 
 @Listen("RightClickBeforeClientEvent")
-def OnRightClickDown(args):
+def OnRightClickDown(args=None):
     _reportSkilletHold(_skilletHold.press(time.time(), _carryingSkillet()))
 
 
 @Listen("RightClickReleaseClientEvent")
-def OnRightClickUp(args):
+def OnRightClickUp(args=None):
     _reportSkilletHold(_skilletHold.release())
 
 
 @Listen("OnScriptTickClient")
-def OnSkilletHoldTick(args):
-    if _skilletHold.down:
-        _reportSkilletHold(_skilletHold.tick(time.time(), _carryingSkillet()))
+def OnSkilletHoldTick(args=None):
+    # 每帧一次，引擎不带参数
+    _reportSkilletHold(_skilletHold.tick(time.time(), _carryingSkillet))

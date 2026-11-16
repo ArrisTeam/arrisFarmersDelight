@@ -20,7 +20,8 @@ def sizzleChance(seconds):
 class HoldReporter(object):
     """客户端的右键按住上报：决定什么时候给服务端发 held。每个方法返回要发的值（True 按着 / False 松开），None 是什么都不用发。
 
-    只在主手拿着煎锅时报告（别的物品用不着）；按住期间手里换了东西，当场报一次松开。
+    只在主手拿着煎锅时报告（别的物品用不着）；按住期间手里换了东西，到下一次该报告时报一次松开。
+    tick 每帧都会调，carrying 传个函数，到点了才去问手里拿的什么（客户端的引擎调用不用每帧都跑）。
     """
 
     def __init__(self):
@@ -40,14 +41,12 @@ class HoldReporter(object):
         return False
 
     def tick(self, now, carrying):
-        if not self.down:
-            return None
-        if not carrying:
-            self.down = False
-            return False
-        if now - self._last < HOLD_BEAT:
+        if not self.down or now - self._last < HOLD_BEAT:
             return None
         self._last = now
+        if not carrying():
+            self.down = False
+            return False
         return True
 
 
