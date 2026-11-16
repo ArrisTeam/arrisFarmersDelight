@@ -168,6 +168,28 @@ def testModelsAreTheConvertedJavaModels():
         assert actual == expected, "%s 的模型和 JE 模型的转换结果不一样：py -3 tools/je_model_to_netease.py 重新转" % stage
 
 
+# ---- 砧板摆盘（前置包在场时工作台不再出它，改在砧板上做；HoD 的规则：配料不止一种的盛宴改在砧板上摆） ----
+
+def testTheBoardMakesItOnABowlOutOfTheNineJavaIngredients():
+    Dishes = fdtest.load("Shared.Data.Dishes")
+    Rules = fdtest.load("Shared.Rules.DishStation")
+    ingredients = [("minecraft:glow_berries", 0)] * 2 + [("minecraft:honey_bottle", 0), ("arris:tomato", 0), ("minecraft:golden_carrot", 0),
+                                                         ("minecraft:beetroot", 0), ("arris:cabbage", 0), ("arris:cabbage", 0)]
+    dishes = [dish for dish in Dishes.DishList if dish["result"][0] == _name("stage0")]
+    assert len(dishes) == 1 and dishes[0]["count"] == 1, "无序配方只有一条做法"
+    assert sorted(dishes[0]["ingredients"]) == sorted(ingredients + [("minecraft:bowl", 0)])
+    assert Rules.isDishResult(_name("stage0")) and Rules.blocksAtTable(_name("stage0")), "它是砧板菜，工作台要拦"
+    assert Rules.isBase(("minecraft:bowl", 0))
+    layers = [("minecraft:bowl", 0)]
+    for kind in ingredients:
+        assert Rules.completed(layers) is None
+        assert Rules.fitsNext(layers, kind), kind
+        layers.append(kind)
+    assert Rules.completed(layers)["result"] == (_name("stage0"), 0)
+    # 蜂蜜瓶的玻璃瓶和工作台一样还给厨师
+    assert Rules.containerOf(_name("stage0")) == {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0}
+
+
 # ---- 盛菜 ----
 
 def _setUp(hand=BOWL, blockName="arris:gleaming_salad_block_stage0"):

@@ -22,6 +22,7 @@ OUT = os.path.join(recipejson.SCRIPTS, "Shared", "Data", "Dishes.py")
 DISH_RESULTS = (
     "arris:apple_pie_item", "arris:bacon_and_eggs", "arris:bacon_sandwich", "arris:barbecue_stick",
     "arris:chicken_sandwich", "arris:chocolate_pie_item", "arris:cod_roll", "arris:egg_sandwich", "arris:fruit_salad",
+    "arris:gleaming_salad_block_stage0",
     "arris:grilled_salmon", "arris:hamburger", "arris:honey_cookie", "arris:honey_glazed_ham_block_stage0",
     "arris:kelp_roll", "arris:melon_juice", "arris:melon_popsicle", "arris:mixed_salad", "arris:mutton_wrap",
     "arris:nether_salad", "arris:pie_crust", "minecraft:pumpkin_pie", "arris:rice_roll_medley_block_stage0",

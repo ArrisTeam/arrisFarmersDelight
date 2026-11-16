@@ -28,7 +28,7 @@ def testTheBoardTakesJavasDishesAndLeavesTheRest():
         assert Rules.isDishResult(name), name
     for name in ("arris:horse_feed", "arris:milk_bottle", "arris:tomato", "arris:cabbage", "arris:iron_knife"):
         assert not Rules.isDishResult(name), name
-    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 31
+    assert len(set(entry["result"][0] for entry in Dishes.DishList)) == 32
 
 
 def testBasesFollowTheKeywords():
