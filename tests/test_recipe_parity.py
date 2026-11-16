@@ -99,6 +99,8 @@ FAMILIES = {
     ("arris:cabbage", 1): [[one("arris:cabbage_leaf", 2)]],
     ("arris:canvas", 1): [[one("arris:straw", 4)], [one("arris:canvas_rug", 2)]],
     ("arris:rope", 4): [[one("arris:straw", 2)], [one("arris:safety_net")]],
+    ("arris:rope_fence", 3): [[one("arris:rope", 4), one("minecraft:stick", 2)]],
+    ("arris:rope_fence_gate", 1): [[one("arris:rope", 2), one("minecraft:stick", 4)]],
     ("minecraft:book", 1): [[one("minecraft:paper", 3), CANVAS]],
     ("minecraft:painting", 1): [[one("minecraft:stick", 8), CANVAS]],
     ("minecraft:scaffolding", 6): [[one("minecraft:bamboo", 6), CANVAS]],
@@ -130,6 +132,8 @@ LAYOUTS = [
     (("arris:tatami",), "cs|sc"),
     (("arris:pumpkin_pie_from_pie_crust",), "cec|csc| O "),
     (("arris:pumpkin_pie_from_slices",), "##|##"),
+    (("arris:rope_fence",), "r/r|r/r"),
+    (("arris:rope_fence_gate",), "/r/|/r/"),
     (("arris:cooking_pot",), "bSb|iWi|iii"),
     (("arris:kelp_roll", "arris:kelp_roll2", "arris:kelp_roll3", "arris:kelp_roll4", "arris:kelp_roll5"), "RXR|###"),
 ]

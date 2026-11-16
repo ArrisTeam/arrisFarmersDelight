@@ -1,0 +1,36 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:rope_fence"
+        },
+        "key": {
+            "R": {
+                "data": 0,
+                "item": "arris:rope"
+            },
+            "S": {
+                "data": 0,
+                "item": "minecraft:stick"
+            }
+        },
+        "pattern": [
+            "RSR",
+            "RSR"
+        ],
+        "result": {
+            "count": 3,
+            "data": 0,
+            "item": "arris:rope_fence"
+        },
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "arris:rope"
+            }
+        ]
+    }
+}
