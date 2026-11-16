@@ -24,6 +24,11 @@
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:beetroot"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:bowl"
             }
         ],
         "result": {

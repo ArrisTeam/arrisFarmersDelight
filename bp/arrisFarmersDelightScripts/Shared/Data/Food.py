@@ -21,6 +21,8 @@ shapedRecipeContainerDict = {
     "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
     "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
     "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
+    "arris:roasted_mutton_chops": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
+    "arris:steak_and_potatoes": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},
 }
 # 派列表
 pieList = [
