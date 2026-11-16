@@ -95,7 +95,3 @@ def cubeBounds(cube):
     sx, sy, sz = cube["size"]
     return (-(ox + sx), oy, oz), (-ox, oy + sy, oz + sz)
 
-
-def faceTextureName(geometry, face):
-    """面用的贴图名（description.textures 里的下标 -> 名字）。"""
-    return geometry["description"]["textures"][face["texture"]]
