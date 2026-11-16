@@ -5,9 +5,10 @@
 小麦、派皮……按配料名里的关键词挑），再一层一层往上放，最后一层放对了整叠就成了那道菜；一层是一叠，每做一份每层用一件，
 最多 16 份。还能接着加料做成更大的菜时先不自动做成，等厨师点一下。菜谱表 Shared/Data/Dishes.py 由 tools/gen_dishes.py 生成。
 层是 (物品名, aux)；配料也是 (物品名, aux)，按名字和 aux 精确匹配。
+做一份剩下的东西照 JE 的合成剩余物（HoD 的 Assembling.make 用配方的 getRemainingItems）：extras 是换成了别的东西的容器，
+keeps 是原样留下的配料（面团配方的水桶）——它每轮都放回去，不限做几份，做完整个还给厨师。
 """
-from ..Data.Dishes import DishList, KeepAtTable
-from ..Data.Food import shapedRecipeContainerDict
+from ..Data.Dishes import DishList
 from .HandsOn import Assembly
 
 BATCH = Assembly.BATCH
@@ -24,7 +25,8 @@ def rebuildIndex(dishList=None):
         base, kind = Assembly.baseOf([name for name, _aux in ingredients])
         _dishes.append({"ingredients": ingredients, "base": base, "kind": kind, "result": tuple(entry["result"]),
                         "count": int(entry.get("count") or 1),
-                        "extras": [tuple(extra) for extra in entry.get("extras") or ()]})
+                        "extras": [tuple(extra) for extra in entry.get("extras") or ()],
+                        "keeps": tuple(entry.get("keeps") or ())})
         _results.add(entry["result"][0])
 
 
@@ -33,7 +35,8 @@ def _accepts(ingredient, layer):
 
 
 def dishes():
-    """全部摆盘的菜（索引的拷贝）：{"ingredients", "base"（底座在 ingredients 里的下标）, "kind", "result", "count"}。"""
+    """全部摆盘的菜（索引的拷贝）：{"ingredients", "base"（底座在 ingredients 里的下标）, "kind", "result", "count",
+    "extras", "keeps"}。"""
     return [dict(dish) for dish in _dishes]
 
 
@@ -53,9 +56,14 @@ def isDishResult(itemName):
     return itemName in _results
 
 
-def blocksAtTable(itemName):
-    """前置包在场时工作台拿这个成品要拦：砧板菜，但另有单一原料工作台配方的（切片拼回整个派）不拦——合成事件里看不到原料。"""
-    return itemName in _results and itemName not in KeepAtTable
+def isDishCraft(itemName, names):
+    """工作台上取 itemName、合成格里的原料名（排好序，一格一个）正好是它在砧板上的某条配方：前置包在场时要拦。
+    同一成品的别的配方（切片拼回整个派，只有一种原料）不是砧板菜；创造模式从物品栏拿东西时合成格对不上；都不拦。"""
+    names = tuple(names)
+    for dish in _dishes:
+        if dish["result"][0] == itemName and tuple(sorted(name for name, _aux in dish["ingredients"])) == names:
+            return True
+    return False
 
 
 def isBase(kind):
@@ -86,9 +94,15 @@ def rounds(counts):
     return Assembly.rounds(counts, BATCH)
 
 
-def containerOf(resultName):
-    """做一份还给厨师的空容器（桶、玻璃瓶、碗）和"一份"的件数，和工作台合成后返还的一致；没有返回 None。"""
-    return shapedRecipeContainerDict.get(resultName)
+def roundsOf(dish, stacks):
+    """板上的层 [((物品名, aux), 个数), ...] 做 dish 能做几份：原样留下的配料（keeps）不限份数，其余最薄的一层说了算。"""
+    counts = [count for kind, count in stacks if kind[0] not in dish["keeps"]]
+    return Assembly.rounds(counts, BATCH) if counts else 1
+
+
+def leftOf(dish, kind, count, made):
+    """做了 made 份以后这一层还剩几个要还给厨师：原样留下的配料整层还，其余还多出来的。"""
+    return count if kind[0] in dish["keeps"] else max(0, count - made)
 
 
 def statusText(data, nameOf=None):

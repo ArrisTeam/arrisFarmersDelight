@@ -52,6 +52,9 @@ class FakeWorld(object):
         self.listened = []      # AddBlockItemListenForUseEvent 的方块名
         self.components = {}    # 实体 id -> {组件名: JSON 串}
         self.tags = {"arris:iron_knife": ["arris:knife"]}
+        self.uiSlots = {}       # 玩家 id -> {合成格槽位: itemDict}（GetPlayerUIItem / SetPlayerUIItem）
+        self.uiOpen = True      # False 时 SetPlayerUIItem 返回 False（界面已经关了）
+        self.maxStack = {"minecraft:bucket": 16}
         self._nextId = [1000]
 
     # ---- 预设 ----
@@ -102,10 +105,27 @@ class FakeWorld(object):
             self.players[playerId]["given"].append(dict(itemDict))
             return True
 
+        def getUiItem(playerId, slot, getUserData=False, isNeteaseUI=False):
+            stack = self.uiSlots.get(playerId, {}).get(slot)
+            return dict(stack) if stack else None
+
+        def setUiItem(playerId, slot, itemDict, needBack=True, isNeteaseUI=False):
+            if not self.uiOpen:
+                return False
+            slots = self.uiSlots.setdefault(playerId, {})
+            if itemDict and itemDict.get("count", 0) > 0:
+                name = itemDict.get("newItemName") or itemDict.get("itemName")
+                slots[slot] = {"newItemName": name, "newAuxValue": 0, "count": itemDict["count"]}
+            else:
+                slots.pop(slot, None)
+            return True
+
         return {"GetPlayerItem": getPlayerItem, "SetEntityItem": setEntityItem, "SpawnItemToPlayerInv": spawnToInv,
+                "GetPlayerUIItem": getUiItem, "SetPlayerUIItem": setUiItem,
                 "GetItemTags": lambda name: self.tags.get(name, []),
                 "GetDroppedItem": lambda entityId, getUserData=False: self.itemEntities.get(entityId),
-                "GetItemBasicInfo": lambda name: {"itemType": "food", "maxDurability": 0}}
+                "GetItemBasicInfo": lambda name, aux=0: {"itemType": "food", "maxDurability": 0,
+                                                         "maxStackSize": self.maxStack.get(name, 64)}}
 
     def _Game(self, target):
         return {"GetPlayerGameType": lambda playerId: 1 if self.players[playerId]["creative"] else 0,
@@ -227,6 +247,7 @@ def install():
     module.GetCarriedItem = lambda playerId, getUserData=False: world.comp("Item", playerId).GetPlayerItem(0, 0, getUserData)
     module.SetCarriedItem = lambda playerId, itemDict: world.comp("Item", playerId).SetEntityItem(0, itemDict, 0)
     module.ShowTip = lambda playerId, text: world.calls.append((playerId, "ShowTip", text))
+    module.serverApi = _Comp({"GetPlayerList": lambda: sorted(world.players)})
     sys.modules[ENGINE_MODULE] = module
     # 声音广播走 Call("*", "OnPlaySound", ...)：把它翻成 sounds 清单，测试读起来直接
     realCall = module.Call

@@ -55,10 +55,22 @@ def testLayersGrowIntoADish():
 def testTheThinnestLayerDecidesHowMany():
     assert Rules.rounds([5, 2, 9]) == 2
     assert Rules.rounds([40, 30]) == Rules.BATCH
-    assert Rules.containerOf("arris:cod_roll")["itemName"] == "minecraft:bowl"
-    assert Rules.containerOf("arris:egg_sandwich") is None
-    # 面团有水桶（桶原样留着）和鸡蛋（什么都不还）两种做法，字典按成品名查分不出来：水桶写在有序配方的 result 数组里
-    assert Rules.containerOf("arris:wheat_dough") is None
+    sandwich = Rules.completed([BREAD, EGG, EGG])
+    assert Rules.roundsOf(sandwich, [(BREAD, 5), (EGG, 2), (EGG, 9)]) == 2
+    assert Rules.leftOf(sandwich, BREAD, 5, 2) == 3 and Rules.leftOf(sandwich, EGG, 2, 2) == 0
+
+
+def testDoughKeepsItsWaterBucketOnTheBoard():
+    # HoD 的 Assembling.make：面团配方的水桶每轮都原样放回去，一桶水揉完一整叠小麦，做完水桶还给厨师
+    wheat, water = ("minecraft:wheat", 0), ("minecraft:water_bucket", 0)
+    dough = Rules.completed([wheat, water])
+    assert dough["result"] == ("arris:wheat_dough", 0) and dough["keeps"] == ("minecraft:water_bucket",)
+    assert dough["extras"] == [], "水桶不是换成空桶"
+    assert Rules.roundsOf(dough, [(wheat, 12), (water, 1)]) == 12
+    assert Rules.roundsOf(dough, [(wheat, 40), (water, 1)]) == Rules.BATCH
+    assert Rules.leftOf(dough, water, 1, 12) == 1 and Rules.leftOf(dough, wheat, 12, 12) == 0
+    eggs = Rules.completed([wheat, wheat, wheat, ("minecraft:egg", 0)])
+    assert eggs["count"] == 3 and eggs["keeps"] == () and eggs["extras"] == []
 
 
 def testTheHint():
@@ -68,15 +80,35 @@ def testTheHint():
     assert "做成某菜" in ready and "%" not in ready
 
 
-def testShapedDishesGiveTheirContainersBackAndSlicePiesStayAtTheTable():
-    pie = next(dish for dish in Rules.dishes() if dish["result"] == ("arris:chocolate_pie_item", 0)
-               and ("minecraft:milk_bucket", 0) in dish["ingredients"])
-    assert pie["extras"] == [("minecraft:bucket", 0, 3)], "有序配方结果数组里的桶在砧板上做也要退"
+def testDishesGiveBackWhatJavaLeaves():
+    milk, bottle = ("minecraft:milk_bucket", 0), ("arris:milk_bottle", 0)
+    pies = [dish for dish in Rules.dishes() if dish["result"] == ("arris:chocolate_pie_item", 0)]
+    assert sorted(dish["extras"] for dish in pies if dish["ingredients"].count(milk) == 3) == [[("minecraft:bucket", 0, 3)]]
+    mixed = [dish["extras"] for dish in pies if dish["ingredients"].count(milk) == 2]
+    assert mixed and all(extras == [("minecraft:bucket", 0, 2), ("minecraft:glass_bottle", 0, 1)] for extras in mixed)
+    assert all(dish["ingredients"].count(milk) + dish["ingredients"].count(bottle) == 3 for dish in pies)
     roll = next(dish for dish in Rules.dishes() if dish["result"][0] == "arris:cod_roll")
-    assert roll["extras"] == [] and Rules.containerOf("arris:cod_roll")["itemName"] == "minecraft:bowl", "无序配方走容器表"
-    for pieItem in ("arris:apple_pie_item", "arris:chocolate_pie_item", "arris:sweet_berry_cheesecake_item"):
-        assert Rules.isDishResult(pieItem) and not Rules.blocksAtTable(pieItem), "切片拼回整个派留在工作台"
-    assert Rules.blocksAtTable("arris:egg_sandwich")
+    assert roll["extras"] == [("minecraft:bowl", 0, 1)], "米饭的碗：无序配方也照 JE 的合成剩余物算"
+    ham = next(dish for dish in Rules.dishes() if dish["result"][0] == "arris:honey_glazed_ham_block_stage0")
+    assert ham["extras"] == [("minecraft:bowl", 0, 2), ("minecraft:glass_bottle", 0, 1)]
+    potato = [dish["extras"] for dish in Rules.dishes() if dish["result"][0] == "arris:stuffed_potato"]
+    assert sorted(potato) == [[("minecraft:bucket", 0, 1)]] * 2 + [[("minecraft:glass_bottle", 0, 1)]] * 2
+
+
+def testTheTableBlocksOnlyTheBoardRecipes():
+    def names(*items):
+        return tuple(sorted(items))
+    assert Rules.isDishCraft("arris:egg_sandwich", names("minecraft:bread", "arris:fried_egg", "arris:fried_egg"))
+    assert not Rules.isDishCraft("arris:egg_sandwich", ()), "创造模式从物品栏拿：合成格是空的"
+    assert not Rules.isDishCraft("arris:egg_sandwich", names("minecraft:bread", "arris:fried_egg"))
+    for pieItem, slice_ in (("arris:apple_pie_item", "arris:apple_pie_slice"),
+                            ("arris:chocolate_pie_item", "arris:chocolate_pie_slice"),
+                            ("arris:sweet_berry_cheesecake_item", "arris:sweet_berry_cheesecake_slice")):
+        assert Rules.isDishResult(pieItem) and not Rules.isDishCraft(pieItem, names(*[slice_] * 4)), "切片拼回整个派留在工作台"
+    assert Rules.isDishCraft("arris:apple_pie_item", names(*["minecraft:wheat"] * 3 + ["minecraft:apple"] * 3
+                                                           + ["minecraft:sugar"] * 2 + ["arris:pie_crust"]))
+    assert Rules.isDishCraft("arris:wheat_dough", names("minecraft:wheat", "minecraft:water_bucket"))
+    assert not Rules.isDishCraft("arris:milk_bottle", names("minecraft:milk_bucket", *["minecraft:glass_bottle"] * 4))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,77 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:chocolate_pie5"
+        },
+        "key": {
+            "B": {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            "C": {
+                "data": 0,
+                "item": "minecraft:cocoa_beans"
+            },
+            "F": {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            "H": {
+                "data": 0,
+                "item": "arris:pie_crust"
+            },
+            "I": {
+                "data": 0,
+                "item": "minecraft:sugar"
+            }
+        },
+        "pattern": [
+            "CCC",
+            "BFB",
+            "IHI"
+        ],
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:chocolate_pie_item"
+            },
+            {
+                "count": 2,
+                "data": 0,
+                "item": "minecraft:bucket"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:glass_bottle"
+            }
+        ],
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:cocoa_beans"
+            },
+            {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            {
+                "data": 0,
+                "item": "arris:pie_crust"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:sugar"
+            }
+        ]
+    }
+}

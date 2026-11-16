@@ -94,13 +94,16 @@ def fillDish(logic, playerId, key, sets, blockEntityData):
     kinds = Books.bestKinds([[slot[0] for slot in Books.dishWay(dish)] for dish in variants], _pool(inventory))
     if kinds is None:
         return "missing"
-    count = Books.setsOf(kinds, _pool(inventory), setsOf(sets))
+    dish = DishStation.completed(kinds)
+    keeps = dish["keeps"] if dish is not None else ()        # 原样留下的配料（面团的水桶）：放一件就够做全部的份数
+    count = Books.setsOf([kind for kind in kinds if kind[0] not in keeps], _pool(inventory), setsOf(sets))
     layers = []
     for kind in kinds:
-        layers.append(Store.stack({"newItemName": kind[0], "newAuxValue": kind[1]}, _take(playerId, inventory, kind, count)))
+        amount = 1 if kind[0] in keeps else count
+        layers.append(Store.stack({"newItemName": kind[0], "newAuxValue": kind[1]}, _take(playerId, inventory, kind, amount)))
     station = logic.station
     Store.save(station.dimensionId, station.pos, blockEntityData, layers)
     ToAllPlayerPlaySound(station.dimensionId, station.pos, "dig.wood")
-    if DishStation.completed(kinds) is not None:
+    if dish is not None:
         DishBoard.finish(logic, playerId, blockEntityData, layers)
     return None

@@ -5,8 +5,9 @@
 引擎怎么读（Strata 知识库 kb/engine/bp/08_recipes/RECIPE_ENGINE.md §7，反汇编核实 + 实测）：
 - 无序配方（recipe_shapeless）的 result 写成数组时只认第一个（日志 unsupported multiple output types for result list in
   shapeless），多出来的退还物直接丢掉；只有有序配方（recipe_shaped）会把数组里其余的东西合成时一起给（原版蛋糕退 3 个桶）。
-  所以要还容器的无序配方只能走 Shared/Data/Food.py 的 shapedRecipeContainerDict（服务端 CraftItemOutputChangeServerEvent 发），
-  有序配方把容器写进 result 数组；同一个成品上两条路不能叠（会还两遍），字典按成品名查、分不出是哪个配方做的。
+  所以无序配方的剩余物由服务端补还（Server/CraftReturns.py 在 CraftItemOutputChangeServerEvent 里读合成格，对上
+  tools/gen_crafts.py 生成的 Shared/Data/CraftReturns.py），有序配方把容器写进 result 数组；两条路不能叠（会还两遍）。
+  Shared/Data/Food.py 的 shapedRecipeContainerDict 是给下游包按成品名登记的旧接口，本包留在里面的条目必须和生成的表一致。
 - 本包 min_engine_version 新于 1.19.22：有序配方的 key、熔炉配方的 input 写 count 整份作废；熔炉配方的 input / output 写
   count / data 也不生效（de99ed7 修过一次）。
 - pattern 超过 3x3 整份作废；key 里没用到的键无害，pattern 里没定义的字符当空格，容易写错，这里查严。
@@ -16,11 +17,14 @@ from __future__ import print_function
 
 import os
 import re
+import subprocess
+import sys
 
 import fdtest
 from recipekit import RECIPES, loadRecipes, packIdentifiers, readText, resultsOf
 
 Food = fdtest.load("Shared.Data.Food")
+CraftReturns = fdtest.load("Shared.Data.CraftReturns").CraftReturns
 
 FURNACE_TAGS = ("furnace", "blast_furnace", "smoker", "campfire", "soul_campfire")
 ARRIS_ID = re.compile(r'"(arris:[a-z0-9_]+)"')
@@ -37,7 +41,7 @@ def testFileNamesAndIdentifiersMatch():
 
 
 def testShapelessRecipesCannotReturnExtras():
-    # 无序配方 result 数组里多出来的东西引擎不给：要还容器就走 shapedRecipeContainerDict，或者改成有序配方
+    # 无序配方 result 数组里多出来的东西引擎不给：剩余物由服务端按 CraftReturns 表补还
     for name, (kind, body) in loadRecipes().items():
         if kind == "shapeless":
             assert len(resultsOf(body)) == 1, "%s 是无序配方，result 里第二项起会被引擎丢掉" % name
@@ -79,19 +83,39 @@ def testPackItemsExist():
             assert item in known or item == own, "%s 用到的 %s 包里没有定义" % (name, item)
 
 
-def testContainerReturnsHaveOneSource():
-    # 字典里的成品：每个配方一次出的个数 = perCraft（一次取 N 个按 N // perCraft 份还），result 数组里不再还容器
+def testTheReturnsTableIsUpToDateWithTheRecipes():
+    tool = os.path.join(fdtest.ROOT, "tools", "gen_crafts.py")
+    code = subprocess.call([sys.executable, tool, "--check"])
+    assert code == 0, "合成配方改了：py -3 tools/gen_crafts.py 重新生成 Shared/Data/CraftReturns.py"
+
+
+def testTheReturnsTableOnlyHoldsShapelessRecipes():
+    recipes = loadRecipes()
+    for result, entries in CraftReturns.items():
+        for entry in entries:
+            kind, body = recipes[entry["source"]]
+            assert kind == "shapeless" and resultsOf(body) == [(result, entry["count"])], entry["source"]
+            assert entry["returns"] and set(entry["returns"]) <= set(entry["ingredients"]), entry["source"]
+
+
+def testLegacyContainerDictAgreesWithTheReturnsTable():
+    # 留在旧字典里的本包成品：它的每条配方都是无序的、都只还这一种容器一个，一份的个数 = perCraft
     makers = {}
     for name, (kind, body) in loadRecipes().items():
         if kind != "furnace":
-            results = resultsOf(body)
-            makers.setdefault(results[0][0], []).append((name, results))
+            makers.setdefault(resultsOf(body)[0][0], []).append((name, kind, resultsOf(body)))
+    assert Food.shapedRecipeContainerDict, "表不能空：linkage 的 Interface / Obtain 对空容器返回 False"
     for item, container in Food.shapedRecipeContainerDict.items():
         assert makers.get(item), "%s 在 shapedRecipeContainerDict 里，却没有配方做它" % item
-        for name, results in makers[item]:
-            assert len(results) == 1, "%s 的 result 数组和字典都还了容器，会还两遍" % name
+        for name, kind, results in makers[item]:
+            assert kind == "shapeless" and len(results) == 1, "%s 不是只出一样东西的无序配方" % name
             assert results[0][1] == container.get("perCraft", 1), "%s 一次出 %d 个，perCraft 是 %s" % (
                 name, results[0][1], container.get("perCraft", 1))
+        entries = CraftReturns.get(item) or []
+        assert sorted(entry["source"] for entry in entries) == sorted(name for name, _kind, _results in makers[item]), item
+        for entry in entries:
+            back = [entry["returns"][name] for name in entry["ingredients"] if name in entry["returns"]]
+            assert back == [container["itemName"]], "%s 按 JE 还 %s，旧字典写的是 %s" % (entry["source"], back, container["itemName"])
 
 
 if __name__ == "__main__":

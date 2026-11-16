@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Food - 物品放置成方块、合成返还容器、派、盘装食物（双端，纯数据）
+"""Food - 物品放置成方块、合成返还容器（旧接口）、派、盘装食物（双端，纯数据）
 """
 # 物品转变为方块字典
 itemChangeBlockDict = {
@@ -8,16 +8,16 @@ itemChangeBlockDict = {
     "arris:sweet_berry_cheesecake_item": "arris:sweet_berry_cheesecake",
     "arris:chocolate_pie_item": "arris:chocolate_pie",
 }
-# "合成后还给玩家的空容器"映射：从合成栏取出 key 物品时 → 返还 value 空容器
-# 由服务端 CraftItemOutputChangeServerEvent 发放；perCraft 是配方一份的产出数（缺省 1），
-# 一次取出 N 个时按 N // perCraft 份返还
-# 只给无序配方用：引擎对无序配方的 result 数组只认第一项，退还物放不进去；有序配方直接把容器写进 result 数组，
-# 别再列在这里（会还两遍）。这里按成品名查、分不出是哪条配方做的，一份配方也只能还一种容器、一个：
-# 同一成品有几条配方而退还的不一样（牛奶桶 / 牛奶瓶、水桶留着），或者要还两个以上（海带卷、蜂蜜火腿），只能做成有序配方走 result 数组
+# "合成后还给玩家的空容器"（linkage 的旧接口，下游包按成品名登记自己的无序配方）：从合成栏取出 key 物品时返还 value 容器，
+# perCraft 是配方一份的产出数（缺省 1），一次取出 N 个按 N // perCraft 份还。按成品名查、分不出是哪条配方，
+# 只适合"这个成品的无序配方都只还这一种容器、一份一个"的情况。
+# 本包自己的配方不靠它：有序配方把剩余物写进 result 数组；无序配方由 Server/CraftReturns.py 读合成格、对上
+# Shared/Data/CraftReturns.py（tools/gen_crafts.py 生成）按 JE 的合成剩余物逐格还，那张表里有的成品不再走这里。
+# 下面留着的是本包里符合上面那种情况的成品（给按名字读这张表的下游包看；tests/test_recipe_rules.py 核对它和生成的表一致）。
+# 表不能清空：linkage 的 Interface / Obtain 对空容器返回 False，下游包就登记不进来了。
 shapedRecipeContainerDict = {
     "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0, "perCraft": 4},
     "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0, "perCraft": 8},
-    "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
     "arris:salmon_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
     "arris:cod_roll": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0, "perCraft": 2},
     "arris:roasted_mutton_chops": {"itemName": "minecraft:bowl", "count": 1, "auxValue": 0},

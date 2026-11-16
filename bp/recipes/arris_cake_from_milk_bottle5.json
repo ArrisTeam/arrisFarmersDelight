@@ -1,0 +1,77 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shaped": {
+        "description": {
+            "identifier": "arris:cake_from_milk_bottle5"
+        },
+        "key": {
+            "B": {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            "E": {
+                "data": 0,
+                "item": "minecraft:egg"
+            },
+            "M": {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            "S": {
+                "data": 0,
+                "item": "minecraft:sugar"
+            },
+            "W": {
+                "data": 0,
+                "item": "minecraft:wheat"
+            }
+        },
+        "pattern": [
+            "MBM",
+            "SES",
+            "WWW"
+        ],
+        "result": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:cake"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:bucket"
+            },
+            {
+                "count": 2,
+                "data": 0,
+                "item": "minecraft:glass_bottle"
+            }
+        ],
+        "tags": [
+            "crafting_table"
+        ],
+        "unlock": [
+            {
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:egg"
+            },
+            {
+                "data": 0,
+                "item": "arris:milk_bottle"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:sugar"
+            },
+            {
+                "data": 0,
+                "item": "minecraft:wheat"
+            }
+        ]
+    }
+}

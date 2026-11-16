@@ -1,48 +1,28 @@
 {
     "format_version": "1.12",
-    "minecraft:recipe_shaped": {
+    "minecraft:recipe_shapeless": {
         "description": {
             "identifier": "arris:milk_bucket_from_bottles"
         },
-        "key": {
-            "B": {
-                "data": 0,
-                "item": "arris:milk_bottle"
-            },
-            "U": {
-                "data": 0,
-                "item": "minecraft:bucket"
-            }
-        },
-        "pattern": [
-            " B ",
-            "BUB",
-            " B "
-        ],
-        "result": [
+        "ingredients": [
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:milk_bucket"
+                "item": "minecraft:bucket"
             },
             {
                 "count": 4,
                 "data": 0,
-                "item": "minecraft:glass_bottle"
+                "item": "arris:milk_bottle"
             }
         ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "minecraft:milk_bucket"
+        },
         "tags": [
             "crafting_table"
-        ],
-        "unlock": [
-            {
-                "data": 0,
-                "item": "arris:milk_bottle"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:bucket"
-            }
         ]
     }
 }

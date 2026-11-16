@@ -1,72 +1,43 @@
 {
     "format_version": "1.12",
-    "minecraft:recipe_shaped": {
+    "minecraft:recipe_shapeless": {
         "description": {
             "identifier": "arris:shepherds_pie_block4"
         },
-        "key": {
-            "B": {
-                "data": 0,
-                "item": "minecraft:milk_bucket"
-            },
-            "C": {
+        "ingredients": [
+            {
+                "count": 2,
                 "data": 0,
                 "item": "minecraft:baked_potato"
             },
-            "F": {
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:milk_bucket"
+            },
+            {
+                "count": 3,
                 "data": 0,
                 "item": "minecraft:cooked_mutton"
             },
-            "H": {
-                "data": 0,
-                "item": "minecraft:bowl"
-            },
-            "I": {
+            {
+                "count": 2,
                 "data": 0,
                 "item": "arris:onion"
-            }
-        },
-        "pattern": [
-            "CBC",
-            "FFF",
-            "IHI"
-        ],
-        "result": [
-            {
-                "count": 1,
-                "data": 0,
-                "item": "arris:shepherds_pie_block_stage0"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:bucket"
+                "item": "minecraft:bowl"
             }
         ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:shepherds_pie_block_stage0"
+        },
         "tags": [
             "crafting_table"
-        ],
-        "unlock": [
-            {
-                "data": 0,
-                "item": "minecraft:milk_bucket"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:baked_potato"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:cooked_mutton"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:bowl"
-            },
-            {
-                "data": 0,
-                "item": "arris:onion"
-            }
         ]
     }
 }

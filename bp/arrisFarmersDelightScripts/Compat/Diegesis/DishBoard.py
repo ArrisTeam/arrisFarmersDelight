@@ -109,21 +109,16 @@ def click(logic, playerId, blockEntityData):
 
 
 def finish(logic, playerId, blockEntityData, layers):
-    """凑成了：做几份 = 最薄的一层（最多 16）；多出来的料、空容器还给厨师，成品留在板上等人拿。"""
+    """凑成了：做几份 = 最薄的一层（最多 16；面团的水桶原样留下，不算）；多出来的料、空容器还给厨师，成品留在板上等人拿。"""
     station = logic.station
     dish = Rules.completed(_keys(layers))
-    made = Rules.rounds([layer["count"] for layer in layers])
+    made = Rules.roundsOf(dish, [(kindOf(layer), layer["count"]) for layer in layers])
     for layer in layers:
-        if layer["count"] > made:
-            give(playerId, station.dimensionId, Store.stack(layer, layer["count"] - made))
-    if dish.get("extras"):                   # 有序配方结果数组里退还的容器（桶、玻璃瓶、碗），一份退一套
-        for name, aux, count in dish["extras"]:
-            give(playerId, station.dimensionId, {"newItemName": name, "newAuxValue": aux, "count": count * made})
-    else:
-        container = Rules.containerOf(dish["result"][0])
-        if container:
-            give(playerId, station.dimensionId, {"newItemName": container["itemName"],
-                                                 "newAuxValue": container.get("auxValue", 0), "count": made})
+        left = Rules.leftOf(dish, kindOf(layer), layer["count"], made)
+        if left > 0:
+            give(playerId, station.dimensionId, Store.stack(layer, left))
+    for name, aux, count in dish["extras"]:      # JE 的合成剩余物（桶、玻璃瓶、碗），一份还一套
+        give(playerId, station.dimensionId, {"newItemName": name, "newAuxValue": aux, "count": count * made})
     result = {"newItemName": dish["result"][0], "newAuxValue": dish["result"][1], "count": made * dish["count"]}
     Store.save(station.dimensionId, station.pos, blockEntityData, None, result)
     ToAllPlayerPlaySound(station.dimensionId, station.pos, "random.pop")

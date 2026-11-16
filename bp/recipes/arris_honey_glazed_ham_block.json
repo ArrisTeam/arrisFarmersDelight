@@ -1,77 +1,43 @@
 {
     "format_version": "1.12",
-    "minecraft:recipe_shaped": {
+    "minecraft:recipe_shapeless": {
         "description": {
             "identifier": "arris:honey_glazed_ham_block"
         },
-        "key": {
-            "B": {
-                "data": 0,
-                "item": "minecraft:honey_bottle"
-            },
-            "E": {
-                "data": 0,
-                "item": "arris:smoked_ham"
-            },
-            "F": {
+        "ingredients": [
+            {
+                "count": 4,
                 "data": 0,
                 "item": "minecraft:sweet_berries"
             },
-            "H": {
-                "data": 0,
-                "item": "minecraft:bowl"
-            },
-            "I": {
-                "data": 0,
-                "item": "arris:cooked_rice"
-            }
-        },
-        "pattern": [
-            "FBF",
-            "FEF",
-            "IHI"
-        ],
-        "result": [
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:honey_glazed_ham_block_stage0"
+                "item": "minecraft:honey_bottle"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:smoked_ham"
             },
             {
                 "count": 2,
                 "data": 0,
-                "item": "minecraft:bowl"
+                "item": "arris:cooked_rice"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:glass_bottle"
+                "item": "minecraft:bowl"
             }
         ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:honey_glazed_ham_block_stage0"
+        },
         "tags": [
             "crafting_table"
-        ],
-        "unlock": [
-            {
-                "data": 0,
-                "item": "minecraft:honey_bottle"
-            },
-            {
-                "data": 0,
-                "item": "arris:smoked_ham"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:sweet_berries"
-            },
-            {
-                "data": 0,
-                "item": "minecraft:bowl"
-            },
-            {
-                "data": 0,
-                "item": "arris:cooked_rice"
-            }
         ]
     }
 }
