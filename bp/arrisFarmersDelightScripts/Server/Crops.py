@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Crops - 作物：随机刻生长、骨粉、采摘、种水稻、蘑菇菌落、杂草掉稻草（服务端）
+"""Crops - 作物：下方没了就掉落、种水稻、蘑菇放上有机肥 / 沃土、采摘番茄 / 卷心菜叶（服务端）
 
-沃土 / 沃土耕地见 Server/RichSoil.py，野生作物见 Server/WildCrops.py。
+随机刻生长见 Server/CropTicks.py，骨粉见 Server/BoneMeal.py，沃土 / 沃土耕地见 Server/RichSoil.py，
+野生作物见 Server/WildCrops.py。有机肥、蘑菇菌落、刀收稻草三个模块没有别处引用，在文件末尾导入即登记。
 """
 import random
 
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, System, DestroyEntity, GetBlockName, GetCarriedItem, ShowTip
+from .FarmWorld import FarmWorld
+from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from .BoneMeal import ApplyBoneMeal
+from .MushroomColony import PlaceColony
 from ..Shared.Data.Farming import cropsDict
+from ..Shared.Rules.ColonyRules import COLONY_BLOCKS
 from ..Shared.Rules.Ticks import probability
 
 # 这几种成熟作物右键采摘，不让手里的物品在它们上面生效
 _HARVESTABLE = ("arris:cabbages_stage7", "arris:budding_tomatoes_stage6", "arris:tomatoes_vine_stage3")
-_MUSHROOM_COLONIES = ("arris:red_mushroom_colony", "arris:brown_mushroom_colony")
 _RICE_UPPER = ("arris:rice_upper_crop_stage0", "arris:rice_upper_crop_stage1", "arris:rice_upper_crop_stage2",
                "arris:rice_upper_crop_stage3")
 _CROP_GROUND = ("minecraft:farmland", "arris:rich_soil_farmland_moist", "arris:rich_soil_farmland", "minecraft:grass_block")
@@ -26,11 +29,8 @@ _RICE_GROUND = ("minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "
 _RICE_STAGES = ("arris:rice_stage0", "arris:rice_stage1", "arris:rice_stage2", "arris:rice_stage3")
 _MUSHROOM_GROUND = ("arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2",
                     "arris:organic_compost_stage3", "arris:rich_soil")
-# 破坏时有概率掉稻草的方块
-_STRAW_SOURCES = ("minecraft:fern", "minecraft:large_fern", "minecraft:short_grass", "minecraft:tall_grass",
-                  "arris:sandy_shrub", "arris:rich_soil_wheat7", "arris:rice_upper_crop_stage3", "arris:rice_supporting")
-STRAW_CHANCE = 30
-SILK_TOUCH = 16
+# 采摘成熟番茄时额外掉一个烂番茄的概率（TomatoBlock.use：nextFloat() < 0.05）
+ROTTEN_TOMATO_PERCENT = 5
 
 
 def _below(args):
@@ -69,43 +69,11 @@ def OnRiceSupportingNeighborChanged(args):
             _setBlock(blockPos, "arris:rice_stage3", args["dimensionId"])
 
 
-@registerHandler("BlockNeighborChangedServerEvent", match=_MUSHROOM_COLONIES)
+@registerHandler("BlockNeighborChangedServerEvent", match=COLONY_BLOCKS)
 def OnMushroomColonyNeighborChanged(args):
     neighborPos = (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"])
     if neighborPos == _below(args):
         _setBlock((args["posX"], args["posY"], args["posZ"]), "minecraft:air", args["dimensionId"], handling=1)
-
-
-# ---------------- 随机刻生长 ----------------
-
-@registerHandler("BlockRandomTickServerEvent", match=cropsDict)
-def OnCropRandomTick(args):
-    # 光照 9-15 时长一级；成熟的番茄沿上方的绳子长藤，成熟的稻苗长出稻穗
-    if not 9 <= args["brightness"] <= 15:
-        return
-    blockName = args["fullName"]
-    x, y, z = args["posX"], args["posY"], args["posZ"]
-    dimensionId = args["dimensionId"]
-    if blockName in ("arris:budding_tomatoes_stage6", "arris:tomatoes_vine_stage3"):
-        if GetBlockName((x, y + 1, z), dimensionId) == "arris:rope":
-            _setBlock((x, y + 1, z), "arris:tomatoes_vine_stage0", dimensionId)
-    elif blockName == "arris:rice_stage3":
-        if GetBlockName((x, y + 1, z), dimensionId) == "minecraft:air":
-            _setBlock((x, y, z), "arris:rice_supporting", dimensionId)
-            _setBlock((x, y + 1, z), "arris:rice_upper_crop_stage0", dimensionId)
-    elif cropsDict[blockName]:
-        # 成熟阶段（以及沃土）在 cropsDict 里映射到空字符串，不再往下长
-        _setBlock((x, y, z), cropsDict[blockName], dimensionId)
-
-
-@registerHandler("BlockRandomTickServerEvent", match=_MUSHROOM_COLONIES)
-def OnMushroomColonyRandomTick(args):
-    pos = (args["posX"], args["posY"], args["posZ"])
-    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(pos, args["dimensionId"])
-    growth = blockStates.get("arris:growth") if blockStates else None
-    if growth is not None and growth < 7:
-        blockStates["arris:growth"] += 1
-        compFactory.CreateBlockState(levelId).SetBlockStates(pos, blockStates, args["dimensionId"])
 
 
 # ---------------- 对方块使用物品 ----------------
@@ -141,7 +109,7 @@ def OnServerItemUse(args):
         SetNotCreateItem(playerId, itemDict)
         ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 0.5, z + 0.5), "dig.grass")
         colony = "arris:brown_mushroom_colony" if itemName == "minecraft:brown_mushroom" else "arris:red_mushroom_colony"
-        _setBlock((x, y + 1, z), colony, dimensionId)
+        PlaceColony(FarmWorld(dimensionId), (x, y + 1, z), colony)
 
 
 def _plantRice(playerId, itemDict, blockName, face, pos, dimensionId):
@@ -173,6 +141,8 @@ def OnTomatoUse(args):
     else:
         dropPos = (x + 0.5, y, z + 0.5)
         System.CreateEngineItemEntity({"itemName": "arris:tomato", "count": random.randint(1, 2)}, dimensionId, dropPos)
+        if probability(ROTTEN_TOMATO_PERCENT):
+            System.CreateEngineItemEntity({"itemName": "arris:rotten_tomato", "count": 1}, dimensionId, dropPos)
         ToAllPlayerPlaySound(dimensionId, dropPos, "block.sweet_berry_bush.pick")
         nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
         _setBlock((x, y, z), nextName, dimensionId)
@@ -193,7 +163,7 @@ def OnCabbageUse(args):
     args["cancel"] = True
 
 
-@registerHandler("ServerBlockUseEvent", match="arris:rice_stage3")
+@registerHandler("ServerBlockUseEvent", match=("arris:rice_stage3", "arris:rice_supporting"))
 def OnRiceUse(args):
     playerId = args["playerId"]
     if SetPlayerUsedCD(playerId) is True:
@@ -203,27 +173,5 @@ def OnRiceUse(args):
         ApplyBoneMeal(playerId, carriedDict, args["blockName"], (args["x"], args["y"], args["z"]), args["dimensionId"])
 
 
-# ---------------- 破坏 ----------------
-
-@registerHandler("DestroyBlockEvent", match=_STRAW_SOURCES)
-def OnDestroyStrawSource(args):
-    # 生存模式下破坏杂草 / 成熟麦子 / 稻穗有概率掉稻草
-    playerId = args["playerId"]
-    if compFactory.CreateGame(levelId).GetPlayerGameType(playerId) == 1:
-        return
-    if probability(STRAW_CHANCE):
-        pos = (args["x"] + 0.5, args["y"], args["z"] + 0.5)
-        System.CreateEngineItemEntity({"itemName": "arris:straw", "count": 1, "auxValue": 0}, args["dimensionId"], pos)
-
-
-@registerHandler("DestroyBlockEvent", match=_MUSHROOM_COLONIES)
-def OnDestroyMushroomColony(args):
-    # 精准采集挖蘑菇菌落不掉落
-    handItemDict = GetCarriedItem(args["playerId"], True)
-    if handItemDict is None:
-        return
-    for enchant in handItemDict.get("enchantData") or []:
-        if enchant[0] == SILK_TOUCH:
-            for entityId in args["dropEntityIds"]:
-                DestroyEntity(entityId)
-            return
+# 这三个模块没有别处引用，在这里导入即登记
+from . import CropTicks, OrganicCompost, Straw  # noqa: E402,F401

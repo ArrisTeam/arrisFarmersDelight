@@ -100,11 +100,3 @@ def isFamilyBlock(blockName, prefix, stages=None):
     """blockName 是不是 prefix 这一族的方块（stages 给了就限定在这几级）。"""
     found, stage = splitStage(blockName)
     return found == prefix and (stages is None or stage in stages)
-
-
-def grownName(blockName, steps):
-    """长 steps 级之后的方块名；不可催熟或已经成熟返回 None。（旧骨粉的写法，服务端接上新规则后删掉）"""
-    prefix, stage = splitStage(blockName)
-    if prefix is None or stage >= lastStage(prefix):
-        return None
-    return stageName(prefix, min(lastStage(prefix), stage + steps))

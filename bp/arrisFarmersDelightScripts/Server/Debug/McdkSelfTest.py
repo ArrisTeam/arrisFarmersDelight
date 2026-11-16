@@ -73,7 +73,9 @@ def caseBoneMeal(playerId, base):
     item = {"newItemName": "minecraft:bone_meal", "newAuxValue": 0, "count": 2}
     grew = ApplyBoneMeal(playerId, item, "arris:cabbages_stage0", (x, y, z), dim)
     after = GetBlockName((x, y, z), dim)
-    return _result("bone_meal", grew and after in ("arris:cabbages_stage2", "arris:cabbages_stage3"), started, block=after)
+    # JE 的作物骨粉一次长 2~5 个年龄（CropBlock.getBonemealAgeIncrease = nextInt(2, 5)）
+    ok = grew and after in ("arris:cabbages_stage2", "arris:cabbages_stage3", "arris:cabbages_stage4", "arris:cabbages_stage5")
+    return _result("bone_meal", ok, started, block=after)
 
 
 def _shownItem(payloads, pos):

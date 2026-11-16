@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
-"""RichSoil - 沃土与沃土耕地：锄地、种原版作物、湿润 / 干燥、湿润时给上方作物加速（服务端）"""
+"""RichSoil - 沃土与沃土耕地：锄地、种原版作物、湿润 / 干燥、满湿时催熟上方作物、蘑菇变菌落（服务端）
+
+概率与范围见 Shared/Rules/RichSoilRules.py（JE 的 RichSoilBlock / RichSoilFarmlandBlock）：
+附近（水平 4 格、竖直 0 到 +1）有水或正下雨就湿润；湿润的沃土耕地和沃土每次随机刻 20% 给上方植物催熟一次（同骨粉）。
+"""
+import random
+
+from .BoneMeal import BoostPlant
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, GetBlockName
-from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerGrowthParticle
+from .FarmWorld import FarmWorld
+from .Helpers.Engine import GetBlockName
+from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, SetCarriedDurability
-from .BoneMeal import CropAccelerateTheRipening
-from ..Shared.Data.Farming import cropsDict
+from .MushroomColony import PlaceColony
+from ..Shared.Rules import ColonyRules, FarmEdits, RichSoilRules
 
 RICH_SOIL = "arris:rich_soil"
 FARMLAND = "arris:rich_soil_farmland"
 FARMLAND_MOIST = "arris:rich_soil_farmland_moist"
-# 水平方向这么远以内有水就湿润（与原版耕地一致：4 格）
-WATER_RANGE = 4
-_WATER = ("minecraft:water", "minecraft:flowing_water")
 # 沃土耕地上种原版作物：种子 → 对应的沃土作物方块
 SEEDS = {
     "minecraft:wheat_seeds": "arris:rich_soil_wheat0",
@@ -25,48 +30,52 @@ SEEDS = {
 
 
 def _setBlock(pos, name, dimensionId):
-    compFactory.CreateBlockInfo(levelId).SetBlockNew(pos, {"name": name}, 0, dimensionId, False, False)
+    FarmWorld(dimensionId).apply([FarmEdits.block(pos, name)])
 
 
-def _hasWaterNearby(x, y, z, dimensionId):
-    comp = compFactory.CreateBlockInfo(levelId)
-    for dx in range(-WATER_RANGE, WATER_RANGE + 1):
-        for dz in range(-WATER_RANGE, WATER_RANGE + 1):
-            if dx == 0 and dz == 0:
-                continue
-            blockDict = comp.GetLiquidBlock((x + dx, y, z + dz), dimensionId)
-            if blockDict and blockDict["name"] in _WATER:
-                return True
+def _hydrated(world, pos):
+    """RichSoilFarmlandBlock：附近有水，或者头顶正下着雨。"""
+    if world.rainingAt(pos):
+        return True
+    for cell in RichSoilRules.hydrationCells(pos):
+        if world.hasWaterAt(cell):
+            return True
     return False
+
+
+def _tryBoost(world, pos):
+    if random.random() < RichSoilRules.boostChance():
+        BoostPlant(world, FarmEdits.above(pos))
+
+
+@registerHandler("BlockRandomTickServerEvent", match=RICH_SOIL)
+def OnRichSoilRandomTick(args):
+    pos = (args["posX"], args["posY"], args["posZ"])
+    world = FarmWorld(args["dimensionId"])
+    abovePos = FarmEdits.above(pos)
+    colony = ColonyRules.MUSHROOM_TO_COLONY.get(world.nameAt(abovePos))
+    if colony is not None:
+        PlaceColony(world, abovePos, colony)
+        return
+    _tryBoost(world, pos)
 
 
 @registerHandler("BlockRandomTickServerEvent", match=FARMLAND)
 def OnDryFarmlandRandomTick(args):
-    x, y, z = args["posX"], args["posY"], args["posZ"]
-    if _hasWaterNearby(x, y, z, args["dimensionId"]):
-        _setBlock((x, y, z), FARMLAND_MOIST, args["dimensionId"])
+    pos = (args["posX"], args["posY"], args["posZ"])
+    world = FarmWorld(args["dimensionId"])
+    if _hydrated(world, pos):
+        world.apply([FarmEdits.block(pos, FARMLAND_MOIST)])
 
 
 @registerHandler("BlockRandomTickServerEvent", match=FARMLAND_MOIST)
 def OnMoistFarmlandRandomTick(args):
-    x, y, z = args["posX"], args["posY"], args["posZ"]
-    dimensionId = args["dimensionId"]
-    if not _hasWaterNearby(x, y, z, dimensionId):
-        _setBlock((x, y, z), FARMLAND, dimensionId)
-    # 湿润时给上方作物额外长一级
-    upPos = (x, y + 1, z)
-    upName = GetBlockName(upPos, dimensionId)
-    if upName in cropsDict:
-        CropAccelerateTheRipening({"blockName": upName, "playerId": None, "itemDict": None,
-                                   "dimensionId": dimensionId, "blockPos": upPos}, "rich_soil_farmland")
-    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(upPos, dimensionId)
-    if blockStates:
-        growth = blockStates.get("arris:growth")
-        if growth and growth < 7:
-            blockStates["arris:growth"] += 1
-            compFactory.CreateBlockState(levelId).SetBlockStates(upPos, blockStates, dimensionId)
-            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1.5, z + 0.5), "item.bone_meal.use")
-            ToAllPlayerGrowthParticle((x + 0.5, y + 1.5, z + 0.5))
+    pos = (args["posX"], args["posY"], args["posZ"])
+    world = FarmWorld(args["dimensionId"])
+    if _hydrated(world, pos):
+        _tryBoost(world, pos)
+    elif random.random() < RichSoilRules.dryChance():
+        world.apply([FarmEdits.block(pos, FARMLAND)])
 
 
 @registerHandler("ItemUseOnAfterServerEvent", match=RICH_SOIL)
