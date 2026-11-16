@@ -2,7 +2,7 @@
 """GrillStation - 炉灶站点的纯规则：六个烤位在哪、一面多久、提示文字（双端）
 
 对应 Hands-On Delight：station/StoveCooking.java 的 sideTicks 与 StoveStation 的数据；每个烤位的两面进度在 HandsOn/Grill.py。
-本移植的炉灶一件 7 秒（FD 原样，Server/Stove.py），手放的一件按 Grill.sideSeconds 算一面：7 / 1.5 / 2 ≈ 2.35 秒；不看批量。
+炉灶一件 30 秒（和 JE 一样按营火配方的 600 刻，Server/Stove.py），手放的一件按 Grill.sideSeconds 算一面：30 / 1.5 / 2 = 10 秒；不看批量。
 能烤什么、蛋只烤一面和煎锅同一张表（PanStation）。烤位坐标与 Shared/Rules/BlockDisplay.STOVE_SLOTS 一致（方块内的比例）。
 """
 from ..Data.Cooking import StoveList
@@ -12,7 +12,7 @@ from .PanStation import canFry as canGrill, friedOf as grilledOf, isOneSided  # 
 
 STATION_ID = "arris:stove"
 STOVE_BLOCKS = StoveList          # 同一个列表对象：附属包追加的炉灶也开站
-RECIPE_SECONDS = 7.0              # FD 原样烤一件要多久（Server/Stove.py 的 COOK_TIMER）
+RECIPE_SECONDS = 30.0             # FD 原样烤一件要多久（Server/Stove.py 的 COOK_TIMER，JE 的营火配方 600 刻）
 PLACES = len(STOVE_SLOTS)
 
 

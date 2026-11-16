@@ -73,5 +73,14 @@ def testTransferAmount():
     assert Rules.transferAmount(16, 10, 16, vesselCount=64) == 6
 
 
+
+def testCookTimesFollowJava():
+    """JE 的厨锅配方缺省 200 刻；番茄酱、熟米饭、卷心菜卷 100 刻，南瓜盅 400 刻。"""
+    assert Rules.cookSecondsOf("minecraft:mushroom_stew") == 10.0
+    for name in ("arris:tomato_sauce", "arris:cooked_rice", "arris:cabbage_rolls"):
+        assert Rules.cookSecondsOf(name) == 5.0, name
+    assert Rules.cookSecondsOf("arris:stuffed_pumpkin_block_stage0") == 20.0
+    assert Rules.cookSecondsOf("mod:unknown") == 10.0
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

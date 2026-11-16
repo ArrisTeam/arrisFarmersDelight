@@ -22,7 +22,7 @@ def testSixPlacesAndTheSameTableAsTheSkillet():
 
 
 def testASideIsAThirdOfTheStoveTime():
-    assert abs(Rules.sideSeconds() - 2.35) < 1.0e-9, "7 / 1.5 / 2 = 2.33，取整到整刻"
+    assert abs(Rules.sideSeconds() - 10.0) < 1.0e-9, "30 / 1.5 / 2 = 10 秒（JE：营火 600 刻 / 1.5 / 2）"
 
 
 def testOnlyAPieceDoneOnTheGrillSideWaitsToBeTurned():

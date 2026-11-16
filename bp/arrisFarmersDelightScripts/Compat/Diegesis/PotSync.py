@@ -44,7 +44,7 @@ def stationData(dimensionId, pos, blockEntityData, hand, now):
     meals = sum(item["count"] for item in (served, ready) if item and item["newItemName"] == meal["newItemName"])
     vessel = vesselOf(meal)
     info = compFactory.CreateItem(levelId).GetItemBasicInfo(vessel[0], vessel[1]) if vessel else None
-    progress = hand.clock.progress(Rules.COOK_SECONDS, hand.batch)
+    progress = hand.clock.progress(hand.total, hand.batch)
     speed = 1.0 if hand.mode == PotCooking.FD_WAY else PotCooking.batchSpeed(hand.batch)
     return {
         "inputs": [wire(item) for item in PotContainer.inputs(dimensionId, pos)],
@@ -56,7 +56,7 @@ def stationData(dimensionId, pos, blockEntityData, hand, now):
         "batch": hand.batch,
         "mode": hand.mode,
         "progress": round(progress, 2),
-        "left": PotCooking.cookSecondsLeft(Rules.COOK_SECONDS, progress, speed) if hand.batch > 0 else 0,
+        "left": PotCooking.cookSecondsLeft(hand.total, progress, speed) if hand.batch > 0 else 0,
         "stirring": hand.clock.isStirred(now),
         "stars": round(hand.clock.skill.stars(now) * 20.0) / 20.0,
         "open": HandCooking.openStarsOf(hand.spoon.holder, hand.dish),

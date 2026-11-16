@@ -58,11 +58,11 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         else:
             itemDict = {}
         self.SetPreviewItemSlot(itemDict)
-        timer = exData.get("timer")
+        timer, total = exData.get("timer"), exData.get("timerTotal")
         arrowControl = self.screenNode.GetBaseUIControl(cookingPotTopHalf + "/cooking_pot/arrow")
         if timer and arrowControl:
             progress = arrowControl.GetChildByName("progress")
-            progress.asImage().SetSpriteClipRatio(timer["__value__"] / 10.0)
+            progress.asImage().SetSpriteClipRatio(timer["__value__"] / ((total["__value__"] if total else 0.0) or 10.0))
 
     @ViewBinder.binding(ViewBinder.BF_EditFinished, "#arrisCookingPotEditBox")
     def EditBoxFinished(self, args):

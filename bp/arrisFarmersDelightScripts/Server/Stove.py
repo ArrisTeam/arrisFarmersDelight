@@ -3,7 +3,7 @@
 
 只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
-炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻；右键放上去的照这里每件 7 秒烤好弹出。
+炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻；右键放上去的照这里每件 30 秒烤好弹出。
 """
 import time
 
@@ -18,7 +18,7 @@ from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
 STOVE_SLOTS = 6
-# 每个烤位 7 秒：计时从 7 倒数到 0
+# 每个烤位 30 秒（JE：炉灶按营火配方的 600 刻）：计时从 30 倒数到 0
 COOK_TIMER = HandGrill.COOK_TIMER
 # 拿着这些物品点炉灶时什么都不做（它们是要放到炉灶上的方块）
 _PASS_ITEMS = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")

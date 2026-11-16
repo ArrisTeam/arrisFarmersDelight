@@ -7,7 +7,9 @@
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 
+DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
 _recipeIndex = {}
+_cookSeconds = {}            # 成品名 -> 一份煮多久（秒），按配方表顺序先到先得
 _partsIndex = {}             # frozenset(种类) -> [{种类: 占几格}, ...]（按配方表顺序）
 _ingredients = set()
 
@@ -15,11 +17,13 @@ _ingredients = set()
 def rebuildIndex():
     """重建配方索引。键冲突时保留先插入的那条，与旧实现"首个匹配获胜"一致。"""
     _recipeIndex.clear()
+    _cookSeconds.clear()
     _partsIndex.clear()
     _ingredients.clear()
     for recipeDict in CookingPotRecipeList:
         cookResult = recipeDict["CookResult"]
         pushItemList = recipeDict.get("PushItem", [])
+        _cookSeconds.setdefault(cookResult[0], float(recipeDict.get("CookTime") or DEFAULT_COOK_SECONDS))
         for variant in recipeDict["Recipe"]:
             key = tuple(sorted(variant))
             if key not in _recipeIndex:
@@ -30,6 +34,11 @@ def rebuildIndex():
                 parts[kind] = parts.get(kind, 0) + 1
                 _ingredients.add(kind)
             _partsIndex.setdefault(frozenset(parts), []).append(parts)
+
+
+def cookSecondsOf(resultName):
+    """这道菜一份煮多久（秒）：配方表里的 CookTime，没写就是 10 秒（JE 的 200 刻）。"""
+    return _cookSeconds.get(resultName, DEFAULT_COOK_SECONDS)
 
 
 def partsFor(kinds):

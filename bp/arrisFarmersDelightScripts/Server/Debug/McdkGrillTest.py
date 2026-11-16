@@ -2,11 +2,11 @@
 """McdkGrillTest - 炉灶手工烧烤的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
 不会自动运行，没有 RPC 端点。在第一个玩家脚下往 +x 15 / +z 9 格放一个点着的炉灶：0 号烤位手放一块生牛肉
-（计时器替站点等贴灶台那面熟了就翻一次），1 号烤位按 FD 原样放一块（7 秒后自己弹出去）。
-一面 7 / 1.5 / 2 ≈ 2.35 秒：约 4.7 秒后 0 号是熟牛肉、留在灶台上；8 秒后 1 号已经空了。
+（计时器替站点等贴灶台那面熟了就翻一次），1 号烤位按 FD 原样放一块（30 秒后自己弹出去，JE 的营火时间）。
+一面 30 / 1.5 / 2 = 10 秒：约 20 秒后 0 号是熟牛肉、留在灶台上；31 秒后 1 号已经空了。
     from arrisFarmersDelightScripts.Server.Debug import McdkGrillTest as T
     return T.mcdk_test_grill_start()
-    return T.mcdk_test_grill_collect()   # 约 9 秒后
+    return T.mcdk_test_grill_collect()   # 约 32 秒后
 """
 import time
 
@@ -45,7 +45,7 @@ def mcdk_test_grill_start():
     HandGrill.handOf(dim, pos).grill.layByHand(0)
     timer = compFactory.CreateGame(levelId).AddRepeatedTimer(WATCH_STEP, _watch)
     _run["grill"] = {"pos": pos, "dim": dim, "player": playerId, "timer": timer, "started": time.time(), "turns": []}
-    return {"case": "grill_start", "ok": True, "pos": pos, "collect_after_seconds": 9}
+    return {"case": "grill_start", "ok": True, "pos": pos, "collect_after_seconds": 32}
 
 
 def mcdk_test_grill_collect():

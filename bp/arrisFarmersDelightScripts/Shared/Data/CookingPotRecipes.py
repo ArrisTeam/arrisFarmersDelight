@@ -2,7 +2,8 @@
 """CookingPotRecipes - 厨锅配方表（双端，纯数据）
 
 每条配方：Recipe（若干变体，每个变体最多 6 个 (物品名, aux)）、CookResult、
-Vessel（盛出成品需要的容器，可缺省）、PushItem（出料时吐出的余料）、text（界面显示名）。
+Vessel（盛出成品需要的容器，可缺省）、PushItem（出料时吐出的余料）、text（界面显示名）、
+CookTime（一份煮多久，秒；缺省 10 秒 = JE 的 200 刻，和 JE 不同的几道菜照 JE 写上）。
 查表索引见 Shared/Rules/CookingPot.py；表被修改后要调用它的 rebuildIndex()。
 """
 # 厨锅配方
@@ -71,6 +72,7 @@ CookingPotRecipeList = [
             ]
         ],
         "CookResult": ("arris:tomato_sauce", 0),
+        "CookTime": 5.0,
         "Vessel": ("minecraft:bowl", 0),
         "PushItem": [
         ],
@@ -83,6 +85,7 @@ CookingPotRecipeList = [
             ]
         ],
         "CookResult": ("arris:cooked_rice", 0),
+        "CookTime": 5.0,
         "Vessel": ("minecraft:bowl", 0),
         "PushItem": [
         ],
@@ -400,6 +403,7 @@ CookingPotRecipeList = [
             ],
         ],
         "CookResult": ("arris:stuffed_pumpkin_block_stage0", 0),
+        "CookTime": 20.0,
         "Vessel": ("minecraft:pumpkin", 0),
         "PushItem": [
         ],
@@ -439,6 +443,7 @@ CookingPotRecipeList = [
             ]
         ],
         "CookResult": ("arris:cabbage_rolls", 0),
+        "CookTime": 5.0,
         "Vessel": ("arris:cabbage_leaf", 0),
         "PushItem": [
         ],

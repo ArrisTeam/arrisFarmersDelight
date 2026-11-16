@@ -4,7 +4,7 @@
 移植自 Hands-On Delight 的 station/PotCooking.java；规则内核在 Shared/Rules/HandsOn（PotCooking、StirSkill、PotBonus、Spoon）。
 每口锅一份 PotHand（计时、评星、勺子），第一次 tick 时建、方块没了删，只活在内存里；存档里只有 FD 原本的 timer
 和奖励零头 handsOnBonus。没人碰过的锅、漏斗等自动化放进来的料、厨师走开 AWAY 秒之后，都按 FD 原样自己煮
-（每份 COOK_SECONDS 秒）；站点开着时（Compat/Diegesis/PotLogic.py 每刻 attend）厨师放的料要搅才煮，
+（每份按配方表的 CookTime，缺省 10 秒，和 JE 一致）；站点开着时（Compat/Diegesis/PotLogic.py 每刻 attend）厨师放的料要搅才煮，
 整批按 1.5 / sqrt(份数) 的速度一起煮好，搅出的星星多送份数。
 """
 from .Helpers import PotContainer
@@ -30,6 +30,7 @@ class PotHand(object):
         self.dish = None                 # 锅里的料现在能做的菜（物品字典）或 None
         self.heated = False
         self.batch = 0                   # 这批能一起煮几份（0：不能煮）
+        self.total = COOK_SECONDS        # 这道菜一份煮多久（秒，配方表的 CookTime）
         self.mode = PotCooking.FD_WAY    # 上一步的煮法
         self.served = 0                  # 搅着出锅的批数（站点看它变了就报星）
 
@@ -46,9 +47,10 @@ def handOf(dimensionId, blockPos, blockEntityData=None):
         hand = _hands[key] = PotHand()
         if blockEntityData is not None:
             hand.clock.restore(False, blockEntityData["handsOnBonus"] or 0.0)
-            timer = blockEntityData["timer"]
-            if isinstance(timer, (int, float)) and 0.0 <= timer <= COOK_SECONDS:
-                hand.clock.cookTime = COOK_SECONDS - timer
+            timer, total = blockEntityData["timer"], blockEntityData["timerTotal"] or COOK_SECONDS
+            if isinstance(timer, (int, float)) and 0.0 <= timer <= total:
+                hand.total = float(total)
+                hand.clock.cookTime = hand.total - timer
     return hand
 
 
@@ -63,10 +65,11 @@ def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
     meal, pushItems = CookingPotRules.matchRecipe(slots) if any(slots) else (None, None)
     hand.dish = meal
     hand.heated = blockEntityData["heatEnable"] is True
+    hand.total = CookingPotRules.cookSecondsOf(meal["newItemName"]) if meal else COOK_SECONDS
     if not (meal and hand.heated):
         hand.batch = 0
         clock.cookTime = 0.0
-        blockEntityData["timer"] = COOK_SECONDS
+        _writeTimer(blockEntityData, hand.total, hand.total)
         return
     ready = PotContainer.preview(blockEntityData)
     maxStack = PotContainer.maxStackOf(meal["newItemName"], meal["newAuxValue"])
@@ -75,14 +78,21 @@ def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
     hand.batch = PotCooking.batchOf(PotStation.servingsLeft(slots), mealCount, 1, maxStack, same)
     if hand.batch <= 0:
         return                           # 预览槽满了或装着别的菜：等它被盛走，计时停在原处
-    hand.mode = clock.advance(now, dt, COOK_SECONDS, hand.batch)
-    if hand.mode != PotCooking.WAITING and clock.finished(COOK_SECONDS):
+    hand.mode = clock.advance(now, dt, hand.total, hand.batch)
+    if hand.mode != PotCooking.WAITING and clock.finished(hand.total):
         PotContainer.cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItems)
         if hand.mode == PotCooking.STIRRED:
             _serveTheBatch(hand, dimensionId, blockPos, blockEntityData, slots, meal, pushItems, mealCount + 1, maxStack, now)
         else:
             clock.cookTime = 0.0
-    blockEntityData["timer"] = max(0.0, COOK_SECONDS - clock.cookTime)
+    _writeTimer(blockEntityData, max(0.0, hand.total - clock.cookTime), hand.total)
+
+
+def _writeTimer(blockEntityData, left, total):
+    """FD 的进度字段：timer 是这一份还剩几秒，timerTotal 是一份总共几秒（界面按两者之比画箭头）。"""
+    blockEntityData["timer"] = left
+    if blockEntityData["timerTotal"] != total:
+        blockEntityData["timerTotal"] = total
 
 
 def _serveTheBatch(hand, dimensionId, blockPos, blockEntityData, slots, meal, pushItems, mealCount, maxStack, now):

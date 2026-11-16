@@ -3,12 +3,12 @@
 
 移植自 Hands-On Delight 的 station/StoveCooking.java；每个烤位的两面进度在 Shared/Rules/HandsOn/Grill.py。
 每个炉灶一份 StoveHand，只活在内存里，站点关了它还在；方块没了才删。手放 / 手翻过的烤位由这里烤，
-别的（FD 自己的右键放上去的）照旧由 Server/Stove.py 每件 7 秒烤好弹出来。
+别的（FD 自己的右键放上去的）照旧由 Server/Stove.py 每件 30 秒烤好弹出来（JE：营火配方的 600 刻）。
 """
 from ..Shared.Rules import GrillStation
 from ..Shared.Rules.HandsOn import Grill
 
-COOK_TIMER = 7                    # 与 Server/Stove.py 一致：烤位的 FD 计时
+COOK_TIMER = 30                   # 与 Server/Stove.py 一致：烤位的 FD 计时（JE 的炉灶按营火配方 600 刻 = 30 秒）
 
 
 class StoveHand(object):
