@@ -66,9 +66,11 @@ def testSkilletAttackDamageIsTheJeModifier():
     assert jefood.beh("skillet_item")["netease:weapon"]["attack_damage"] == 5 + 2
 
 
-def testSkilletTooltipIsThePlaceableSneakingTip():
-    # SkilletItem.appendHoverText：TextUtils.PLACEABLE_SNEAKING = tooltip.farmersdelight.placeable_sneaking（深灰斜体"潜行可放置"）
-    assert jefood.beh("skillet_item")["netease:customtips"]["value"] == "§8§o潜行可放置"
+def testSkilletTooltipIsThePlaceableSneakingTipAndKeepsTheBuiltInLines():
+    # SkilletItem.appendHoverText：TextUtils.PLACEABLE_SNEAKING = tooltip.farmersdelight.placeable_sneaking（深灰斜体"潜行可放置"）。
+    # netease:customtips 是整段悬停文字的格式串（官方文档的物品信息字典一节）：自带的附魔、攻击伤害两行要自己用 %enchanting% / %attack_damage% 放回去，
+    # 否则煎锅变成武器之后附魔和攻击伤害不显示（是替换还是追加没实机核，见 docs/ARCHITECTURE.md 的待验证清单）
+    assert jefood.beh("skillet_item")["netease:customtips"]["value"] == "§8§o潜行可放置§r%enchanting%%attack_damage%"
 
 
 def _definitions():

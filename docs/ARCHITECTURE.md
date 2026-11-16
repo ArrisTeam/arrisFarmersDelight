@@ -259,7 +259,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 
 - 物品 JSON（`netease_items_beh/arris_skillet_item.json`）：`custom_item_type: weapon` 才会读 `netease:weapon`（以前没写，攻击 / 附魔能力 / 修复都没生效），
   `max_damage` 250（基岩版"损伤 > 最大耐久才坏"，与小刀、原版基岩工具同一个约定，不再减一）、`enchantment` 14、`level` 2（网易文档：铁砧用铁锭修）、
-  `attack_damage` 7（取 JE 的修饰符，按"加在玩家基础 1 上"理解，实际 8，待实机核）、提示改成 JE 的"潜行可放置"。
+  `attack_damage` 7（取 JE 的修饰符，按"加在玩家基础 1 上"理解，实际 8，待实机核）、提示改成 JE 的"潜行可放置"
+  （`netease:customtips` 是整段悬停文字的格式串，所以后面补了 `%enchanting%%attack_damage%`，不然附魔和攻击伤害两行可能被盖掉）。
 - 放置：`SkilletItem.OnUseSkilletItem`（`ServerItemUseOnEvent`，优先级 98.5）只有潜行才放，不潜行直接拦下（不让 ItemToBlock 当普通方块物品放，也不取消引擎的 `ret`，
   右键箱子照样开箱）。放置本身仍调 `ItemToBlock.OnPlaceItemAsBlock`；放好后把那件煎锅（`SkilletRules.storeItem`：名字、附加值、耐久、附魔、提示、额外 ID、用户数据，
   元组换列表、py2 的 unicode 换 str）记进方块实体数据 `skilletItem`，方块实体还没建好就先挂在待办里，等 `ServerPlaceBlockEntityEvent` 再写。
@@ -291,7 +292,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 2. 潜行右键方块放出煎锅，不潜行右键不放；放完不会在炉灶边冒"用另一只手拿着原料！"；站在炉灶 / 营火旁右键箱子仍然开箱。
 3. 带附魔、磨损过的煎锅放下再拆，掉出来的还是那一把（耐久、附魔、改名都在）；创造模式拆不掉煎锅；爆炸 / 命令拆会掉。
 4. 煎锅物品的数值：新煎锅打僵尸一下掉 8 点血（`attack_damage` 7 加玩家基础 1；若掉 7 点就改成 8）；打一下耐久只少 1；铁砧用铁锭能修；附魔台能出火焰附加 / 锋利等；
-   3D 手持模型（`attachables/skillet_item.json`）在变成武器类物品后姿势没变。
+   3D 手持模型（`attachables/skillet_item.json`）在变成武器类物品后姿势没变；悬停文字：潜行可放置 / 附魔 / 攻击伤害各一行、没有重复
+   （重复了就去掉 `%enchanting%%attack_damage%`，缺了就说明格式串是替换式的、现在的写法对）。
 5. 放下的煎锅：火焰附加 I / II 煎一件 4 / 3 秒；水能不能流进煎锅所在的格（`GetLiquidBlock` 读到水）——能的话放食物提示、锅里的东西浮出来。
 6. 打人音效：连点是轻击、隔 1 秒再打是重击。
 
