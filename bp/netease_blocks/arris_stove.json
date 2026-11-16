@@ -6,10 +6,10 @@
                 "value": 0
             },
             "minecraft:block_light_emission": {
-                "emission": 1.0
+                "emission": 0.8667
             },
             "minecraft:destroy_time": {
-                "value": 1.5
+                "value": 2.0
             },
             "netease:connection": {
                 "blocks": []

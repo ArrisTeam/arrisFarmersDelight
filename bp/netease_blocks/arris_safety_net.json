@@ -9,10 +9,10 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 0.6
+                "value": 0.2
             },
             "minecraft:explosion_resistance": {
-                "value": 0.6
+                "value": 0.2
             },
             "netease:connection": {
                 "blocks": []
