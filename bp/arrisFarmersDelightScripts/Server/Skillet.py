@@ -3,9 +3,11 @@
 
 煎锅物品放成方块的逻辑在 Server/ItemToBlock.py（与派共用一份）。锅里的东西只存在方块实体数据 cookingDict，
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
+煎锅站点（场景交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
 """
 import time
 
+from . import HandFrying
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, PublishSkillet
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
@@ -18,12 +20,13 @@ from ..Shared.Rules.BlockDisplay import skilletLayers
 from ..Shared.Rules.Ticks import Pacer
 
 SKILLET = "arris:skillet"
-# 每件食物煎 6 秒：计时从 7 倒数到 1，1 Hz 采样
+# 每件食物煎 6 秒：计时从 7 倒数到 1
 COOK_TIMER = 7
 # 手里拿着这些物品点煎锅时拦截交互（不把它们当食物，也不在煎锅上放方块）
 _BLOCKED_ITEMS = ("arris:spatula", "arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
-# 每个煎锅每秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响）
-_pacer = Pacer(1.0)
+# 每个煎锅每 TICK_STEP 秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响），计时按步长累加
+TICK_STEP = 0.25
+_pacer = Pacer(TICK_STEP)
 
 
 @registerHandler("ServerBlockUseEvent", match=SKILLET)
@@ -43,6 +46,7 @@ def OnServerSkilletBlockUse(args):
         if blockEntityData["cookingDict"]:
             return
         if carriedDict["newItemName"] in CanCookedFoodDict:
+            HandFrying.byFarmersDelight(dimensionId, blockPos)
             blockEntityData["cookingDict"] = carriedDict
             PublishSkillet(dimensionId, blockPos, carriedDict)
             if not IsCreative(playerId):
@@ -59,6 +63,7 @@ def OnServerSkilletBlockUse(args):
         return
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
+        HandFrying.byFarmersDelight(dimensionId, blockPos)
         SetCarriedItem(playerId, cookingDict)
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cookingDict"] = None
@@ -104,12 +109,15 @@ def OnSkilletTick(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData or blockEntityData["heatEnable"] is not True:
         return
+    hand = HandFrying.peek(dimensionId, blockPos)
+    if hand is not None and HandFrying.fry(hand, dimensionId, blockPos, blockEntityData, TICK_STEP):
+        return
     cookingDict = blockEntityData["cookingDict"]
     if not cookingDict or cookingDict.get("newItemName") not in CanCookedFoodDict:
         return
     if blockEntityData["cookTimer"] is None:
         blockEntityData["cookTimer"] = COOK_TIMER
-    blockEntityData["cookTimer"] -= 1.0
+    blockEntityData["cookTimer"] -= TICK_STEP
     if blockEntityData["cookTimer"] > 1.0:
         return
     layersBefore = skilletLayers(cookingDict["count"])
@@ -132,6 +140,7 @@ def OnSkilletRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
+    HandFrying.forget(dimensionId, blockPos)
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
