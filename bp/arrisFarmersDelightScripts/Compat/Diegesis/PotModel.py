@@ -89,9 +89,11 @@ class PotModel(object):
         for axis, value in zip("xyz", rotation):
             self._set("variable.mod_spoon_r" + axis, value)
 
-    def glow(self, lit):
-        """勺子描不描亮边（Diegesis 的 hover outline：光标下能用的东西描出轮廓；这里是 ladle_glow 骨骼，一层反面的壳）。"""
+    def glow(self, lit, pot=False):
+        """勺子 / 锅身描不描亮边（Diegesis 的 hover outline：光标下能用的东西描出轮廓；这里是 ladle_glow / pot_glow 骨骼，
+        比本体大 0.08 像素的一层只画反面的壳）。"""
         self._set("variable.mod_spoon_lit", 1.0 if lit else 0.0)
+        self._set("variable.mod_pot_lit", 1.0 if pot else 0.0)
 
     def ripple(self, x, z, strength):
         """液面上 (x, z)（锅自己的坐标，像素）起一个水波，strength 是 JE 的水波高度（0.09 .. 0.5）。"""

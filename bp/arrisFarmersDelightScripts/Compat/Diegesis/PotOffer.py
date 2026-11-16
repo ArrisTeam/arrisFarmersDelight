@@ -16,6 +16,7 @@ from . import PotFx
 from .PotSceneFx import play
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Data import Remainders
+from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotServe, PotSounds
 
 AWAY_LIFT = 6.0                         # 端走时朝屏幕底边在汤面上方这么高的那一点去（PB 548）
@@ -80,6 +81,24 @@ class PotOffer(object):
             return None
         x, _, z = owner.toLocal(point)
         return (x, z)
+
+    def overSoup(self):
+        """光标在不在汤上（锅心 5 像素内，PotBehavior.bowlOverSoup）。"""
+        cursor = self._cursor(self.owner.scene.liquid.surfaceY())
+        half, centre = PotServe.POT_HALF, PotServe.POT_CENTER
+        return cursor is not None and abs(cursor[0] - centre) < half and abs(cursor[1] - centre) < half
+
+    def offering(self):
+        """锅身描不描边（PotBehavior 的 offering）：手上的东西放得进、光标在锅口上；拿着盛这道菜的容器、光标在汤上；悬着碗。
+        触屏没有悬停：手上拿着放得进的东西（或那只容器）就描。"""
+        owner, view = self.owner, self.owner.view
+        hand, touch = view.hand, view.input == owner.api.TOUCH
+        if hand is None:
+            return self.offered is not None and self.offered[2] is None
+        meal, vessel = view.data.get("meal"), view.data.get("vessel") or {}
+        if meal and vessel.get("newItemName") and hand.get("newItemName") == vessel["newItemName"]:
+            return touch or self.overSoup()
+        return (touch or owner.hover[0] == "mouth") and view.fits(Rules.GROUP_INGREDIENTS) is not None
 
     def _sunkItem(self):
         """最后一个装着沉下去的料的格子里是什么（物品名），没有是 None。"""

@@ -7,6 +7,8 @@
 - 勺子只能抓露在锅沿上面的柄（场景文件里 ladle 的碰撞盒，锅里那段杆不算）：手空着、光标在柄上时整根勺子描一圈亮边
   （Diegesis 的 hover outline）；按住拖动搅，一按一松不到 0.3 秒勺子留在手里随光标搅，再按一下放下。勺尖由场景按 HoD 的
   手感算，每 0.12 秒报一次服务端（stir，世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）；
+- 锅身描一圈同样的亮边（pot.setOutlined(offering)，判定在 PotOffer.offering）：手上的东西放得进、光标在锅口上；拿着盛这道菜的
+  容器、光标在汤上；悬着碗；
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
   （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
 - 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
@@ -91,7 +93,7 @@ class PotViewMixin(object):
         if self.scene is not None:
             self.serve.frame(dt)
             self.hud.frame(dt)
-            self.scene.model.glow(self.hover[0] == "ladle" and self.view.hand is None and not self.scene.hand)
+            self.scene.model.glow(self.hover[0] == "ladle" and self.view.hand is None and not self.scene.hand, self.serve.offering())
 
     # ---------------------------------------------------------------- 坐标
 

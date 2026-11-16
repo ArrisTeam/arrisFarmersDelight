@@ -19,6 +19,9 @@
 					"ladle_glow": false
 				},
 				{
+					"pot_glow": false
+				},
+				{
 					"lid": "variable.mod_open < 0.5"
 				}
 			]
@@ -39,6 +42,9 @@
 				},
 				{
 					"ladle_glow": "variable.mod_open > 0.5 && variable.mod_spoon_lit > 0.5"
+				},
+				{
+					"pot_glow": "variable.mod_open > 0.5 && variable.mod_pot_lit > 0.5"
 				}
 			]
 		},
