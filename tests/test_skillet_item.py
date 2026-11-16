@@ -18,7 +18,7 @@ SkilletItem = fdtest.load("Server.SkilletItem")
 Skillet = fdtest.load("Server.Skillet")
 
 SKILLET = {"newItemName": "arris:skillet_item", "newAuxValue": 0, "count": 1, "durability": 137,
-           "enchantData": [(13, 2), (9, 1)], "userData": {"RepairCost": 1}}
+           "enchantData": [(13, 2), (9, 1)], "userData": {"RepairCost": 1}, "customTips": "", "extraId": "", "showInHand": True}
 GROUND = (5, 63, 5)
 ABOVE = (5, 64, 5)
 
@@ -119,6 +119,7 @@ def testBreakingDropsTheSameItemBack():
     skillet = dropped["arris:skillet_item"]
     assert skillet["durability"] == 137 and skillet["count"] == 1
     assert skillet["enchantData"] == [(13, 2), (9, 1)] and skillet["userData"] == {"RepairCost": 1}
+    assert "customTips" not in skillet and "extraId" not in skillet     # 空的 customTips 会盖掉物品自己的提示，不还
     assert len(world.spawned) == 2
 
 

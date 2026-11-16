@@ -96,6 +96,18 @@ def testStoreAndRestoreKeepDamageEnchantsAndName():
     assert Rules.fireAspectLevel(again) == 2
 
 
+def testBlankFieldsAreNotStoredSoTheTooltipSurvives():
+    # 引擎物品字典里没设置的字段是 ""、[]、None：customTips 写成 "" 会盖掉物品自己的 netease:customtips（"潜行可放置"），所以空的不存不还
+    held = {"newItemName": "arris:skillet_item", "newAuxValue": 0, "count": 1, "durability": 0, "customTips": "", "extraId": "",
+            "enchantData": [], "modEnchantData": [], "userData": None}
+    stored = Rules.storeItem(held)
+    assert sorted(stored) == ["count", "durability", "newAuxValue", "newItemName"], sorted(stored)
+    assert stored["durability"] == 0                                    # 耐久 0（只剩最后一点）不算空
+    again = Rules.restoreItem(stored)
+    assert "customTips" not in again and "extraId" not in again and "enchantData" not in again
+    assert again["durability"] == 0
+
+
 def testStoreNeverAcceptsAnotherItemName():
     stored = Rules.storeItem({"newItemName": "minecraft:stick", "newAuxValue": 0, "count": 3})
     assert stored["newItemName"] == "arris:skillet_item" and stored["count"] == 1

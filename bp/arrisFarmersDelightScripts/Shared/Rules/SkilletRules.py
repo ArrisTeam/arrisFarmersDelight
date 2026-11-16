@@ -134,9 +134,14 @@ def _plain(value):
     return value
 
 
+def _blank(value):
+    """引擎物品字典里没设置的字段是 None / "" / []；customTips 写成 "" 会盖掉物品自己的 netease:customtips，所以空的一律不存不还。耐久 0 不算空。"""
+    return value is None or (value == "" and not isinstance(value, bool)) or (isinstance(value, list) and not value)
+
+
 def storeItem(itemDict):
     """要记进方块实体数据的那一件煎锅（数量一律 1）。"""
-    stored = dict((key, _plain(itemDict[key])) for key in _STORED_KEYS if itemDict.get(key) is not None)
+    stored = dict((key, _plain(itemDict[key])) for key in _STORED_KEYS if not _blank(itemDict.get(key)))
     stored["newItemName"] = SKILLET_ITEM
     stored["count"] = 1
     return stored
@@ -148,7 +153,7 @@ def restoreItem(stored):
     if not stored:
         return item
     for key in _STORED_KEYS:
-        if stored.get(key) is not None:
+        if not _blank(stored.get(key)):
             item[key] = _plain(stored[key])      # 从方块实体数据读出来的可能是引擎对象，换成普通的字典 / 列表再交给引擎
     for key in ("enchantData", "modEnchantData"):
         if item.get(key):
