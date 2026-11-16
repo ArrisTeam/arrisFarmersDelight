@@ -47,7 +47,7 @@ Server/                 服务端
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
-  SkilletHand           手持煎锅烹饪：主手煎锅、副手食物，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
+  SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
   CropTicks FarmWorld   作物随机刻（照 JE 的生长概率）与它读写世界的那一层；OrganicCompost MushroomColony Straw 同属种植
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
@@ -274,7 +274,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   没存过的（/setblock、旧存档）掉一把新的。方块的火焰附加读 `skilletItem`，`Skillet._timerStart` 换成倒计时起点（秒数 + 1）。
 - 含水的煎锅（液体层 `GetLiquidBlock` 有水）：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE `cookingTick`）；
   放非食物仍是"这东西可不能被烹饪……"（JE 先查配方，所以泡着水也先报这句；锅里有东西时同样报）。
-- 手持烹饪（`SkilletHand`）：基岩版没有"按住使用"的服务端事件，由客户端在主手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
+- 手持烹饪（`SkilletHand`）：JE 的 `SkilletItem.use` 两只手都认（煎锅在哪只手，原料就在另一只手）。**基岩版的副手只收引擎允许的那几种物品，生肉放不进去**（实测 `SetEntityItem(OFFHAND, 生牛肉)` 返回 False），所以这边常用的是反过来拿：煎锅放副手（物品 JSON 开了 `netease:allow_offhand`）、原料拿主手，这时在热源旁按住右键是煎不是吃——客户端在 `ClientItemTryUseEvent` 里取消"吃"（`SkilletHandRules.cooksInsteadOfEating`：副手煎锅、主手有营火配方、身边 3x3x3 有热源；JE 里饿着的时候主手的食物会先被吃掉，这里改成有热源就煎，不然基岩版饿着就没法手持煎东西了）。下面说的"副手食物"换成这种拿法就是主手的那件。
+  基岩版没有"按住使用"的服务端事件，由客户端在主手或副手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
   每 0.2 秒报一次，`RightClickReleaseClientEvent` 报松开（`Client/Input.py` + `SkilletHandRules.HoldReporter`，RPC `SkilletUseHeld`）；服务端按最后一次"按着"的时间判断还按不按着
   （超过 0.8 秒没消息就当松手）。每次"按着"没有在煎的话就是 JE 的 `use()`：主手煎锅，着火或脚下 3x3x3 有热源（只看方块名，不看营火 / 炉灶点没点着，与 JE 一致），
   副手食物在 `CanCookedFoodDict`（= JE 营火配方 16 条，补上了海带），头没泡在水里（脚 + 1.62 那一格的液体层）→ 开始；副手没食物 / 不能煎提示"用另一只手拿着原料！"，
@@ -292,7 +293,9 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 
 待实机验证（写完这一版时没进过游戏）：
 
-1. 主手煎锅副手生牛肉站在营火旁：按住右键 6 秒后副手少 1 个、背包多 1 个熟牛肉；中途松手什么都没变；松手后不按右键不会自己煎；火焰附加 I / II 是 4 / 3 秒；
+实机核对过（3.10，MCDK 后台模式的 mc_input）：不潜行右键不放、潜行右键放出煎锅；带火焰附加 II、耐久 200 的煎锅放下再拆，拿回的还是那一把（附魔、耐久都在）；副手煎锅、主手 3 块生牛肉站在点燃的炉灶旁按住右键 6.9 秒：生牛肉剩 2、背包多 1 块熟牛肉、饥饿值没变（没吃）；按 3 秒松手什么都没变；右键的按下 / 每 0.2 秒 / 松开上报都到了服务端。下面是还没核对的：
+
+1. 火焰附加 I / II 手持是 4 / 3 秒；煎锅在主手、能进副手的原料在副手的那种拿法；
    `RightClickBeforeClientEvent` / `RightClickReleaseClientEvent` / 每 0.2 秒的上报确实到服务端（手柄、触屏"新交互键"也算，经典触屏的长按可能要另外接 `HoldBeforeClientEvent` / `TapOrHoldReleaseClientEvent`）。
 2. 潜行右键方块放出煎锅，不潜行右键不放；放完不会在炉灶边冒"用另一只手拿着原料！"；站在炉灶 / 营火旁右键箱子仍然开箱。
 3. 带附魔、磨损过的煎锅放下再拆，掉出来的还是那一把（耐久、附魔、改名都在）；创造模式拆不掉煎锅；爆炸 / 命令拆会掉。
