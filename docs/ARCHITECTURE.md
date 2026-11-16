@@ -141,6 +141,12 @@ def OnServerSkilletBlockUse(args):
 - 刀切：手里拿刀右键派在 `FoodBlocks.py`；蛋糕与"用刀拆方块"在 `KnifeSlicing.py`。原版蛋糕要 `AddBlockItemListenForUseEvent` 登记才有
   `ServerBlockUseEvent`；`DestroyBlockEvent` 读不到派的口数和蛋糕的状态，所以先在 `ServerPlayerTryDestroyBlockEvent`（方块还在）记一张切片单，
   方块真的没了才兑现（`Shared/Rules/Slicing.SliceTickets`，认玩家、会过期）。
+- 南瓜派（JE 1.3 的 PieBlock + PlacePumpkinPieMixin）：方块 `arris:pumpkin_pie` 和另三个派走同一套（`Food.pieList` 吃一口、`Slicing.pieSliceItems` 刀切 / 刀拆），
+  但它的物品是**原版的** `minecraft:pumpkin_pie`，没有自己的 `*_item`：`Food.itemChangeBlockDict` 里挂着它，`ItemToBlock.py` 对方块使用时放成方块，
+  并置 `ret` 取消物品使用（JE 的 `BlockItem.useOn` 放得下放不下都不落到"吃"，所以对着方块的南瓜派吃不到，对着空气才吃）；
+  JE 配置 `enablePumpkinPieSneakToPlace`（缺省关）是 `Food.PUMPKIN_PIE_SNEAK_TO_PLACE`，改成 `True` 就要潜行才放、不潜行照常吃。
+  合成配方的成品、砧板配方的原料也是原版名（`tools/gen_dishes.py` 的 `DISH_RESULTS` 里写 `minecraft:pumpkin_pie`）。派方块吃一口照 JE 要饥饿值没满或创造模式
+  （`Rules.Eating.canEat`），拿刀切不受限。
 - 喂食（马饲料、狗粮）：`Livestock.py` 在 `PlayerInteractServerEvent` 里直接处理并取消（JE 同样用右键事件）。官方文档说这个事件在玩家"可以与实体交互"时才来，
   也就是目标对手里的物品有交互时；所以马和狼身上加了 `minecraft:bribeable` 记号（原版只有海豚用，没有自带行为，见 `Shared/Data/Mobs.py` 开头），
   否则马饲料触发不了事件、能吃的狗粮会被玩家吃掉。野生的目标也由这里接管取消，什么都不发生。
@@ -158,6 +164,9 @@ def OnServerSkilletBlockUse(args):
 3. 用刀杀着火的猪 / 疣猪兽掉烟熏火腿；抢夺等级是否读得到。
 4. `OnContainerFillLoottableServerEvent` 的 `loottable` 字符串长什么样（`Rules.ChestLoot.tableKey` 兼容几种写法）、追加的物品进了箱子。
 5. 引擎采用了 `entities/cat.json` 与两张交易表（猫吃鱼片、农民收洋葱、流浪商人卖种子）。
+6. 南瓜派：对着方块（含潜行）按住右键拿原版南瓜派，只放下一个、不开始吃（`ServerItemUseOnEvent` 的 `ret` 压不压得住"吃"；压不住要再在
+   `ServerItemTryUseEvent` / `ClientItemTryUseEvent` 里拦）；对着空气右键照常吃。放下的方块图集、四口动画、拿刀切 / 拆掉的切片数、饥饿值满时点派没反应、
+   创造模式中键拾取给什么（JE 是原版南瓜派，这边多半给 `arris:pumpkin_pie` 方块物品）。
 
 ## 引擎坑（踩过的）
 
