@@ -44,7 +44,7 @@ def testBasesFollowTheKeywords():
 def testLayersGrowIntoADish():
     assert Rules.fitsNext([BREAD], EGG) and Rules.fitsNext([BREAD], BACON)
     assert not Rules.fitsNext([BREAD], ("minecraft:dirt", 0))
-    assert Rules.completed([BREAD, EGG]) is None, "鸡蛋三明治是面包 + 两个煎蛋（JE 和这边都是）：一个蛋一层"
+    assert Rules.completed([BREAD, EGG]) is None, "夹蛋三明治是面包 + 两个煎蛋（JE 和这边都是）：一个蛋一层"
     assert Rules.completed([BREAD, EGG, EGG])["result"] == ("arris:egg_sandwich", 0)
     assert Rules.autoFinishes([BREAD, EGG, EGG]), "没法再往上加：放下第二个蛋就成"
     assert Rules.completed([BREAD, BACON, TOMATO]) is None and not Rules.autoFinishes([BREAD, BACON, TOMATO])

@@ -10,7 +10,7 @@ def RegisterCookingPotRecipes():
     registry.registerRecipeType(
         recipeTag,
         ("arris:cooking_pot", 0),
-        "厨锅",
+        "烹饪",
         CookingPotRecipe,
         "jei_farmers_delight.jeiCookingPotRecipe",
         65

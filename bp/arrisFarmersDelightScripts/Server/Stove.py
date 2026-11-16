@@ -72,7 +72,7 @@ def OnServerStoveItemUse(args):
     EnsureStoveData(blockEntityData)
     DropLegacyDisplays(blockEntityData)
     if GetBlockName((x, y + 1, z), dimensionId) != "minecraft:air":
-        ShowTip(playerId, "炉灶上方有方块阻挡...")
+        ShowTip(playerId, "炉灶上方被挡住了……")
         return
     # 旧实现只看 cookingIndex 那一格，那格占着就放不进去
     freeIndex = _freeSlot(blockEntityData)
@@ -91,7 +91,7 @@ def OnServerStoveItemUse(args):
         ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
         blockEntityData["cookingIndex"] = (freeIndex + 1) % STOVE_SLOTS
     elif itemDict["newItemName"] not in _PASS_ITEMS:
-        ShowTip(playerId, "这个貌似不能烹饪...")
+        ShowTip(playerId, "这东西可不能被烹饪……")
 
 
 @registerHandler("ServerBlockEntityTickEvent", match=StoveList)

@@ -95,7 +95,7 @@ def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
         blockEntityData["cuttingDict"] = carriedDict
         PublishBoard(dimensionId, blockPos, carriedDict)
     else:
-        ShowTip(playerId, "该物品无法放置在砧板上...")
+        ShowTip(playerId, "这东西可不能切啊……")
 
 
 @registerHandler("BlockRemoveServerEvent", match=CUTTING_BOARD)

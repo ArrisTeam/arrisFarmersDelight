@@ -19,7 +19,7 @@ def acceptor(ingredients, stacks):
 
 
 def testTheSmallestStackSetsTheBatch():
-    # 牛肉 4、胡萝卜 4、土豆 1：只够一份，牛肉和胡萝卜各剩 3
+    # 牛肉 4、胡萝卜 4、马铃薯 1：只够一份，牛肉和胡萝卜各剩 3
     ingredients = [set(["beef"]), set(["carrot"]), set(["potato"])]
     stacks = ["beef", "carrot", "potato"]
     accepts = acceptor(ingredients, stacks)

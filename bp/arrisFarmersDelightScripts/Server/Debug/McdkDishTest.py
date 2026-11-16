@@ -3,8 +3,8 @@
 
 不会自动运行，没有 RPC 端点；前置包（场景交互 · 前置）没装时跳过。直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径）：
 在第一个玩家脚下往 +x 3 / -z 2 格放一块砧板（要在站点的 6 格交互距离里），快捷栏 0 号放 3 个面包、1 号放 6 个煎蛋 ->
-开站 -> lay 面包打底 -> lay 煎蛋两次（第二层放下就自动做成）-> 板上是 3 个鸡蛋三明治 -> use 拿走 -> 关站；
-再按工作台取出鸡蛋三明治派发一次 CraftItemOutputChangeServerEvent，应被取消。会改玩家快捷栏 0、1 号格。
+开站 -> lay 面包打底 -> lay 煎蛋两次（第二层放下就自动做成）-> 板上是 3 个夹蛋三明治 -> use 拿走 -> 关站；
+再按工作台取出夹蛋三明治派发一次 CraftItemOutputChangeServerEvent，应被取消。会改玩家快捷栏 0、1 号格。
     from arrisFarmersDelightScripts.Server.Debug import McdkDishTest as T
     return T.mcdk_test_dish()
 """
@@ -26,7 +26,7 @@ def _count(playerId, name):
 
 
 def mcdk_test_dish():
-    """测试函数：开站摆一份鸡蛋三明治、拿走，再验工作台拦截；返回结构化结果。"""
+    """测试函数：开站摆一份夹蛋三明治、拿走，再验工作台拦截；返回结构化结果。"""
     started = time.time()
     runtime = serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime")
     manager = runtime.getManager() if runtime is not None else None

@@ -59,7 +59,7 @@ def OnServerSkilletBlockUse(args):
             # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
             args["cancel"] = True
         else:
-            ShowTip(playerId, "这个貌似不可以进行烹饪...")
+            ShowTip(playerId, "这东西可不能被烹饪……")
         return
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:

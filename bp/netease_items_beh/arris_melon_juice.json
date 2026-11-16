@@ -15,7 +15,7 @@
                 "using_converts_to": "minecraft:glass_bottle"
             },
             "netease:customtips": {
-                "value": "§9瞬间回复少量生命值"
+                "value": "§9瞬间恢复少量生命值"
             },
             "minecraft:max_stack_size": 16,
             "minecraft:use_duration": 30.0

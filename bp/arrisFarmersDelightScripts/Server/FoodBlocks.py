@@ -52,7 +52,7 @@ def OnServePlatedFood(args):
     itemDict = {"itemName": packagedFoodDict.get("item"), "count": 1}
     needsBowl = blockName[0:28] != "arris:rice_roll_medley_block"
     if needsBowl and handItemDict.get("newItemName") != "minecraft:bowl":
-        ShowTip(playerId, "你需要一个碗来食用它")
+        ShowTip(playerId, "你需要一个碗以食用它。")
         return
     compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": name}, 0, dimensionId)
     blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)

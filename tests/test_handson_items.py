@@ -32,7 +32,7 @@ def testSlotsToCountsAndKeys():
 
 
 def testWiredIntoThePotBatch():
-    # 牛肉 4、胡萝卜 4、土豆 1 的锅：配方的三个配料各接受一种 (名字, aux)
+    # 牛肉 4、胡萝卜 4、马铃薯 1 的锅：配方的三个配料各接受一种 (名字, aux)
     slots = [Items.make("minecraft:beef", 0, 4), Items.make("minecraft:carrot", 0, 4), None, Items.make("minecraft:potato", 0, 1)]
     keys = Items.keysOf(slots)
     ingredients = [set([("minecraft:beef", 0)]), set([("minecraft:carrot", 0)]), set([("minecraft:potato", 0)])]
