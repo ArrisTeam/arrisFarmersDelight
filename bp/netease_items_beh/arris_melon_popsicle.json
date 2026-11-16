@@ -13,8 +13,7 @@
                     }
                 ],
                 "nutrition": 3,
-                "saturation_modifier": 0.2,
-                "using_converts_to": "minecraft:stick"
+                "saturation_modifier": 0.2
             },
             "netease:customtips": {
                 "value": "§9抗火 (00:15)"
