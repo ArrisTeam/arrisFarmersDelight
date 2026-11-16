@@ -34,14 +34,12 @@ SCRIPTS = "arrisFarmersDelightScripts.Shared."
 Colors = importlib.import_module(SCRIPTS + "Rules.HandsOn.PotColors")
 Recipes = importlib.import_module(SCRIPTS + "Data.CookingPotRecipes")
 Remainders = importlib.import_module(SCRIPTS + "Data.Remainders")
+Sunk = importlib.import_module(SCRIPTS + "Data.PotSunk")
 
 # gen_food_colors.VANILLA 里没有的原版物品：贴图相对原版资源包
 VANILLA_MORE = {
     "minecraft:mushroom_stew": "textures/items/mushroom_stew", "minecraft:beetroot_soup": "textures/items/beetroot_soup",
     "minecraft:rabbit_stew": "textures/items/rabbit_stew", "minecraft:cooked_rabbit": "textures/items/rabbit_cooked",
-    "minecraft:rotten_flesh": "textures/items/rotten_flesh", "minecraft:bone": "textures/items/bone",
-    "minecraft:bone_meal": "textures/items/dye_powder_white", "minecraft:cocoa_beans": "textures/items/dye_powder_brown",
-    "minecraft:hanging_roots": "textures/items/hanging_roots", "minecraft:glow_lichen": "textures/blocks/glow_lichen",
     "minecraft:bowl": "textures/items/bowl", "minecraft:glass_bottle": "textures/items/potion_bottle_empty",
     "minecraft:bucket": "textures/items/bucket_empty", "minecraft:milk_bucket": "textures/items/bucket_milk",
     "minecraft:water_bucket": "textures/items/bucket_water", "minecraft:lava_bucket": "textures/items/bucket_lava",
@@ -49,10 +47,12 @@ VANILLA_MORE = {
 }
 # 方块物品的图标（terrain_texture.json 里的名字）：JE 里这个物品是平面图标
 BLOCK_ICONS = {"arris:stuffed_pumpkin_block_stage0": "arris:stuffed_pumpkin_block_icon"}
-# HoD 的 poured 标签里本包有的物品：倒出来的是容器里的液体，容器是物品自带的合成剩余物
-POURED = ("minecraft:milk_bucket", "minecraft:water_bucket", "minecraft:lava_bucket", "minecraft:honey_bottle", "minecraft:dragon_breath",
-          "arris:milk_bottle", "arris:tomato_sauce")
-CRACKED = ("minecraft:egg",)    # HoD 的 cracked 标签：生蛋搅进汤里是蛋黄加蛋白的颜色 FoodColors.EGG
+# 下锅不浮的几类（Shared/Data/PotSunk.py，HoD 的 poured / cracked / dissolves 标签）：
+# poured 倒出来的是容器里的液体，容器是物品自带的合成剩余物；cracked 生蛋搅进汤里是蛋黄加蛋白的颜色 FoodColors.EGG；
+# dissolves 的粉进锅时抖下来的粒子要碎料色（MainColors），倒的（蜂蜜）用液色
+POURED = tuple(name for name, _aux in Sunk.POURED)
+CRACKED = tuple(name for name, _aux in Sunk.CRACKED)
+POWDERS = tuple(name for name, _aux in Sunk.DISSOLVES if name not in POURED)
 # 原版的熔炉配方里烧出食物的（本包自己的熔炉配方读 bp/recipes）
 VANILLA_SMELTING = {
     "minecraft:beef": "minecraft:cooked_beef", "minecraft:porkchop": "minecraft:cooked_porkchop", "minecraft:chicken": "minecraft:cooked_chicken",
@@ -167,7 +167,7 @@ def compute(icons, previous):
     for name in names:
         if name in smelting:
             tables["CookedForms"][name] = smelting[name]
-    for name in names + sorted(set(tables["CookedForms"].values())):
+    for name in names + [powder for powder in POWDERS if powder not in names] + sorted(set(tables["CookedForms"].values())):
         found = icon(name)
         keep("MainColors", name, Colors.sampleMain(found[0], found[1], found[2]) if found else None)
     for name in POURED:

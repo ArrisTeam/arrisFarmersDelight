@@ -35,6 +35,12 @@ VANILLA = {
     "minecraft:wheat": "textures/items/wheat", "minecraft:sugar": "textures/items/sugar", "minecraft:ink_sac": "textures/items/dye_powder_black",
     "minecraft:brown_mushroom": "textures/blocks/mushroom_brown", "minecraft:red_mushroom": "textures/blocks/mushroom_red",
     "minecraft:pumpkin": "textures/blocks/pumpkin_side", "minecraft:melon_block": "textures/blocks/melon_side",
+    # 厨锅配方里用到、早先没有颜色的（HoD 的 FoodColors.of 对它们都读图标）：骨头、野菜，和下锅化在汤里的粉（糖、墨囊在上面）
+    "minecraft:bone": "textures/items/bone", "minecraft:bone_meal": "textures/items/dye_powder_white",
+    "minecraft:cocoa_beans": "textures/items/dye_powder_brown", "minecraft:rotten_flesh": "textures/items/rotten_flesh",
+    "minecraft:hanging_roots": "textures/items/hanging_roots", "minecraft:glow_lichen": "textures/blocks/glow_lichen",
+    "minecraft:glow_ink_sac": "textures/items/dye_powder_glow", "minecraft:glowstone_dust": "textures/items/glowstone_dust",
+    "minecraft:blaze_powder": "textures/items/blaze_powder",
 }
 
 

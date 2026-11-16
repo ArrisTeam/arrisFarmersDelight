@@ -15,6 +15,7 @@ import fdtest
 Table = fdtest.load("Shared.Data.BrothColors")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList
 Colors = fdtest.load("Shared.Rules.HandsOn.PotColors")
+Sunk = fdtest.load("Shared.Data.PotSunk")
 TOOL = os.path.join(fdtest.ROOT, "tools", "gen_broth_colors.py")
 VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
 
@@ -60,6 +61,14 @@ def testEveryIngredientHasAMainColourAndSoDoesWhatItCooksInto():
         assert cooked in Table.MainColors, "碎料按熟的颜色：%s -> %s" % (raw, cooked)
     for name in ("minecraft:beef", "minecraft:potato", "minecraft:rabbit", "arris:minced_beef", "arris:wheat_dough", "minecraft:egg"):
         assert name in Table.CookedForms, name
+
+
+def testThePowdersThatDissolveHaveAMainColourForTheirGrains():
+    # 抖进锅里的粉（糖、可可豆、荧石粉、烈焰粉……）落下来的粒子按碎料色染（PotHands.start 的 MainColors）；倒的（蜂蜜）用液色
+    for name, _aux in Sunk.DISSOLVES:
+        assert name in Table.MainColors or name in Table.PouredColors, "抖下来的粉粒没有颜色：" + name
+    for name in ("minecraft:blaze_powder", "minecraft:glowstone_dust", "minecraft:glow_ink_sac"):
+        assert name in Table.MainColors, name
 
 
 def testThePouredLiquidsHaveTheirOwnColour():
