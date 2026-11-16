@@ -6,8 +6,8 @@
                     "functions": [
                         {
                             "count": {
-                                "max": 9,
-                                "min": 9
+                                "max": 1,
+                                "min": 1
                             },
                             "function": "set_count"
                         },
@@ -16,7 +16,7 @@
                             "function": "set_data"
                         }
                     ],
-                    "name": "arris:cabbage",
+                    "name": "arris:cabbage_crate",
                     "type": "item",
                     "weight": 1
                 }
