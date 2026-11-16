@@ -130,6 +130,11 @@ def _onPlayerEatFood(args):
     dispatch("PlayerEatFoodServerEvent", args, _itemName(args))
 
 
+@Listen("ItemDurabilityChangedServerEvent")
+def _onItemDurabilityChanged(args):
+    dispatch("ItemDurabilityChangedServerEvent", args, _itemName(args))
+
+
 @Listen("CraftItemOutputChangeServerEvent")
 def _onCraftItemOutputChange(args):
     dispatch("CraftItemOutputChangeServerEvent", args, _itemName(args))

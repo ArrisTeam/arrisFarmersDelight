@@ -2,7 +2,10 @@
 """Tools - 刀与洋葱的战利品、煎锅打人的音效、扔烂番茄（服务端）
 
 刀的额外掉落和洋葱掉落照 JE 的战利品修饰器，概率与掉落表在 Shared/Data/MobLoot.py，结算在 Shared/Rules/MobLoot.py。
+煎锅打人的音效照 JE 的 playSkilletAttackSound（重击 / 轻击，挑法在 Shared/Rules/SkilletRules.AttackClock）。
 """
+import time
+
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, GetCarriedItem, GetEngineTypeStr
 from .Helpers.Fx import ToAllPlayerPlaySound
@@ -10,8 +13,10 @@ from .Helpers.Items import IsKnife
 from .Helpers.Player import SetNotCreateItem
 from ..Shared.Data.MobLoot import KNIFE_HAM, PROJECTILES
 from ..Shared.Rules import MobLoot
+from ..Shared.Rules.SkilletRules import SKILLET_ITEM, AttackClock
 
 PLAYER = "minecraft:player"
+_swings = AttackClock()
 
 
 def _killerPlayer(attackerId):
@@ -54,9 +59,9 @@ def OnMobLoot(args):
 def OnSkilletAttack(args):
     playerId = args["playerId"]
     itemDict = GetCarriedItem(playerId)
-    if itemDict and itemDict["newItemName"] == "arris:skillet_item":
+    if itemDict and itemDict["newItemName"] == SKILLET_ITEM:
         dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
-        ToAllPlayerPlaySound(dimensionId, compFactory.CreatePos(playerId).GetFootPos(), "ambient.skillet.attack_strong")
+        ToAllPlayerPlaySound(dimensionId, compFactory.CreatePos(playerId).GetFootPos(), _swings.sound(playerId, time.time()))
 
 
 @registerHandler("ItemUseAfterServerEvent", match="arris:rotten_tomato")

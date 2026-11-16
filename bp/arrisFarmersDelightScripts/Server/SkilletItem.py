@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""SkilletItem - 煎锅物品：潜行才放成方块、方块记住那一件煎锅、拆掉原样掉回（服务端）
+"""SkilletItem - 煎锅物品：潜行才放成方块、方块记住那一件煎锅、拆掉原样掉回、打一下只磨损 1 点（服务端）
 
 JE：SkilletItem.place（不潜行不放，右键走手持烹饪，见 SkilletHand）、updateCustomBlockEntityTag + SkilletBlockEntity.skilletStack
 （放下去的那件连耐久、附魔、名字一起存在方块里，火焰附加会缩短方块煎东西的时间）、CopySkilletFunction（拆掉时战利品表把存着的
-那件原样掉出来；创造模式没有战利品）。
+那件原样掉出来；创造模式没有战利品）、hurtEnemy / mineBlock（打一下、挖一块都只磨损 1 点）。
 放置本身还是 Server/ItemToBlock.py 那一份（与派共用）：这里在它前面挡一道潜行判断，放好后把那件煎锅记进方块实体数据 "skilletItem"。
 方块的战利品表是空的（bp/loot_tables/air_loot.json），掉落全在这里：Skillet.py 的 BlockRemoveServerEvent 处理调 dropStored。
 旧存档 / 命令放出来的煎锅没有 "skilletItem"：火焰附加按 0 级，拆掉掉一把新的。
@@ -76,6 +76,13 @@ def OnTryBreakSkillet(args):
     # 创造模式的玩家拆煎锅：JE 战利品表只在非创造时结算，所以不掉煎锅（方块真没了时在 dropStored 里认这笔记录）
     if IsCreative(args["playerId"]):
         _creativeBreaks.put((args["dimensionId"], args["x"], args["y"], args["z"]), time.time())
+
+
+@registerHandler("ItemDurabilityChangedServerEvent", match=Rules.SKILLET_ITEM)
+def OnSkilletDurability(args):
+    # 基岩版自定义武器打一下磨损 2 点，JE 的煎锅是 1 点：多出来的退回去（修复、读取不动；引擎说不能改时只能算了）
+    if args.get("canChange") is not False:
+        args["durability"] = Rules.wearAfter(args["durabilityBefore"], args["durability"])
 
 
 def dropStored(blockEntityData, dimensionId, blockPos):
