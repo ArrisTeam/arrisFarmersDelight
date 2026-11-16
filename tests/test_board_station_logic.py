@@ -307,6 +307,25 @@ def testABurgerIsBuiltFromTheBreadUpAndTheBreadNotUsedGoesBack():
     assert K.count("arris:hamburger") == 1 and K.board(data) is None, "点一下拿走"
 
 
+def testTheAssembledEventSaysHowTheDishWasFinished():
+    # JE BoardTests.everyFoodCraftComesToTheBoard：碗里有肉的菜是"摆"不是"拌"，盛宴 / 蛋糕是整块（block）
+    for name, finish, block, layers in (
+            ("arris:steak_and_potatoes", "arrange", False, ("minecraft:bowl", "arris:cooked_rice", "minecraft:cooked_beef", "minecraft:baked_potato", "arris:onion")),
+            ("arris:mixed_salad", "toss", False, ("minecraft:bowl", "arris:cabbage", "minecraft:beetroot", "arris:tomato")),
+            ("minecraft:cake", "press", True, ("minecraft:wheat", "arris:milk_bottle", "arris:milk_bottle", "arris:milk_bottle", "minecraft:sugar", "minecraft:egg",
+                                               "minecraft:sugar", "minecraft:wheat", "minecraft:wheat"))):
+        manager, data = K.setup()
+        K.opened(manager)
+        K.effects()
+        for index, layer in enumerate(layers):
+            assert _place(manager, layer, 1, slot=10 + index), (name, layer)
+        if K.layers(data):                       # 还能长成更大的菜（沙拉长成闪耀沙拉）：等厨师点一下（JE 的 finishIfItWaits）
+            assert K.do(manager, "a", K.custom("assemble")), name
+        assert K.board(data) == (name, 1), name
+        assembled = [payload for event, payload in K.effects() if event == "assembled"]
+        assert len(assembled) == 1 and assembled[0]["finish"] == finish and assembled[0]["block"] is block, (name, assembled)
+
+
 def testASaladStartsFromItsBowlAndTheThinnestLayerSaysHowManyAreMade():
     manager, data = K.setup()
     K.opened(manager)

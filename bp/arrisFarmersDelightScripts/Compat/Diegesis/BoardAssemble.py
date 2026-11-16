@@ -12,7 +12,6 @@
 from . import BoardGive
 from .BoardSlots import stack
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
-from ...Server.Helpers.Items import GetItemType
 from ...Shared.Rules import DishStation as Dishes
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.BoardStation import BATCH, BOARD_MAX, keyOf
@@ -25,13 +24,6 @@ def _wire(item):
 
 def _one(kind, count=1):
     return {"newItemName": kind[0], "newAuxValue": kind[1], "count": count}
-
-
-def _finishOf(dish, resultName, isBlock):
-    """这道菜收尾的动作（客户端挑动画用）：碗里拌还是摆、签子穿还是冻……；标签（拌 / 摆 / 卷）我们没有，按名字猜。"""
-    others = [{"name": kind[0]} for index, kind in enumerate(dish["ingredients"]) if index != dish["base"]]
-    return Assembly.finishOf(dish["kind"], resultName, isBlock=isBlock, tossed=Assembly.isTossed(others=others),
-                             hasIce=any(kind[0] == "minecraft:ice" for kind in dish["ingredients"]))
 
 
 def finishIfWanted(logic, playerId):
@@ -67,9 +59,8 @@ def assemble(logic, playerId):
             result["count"] -= there
     BoardGive.give(logic, result)
     logic.restart()
-    block = GetItemType(result) == "block"
-    logic.station.effect("assembled", {"layers": [_wire(dict(layer, count=1)) for layer in layers], "block": block,
-                                       "finish": _finishOf(dish, name, block)})
+    logic.station.effect("assembled", {"layers": [_wire(dict(layer, count=1)) for layer in layers], "block": Dishes.isBlockResult(name),
+                                       "finish": Dishes.finishOf(dish)})
     ToAllPlayerPlaySound(logic.station.dimensionId, logic.station.pos, "random.pop")
     return True
 

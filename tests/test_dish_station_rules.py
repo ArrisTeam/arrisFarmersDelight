@@ -10,6 +10,7 @@ import sys
 import fdtest
 
 Rules = fdtest.load("Shared.Rules.DishStation")
+Assembly = fdtest.load("Shared.Rules.HandsOn.Assembly")
 Dishes = fdtest.load("Shared.Data.Dishes")
 
 BREAD, EGG, BACON = ("minecraft:bread", 0), ("arris:fried_egg", 0), ("arris:cooked_bacon", 0)
@@ -99,6 +100,40 @@ def testDishesGiveBackWhatJavaLeaves():
     assert all(dish["ingredients"].count(milk) + dish["ingredients"].count(bottle) == 3 for dish in cakes)
     potato = [dish["extras"] for dish in Rules.dishes() if dish["result"][0] == "arris:stuffed_potato"]
     assert sorted(potato) == [[("minecraft:bucket", 0, 1)]] * 2 + [[("minecraft:glass_bottle", 0, 1)]] * 2
+
+
+def _finish(name):
+    return Rules.finishOf(next(dish for dish in Rules.dishes() if dish["result"][0] == name))
+
+
+def testEveryDishIsFinishedTheWayJavaFinishesIt():
+    # JE BoardTests.everyFoodCraftComesToTheBoard（257-267）逐道断言过的
+    toss, arrange, press = Assembly.FINISH_TOSS, Assembly.FINISH_ARRANGE, Assembly.FINISH_PRESS
+    expected = {
+        "arris:honey_glazed_ham_block_stage0": arrange, "arris:bacon_and_eggs": arrange, "arris:steak_and_potatoes": arrange,
+        "arris:grilled_salmon": arrange, "arris:mixed_salad": toss, "arris:fruit_salad": toss, "arris:nether_salad": toss,
+        "arris:hamburger": Assembly.FINISH_SANDWICH, "arris:egg_sandwich": Assembly.FINISH_SANDWICH,
+        "arris:mutton_wrap": Assembly.FINISH_ROLL, "arris:cod_roll": Assembly.FINISH_SHAPE, "arris:kelp_roll": Assembly.FINISH_ROLL,
+        "arris:barbecue_stick": Assembly.FINISH_SKEWER, "arris:melon_popsicle": Assembly.FINISH_FREEZE, "arris:apple_pie_item": press,
+        # 同一套规则推出来的：碗里有肉的摆、盛宴（方块）摆、打了 tossed 标签的盛宴拌、蛋糕 / 果汁压、面团饼干揉
+        "arris:roasted_mutton_chops": arrange, "arris:shepherds_pie_block_stage0": arrange, "arris:rice_roll_medley_block_stage0": arrange,
+        "arris:roast_chicken_block_stage0": arrange, "arris:gleaming_salad_block_stage0": toss, "minecraft:cake": press,
+        "arris:melon_juice": press, "arris:stuffed_potato": press, "arris:honey_cookie": Assembly.FINISH_KNEAD,
+        "arris:wheat_dough": Assembly.FINISH_KNEAD, "arris:pie_crust": Assembly.FINISH_KNEAD,
+    }
+    for name, finish in sorted(expected.items()):
+        assert _finish(name) == finish, (name, _finish(name), finish)
+    for dish in Rules.dishes():
+        assert Rules.finishOf(dish) in (toss, arrange, press, Assembly.FINISH_SANDWICH, Assembly.FINISH_ROLL, Assembly.FINISH_SHAPE,
+                                        Assembly.FINISH_SKEWER, Assembly.FINISH_FREEZE, Assembly.FINISH_KNEAD), dish["result"]
+
+
+def testWhatIsAWholeBlockOfFood():
+    for name in ("arris:honey_glazed_ham_block_stage0", "arris:roast_chicken_block_stage0", "arris:apple_pie_item",
+                 "arris:sweet_berry_cheesecake_item", "arris:chocolate_pie_item", "minecraft:cake"):
+        assert Rules.isBlockResult(name), name
+    for name in ("arris:hamburger", "arris:mixed_salad", "arris:cod_roll", "minecraft:pumpkin_pie", "arris:wheat_dough"):
+        assert not Rules.isBlockResult(name), name
 
 
 def testTheTableBlocksOnlyTheBoardRecipes():

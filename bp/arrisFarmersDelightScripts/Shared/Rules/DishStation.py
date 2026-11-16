@@ -7,13 +7,25 @@
 层是 (物品名, aux)；配料也是 (物品名, aux)，按名字和 aux 精确匹配。
 做一份剩下的东西照 JE 的合成剩余物（HoD 的 Assembling.make 用配方的 getRemainingItems）：extras 是换成了别的东西的容器，
 keeps 是原样留下的配料（面团配方的水桶）——它每轮都放回去，不限做几份，做完整个还给厨师。
+做成时怎么收尾（finishOf，客户端挑动画用）照 AssemblyRecipes.Assembly.finish（199-249）：碗里的菜"拌"还是"摆"要看成品是不是方块（盛宴、派、蛋糕）、
+打没打 tossed 标签、配料里有没有肉 / 鱼 / 蛋——标签和物品属性基岩没有，下面几张名单就是它们的替身（JE 的 BoardTests.everyFoodCraftComesToTheBoard 逐道断言过）。
 """
 from ..Data.Dishes import DishList
+from ..Data.Food import pieList, platePackagedFoodDict
 from .HandsOn import Assembly
 
 BATCH = Assembly.BATCH
 _dishes = []
 _results = set()
+CAKE = "minecraft:cake"
+# HoD 的 tossed / frozen / wrapped 标签里 FD 本体的成品（arranged 标签只有 Barbeque's Delight 的拌饭，这边没有）
+_TOSSED = frozenset(("arris:mixed_salad", "arris:fruit_salad", "arris:nether_salad", "arris:gleaming_salad_block_stage0"))
+_FROZEN = frozenset(("arris:melon_popsicle",))
+_WRAPPED = frozenset(("arris:mutton_wrap",))
+# FoodProperties.isMeat / #minecraft:fishes 的替身：物品名（冒号后面按下划线拆开）里有这些词的当肉、当鱼；生鸡蛋是 handson_delight:cracked 里的
+_MEAT_WORDS = frozenset(("beef", "porkchop", "chicken", "mutton", "rabbit", "ham", "bacon", "flesh", "patty", "chops", "cuts"))
+_FISH_WORDS = frozenset(("cod", "salmon", "fish", "pufferfish"))
+_CRACKED = frozenset(("minecraft:egg",))
 
 
 def rebuildIndex(dishList=None):
@@ -112,6 +124,26 @@ def makeOf(dish, stacks):
     return {"made": made, "left": [(kind, leftOf(dish, kind, count, made)) for kind, count in stacks],
             "extras": [(name, aux, count * made) for name, aux, count in dish["extras"]],
             "result": (dish["result"][0], dish["result"][1], made * dish["count"])}
+
+
+def isBlockResult(name):
+    """成品是不是放下去就是一整块（BlockItem）：盛宴、整个的派、蛋糕。基岩的 itemType 不一定这么说（盛宴按食物算），所以按名字认。"""
+    return name in platePackagedFoodDict or name == CAKE or (name.endswith("_item") and name[:-len("_item")] in pieList)
+
+
+def _flagsOf(kind):
+    """一件配料在 isTossed 眼里是什么（肉 / 鱼 / 生蛋）；名字带 egg、bacon 的 Assembly.isTossed 自己认。"""
+    words = set(kind[0].split(":")[-1].split("_"))
+    return {"name": kind[0], "meat": bool(words & _MEAT_WORDS), "fish": bool(words & _FISH_WORDS), "cracked": kind[0] in _CRACKED}
+
+
+def finishOf(dish):
+    """这道菜做成时怎么收尾（Assembly.finish）：Assembly.finish* 常量之一。dish 是 dishes() 里的一条。"""
+    name, block = dish["result"][0], isBlockResult(dish["result"][0])
+    others = [_flagsOf(kind) for index, kind in enumerate(dish["ingredients"]) if index != dish["base"]]
+    tossed = Assembly.isTossed(tagged=name in _TOSSED, isBlock=block, others=others)
+    return Assembly.finishOf(dish["kind"], name, isBlock=block, tossed=tossed, frozen=name in _FROZEN,
+                             hasIce=any(kind[0] == "minecraft:ice" for kind in dish["ingredients"]), wrapped=name in _WRAPPED)
 
 
 def statusText(data, nameOf=None):
