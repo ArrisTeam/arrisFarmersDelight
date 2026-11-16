@@ -8,8 +8,8 @@
   空位那一个；Shift 点托盘里的食物直接整叠摆上去（槽规则放行，内核自己做）；
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
-  既不描边也不抬起，只有该翻的那件冒烟示意；这里补两样朴素的：光标悬着的那件抬起一点（Diegesis 给可交互节点的悬停抬起，0.6 px），
-  旁边写出它的名字。HOVER_NAME 改成 False 就不写名字。
+  既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意。这里照 JE：悬停不给任何反馈（HOVER = False；改成 True 就是悬着的那件
+  抬起 0.6 像素、旁边写出它的名字，早先加过的替代做法，留着开关）。
 坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.py）；命中盒、世界里的展示和这里画的对得上。
 """
 from . import BookSources
@@ -24,7 +24,7 @@ CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target
           "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
-HOVER_NAME = True                                      # 悬着一件时旁边写它的名字（JE 没有；去掉就是 False）
+HOVER = False                                          # 悬着的那件抬起一点、旁边写名字（JE 没有：烤件不是可交互节点）
 AGAIN = 0.6                                            # 自己翻的这一下已经演过了：服务端说"翻了"的 0.6 秒内不重复演（onEffect 里 TURNED）
 _names = {}
 
@@ -101,9 +101,10 @@ class GrillViewMixin(object):
     def frame(self, dt):
         if self.pieces is None:
             return
-        self.pieces.frame(dt, self.hover)
-        item = self.pieces.shown[self.hover] if self.hover is not None else None
-        self.view.tooltip([nameOf(item)] if HOVER_NAME and item is not None and self.view.hand is None else None)
+        hover = self.hover if HOVER else None
+        self.pieces.frame(dt, hover)
+        item = self.pieces.shown[hover] if hover is not None else None
+        self.view.tooltip([nameOf(item)] if item is not None and self.view.hand is None else None)
 
     # ---------------------------------------------------------------- 拾取
 
