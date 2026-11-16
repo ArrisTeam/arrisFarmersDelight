@@ -5,5 +5,5 @@
 不然各用各的名字。
 """
 
-NAMESPACE = "dolor_container_79d70aad"
-FILE = "ui/dolor_container_79d70aad.json"
+NAMESPACE = "dolor_container_ec08b849"
+FILE = "ui/dolor_container_ec08b849.json"
