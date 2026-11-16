@@ -358,7 +358,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   （头，技术方块，不进创造栏），模型和 JE 的 `tatami_mat_foot` / `tatami_mat_head` 一一对应（odd / even 顶面、inner 接头面）。
   放置在 `Server/TatamiMats.py`：`ServerItemUseOnEvent` 里自己放两格并取消引擎的放置（`ret`，同 `WildCrops` 的做法），朝向用玩家的 yaw
   （`Placement.facingOfYaw` -> `directionOfFacing`，direction 的编号见官方文档：south 0、west 1、north 2、east 3，方块前面朝向玩家），
-  头在放置者面朝的方向；头那格要能被顶替（空气、草、水……）、两格下面都不是空气，放不下什么都不做。
+  头在放置者面朝的方向；头那格要能被顶替（空气、草、水……）、两格下面都不是空气，放不下什么都不做。点到砧板、厨锅、煎锅、炉灶、橱柜、篮子、
+  展示框这些自己会处理右键的方块时不放、不抢交互冷却，潜行才放（JE：方块的 use 优先；短垫子由引擎放，这个先后引擎自己会排）。
   拆：不挂拆除事件，两个方块都开 `netease:neighborchanged_sendto_script`，一半变成别的方块，另一半在邻居变化里静默清掉（不掉落、不通知邻居）；
   掉落全交给被拆那一半的战利品表（头的表指向长垫子，脚掉自己），所以整张只掉一个、创造模式一个不掉。脚下变空气时先静默清掉另一半，
   再把这一半以"销毁"（`SetBlockNew` 第三个参数 1）清掉，同样只掉一个；短垫子也走这一条（JE 的 `canSurvive`），放置时下面是空气会被取消。
@@ -383,7 +384,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 
 1. 长垫子：右键地面两格一起出现，头在面朝方向；四个朝向下头的位置对、两个接头面贴在一起、顶面 odd / even 接得上（若头出现在反方向，改
    `Placement.directionOfFacing`）；引擎自己没有多放一个脚（`ret` 取消了方块物品的放置）。
-2. 头那格被占 / 下面是空气 / 点的是草 / 冒险模式 / 按住右键：分别什么都不放 / 放进草那格 / 不能放 / 不连放。
+2. 头那格被占 / 下面是空气 / 点的是草 / 冒险模式 / 按住右键：分别什么都不放 / 放进草那格 / 不能放 / 不连放；拿着长垫子点橱柜、厨锅
+   这些：开界面而不是放垫子，潜行才放。
 3. 拆脚、拆头（生存、创造）、活塞推、爆炸、`/setblock air`：另一半跟着没，生存只掉一个；脚下方块被拆整张碎、掉一个；短垫子同理，
    也不能放在悬空的格子。创造模式中键点头方块拿到的物品能当长垫子放。
 4. 栅栏：`netease:connection` 里写 `minecraft:` 开头的名字能连上（碰撞盒的 `enable` 也能）；碰撞高 1.5 挡得住跳；相邻原版栅栏 / 墙 / 玻璃板
