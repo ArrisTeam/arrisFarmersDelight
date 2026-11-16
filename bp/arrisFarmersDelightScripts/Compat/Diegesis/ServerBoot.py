@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""ServerBoot - 场景交互前置的服务端联动入口：装了前置就登记切菜板、厨锅、煎锅站点（服务端）
+"""ServerBoot - 场景交互前置的服务端联动入口：装了前置就登记切菜板、厨锅、煎锅、炉灶站点（服务端）
 
 单独在 modMain 里登记，Server/ 不导入 Compat/。前置包没装时 ImportModule 返回 None，什么都不做，
-砧板、厨锅、煎锅照常走经典玩法（Server/CuttingBoard.py、CookingPot.py、Skillet.py）。只靠 API_VERSION 判断能力，不写清单依赖。
+砧板、厨锅、煎锅、炉灶照常走经典玩法（Server/CuttingBoard.py、CookingPot.py、Skillet.py、Stove.py）。只靠 API_VERSION 判断能力，不写清单依赖。
 两次机会、只登记一次：导入时（前置包的服务端 Api 是纯 Python，早于它的服务端系统导入也安全），
 以及 LoadServerAddonScriptsAfter（前置包比本包后加载时）。
 """
 from ...QuModLibs.Server import Listen, serverApi
-from . import BoardLogic, PanLogic, PotLogic
+from . import BoardLogic, GrillLogic, PanLogic, PotLogic
 
 API_MODULE = "arrisDiegesisScripts.Api.Server"
 MIN_API_VERSION = 1
@@ -29,6 +29,7 @@ def tryRegister():
     BoardLogic.register(api)
     PotLogic.register(api)
     PanLogic.register(api)
+    GrillLogic.register(api)
     _state["registered"] = True
     return True
 
