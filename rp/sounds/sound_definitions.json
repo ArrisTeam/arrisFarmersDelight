@@ -116,6 +116,46 @@
             }
          ]
       },
+      "ambient.cooking_pot.boil_soup" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/cooking_pot/boil_soup1",
+               "volume" : 20,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/cooking_pot/boil_soup2",
+               "volume" : 20,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/cooking_pot/boil_soup3",
+               "volume" : 20,
+               "weight" : 10
+            }
+         ]
+      },
+      "ambient.cooking_pot.boil_water" : {
+         "category" : "ambient",
+         "sounds" : [
+            {
+               "is3D" : true,
+               "name" : "sounds/cooking_pot/boil_water1",
+               "volume" : 20,
+               "weight" : 10
+            },
+            {
+               "is3D" : true,
+               "name" : "sounds/cooking_pot/boil_water2",
+               "volume" : 20,
+               "weight" : 10
+            }
+         ]
+      },
       "handson.pot.body" : {
          "category" : "ambient",
          "sounds" : [

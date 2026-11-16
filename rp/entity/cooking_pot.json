@@ -21,6 +21,7 @@
         "bubble": "animation.cooking_pot.bubble",
         "shelf": "animation.cooking_pot.shelf",
         "boil": "animation.cooking_pot.boil",
+        "boil_water": "animation.cooking_pot.boil_water",
         "scene": "animation.cooking_pot.scene"
       },
       "render_controllers": [
@@ -33,13 +34,15 @@
         "bubble":  "arris:bubble"
       },
       "sound_effects": {
-        "boil": "ambient.cooking_pot.boil"
+        "boil": "ambient.cooking_pot.boil",
+        "boil_water": "ambient.cooking_pot.boil_water"
       },
       "scripts":{
         "initialize": [
           "variable.mod_heat = 0.0;",
           "variable.mod_shelf = 0.0;",
           "variable.mod_open = 0.0;",
+          "variable.mod_food = 0.0;",
           "variable.mod_level = 0.0;",
           "variable.mod_spoon_x = 0.0;",
           "variable.mod_spoon_y = 0.0;",
@@ -53,6 +56,9 @@
         "animate": [
           {
             "boil": "variable.mod_heat == 1.0 && variable.mod_open < 0.5"
+          },
+          {
+            "boil_water": "variable.mod_heat == 1.0 && variable.mod_open >= 0.5 && variable.mod_food < 0.5"
           },
           {
             "smoke": "variable.mod_heat == 1.0 && variable.mod_open < 0.5"

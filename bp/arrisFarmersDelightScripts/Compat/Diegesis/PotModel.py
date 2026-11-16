@@ -10,6 +10,7 @@
   4 = 煮好的汤里浮着的碎料的四个配料槽（碎料的钟和槽怎么打包见 Shared/Rules/PotPiecesLook.py）。
 值没变就不调引擎。方块实体在本端重建之后（刚进世界、区块重载）引擎那边的值全丢了、模型回到合着盖的样子，而且不一定有
 加载事件（实机：进世界十来秒后重建过一次，没有事件）：check() 隔一会儿读回 mod_open，对不上就 reset()，下一帧整份重推。
+mod_food（锅里有东西）决定沸腾声归谁：有，场景自己放；空锅烧着，模型自带的水沸声照响（JE 的 CookingPotBlockMixin 同样只在有东西时才让农夫乐事的声音让位）。
 """
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import PotModelMath, PotPiecesLook
@@ -68,6 +69,10 @@ class PotModel(object):
 
     def open(self, opened):
         self._set("variable.mod_open", 1.0 if opened else 0.0)
+
+    def food(self, has):
+        """锅里有没有东西：有，场景放沸腾声、模型自带的农夫乐事那条让位；没有（空锅烧着），模型自带的水沸声照响（rp/entity 的 boil_water）。"""
+        self._set("variable.mod_food", 1.0 if has else 0.0)
 
     def liquid(self, surface, color, mottle, turned, edgeBoil, pieces=0.0):
         """surface：液面高度（像素，锅自己的坐标）；color：(r, g, b, a) 各 0..1（JE LiquidLook 的 ARGB）；turned：弧度；

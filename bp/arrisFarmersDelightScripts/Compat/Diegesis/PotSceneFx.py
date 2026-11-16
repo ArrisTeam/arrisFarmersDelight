@@ -8,6 +8,7 @@ PotScene 每帧调 step；数都照 HoD 的纯计算（PotLiquid 的粒子速率
 import random
 
 from . import PotFx
+from ...Shared.Rules import PotLookState
 from ...Shared.Rules.HandsOn import PotDrift, PotFinish, PotLiquid, PotSounds
 
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
@@ -19,7 +20,7 @@ POP_RIPPLE = 0.09                           # 气泡破了在液面起的水波�
 SOUNDS = {                                  # HoD 的声音 -> (本包 / 原版的声音名, 音量要乘多少)
     "body": ("handson.pot.body", 1.0), "stir": ("handson.pot.stir", 1.0), "plop": ("handson.pot.plop", 1.0),
     "burst": ("handson.pot.burst", 1.0), "blub": ("handson.pot.blub", 1.0), "scoop": ("handson.pot.scoop", 1.0),
-    "boil": ("ambient.cooking_pot.boil", 0.05), "sizzle": ("ambient.skillet.sizzle", 0.05),
+    "boil": ("ambient.cooking_pot.boil_soup", 0.05), "sizzle": ("ambient.skillet.sizzle", 0.05),
     "add_food": ("ambient.skillet.addfood", 0.5), "chime": ("note.chime", 1.0), "bucket_empty": ("bucket.empty_water", 1.0),
     "bottle_empty": ("bottle.empty", 1.0), "brush_sand": ("brush.suspicious_sand", 1.0),
     "egg_crack": ("block.turtle_egg.crack", 1.0),
@@ -118,7 +119,7 @@ class SceneFx(object):
     def _sounds(self, dt):
         scene, look = self.scene, self.scene.look
         state = {"heated": look.heated, "cooking": look.cooking, "swirl": scene.spoon.swirl,
-                 "soup": look.dish is not None or look.meal is not None or any(look.items)}
+                 "soup": PotLookState.hasFood(look)}       # 模型自带的沸腾声也按这条让位（PotModel.food）
         where = scene.world(8.0, scene.liquid.surfaceY(), 8.0)
         for kind, name, volume, pitch in self.sounds.step(dt, state):
             if kind == "play":

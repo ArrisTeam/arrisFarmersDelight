@@ -142,6 +142,7 @@ class PotScene(object):
                    spoon.swirlSign, random.random)
         self._pieces(dt)
         self.model.open(True)
+        self.model.food(PotLookState.hasFood(look))
         self.model.liquid(liquid.drawnSurfaceY(), PotLiquid.toUnit(liquid.color), liquid.mottle, liquid.turned, liquid.edgeBoil,
                           self.pieces.packed())
         self.model.slots(self.pieces.slots)

@@ -50,6 +50,15 @@
 					"effect": "boil"
 				}
 			}
+		},
+		"animation.cooking_pot.boil_water": {
+			"loop": true,
+			"animation_length": 8,
+			"sound_effects": {
+				"7.9": {
+					"effect": "boil_water"
+				}
+			}
 		}
 	}
 }

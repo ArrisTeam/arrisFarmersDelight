@@ -91,6 +91,12 @@ def filledOf(look):
     return sum(1 for item in look.items if item is not None)
 
 
+def hasFood(look):
+    """锅里有没有东西：任何一格料，或煮好还没装的菜（PotLogic.hasFood：食材格加成品格；产出格里装好的不算）。
+    场景有东西才自己放沸腾声、农夫乐事自己的那条才让位（CookingPotBlockMixin）；空锅烧着，农夫乐事自己的水沸声照响。"""
+    return look.meal is not None or any(item is not None for item in look.items)
+
+
 def servingsOf(look):
     return look.meal["count"] if look.meal else 0
 
