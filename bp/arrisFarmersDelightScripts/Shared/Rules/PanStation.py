@@ -5,9 +5,9 @@
 takes / isOneSided / sideTicks / place。两面进度的状态机在 HandsOn/Frying.py。本移植的煎锅一件 6 秒（营火 30 秒的 20%，FD 原样，
 火焰附加 I 4 秒、II 起 3 秒），手放的一批按 Frying.sideSeconds 算一面：6 * sqrt(件数) / 1.5 / 2，一件 2 秒一面、16 件 8 秒一面。
 
-JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的点击：放走自定义动作 place（光标上的一叠或背包里的某一格，左键整叠、右键一个），
-取走 take。基岩版的内核没有"点在节点上代替点槽"的钩子，这里让 pan 槽组只收煎得了的东西、同种、最多一批（mayPlace + SlotRules），
-库的点击（光标栈点锅口 = PICKUP、托盘里 Shift 点 = QUICK_MOVE）就等于 JE 的 place；取走仍是 take 动作（mayTake 恒为假）。
+JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的点击：放走自定义动作 place（光标上的一叠，左键整叠、右键一个；托盘里 Shift 点
+走 onInventoryShiftClick），取走 take。基岩版内核对非空槽先问 mayTake，所以光标栈放进有东西的锅只能走 place；托盘里 Shift 点是内核的
+QUICK_MOVE，它只看 pan 槽组的规则（accepts、一批 16 件的上限）和 mayPlace——两条路用的是同一份判断（mayPlace / SlotRules）。
 """
 from ..Data.Cooking import CanCookedFoodDict
 from .HandsOn import Frying

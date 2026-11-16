@@ -1,196 +1,206 @@
 # -*- coding: utf-8 -*-
-"""PanLogic - 煎锅站点的服务端逻辑：放料、颠锅翻面、取出，告诉客户端两面煎到哪了（服务端）
+"""PanLogic - 煎锅站点的服务端逻辑：放进锅、颠锅翻面、全拿出来（服务端）
 
-对应 Hands-On Delight：station/SkilletLogic.java。锅里的东西照旧在方块实体数据 cookingDict（Server/Skillet.py），
-两面进度在 Server/HandFrying.py 的 PanHand 里（站点关了它还在：接着煎、等着翻）。潜行右键是 FD 原来的玩法。客户端动作：
-    place {"slot": 0..8}   把快捷栏第 slot 格（能煎的）放进锅：锅里只放同一种、最多 16 个；手放的从此两面分开煎
-    toss  {"strength"}     颠锅：食物翻个面（离上次颠不到 0.4 秒不算，回 untossed 给本人）
-    take  {}               锅里的东西（生的、半熟的、煎好的）全拿回背包
-表现事件：drawer {"items"}（只发给本人）、tossed {"strength"}、untossed {}（只发给本人）、fried {"item"}、hint {"key"}（只发给本人）。
-站点数据：item 锅里的东西、done 是否已煎好、byHand、down / up 两面进度（1/32 一档）、batch、heated、oneSided。
+对应 Hands-On Delight：station/SkilletLogic.java + SkilletStation.java。锅里的东西照旧在方块实体数据 cookingDict，站点的 pan 槽组
+经 PanSlots 绑在上面（FD 原样的右键放料、煎锅自己的 tick、手工煎制、没人开站点时路过的人，读写的都是同一份）；两面进度在
+Server/HandFrying.py 的 PanHand 里（站点关了它还在：接着煎、等着翻；存进方块实体，重启也在）。潜行右键是 FD 原来的玩法。
+- 放：JE 的 place {"one"}：光标栈的一叠放进锅（one 为真放一个，左键整叠、右键一个），煎得了的、同一种、最多一批 16 件、锅里没泡水才放得进
+  （SkilletCooking.takes / place），放不进的回 refused 给大家看弹开。库的点击只管托盘里 Shift 点（QUICK_MOVE，JE 的 onInventoryShiftClick），
+  规则同一份（mayPlace + 槽组的 accepts / 上限）；放进来的从此两面分开煎（_placed）。库的 PICKUP 碰不到锅里的东西（mayTake 恒为假：
+  内核对非空槽先问 mayTake，所以光标栈放进有东西的锅也只能走 place）。开站那一下主手拿着煎得了的东西：整叠直接放进去（JE 的 onOpen：右键放料不比不开站点慢）。
+- 取：take {}，锅里的东西（生的、半熟的、煎好的）全进背包，放不下掉脚下。
+- 颠：toss {"strength"}，食物翻个面（离上次颠不到 0.4 秒、锅里是煎好的或空的不算）；被拒回 untossed 给大家（JE 的 EFFECT_UNTOSSED）。
+表现一律走 PanLook 广播（Server/PanLook.py，附近所有人包括本人）：placed、refused、tossed、untossed、taken、fried；站点自己不发 effect。
 """
 import copy
 import time
 
-from ...Server import HandFrying
+from ...Server import HandFrying, PanLook
+from ...Server.Helpers import PanContents
 from ...Server.Helpers.BlockItems import PublishSkillet
-from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, ItemPosType
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
-from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
-from ...Server.Skillet import COOK_TIMER
+from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Shared.Rules import PanStation as Rules
 from ...Shared.Rules.HandsOn import Frying
 
 REACH = 6.0
-PUBLISH_SECONDS = 0.25
-DRAWER_SECONDS = 0.5
-HOTBAR = 9
+
+
+def _count(item):
+    return (item.get("count") or 0) if item else 0
 
 
 def _wire(item):
-    if not item or not item.get("newItemName") or (item.get("count") or 0) <= 0:
+    if not item or not item.get("newItemName") or _count(item) <= 0:
         return {}
     return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue") or 0, "count": item["count"]}
 
 
-def _isIndex(value, size):
-    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value < size
-
-
-def _same(a, b):
-    return (a.get("newItemName"), a.get("newAuxValue") or 0) == (b.get("newItemName"), b.get("newAuxValue") or 0)
+def _strength(value):
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value == value:
+        return max(0.0, min(1.0, float(value)))
+    return 0.5
 
 
 class PanLogicMixin(object):
-    """和前置包的 StationLogic 拼成站点逻辑类（register 里用 type() 组装，基类只在运行时拿得到）。"""
+    """和前置包的 StationLogic 拼成站点逻辑类（register 里用 type() 组装，基类和 kit 只在运行时拿得到）。"""
+
+    kit = None           # 前置包的服务端 Api（register 里放进去）
 
     def __init__(self, station):
         super(PanLogicMixin, self).__init__(station)
         self.hand = None
-        self._fried = 0
-        self._sincePublish = 0.0
-        self._sinceDrawer = 0.0
-        self._drawers = {}
+        self._count = 0
+        station.state.bindSlots(Rules.GROUP_PAN, PanContents.PanSlots(station.dimensionId, station.pos))
+
+    # ---------------------------------------------------------------- 钩子
 
     def onOpen(self, playerId):
-        data = self._blockData()
+        station = self.station
+        data = GetBlockEntityData(station.dimensionId, station.pos)
         if data is None:
             return False
-        self.hand = HandFrying.handOf(self.station.dimensionId, self.station.pos)
-        self._fried = self.hand.fried
-        self._drawers.pop(playerId, None)
-        self._sendDrawer(playerId)
-        self._publish(data)
+        self.hand = HandFrying.handOf(station.dimensionId, station.pos, data)
+        self._count = _count(PanContents.itemOf(station.dimensionId, station.pos))
+        self._fromHand(playerId, data)
         return True
 
-    def onClose(self, playerId):
-        self._drawers.pop(playerId, None)
+    def mayPlace(self, ref, item):
+        station = self.station
+        return (ref[0] == Rules.GROUP_PAN and Rules.mayPlace(station.state.getItem(ref), item)
+                and not PanContents.isWaterlogged(station.dimensionId, station.pos))
+
+    def mayTake(self, ref):
+        return False         # 全拿出来走 take（它要重置两面进度）；双击聚拢也不会把锅里的东西收走
+
+    def onSlotChanged(self, ref):
+        """库的点击改了 pan 槽：多了东西 = 放进来了，从此手工煎。"""
+        if ref[0] != Rules.GROUP_PAN or self.hand is None:
+            return
+        station = self.station
+        data = GetBlockEntityData(station.dimensionId, station.pos)
+        count = _count(PanContents.itemOf(station.dimensionId, station.pos))
+        if count > self._count and self.actor:
+            self._placed(self.actor, data)
+        self._count = count
+        self._look(data)
 
     def onCustomAction(self, playerId, name, data):
         if self.hand is None:
             return False
         if name == "place":
-            self._place(playerId, data.get("slot"))
+            self._place(playerId, data.get("one") is True)
         elif name == "toss":
             self._toss(playerId, data.get("strength"))
         elif name == "take":
             self._take(playerId)
         else:
             return False
-        self._sendDrawer(playerId)
-        self._publish()
+        self._look(GetBlockEntityData(self.station.dimensionId, self.station.pos))
         return True
-
-    def tick(self, dt):
-        if self.hand is None:
-            return
-        if self.hand.fried != self._fried:
-            self._fried = self.hand.fried
-            data = self._blockData()
-            self.station.effect("fried", {"item": _wire(data["cookingDict"] if data else None)})
-            ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "random.pop")
-            self._publish(data)
-        self._sincePublish += dt
-        if self._sincePublish >= PUBLISH_SECONDS:
-            self._publish()
-        self._sinceDrawer += dt
-        if self._sinceDrawer >= DRAWER_SECONDS:
-            self._sinceDrawer = 0.0
-            for playerId in list(self.station.users):
-                self._sendDrawer(playerId)
 
     # ---------------------------------------------------------------- 动作
 
-    def _place(self, playerId, slot):
-        if not _isIndex(slot, HOTBAR):
-            return
-        itemComp = compFactory.CreateItem(playerId)
-        item = itemComp.GetPlayerItem(ItemPosType.INVENTORY, slot, True)
-        data = self._blockData()
-        if not item or not Rules.canFry(item.get("newItemName")) or data is None:
-            self.station.effect("hint", {"key": "not_food"}, only=playerId)
-            return
-        inPan = data["cookingDict"]
-        if inPan and not _same(inPan, item):
-            self.station.effect("hint", {"key": "other_food"}, only=playerId)
-            return
-        info = compFactory.CreateItem(levelId).GetItemBasicInfo(item["newItemName"], item.get("newAuxValue") or 0) or {}
-        moved = Frying.placeCount(item["count"], inPan["count"] if inPan else 0, info.get("maxStackSize") or 64)
-        if moved <= 0:
-            self.station.effect("hint", {"key": "full"}, only=playerId)
-            return
-        pan = copy.deepcopy(inPan or item)
-        pan["count"] = (inPan["count"] if inPan else 0) + moved
-        data["cookingDict"] = pan
-        PublishSkillet(self.station.dimensionId, self.station.pos, pan)
+    def _placed(self, playerId, data):
+        """放进来了（站点的点击或开站时主手的）：从此两面分开煎，记一笔、告诉大家。"""
+        station = self.station
         self.hand.frying.layByHand()
         self.hand.cook = playerId
-        if not IsCreative(playerId):
-            left = copy.deepcopy(item)
-            left["count"] -= moved
-            itemComp.SetPlayerAllItems({(ItemPosType.INVENTORY, slot): left if left["count"] > 0 else None})
-        sound = "ambient.skillet.addfood" if data["heatEnable"] is True else "armor.equip_leather"
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, sound)
+        HandFrying.save(self.hand, data)
+        PanLook.event(station.dimensionId, station.pos, "placed", {})
+
+    def _place(self, playerId, one):
+        """光标栈上的一叠放进锅：一个或整叠，放满一批为止；放不进去的（锅里是别的、煎好的、满了、泡着水）回 refused（SkilletCooking.place）。"""
+        station, hand = self.station, self.ctx.getHand()
+        if not hand:
+            return
+        inPan = PanContents.itemOf(station.dimensionId, station.pos)
+        moved = 0
+        if Rules.mayPlace(inPan, hand) and not PanContents.isWaterlogged(station.dimensionId, station.pos):
+            moved = Frying.placeCount(hand["count"], _count(inPan), self.ctx.maxStackOf(hand), one)
+        if moved <= 0:
+            PanLook.event(station.dimensionId, station.pos, "refused", {"stack": _wire(dict(hand, count=1))})
+            return
+        merged = copy.deepcopy(inPan or hand)
+        merged["count"] = _count(inPan) + moved
+        PanContents.PanSlots(station.dimensionId, station.pos).set(0, merged)
+        self.ctx.setHand(self.kit.Items.shrink(hand, moved))
+        self._count = merged["count"]
+        self._placed(playerId, GetBlockEntityData(station.dimensionId, station.pos))
+
+    def _fromHand(self, playerId, data):
+        """开站这一下主手拿着煎得了的东西：整叠（最多放满一批）直接放进锅里。"""
+        station = self.station
+        carried = GetCarriedItem(playerId, True)
+        inPan = PanContents.itemOf(station.dimensionId, station.pos)
+        if not carried or not Rules.mayPlace(inPan, carried) or PanContents.isWaterlogged(station.dimensionId, station.pos):
+            return
+        info = compFactory.CreateItem(levelId).GetItemBasicInfo(carried["newItemName"], carried.get("newAuxValue") or 0) or {}
+        moved = Frying.placeCount(carried["count"], _count(inPan), info.get("maxStackSize") or 64)
+        if moved <= 0:
+            return
+        merged = copy.deepcopy(inPan or carried)
+        merged["count"] = _count(inPan) + moved
+        PanContents.PanSlots(station.dimensionId, station.pos).set(0, merged)
+        left = copy.deepcopy(carried)
+        left["count"] -= moved
+        SetCarriedItem(playerId, left if left["count"] > 0 else None)
+        self._count = merged["count"]
+        self._placed(playerId, data)
 
     def _toss(self, playerId, strength):
-        data = self._blockData()
+        station = self.station
+        data = GetBlockEntityData(station.dimensionId, station.pos)
         item = data["cookingDict"] if data else None
         if HandFrying.toss(self.hand, playerId, time.time(), item):
-            force = float(strength) if isinstance(strength, (int, float)) and not isinstance(strength, bool) else 0.5
-            self.station.effect("tossed", {"strength": max(0.0, min(1.0, force))})
-            ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
+            HandFrying.save(self.hand, data)
+            PanLook.event(station.dimensionId, station.pos, "tossed", {"strength": _strength(strength)})
         elif item:
-            self.station.effect("untossed", {}, only=playerId)
+            PanLook.event(station.dimensionId, station.pos, "untossed", {})
 
     def _take(self, playerId):
-        data = self._blockData()
+        """锅里的东西全进厨师的背包窗口（放不下的掉在脚下），两面进度清零。"""
+        station = self.station
+        data = GetBlockEntityData(station.dimensionId, station.pos)
         item = data["cookingDict"] if data else None
-        if not item:
+        if not item or _count(item) <= 0:
             return
-        GiveOrDropItem(playerId, copy.deepcopy(item), self.station.dimensionId)
+        taken = copy.deepcopy(item)
+        rest = self._toWindow(taken)
+        if rest is not None:
+            self.dropped.append(rest)
         data["cookingDict"] = None
-        data["cookTimer"] = COOK_TIMER
-        PublishSkillet(self.station.dimensionId, self.station.pos, None)
+        PanContents.restartTimer(data)
+        PublishSkillet(station.dimensionId, station.pos, None)
         self.hand.frying.farmersDelightsWay()
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
+        HandFrying.save(self.hand, data)
+        self._count = 0
+        PanLook.event(station.dimensionId, station.pos, "taken", {"stack": _wire(taken)})
 
-    # ---------------------------------------------------------------- 同步
+    def _toWindow(self, item):
+        """放进背包窗口：先并入同种未满的栈、再放进空格，都按格号（Inventory.add）；返回放不下的余量或 None。"""
+        items, window, maxStackOf = self.kit.Items, self.ctx.inventory, self.ctx.maxStackOf
+        rest, size = item, maxStackOf(item)
+        for fillEmpty in (False, True):
+            for index in range(len(window)):
+                there = window[index]
+                if rest is None:
+                    return None
+                if (there is None) != fillEmpty or (not fillEmpty and not items.sameItem(there, rest)):
+                    continue
+                moved = min(size - items.countOf(there), items.countOf(rest))
+                if moved > 0:
+                    window[index] = items.withCount(rest, moved) if fillEmpty else items.grow(there, moved)
+                    rest = items.shrink(rest, moved)
+        return rest
 
-    def _blockData(self):
-        return GetBlockEntityData(self.station.dimensionId, self.station.pos)
-
-    def _sendDrawer(self, playerId):
-        """快捷栏里能煎的东西（别的格子空着）；和上次发的一样就不发。"""
-        itemComp = compFactory.CreateItem(playerId)
-        items = []
-        for slot in range(HOTBAR):
-            item = itemComp.GetPlayerItem(ItemPosType.INVENTORY, slot, True)
-            items.append(_wire(item) if item and Rules.canFry(item.get("newItemName")) else {})
-        if self._drawers.get(playerId) != items:
-            self._drawers[playerId] = items
-            self.station.effect("drawer", {"items": items}, only=playerId)
-
-    def _publish(self, data=None):
-        self._sincePublish = 0.0
-        data = data if data is not None else self._blockData()
-        if data is None:
-            return
-        item, frying = data["cookingDict"], self.hand.frying
-        name = item.get("newItemName") if item else None
-        self.station.state.setData({
-            "item": _wire(item),
-            "done": bool(name) and not Rules.canFry(name),
-            "byHand": frying.byHand,
-            "down": Frying.syncStep(frying.down),
-            "up": Frying.syncStep(frying.up),
-            "batch": max(1, min((item.get("count") or 1) if item else 1, Frying.BATCH)),
-            "heated": data["heatEnable"] is True,
-            "oneSided": bool(name) and Rules.isOneSided(name),
-        })
+    def _look(self, data):
+        """世界外观马上发（不等锅的下一步）。"""
+        if data is not None:
+            PanLook.tick(self.station.dimensionId, self.station.pos, data, self.hand, time.time())
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点。"""
-    logicClass = type("SkilletLogic", (PanLogicMixin, api.StationLogic), {})
-    api.registerStation(api.StationType(Rules.STATION_ID, Rules.PAN_BLOCKS, logicClass, reach=REACH))
+    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PanStation.buildSchema）。"""
+    logicClass = type("SkilletLogic", (PanLogicMixin, api.StationLogic), {"kit": api})
+    api.registerStation(api.StationType(Rules.STATION_ID, Rules.PAN_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
     return logicClass

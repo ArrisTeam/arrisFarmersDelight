@@ -9,7 +9,7 @@
 """
 import time
 
-from . import HandFrying, SkilletItem
+from . import HandFrying, PanLook, SkilletItem
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, PublishSkillet
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
@@ -65,7 +65,7 @@ def OnServerSkilletBlockUse(args):
             if _isWaterlogged(dimensionId, blockPos):
                 ShowTip(playerId, Rules.TIP_UNDERWATER_BLOCK)
                 return
-            HandFrying.byFarmersDelight(dimensionId, blockPos)
+            HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
             blockEntityData["cookingDict"] = carriedDict
             PublishSkillet(dimensionId, blockPos, carriedDict)
             if not IsCreative(playerId):
@@ -82,7 +82,7 @@ def OnServerSkilletBlockUse(args):
         return
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
-        HandFrying.byFarmersDelight(dimensionId, blockPos)
+        HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
         SetCarriedItem(playerId, cookingDict)
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cookingDict"] = None
@@ -125,7 +125,7 @@ def _floodDrop(blockEntityData, dimensionId, blockPos):
     cookingDict = blockEntityData["cookingDict"]
     if not cookingDict:
         return
-    HandFrying.byFarmersDelight(dimensionId, blockPos)
+    HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
     System.CreateEngineItemEntity(cookingDict, dimensionId, (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5))
     blockEntityData["cookingDict"] = None
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
@@ -136,18 +136,28 @@ def _floodDrop(blockEntityData, dimensionId, blockPos):
 def OnSkilletTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
-    if not _pacer.due((dimensionId, blockPos), time.time()):
+    now = time.time()
+    if not _pacer.due((dimensionId, blockPos), now):
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
+    _cook(args, dimensionId, blockPos, blockEntityData)
+    if PanLook.enabled():
+        # 世界外观广播（前置包在场时才开）：锅里的东西、热源、两面熟度变了就发给附近的人
+        PanLook.tick(dimensionId, blockPos, blockEntityData, HandFrying.handOf(dimensionId, blockPos, blockEntityData), now)
+
+
+def _cook(args, dimensionId, blockPos, blockEntityData):
     if _isWaterlogged(dimensionId, blockPos):
         _floodDrop(blockEntityData, dimensionId, blockPos)
         return
     if blockEntityData["heatEnable"] is not True:
         return
     hand = HandFrying.peek(dimensionId, blockPos)
-    if hand is not None and HandFrying.fry(hand, dimensionId, blockPos, blockEntityData, TICK_STEP):
+    if hand is None and blockEntityData[HandFrying.SAVE_KEY]:
+        hand = HandFrying.handOf(dimensionId, blockPos, blockEntityData)      # 重启之后：存档里有两面进度，接着煎
+    if hand is not None and HandFrying.fry(hand, dimensionId, blockPos, blockEntityData, TICK_STEP, SkilletItem.fireAspectOf(blockEntityData)):
         return
     cookingDict = blockEntityData["cookingDict"]
     if not cookingDict or cookingDict.get("newItemName") not in CanCookedFoodDict:
