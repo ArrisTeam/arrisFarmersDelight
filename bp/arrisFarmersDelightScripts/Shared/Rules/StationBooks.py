@@ -5,7 +5,7 @@
 {"key", "item"（成品）, "ways"（写法：[[这一格能放的 (物品名, aux), ...], ...]）, "foot"（脚注物品）, "note", "kind"（标签）}。
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
-  脚注是其余产物）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
+  脚注是全部产物（产物不止一种才有，含主产物，BoardBook.java:55）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
 - 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（只煎一面的蛋按一面）；只看。
 """
 from ..Data.Cooking import CanCookedFoodDict
@@ -140,7 +140,7 @@ def boardPages():
         if not outputs or not tools:
             continue
         pages.append({"key": "%s%s:%d" % (CUT_PREFIX, name, aux), "item": outputs[0], "ways": [[[(name, aux)], tools]],
-                      "foot": outputs[1:], "note": "", "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
+                      "foot": outputs if len(outputs) > 1 else [], "note": "", "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
     return pages
 
 

@@ -87,7 +87,11 @@ def testBoardPagesHaveDishesBaseFirstAndCutsWithTheirTools():
     assert beef["kind"] == "knife" and beef["item"]["newItemName"] == "arris:minced_beef"
     assert ("arris:iron_knife", 0) in beef["ways"][0][1]
     log = next(page for page in pages if page["key"] == "c:minecraft:oak_log:0")
-    assert log["kind"] == "tools" and [item["newItemName"] for item in log["foot"]] == ["arris:tree_bark"]
+    assert log["kind"] == "tools" and [item["newItemName"] for item in log["foot"]] == ["minecraft:stripped_oak_log", "arris:tree_bark"],         "脚注列全部产物（含主产物，JE BoardBook.java:55）"
+    chicken = next(page for page in pages if page["key"] == "c:minecraft:chicken:0")
+    assert [(item["newItemName"], item["count"]) for item in chicken["foot"]] == [("arris:chicken_cuts", 2), ("minecraft:bone_meal", 1)]
+    assert chicken["item"]["newItemName"] == "arris:chicken_cuts", "页上的成品还是第一个"
+    assert beef["foot"] == [], "只有一种产物的没有脚注"
     assert Books.dishOf("d:arris:egg_sandwich") and Books.dishOf("c:minecraft:beef:0") == [] and Books.dishOf(None) == []
 
 
