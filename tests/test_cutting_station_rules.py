@@ -34,6 +34,16 @@ def testTheLayoutFollowsTheFood():
     assert Rules.styleOf("arris:kelp_roll") == Cutting.STYLE_STRAIGHT
     assert Rules.styleOf("minecraft:beef") == Cutting.STYLE_ACROSS
     assert Rules.styleOf("arris:pieces_of_cod") == Cutting.STYLE_ACROSS, "只看整词，pieces 不算 pie"
+    assert Rules.styleOf("minecraft:pumpkin") == Cutting.STYLE_WEDGES, "HoD 的 cut_in_wedges 标签里有南瓜"
+    assert Rules.styleOf("minecraft:melon_block") == Cutting.STYLE_WEDGES, "也有西瓜"
+
+
+def testPumpkinAndMelonAreCutInWedgesThroughTheMiddle():
+    pumpkin, melon = "minecraft:pumpkin", "minecraft:melon_block"
+    assert Rules.planFor(pumpkin, _recipe(pumpkin)).marks == 2, "南瓜 4 片：(4 + 1) / 2 = 2 刀（JE BoardBehavior 的楔形）"
+    assert Rules.planFor(melon, _recipe(melon)).marks == Cutting.MOST_MARKS, "西瓜 9 片：5 刀夹到 3 刀"
+    assert Rules.planFor("minecraft:cake", _recipe("minecraft:cake")).marks == Cutting.MOST_MARKS
+    assert Rules.planFor("minecraft:clay", _recipe("minecraft:clay")).style == Cutting.STYLE_ACROSS, "别的东西照旧横切"
 
 
 def testBeefTakesOneMarkAndChickenTakesTwo():

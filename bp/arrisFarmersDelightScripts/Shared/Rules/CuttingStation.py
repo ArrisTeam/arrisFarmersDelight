@@ -2,7 +2,8 @@
 """CuttingStation - 切菜板站点：FD 砧板配方 -> HoD 刀口计划、挑工具、整批产物（双端，纯规则）
 
 HoD 的切法规则在 HandsOn/Cutting.py；这里只做农夫乐事配方表（Shared/Data/Cutting.py）到它的适配：
-- 刀口数按产物件数（Cutting.planCut）；布局按食材：派 / 蛋糕 / 披萨过圆心切楔形，面团切面条，卷切等宽片，其余横切；
+- 刀口数按产物件数（Cutting.planCut）；布局按食材：派 / 蛋糕 / 披萨 / 南瓜 / 西瓜过圆心切楔形（HoD 的 cut_in_wedges 标签），
+  面团切面条，卷切等宽片，其余横切；
 - 工具判定照 JE，经典玩法同一套（fitsTool）：配方列出的工具、配方要求的物品类型（斧 / 镐 / 锹 / 锄）；
   刀切的配方另认任何刀（带 arris:knife 标签的下游刀），别的配方刀不行（JE 的原木要斧头削）；
 - 带 chance 的产物每切一件掷一次（JE 的 ChanceResult），工具上每级时运加 FORTUNE_BONUS；
@@ -18,7 +19,8 @@ BOARD_BLOCKS = ["arris:cutting_board"]   # 站点绑定的方块（两端共用�
 BATCH = Cutting.BATCH            # 最后一刀一次切透的件数
 FORTUNE_ID = 18                  # 时运的附魔编号（网易 EnchantType）
 FORTUNE_BONUS = 0.1              # JE 配置 cuttingBoardFortuneBonus：每级时运给有概率的产物加 10%
-_WEDGE_WORDS = frozenset(("pie", "cake", "cheesecake", "pizza", "tart", "quiche"))
+# HoD 的 cut_in_wedges 标签：各种派、蛋糕、披萨、奶酪轮，还有南瓜和西瓜（南瓜 4 片 = 2 刀楔形，西瓜 9 片 = 3 刀楔形）
+_WEDGE_WORDS = frozenset(("pie", "cake", "cheesecake", "pizza", "tart", "quiche", "pumpkin", "melon"))
 _STRIP_WORDS = frozenset(("dough",))
 _STRAIGHT_WORDS = frozenset(("roll",))
 
