@@ -1,0 +1,11 @@
+{
+	"materials": {
+		"version": "1.0.0",
+		"arris_pot_broth:entity": {
+			"vertexShader": "shaders/glsl/arris_pot_broth_vertex.glsl",
+			"fragmentShader": "shaders/glsl/arris_pot_broth_fragment.glsl",
+			"+states": [ "Blending", "DisableDepthWrite" ],
+			"+defines": [ "USE_SKINNING" ]
+		}
+	}
+}

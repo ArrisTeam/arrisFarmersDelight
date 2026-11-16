@@ -10,12 +10,15 @@
 				}
 			}
 		},
-		"animation.cooking_pot.ladle_hidden": {
+		"animation.cooking_pot.scene": {
 			"loop": true,
-			"override_previous_animation": true,
 			"bones": {
 				"ladle": {
-					"scale": 0
+					"position": ["variable.mod_spoon_x", "variable.mod_spoon_y", "variable.mod_spoon_z"],
+					"rotation": ["variable.mod_spoon_rx", "variable.mod_spoon_ry", "variable.mod_spoon_rz"]
+				},
+				"broth": {
+					"position": [0, "variable.mod_level", 0]
 				}
 			}
 		},

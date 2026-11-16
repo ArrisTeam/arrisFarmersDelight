@@ -1,0 +1,43 @@
+{
+	"format_version": "1.8.0",
+	"render_controllers": {
+		"controller.render.arris_cooking_pot": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.default"
+				}
+			],
+			"textures": [
+				"Texture.default"
+			],
+			"part_visibility": [
+				{
+					"broth": false
+				},
+				{
+					"lid": "variable.mod_open < 0.5"
+				}
+			]
+		},
+		"controller.render.arris_cooking_pot_broth": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.broth"
+				}
+			],
+			"textures": [
+				"Texture.broth"
+			],
+			"part_visibility": [
+				{
+					"*": false
+				},
+				{
+					"broth": "variable.mod_open > 0.5"
+				}
+			]
+		}
+	}
+}

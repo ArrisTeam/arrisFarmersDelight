@@ -4,10 +4,12 @@
     "description": {
       "identifier": "arris:cooking_pot",
       "materials": {
-        "default": "entity_alphatest"
+        "default": "entity_alphatest",
+        "broth": "arris_pot_broth"
       },
       "textures": {
-        "default": "textures/entity/cooking_pot"
+        "default": "textures/entity/cooking_pot",
+        "broth": "textures/entity/cooking_pot_broth"
       },
       "geometry": {
         "default": "geometry.cooking_pot"
@@ -17,12 +19,13 @@
         "bubble": "animation.cooking_pot.bubble",
         "shelf": "animation.cooking_pot.shelf",
         "boil": "animation.cooking_pot.boil",
-        "ladle_hidden": "animation.cooking_pot.ladle_hidden"
+        "scene": "animation.cooking_pot.scene"
       },
       "render_controllers": [
-        "controller.render.default"
+        "controller.render.arris_cooking_pot",
+        "controller.render.arris_cooking_pot_broth"
       ],
-      "particle_effects": { 
+      "particle_effects": {
         "steam_0":  "arris:steam_0",
         "bubble":  "arris:bubble"
       },
@@ -33,24 +36,29 @@
         "initialize": [
           "variable.mod_heat = 0.0;",
           "variable.mod_shelf = 0.0;",
-          "variable.mod_ladle_hidden = 0.0;"
+          "variable.mod_open = 0.0;",
+          "variable.mod_level = 0.0;",
+          "variable.mod_spoon_x = 0.0;",
+          "variable.mod_spoon_y = 0.0;",
+          "variable.mod_spoon_z = 0.0;",
+          "variable.mod_spoon_rx = 0.0;",
+          "variable.mod_spoon_ry = 0.0;",
+          "variable.mod_spoon_rz = -22.5;"
         ],
         "animate": [
           {
-            "boil": "variable.mod_heat == 1.0"
+            "boil": "variable.mod_heat == 1.0 && variable.mod_open < 0.5"
           },
           {
-            "smoke": "variable.mod_heat == 1.0"
+            "smoke": "variable.mod_heat == 1.0 && variable.mod_open < 0.5"
           },
           {
-            "bubble": "variable.mod_heat == 1.0"
+            "bubble": "variable.mod_heat == 1.0 && variable.mod_open < 0.5"
           },
           {
             "shelf": "variable.mod_shelf == 0.0"
           },
-          {
-            "ladle_hidden": "variable.mod_ladle_hidden == 1.0"
-          }
+          "scene"
         ]
       },
       "enable_attachables": false
