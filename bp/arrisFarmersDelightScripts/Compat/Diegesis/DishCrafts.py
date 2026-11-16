@@ -30,5 +30,5 @@ def onCraft(args):
 
 
 def register():
-    registerHandler("CraftItemOutputChangeServerEvent", match=DishStation.isDishResult, priority=PRIORITY,
+    registerHandler("CraftItemOutputChangeServerEvent", match=DishStation.blocksAtTable, priority=PRIORITY,
                     keyOf=_resultName)(onCraft)

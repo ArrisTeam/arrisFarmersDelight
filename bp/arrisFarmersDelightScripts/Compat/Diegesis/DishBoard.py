@@ -116,10 +116,14 @@ def finish(logic, playerId, blockEntityData, layers):
     for layer in layers:
         if layer["count"] > made:
             give(playerId, station.dimensionId, Store.stack(layer, layer["count"] - made))
-    container = Rules.containerOf(dish["result"][0])
-    if container:
-        give(playerId, station.dimensionId, {"newItemName": container["itemName"], "newAuxValue": container.get("auxValue", 0),
-                                             "count": made})
+    if dish.get("extras"):                   # 有序配方结果数组里退还的容器（桶、玻璃瓶、碗），一份退一套
+        for name, aux, count in dish["extras"]:
+            give(playerId, station.dimensionId, {"newItemName": name, "newAuxValue": aux, "count": count * made})
+    else:
+        container = Rules.containerOf(dish["result"][0])
+        if container:
+            give(playerId, station.dimensionId, {"newItemName": container["itemName"],
+                                                 "newAuxValue": container.get("auxValue", 0), "count": made})
     result = {"newItemName": dish["result"][0], "newAuxValue": dish["result"][1], "count": made * dish["count"]}
     Store.save(station.dimensionId, station.pos, blockEntityData, None, result)
     ToAllPlayerPlaySound(station.dimensionId, station.pos, "random.pop")

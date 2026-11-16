@@ -6,7 +6,7 @@
 最多 16 份。还能接着加料做成更大的菜时先不自动做成，等厨师点一下。菜谱表 Shared/Data/Dishes.py 由 tools/gen_dishes.py 生成。
 层是 (物品名, aux)；配料也是 (物品名, aux)，按名字和 aux 精确匹配。
 """
-from ..Data.Dishes import DishList
+from ..Data.Dishes import DishList, KeepAtTable
 from ..Data.Food import shapedRecipeContainerDict
 from .HandsOn import Assembly
 
@@ -23,7 +23,8 @@ def rebuildIndex(dishList=None):
         ingredients = [(name, aux) for name, aux in entry["ingredients"]]
         base, kind = Assembly.baseOf([name for name, _aux in ingredients])
         _dishes.append({"ingredients": ingredients, "base": base, "kind": kind, "result": tuple(entry["result"]),
-                        "count": int(entry.get("count") or 1)})
+                        "count": int(entry.get("count") or 1),
+                        "extras": [tuple(extra) for extra in entry.get("extras") or ()]})
         _results.add(entry["result"][0])
 
 
@@ -48,8 +49,13 @@ def targetOf(layers):
 
 
 def isDishResult(itemName):
-    """这个成品是不是改在砧板上做（前置包在场时工作台不出它）。"""
+    """这个成品是不是改在砧板上做。"""
     return itemName in _results
+
+
+def blocksAtTable(itemName):
+    """前置包在场时工作台拿这个成品要拦：砧板菜，但另有单一原料工作台配方的（切片拼回整个派）不拦——合成事件里看不到原料。"""
+    return itemName in _results and itemName not in KeepAtTable
 
 
 def isBase(kind):

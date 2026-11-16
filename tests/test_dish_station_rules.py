@@ -68,5 +68,16 @@ def testTheHint():
     assert "做成某菜" in ready and "%" not in ready
 
 
+def testShapedDishesGiveTheirContainersBackAndSlicePiesStayAtTheTable():
+    pie = next(dish for dish in Rules.dishes() if dish["result"] == ("arris:chocolate_pie_item", 0)
+               and ("minecraft:milk_bucket", 0) in dish["ingredients"])
+    assert pie["extras"] == [("minecraft:bucket", 0, 3)], "有序配方结果数组里的桶在砧板上做也要退"
+    roll = next(dish for dish in Rules.dishes() if dish["result"][0] == "arris:cod_roll")
+    assert roll["extras"] == [] and Rules.containerOf("arris:cod_roll")["itemName"] == "minecraft:bowl", "无序配方走容器表"
+    for pieItem in ("arris:apple_pie_item", "arris:chocolate_pie_item", "arris:sweet_berry_cheesecake_item"):
+        assert Rules.isDishResult(pieItem) and not Rules.blocksAtTable(pieItem), "切片拼回整个派留在工作台"
+    assert Rules.blocksAtTable("arris:egg_sandwich")
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
