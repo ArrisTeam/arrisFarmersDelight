@@ -18,7 +18,9 @@
 | Hands-On Delight | 厨锅的声音（搅、落水、冒泡、盛） | `rp/sounds/handson/pot/`；其中 `body.ogg`（汤的底噪）是 Joseph Sardin 的录音，CC0，出自 [BigSoundBank](https://bigsoundbank.com)（HoD 的 README 里这样注明） |
 | Hands-On Delight | 厨锅镂空锅身的方块和贴图坐标（`models/block/cooking_pot/body.json`）、场景文件里的机位和节点位置 | `rp/models/entity/cooking_pot.geo.json`、`bp/arrisFarmersDelightScripts/Compat/Diegesis/PotView.py` 等 |
 
-食谱书的翻页箭头不是 Mojang 的图：JE 用原版书本界面的箭头，这里照同样的形状自己画（`tools/book_textures.py`）。
+食谱书的翻页箭头是 Minecraft Java 版原版书本界面的图（`assets/minecraft/textures/gui/book.png` 里的四格，Mojang 的素材）：JE 的
+Hands-On Delight 画的就是它，这里直接裁来用（`diegesisRp/textures/handson/ui/book_arrow_*.png`，`tools/gen_book_assets.py --arrows`）。
+本包只在网易版《我的世界》（正版代理）里分发使用。
 
 两者的许可原文相同：
 
