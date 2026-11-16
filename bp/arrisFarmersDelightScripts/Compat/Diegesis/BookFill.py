@@ -3,19 +3,20 @@
 
 客户端的书（BookSources.py）发 bookFill {"key", "sets"}，sets 是 1 或 16（HoD：点一下放一份、Shift 点放一批）。
 键、份数都只当请求看：配方按键在服务端重新查，料从服务端读到的背包里拿。
-- 锅：背包里凑得出份数最多的写法，凑几份放几份（最多 sets 份）；锅里有这道菜用不上的料时不放；放不下的退回背包；
-- 砧板：摆盘的菜一层层摆上去（底座在前），每层 sets 件，摆完就做成（HoD：书里点的菜，层一凑齐就做这道，不等加料）；
-  板上有别的东西时不摆。
-创造模式不扣背包（与放料抽屉一致）。返回提示键（不放时）或 None。
+- 锅（fillPot，HoD 的 StationRecipes.fill）：背包里凑得出份数最多的写法，整份整份地放（最多 sets 份，装不进格子的那一份不放）；
+  锅里有这种写法用不上的料时不放；放进去的料按这道菜摆开，书里点的这道成了锅的选择（wanted）；料从站点的背包窗口里扣
+  （和点击动作同一份事务），创造模式照扣（HoD 不分）；放进去了返回 True；
+- 砧板（fillDish）：摆盘的菜一层层摆上去（底座在前），每层 sets 件，摆完就做成（HoD：书里点的菜，层一凑齐就做这道，不等加料）；
+  板上有别的东西时不摆。创造模式不扣背包（与放料抽屉一致）。返回提示键（不放时）或 None。
 """
 from . import DishBoard
 from ...Server.Helpers import BoardDish as Store
 from ...Server.Helpers import PotContainer
 from ...Server.Helpers.Engine import compFactory, ItemPosType
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
-from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
+from ...Server.Helpers.Player import IsCreative
 from ...Shared.Rules import DishStation
-from ...Shared.Rules import PotStation
+from ...Shared.Rules import PotLayout
 from ...Shared.Rules import StationBooks as Books
 
 INVENTORY_SLOTS = 36
@@ -54,34 +55,54 @@ def _take(playerId, inventory, kind, count):
     return taken
 
 
+def _windowPool(window):
+    """背包窗口里每种料有几件：{(物品名, aux): 件数}。"""
+    pool = {}
+    for item in window:
+        if item and item.get("count", 0) > 0:
+            kind = (item["newItemName"], item.get("newAuxValue") or 0)
+            pool[kind] = pool.get(kind, 0) + item["count"]
+    return pool
+
+
+def _takeFromWindow(window, kind, amount):
+    """从背包窗口按格号扣 amount 件 kind；返回扣了几件。"""
+    taken = 0
+    for index in range(len(window)):
+        item = window[index]
+        if taken >= amount:
+            break
+        if item is None or (item["newItemName"], item.get("newAuxValue") or 0) != kind:
+            continue
+        used = min(item["count"], amount - taken)
+        window[index] = dict(item, count=item["count"] - used) if item["count"] > used else None
+        taken += used
+    return taken
+
+
 def fillPot(logic, playerId, key, sets, maxStackOf):
     recipe = Books.potRecipe(key)
     if recipe is None:
-        return "no_recipe"
-    station = logic.station
-    inventory = _inventory(playerId)
-    kinds = Books.bestKinds(recipe.get("Recipe") or (), _pool(inventory))
-    if kinds is None:
-        return "missing"
+        return False
+    station, window = logic.station, logic.ctx.inventory
     before = PotContainer.inputs(station.dimensionId, station.pos)
-    if any(PotStation.keyOf(item) not in kinds for item in before if PotStation.keyOf(item)):
-        return "pot_busy"
-    count = Books.setsOf(kinds, _pool(inventory), setsOf(sets))
-    cells, placedAny = before, False
-    for kind, each in sorted(Books.needOf(kinds).items()):
-        cells, placed = PotStation.placeStack(cells, Books.stack(kind[0], kind[1], each * count), maxStackOf(kind))
-        if placed > 0:
-            placedAny = True
-            _take(playerId, inventory, kind, placed)
-    if not placedAny:
-        return "full"
-    cells, rest = PotStation.layout(cells, maxStackOf) or (cells, [])
+    held = dict(PotLayout.kindsOf(before))
+    plan = PotLayout.planFill(recipe.get("Recipe") or (), held, _windowPool(window), setsOf(sets), maxStackOf)
+    if plan is None:
+        return False
+    each, count = plan
+    totals = dict(held)
+    for kind in sorted(each):
+        _takeFromWindow(window, kind, each[kind] * count)
+        totals[kind] = totals.get(kind, 0) + each[kind] * count
+    kinds = [(kind, totals[kind]) for kind in [kind for kind, _total in PotLayout.kindsOf(before)] + sorted(set(each) - set(held))]
+    cells, rest = PotLayout.lay(PotLayout.cellsOf(before), kinds, each, maxStackOf)
     PotContainer.setInputs(station.dimensionId, station.pos, before, cells)
-    for stack in rest:
-        GiveOrDropItem(playerId, stack, station.dimensionId)
+    logic.dropped.extend(rest)
+    logic.wanted = key
     logic.hand.clock.feedByHand()
     ToAllPlayerPlaySound(station.dimensionId, station.pos, "random.splash")
-    return None
+    return True
 
 
 def fillDish(logic, playerId, key, sets, blockEntityData):

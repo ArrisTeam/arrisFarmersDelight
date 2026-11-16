@@ -45,6 +45,8 @@ PACKS = {
             "Compat/Diegesis/BoardLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PotLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PotSync.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/PotScoop.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/BookFill.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PanLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/GrillLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardTools.py": {"forbid": {"Client"}, "engine": True},
@@ -76,8 +78,8 @@ PACKS = {
     },
 }
 DIEGESIS_PURE = {"Server/Manager.py", "Server/Station.py", "Server/Registry.py", "Server/Session.py",
-                 "Server/Runtime.py", "Server/Sync.py", "Client/Registry.py", "Client/Shot.py", "Client/Hub.py", "Client/PropMath.py",
-                 "Api/Server.py"}
+                 "Server/Runtime.py", "Server/Sync.py", "Server/Dispatch.py", "Client/Registry.py", "Client/Shot.py",
+                 "Client/Hub.py", "Client/PropMath.py", "Api/Server.py"}
 
 
 def _sources(pack):

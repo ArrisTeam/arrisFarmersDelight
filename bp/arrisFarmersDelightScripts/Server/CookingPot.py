@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅（服务端）
 
-容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py。
+容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py；
+每步煮完把锅的样子广播给附近的玩家在 PotLook.py（前置包在场时才开）。
 """
 import copy
 import time
 
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
-from . import CookingPotItem, HandCooking
+from . import CookingPotItem, HandCooking, PotLook
 from .EventRegistry import registerHandler
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory, levelId, ItemPosType, GetBlockEntityData, GetBlockName
@@ -67,7 +68,9 @@ def OnCookingPotTick(args):
         belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
         RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, GetBlockName(belowPos, dimensionId))
     hand = HandCooking.handOf(dimensionId, blockPos, blockEntityData)
-    HandCooking.cook(hand, dimensionId, blockPos, blockEntityData, PotContainer.inputs(dimensionId, blockPos), now, TICK_STEP)
+    slots = PotContainer.inputs(dimensionId, blockPos)
+    HandCooking.cook(hand, dimensionId, blockPos, blockEntityData, slots, now, TICK_STEP)
+    PotLook.tick(dimensionId, blockPos, blockEntityData, hand, slots, now)       # 世界外观广播（前置包在场时才开）
 
 
 @AllowCall
@@ -139,4 +142,5 @@ def OnCookingPotRemove(args):
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
     HandCooking.forget(dimensionId, blockPos)
+    PotLook.forget(dimensionId, blockPos)
     CookingPotItem.dropPot(GetBlockEntityData(dimensionId, blockPos), dimensionId, blockPos)

@@ -1,30 +1,93 @@
 # -*- coding: utf-8 -*-
-"""PotStation - 厨锅站点的纯规则：份数、放料、按配方摆料、取回、徽章与提示文字（双端）
+"""PotStation - 厨锅站点的纯规则：站点声明（schema）、放料规则、份数、下锅就沉的料、徽章与提示文字（双端）
 
-对应 Hands-On Delight：station/PotLogic.java 的 servingsLeft / shareOut / takeBack 与 PotRecipes.choose 的简化版。
+对应 Hands-On Delight：station/CookingPotStation.java（schema、isDish）与 station/PotLogic.java 的 mayPlace / servingsLeft /
+sinks / containerSlot。选菜与把料摆回格子在 PotLayout.py（StationRecipes 的移植），下锅就沉的料表在 Shared/Data/PotSunk.py。
 本移植的配方是"每个非空食材格算一件、(物品名, aux) 精确匹配"（Shared/Rules/CookingPot.py），所以一份每格用 1 件，
 份数就是非空格里最少的那格。两个番茄的番茄酱要占两格：站点放进来的料按配方摆开（layout），玩家不用自己分格；
 凑不出任何配方的料原样放着（HoD："Food that makes nothing stays as it lies"）。
 食材格是 6 项的列表，每项是物品字典（newItemName / newAuxValue / count）或空（None / {}）。
 """
-import copy
-
-from .CookingPot import isIngredient, partsFor  # noqa: F401 - isIngredient 是站点的放料判定
+from .CookingPot import isIngredient, isVessel, vesselOf  # noqa: F401 - 站点的放料判定、盛菜容器
 from .HandsOn.PotCooking import FD_WAY, WAITING
+from .PotLayout import INPUT_SLOTS, choose, countOf, keyOf, kindsOf, lay, layout, planFill  # noqa: F401 - 站点和测试从这里取
+from ..Data.PotSunk import SUNK
 
 STATION_ID = "arris:cooking_pot"
 POT_BLOCKS = ("arris:cooking_pot",)
-INPUT_SLOTS = 6
 COOK_SECONDS = 10.0          # 一份的配方时长（秒）：FD 原样一份一份煮、搅拌整批煮都按它算
+HOTBAR = 9                   # 背包的前 9 格是快捷栏（0-8）
+DISHES = frozenset(["minecraft:bowl", "minecraft:glass_bottle"])    # 盛菜用的，不下锅（CookingPotStation.isDish）
 
-def keyOf(item):
-    if not item or not item.get("newItemName") or (item.get("count") or 0) <= 0:
-        return None
-    return (item["newItemName"], item.get("newAuxValue") or 0)
+GROUP_INGREDIENTS = "ingredients"      # 站点的槽组：6 格食材 = 方块容器格 0..5
+GROUP_SERVED = "served"                # 1 格只能取的产出 = 方块容器格 7（FD 的产出格）
+CONTROLS = ("progress", "heated", "stirring", "spoon_x", "spoon_z", "stars")    # 都是只有服务端能改的
 
 
-def countOf(item):
-    return (item.get("count") or 0) if keyOf(item) else 0
+def acceptsIngredient(item):
+    """schema 里 ingredients 槽组的 accepts：碗和玻璃瓶是盛菜的，不下锅。"""
+    return item.get("newItemName") not in DISHES
+
+
+def acceptsNothing(item):
+    """schema 里 served 槽组的 accepts：只能取，不能放。"""
+    return False
+
+
+def buildSchema(kit):
+    """站点的声明，两端各建一份一模一样的（服务端登记站点、客户端登记表现时用）。
+    kit 是带 StationSchema / ControlSpec / SlotRules 的东西：前置包的服务端 Api 模块，或它的 Shared/Schema 模块（客户端经
+    ImportModule 拿）；这里不导入前置包，Shared 保持纯。控件都 locked：只有服务端按锅的状态写。
+    progress 0..1 分 100 步；spoon_x / spoon_z 是勺尖在世界朝向里的位置（方块中心为原点，-1..1 是勺子够得着的范围）分 64 步；
+    stars 0..3 分 60 步（HoD 的 CookingPotStation.schema）。"""
+    kept = kit.SlotRules.DEFAULT.kept()
+    control = kit.ControlSpec
+    return (kit.StationSchema.builder()
+            .slots(GROUP_INGREDIENTS, INPUT_SLOTS, kept.withAccepts(acceptsIngredient))
+            .slots(GROUP_SERVED, 1, kept.withAccepts(acceptsNothing))
+            .control("progress", control.stepped(0.0, 1.0, 100, 0.0).locked())
+            .control("heated", control.toggle(False).locked())
+            .control("stirring", control.toggle(False).locked())
+            .control("spoon_x", control.stepped(-1.0, 1.0, 64, 0.0).locked())
+            .control("spoon_z", control.stepped(-1.0, 1.0, 64, 0.0).locked())
+            .control("stars", control.stepped(0.0, 3.0, 60, 0.0).locked())
+            .build())
+
+
+def mayPlace(item):
+    """PotLogic.mayPlace：配方里的料都收；不是料的东西，除了某道菜盛菜用的容器，也都收（凑不成菜的料原样放着，不拦）。"""
+    key = keyOf(item)
+    return key is not None and (isIngredient(key) or not isVessel(key[0]))
+
+
+def usable(key):
+    """背包托盘里这种物品亮不亮：是某个配方的食材，或是某道菜盛菜用的容器（HoD 的 usable）。key 是 (物品名, aux)。"""
+    return key is not None and (isIngredient(key) or isVessel(key[0]))
+
+
+def isSunk(key):
+    """这种料下锅就沉（倒进去的液体、打进去的蛋、化掉的粉），浮不起来、点不到，只能取回（PotLogic.sinks）。"""
+    return key in SUNK
+
+
+def sunkSlots(slots):
+    """食材格里装着下锅就沉的料的格号（升序）。"""
+    return [index for index, slot in enumerate(slots) if isSunk(keyOf(slot))]
+
+
+def containerSlot(window, selected, name):
+    """空手盛菜时从背包里挑装菜的容器格：选中的快捷栏格优先，然后 0.. 按序；没有返回 -1（PotLogic.containerSlot）。
+    window 是背包的格子（物品字典或 None），name 是容器的物品名。"""
+    def holds(index):
+        item = window[index]
+        return bool(item) and item.get("newItemName") == name and (item.get("count") or 0) > 0
+
+    if 0 <= selected < min(HOTBAR, len(window)) and holds(selected):
+        return selected
+    for index in range(len(window)):
+        if holds(index):
+            return index
+    return -1
 
 
 def servingsLeft(slots):
@@ -35,96 +98,6 @@ def servingsLeft(slots):
 
 def foodCount(slots):
     return sum(countOf(slot) for slot in slots)
-
-
-def kindsOf(slots):
-    """[(种类, 总数)]，按第一次出现的格子排。"""
-    order, totals = [], {}
-    for slot in slots:
-        key = keyOf(slot)
-        if key is None:
-            continue
-        if key not in totals:
-            order.append(key)
-            totals[key] = 0
-        totals[key] += countOf(slot)
-    return [(key, totals[key]) for key in order]
-
-
-def bestParts(kinds):
-    """锅里的料最适合哪个配方写法：种类完全一样、每种料至少够一份；返回 {种类: 占几格}，没有返回 None。
-    几个写法都行时取能做份数最多的，一样多取配方表里靠前的。"""
-    totals = dict(kinds)
-    best, most = None, 0
-    for parts in partsFor(totals):
-        servings = min(totals[key] // count for key, count in parts.items())
-        if servings > most:
-            best, most = parts, servings
-    return best
-
-
-def _stack(sample, count):
-    stack = copy.deepcopy(sample)
-    stack["count"] = count
-    return stack
-
-
-def _cells(slots):
-    cells = [copy.deepcopy(slot) if keyOf(slot) else None for slot in list(slots)[:INPUT_SLOTS]]
-    return cells + [None] * (INPUT_SLOTS - len(cells))
-
-
-def placeStack(slots, item, maxStack):
-    """把 item 整叠放进食材格：先叠到同种料的格子上（不超过堆叠上限），再放进空格。返回 (新的 6 格, 放进去几件)。"""
-    cells, key, left = _cells(slots), keyOf(item), countOf(item)
-    if key is None:
-        return cells, 0
-    for cell in cells:
-        if left > 0 and keyOf(cell) == key and cell["count"] < maxStack:
-            moved = min(left, maxStack - cell["count"])
-            cell["count"] += moved
-            left -= moved
-    for index, cell in enumerate(cells):
-        if left > 0 and cell is None:
-            cells[index] = _stack(item, min(left, maxStack))
-            left -= cells[index]["count"]
-    return cells, countOf(item) - left
-
-
-def layout(slots, maxStackOf):
-    """按配方把料摆开：每种料平分到配方要它占的格数上（每格不超过 maxStackOf(种类)）。
-    返回 (新的 6 格, 放不下的物品列表)；凑不出配方或已经是这样摆的返回 None。"""
-    kinds = kindsOf(slots)
-    parts = bestParts(kinds)
-    if parts is None:
-        return None
-    samples = {}
-    for slot in slots:
-        if keyOf(slot) is not None:
-            samples.setdefault(keyOf(slot), slot)
-    cells, rest = [], []
-    for key, total in kinds:
-        cap = max(1, maxStackOf(key))
-        base, extra = divmod(total, parts[key])
-        for index in range(parts[key]):
-            share = base + (1 if index < extra else 0)
-            cells.append(_stack(samples[key], min(share, cap)))
-            if share > cap:
-                rest.append(_stack(samples[key], share - cap))
-    cells += [None] * (INPUT_SLOTS - len(cells))
-    if [(keyOf(c), countOf(c)) for c in cells] == [(keyOf(c), countOf(c)) for c in _cells(slots)]:
-        return None
-    return cells, rest
-
-
-def takeKind(slots, index):
-    """取回第 index 格那种料（所有格子里的这种料一起）。返回 (新的 6 格, 取出的物品列表)。"""
-    cells = _cells(slots)
-    key = keyOf(cells[index]) if 0 <= index < INPUT_SLOTS else None
-    if key is None:
-        return cells, []
-    taken = [cell for cell in cells if keyOf(cell) == key]
-    return [None if keyOf(cell) == key else cell for cell in cells], taken
 
 
 def badgeOf(data):

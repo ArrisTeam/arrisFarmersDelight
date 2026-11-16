@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""PotContainer - 厨锅容器格与预览槽的读写：食材、出一份、加份数、装碗转出（服务端）
+"""PotContainer - 厨锅容器格与预览槽的读写：食材、出一份、加份数、装碗转出、记煮了几份给经验（服务端）
 
 容器格：0-5 食材，6 容器（碗等），7 成品。煮好的成品先进方块实体数据里的预览槽 previewItemSlot，
 容器格里有对应容器时再转到 7 号格（MoveFinishedMeals）。FD 原样的烹饪（Server/CookingPot.py）、
 手工烹饪（Server/HandCooking.py）和厨锅站点（Compat/Diegesis/PotLogic.py）都经这里改锅里的东西。
+站点的槽组 ingredients / served 经 ContainerSlots 直接绑在 0-5 与 7 号容器格上（前置包的 bindSlots）。
+煮了几份记在方块实体数据 potUsed（{成品名: 份数}，随锅存档，FD 的 usedRecipeTracker）：盛出时按它给经验（awardExperience）。
 """
 import random
 
@@ -13,11 +15,24 @@ from ...Shared.Rules import CookingPot as CookingPotRules
 INPUT_SLOTS = 6
 VESSEL_SLOT = 6
 RESULT_SLOT = 7
+USED_KEY = "potUsed"
+
+
+_maxStacks = {}      # (物品名, aux) -> 堆叠上限：运行中不会变，锅每步都要问
+_TEXT = type(u"")    # py2 的 unicode；py3 里就是 str
+
+
+def plain(text):
+    """要写进方块实体数据或玩家 ExtraData 的名字转成 str：值和键是 py2 的 unicode 时引擎只打日志、不存（见 Engine.py 的说明）。"""
+    return text.encode("utf-8") if _TEXT is not str and isinstance(text, _TEXT) else text
 
 
 def maxStackOf(itemName, auxValue=0):
-    info = compFactory.CreateItem(levelId).GetItemBasicInfo(itemName, auxValue or 0)
-    return (info or {}).get("maxStackSize") or 64
+    key = (itemName, auxValue or 0)
+    if key not in _maxStacks:
+        info = compFactory.CreateItem(levelId).GetItemBasicInfo(itemName, key[1])
+        _maxStacks[key] = (info or {}).get("maxStackSize") or 64
+    return _maxStacks[key]
 
 
 def inputs(dimensionId, blockPos):
@@ -34,6 +49,28 @@ def setInputs(dimensionId, blockPos, before, after):
         if (old.get("newItemName"), old.get("newAuxValue"), old.get("count")) != \
                 (new.get("newItemName"), new.get("newAuxValue"), new.get("count")):
             itemComp.SpawnItemToContainer(new if new.get("count", 0) > 0 else {}, index, blockPos, dimensionId)
+
+
+class ContainerSlots(object):
+    """前置包 bindSlots 要的存储（size / get / set）：方块自己的容器格 start .. start + count - 1。
+    站点读写它就是读写方块的容器：漏斗、经典界面、别的玩家看到的是同一份。get 空格返回 None。"""
+
+    def __init__(self, dimensionId, blockPos, start, count):
+        self.dimensionId = dimensionId
+        self.blockPos = tuple(blockPos)
+        self.start = start
+        self.count = count
+
+    def size(self):
+        return self.count
+
+    def get(self, index):
+        item = compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId)
+        return item if item and item.get("newItemName") and item.get("count", 0) > 0 else None
+
+    def set(self, index, item):
+        stored = item if item and item.get("count", 0) > 0 else {}
+        compFactory.CreateItem(levelId).SpawnItemToContainer(stored, self.start + index, self.blockPos, self.dimensionId)
 
 
 def resultItem(dimensionId, blockPos):
@@ -67,12 +104,19 @@ def addMeals(blockEntityData, meal, count):
                                      "count": count})
 
 
-def cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItemList, times=1):
-    """煮出 times 份：每个非空食材格扣 times 件（slots 就地更新），吐出余料，预览槽加 times 份成品。"""
+def spill(dimensionId, blockPos, item):
+    """用料剩下的空容器掉在锅上方（FD 的 ejectIngredientRemainder：厨师不在场、没人接时）。"""
     x, y, z = blockPos
+    System.CreateEngineItemEntity(item, dimensionId, (x + 0.5, y + 1.0, z + 0.5))
+
+
+def cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItemList, times=1, sink=None):
+    """煮出 times 份：每个非空食材格扣 times 件（slots 就地更新），吐出余料，预览槽加 times 份成品，记下煮了 times 份。
+    sink(物品) 返回真表示余料有人接了（厨师在工位时交给他）；没人接就 spill 掉在锅上方。"""
     for pushItem in pushItemList or []:
         output = {"newItemName": pushItem[0], "newAuxValue": pushItem[1], "count": times}
-        System.CreateEngineItemEntity(output, dimensionId, (x + 0.5, y + 1.0, z + 0.5))
+        if sink is None or not sink(output):
+            spill(dimensionId, blockPos, output)
     itemComp = compFactory.CreateItem(levelId)
     for index, item in enumerate(slots):
         if not item:
@@ -82,6 +126,37 @@ def cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItemList, 
         if item["count"] <= 0:
             slots[index] = {}
     addMeals(blockEntityData, meal, times * (meal.get("count") or 1))
+    addUsed(blockEntityData, meal["newItemName"], times)
+
+
+def addUsed(blockEntityData, resultName, times):
+    """记下这道菜又煮了 times 份（FD 的 usedRecipeTracker；整体回写才会存档）。"""
+    used = dict((plain(name), count) for name, count in (blockEntityData[USED_KEY] or {}).items())
+    used[plain(resultName)] = used.get(plain(resultName), 0) + times
+    blockEntityData[USED_KEY] = used
+
+
+def spawnOrb(value, where, dimensionId):
+    """在 where 放一个 value 点经验的经验球。"""
+    if value <= 0:
+        return
+    orbId = System.CreateEngineEntityByTypeStr("minecraft:xp_orb", where, (0, 0), dimensionId)
+    if orbId:
+        compFactory.CreateExp(orbId).SetOrbExperience(value)
+
+
+def awardExperience(blockEntityData, where, dimensionId):
+    """把记着的份数换成经验球放在 where，记着的清零（FD 的 awardUsedRecipes）：每道菜按"煮了几份 x 一份的经验"，
+    整数部分照给、零头按概率进一。煮了几份是按煮出来的算的，星星多送的份数不算。返回给了多少经验。"""
+    used = blockEntityData[USED_KEY]
+    if not used:
+        return 0
+    blockEntityData[USED_KEY] = None
+    total = 0
+    for name, times in used.items():
+        total += CookingPotRules.experienceOrb(CookingPotRules.servingExperienceOf(name), times, random.random())
+    spawnOrb(total, where, dimensionId)
+    return total
 
 
 def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
@@ -119,15 +194,4 @@ def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
     itemComp.SpawnItemToContainer(resultDict, RESULT_SLOT, blockPos, dimensionId)
     previewItemSlot["count"] -= amount
     setPreview(blockEntityData, previewItemSlot)
-    dropExperience(resultItemName, amount, blockPos, dimensionId)
-
-
-def dropExperience(resultItemName, count, blockPos, dimensionId):
-    """盛出 count 个 resultItemName 给的经验（JE：每份按配方的 experience，零头按概率进一），锅上方一个经验球。"""
-    x, y, z = blockPos
-    value = CookingPotRules.experienceOrb(CookingPotRules.experienceOf(resultItemName), count, random.random())
-    if value <= 0:
-        return
-    orbId = System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
-    if orbId:
-        compFactory.CreateExp(orbId).SetOrbExperience(value)
+    awardExperience(blockEntityData, (x + 0.5, y + 1, z + 0.5), dimensionId)

@@ -207,5 +207,39 @@ def testDumpAndRestore():
         assert 0.0 <= other.bonusCarried <= 0.999, broken
 
 
+def testLeftoversAreKeptForTheCookWhileHeIsHereAndThrownOutWhenNobodyTookThem():
+    clock = newClock(True)
+    clock.attend(5.0)
+    assert clock.keepLeftover("bucket", 5.0) and clock.keepLeftover("bottle", 5.05)
+    assert not clock.keepLeftover("late", 5.2), "厨师不在场（过了 HERE）：不留，由锅掉在锅边"
+    assert clock.takeLeftovers() == ["bucket", "bottle"] and clock.takeLeftovers() == [], "只给一次"
+    clock.attend(10.0)
+    clock.keepLeftover("bowl", 10.0)
+    assert clock.forgotten(10.05) == [], "他还在：站点马上会来取"
+    assert clock.forgotten(10.5) == ["bowl"] and clock.leftovers == [], "他正好那一刻走了：没人取的掉在锅边"
+    assert clock.forgotten(11.0) == []
+
+
+def testAPotThatCannotCookLosesItsProgressTwoSecondsPerSecond():
+    clock = Pot.PotClock()
+    clock.cookTime = 5.0
+    clock.fall(0.2)
+    assert abs(clock.cookTime - 4.6) < 1e-9, "FD 每刻 cookTime - 2"
+    clock.fall(1.0)
+    assert abs(clock.cookTime - 2.6) < 1e-9
+    clock.fall(10.0)
+    assert clock.cookTime == 0.0, "掉到 0 为止"
+
+
+def testByHandSurvivesAReloadOnlyThroughTheSavedFlag():
+    clock = newClock(True)
+    saved = clock.dump()
+    other = Pot.PotClock()
+    other.restore(saved["byHand"], saved["bonus"])
+    assert other.byHand, "手放的料存档后读回来还是手放的：厨师在场就等勺子"
+    other.watchFood(10)
+    assert other.byHand, "读回来的料早就在锅里：没有新料进来，不变"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
