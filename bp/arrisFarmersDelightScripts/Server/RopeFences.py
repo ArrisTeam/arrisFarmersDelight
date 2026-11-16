@@ -7,6 +7,7 @@ query.is_connect 在引擎里算。门是两个方块（关着 / 开着），右
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId
 from .Helpers.Fx import ToAllPlayerPlaySound
+from .Helpers.Placement import FacingOfAux
 from .Helpers.Player import SetPlayerUsedCD
 from ..Shared.Rules import RopeFence
 from ..Shared.Rules.Placement import facingOfYaw
@@ -20,11 +21,13 @@ def OnUseRopeFenceGate(args):
         return
     pos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimensionId"]
-    states = compFactory.CreateBlockState(levelId).GetBlockStates(pos, dimensionId)
     rot = compFactory.CreateRot(playerId).GetRot()
-    if not states or "direction" not in states or not rot:
+    if not rot:
         return
-    name, direction, sound = RopeFence.toggleGate(args["blockName"], states["direction"], facingOfYaw(rot[1]))
+    states = compFactory.CreateBlockState(levelId).GetBlockStates(pos, dimensionId) or {}
+    # 朝向优先读方块状态，读不到再用事件带的 aux（FoodBlocks 换阶段方块时也是这样取朝向）
+    current = states["direction"] if "direction" in states else FacingOfAux(args["aux"])
+    name, direction, sound = RopeFence.toggleGate(args["blockName"], current, facingOfYaw(rot[1]))
     compFactory.CreateBlockInfo(levelId).SetBlockNew(pos, {"name": name}, 0, dimensionId)
     states = compFactory.CreateBlockState(levelId).GetBlockStates(pos, dimensionId) or {}
     states["direction"] = direction

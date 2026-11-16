@@ -79,6 +79,15 @@ def testRightClickClosesAnOpenGateAndPlaysTheTieSound():
     assert world.sounds == [("leashknot.place", (5.5, 64.5, 5.5))]
 
 
+def testDirectionFallsBackToTheEventAuxWhenTheStateCannotBeRead():
+    _setUp(GATE, 2, 180.0)
+    world.blocks[(0,) + POS]["states"] = None              # 读不到方块状态
+    args = {"playerId": "p1", "blockName": GATE, "aux": 2, "cancel": False, "x": POS[0], "y": POS[1], "z": POS[2],
+            "dimensionId": 0, "face": 1, "itemDict": None}
+    Registry.dispatch("ServerBlockUseEvent", args, GATE)
+    assert world.blockName(*POS) == OPEN and _states() == {"direction": 0}      # aux 2 = 前面朝北，朝北站着开：转向
+
+
 def testOpeningFromTheBackTurnsTheGate():
     _setUp(GATE, 2, 180.0)                      # 玩家朝北（站在南边）开前面朝北的门
     _use()
