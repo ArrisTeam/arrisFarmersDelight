@@ -9,7 +9,6 @@ import potkit as K
 from potkit import BOWL, POT, SAUCE, TOMATO, fake
 
 PotLook = K.PotLook
-STATIC_KEYS = ["dish", "heated", "items", "meal", "served", "sunk"]
 
 
 def _looks():
@@ -48,10 +47,35 @@ def testTheLookGoesToThePlayersWithin32BlocksOfTheSameDimensionAndIsMirroredInTh
     assert payload["served"] == {} and payload["meal"] == {} and payload["sunk"] == [] and payload["heated"] is True
     assert payload["stirring"] is False and payload["cooking"] is False and payload["rate"] == 0.0 and payload["spoon"] == [0.0, 0.0]
     mirror = data["potLook"]
-    assert sorted(mirror) == STATIC_KEYS and all(isinstance(key, str) for key in mirror), "静态部分镜像进方块实体数据"
-    assert dict((key, payload[key]) for key in STATIC_KEYS) == mirror
+    assert sorted(mirror) == ["dish", "heated", "items"] and all(isinstance(key, str) for key in mirror), \
+        "静态部分镜像进方块实体数据，空的几项（served / meal / sunk）不写"
+    assert dict((key, payload[key]) for key in mirror) == mirror and mirror["items"] == payload["items"]
     K.run(manager, 2.0)
     assert len(_looks()) == 1, "什么也没变：不再发"
+
+
+def _emptyParts(mirror):
+    """镜像里放着的空列表、空字典（items 里的空格是 {}，和 previewItemSlot 一样的写法，不算）：引擎文档没说放不放得下，不该有。"""
+    return [key for key, value in mirror.items() if key != "items" and isinstance(value, (list, dict)) and not value]
+
+
+def testTheMirrorLeavesOutTheEmptyPartsAndKeepsTheSixItemCells():
+    manager, data = K.setup()
+    _watched()
+    K.run(manager, 0.5)
+    assert data["potLook"] == {"items": [{}] * 6, "heated": True}, "空锅：只有六个空格和热源"
+    fake.setContainer(POT, 0, "minecraft:milk_bucket", 1)
+    fake.setContainer(POT, 1, "minecraft:carrot", 2)
+    K.run(manager, 0.5)
+    mirror = data["potLook"]
+    assert sorted(mirror) == ["heated", "items", "sunk"] and mirror["sunk"] == [0], "奶桶沉着；凑不成菜，没有 dish"
+    assert [sorted(item) for item in mirror["items"]] == [["count", "newAuxValue", "newItemName"]] * 2 + [[]] * 4
+    assert _emptyParts(mirror) == []
+    K.setMeal(SAUCE, 3, data)
+    K.run(manager, 0.5)
+    mirror = data["potLook"]
+    assert mirror["meal"] == {"newItemName": SAUCE, "newAuxValue": 0, "count": 3}
+    assert "dish" not in mirror and "served" not in mirror and _emptyParts(mirror) == []
 
 
 def testTheMirrorFollowsEveryChangeOfTheStaticPart():

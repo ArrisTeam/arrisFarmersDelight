@@ -8,7 +8,9 @@ Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发�
      "sunk": [沉着的格号], "heated": 有没有热源, "stirring": 锅算不算被搅着, "spoon": [x, z]（世界朝向，-1..1，同 spoon_x / spoon_z），
      "progress": 0..1, "rate": 进度每秒走多少（0 = 停着）, "cooking": 加热着、被搅着、有料可做、没有菜等着盛}
 静态的部分（items / served / meal / dish / sunk / heated）变了就写进方块实体数据 potLook（区块晚加载的客户端从它恢复），
-锅的 5 Hz 步里查；勺子每个被接受的搅拌发一次（每口锅每秒最多 8 次）；进度在走时每 2 秒补一次，客户端按 rate 往前推。
+锅的 5 Hz 步里查；写进去的是同一份，只是空的几项（served / meal / dish 是 {}、sunk 是 []）不写，读的人缺键当空
+（引擎文档只说列表各项要同类型，空列表和空字典放不放得下没说，不碰）。
+勺子每个被接受的搅拌发一次（每口锅每秒最多 8 次）；进度在走时每 2 秒补一次，客户端按 rate 往前推。
 一次性的事件（盛出 scooped、整批出锅 served）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，只发给没开站点的旁观者
 （开站点的人从站点的表现事件里拿到；站点每刻用 attend 告诉这里现在有谁在用它）。
 """
@@ -84,6 +86,17 @@ def _static(payload):
     return dict((key, payload[key]) for key in ("items", "served", "meal", "dish", "sunk", "heated"))
 
 
+def _mirror(static):
+    """写进方块实体数据的样子：静态部分里空的几项不写（读的人缺键当空）；items 一直是 6 项（空格是 {}，和 previewItemSlot 一样的写法）。"""
+    mirror = {"items": static["items"], "heated": static["heated"]}
+    for key in ("served", "meal", "dish"):
+        if static[key]:
+            mirror[key] = static[key]
+    if static["sunk"]:
+        mirror["sunk"] = static["sunk"]
+    return mirror
+
+
 def _signatureOf(static):
     return (tuple(_signature(w) for w in static["items"]), _signature(static["served"]), _signature(static["meal"]),
             _signature(static["dish"]), tuple(static["sunk"]), static["heated"])
@@ -131,7 +144,7 @@ def tick(dimensionId, blockPos, blockEntityData, hand, slots, now):
     entry["served"] = hand.served
     if changed:
         entry["static"] = signature
-        blockEntityData[LOOK_KEY] = static
+        blockEntityData[LOOK_KEY] = _mirror(static)
     if changed or payload["stirring"] != entry["stirring"] or moving != entry["moving"] or \
             (moving and now - entry["at"] >= MOVING_INTERVAL):
         _send(payload, entry, now)
