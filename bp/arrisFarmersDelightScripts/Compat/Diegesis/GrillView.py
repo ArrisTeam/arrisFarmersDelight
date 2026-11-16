@@ -11,6 +11,7 @@ import math
 
 from . import BookSources
 from ...Client import BlockItems
+from ...Client.Engine import compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules
 
 CAMERA = {"pos": (8.0, 33.0, -2.0), "target": (8.0, 16.0, 8.0), "fov": 50.0}
@@ -163,8 +164,17 @@ class GrillViewMixin(object):
             self.view.hint(text)
 
 
+def opensStation(pos, dimensionId):
+    """这一下右键开不开站点（规则在 GrillStation.opens）：上面盖着锅、手里拿着炉灶自己用得上的东西时不开，方块原本的用法照常走。"""
+    above = compFactory.CreateBlockInfo(levelId).GetBlock((pos[0], pos[1] + 1, pos[2]))
+    held = compFactory.CreateItem(playerId).GetCarriedItem() or {}
+    name = held.get("newItemName")
+    info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, held.get("newAuxValue") or 0) if name else None
+    return Rules.opens(name, (info or {}).get("itemType") or "", bool(above and above[0] != "minecraft:air"))
+
+
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记。"""
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
-    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass)
+    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, canOpen=opensStation)
     return behaviorClass
