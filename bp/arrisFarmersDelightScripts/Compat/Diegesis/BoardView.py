@@ -3,11 +3,13 @@
 
 对应 Hands-On Delight：刀吸附到下一条虚线，点一下落刀。食材本身由农夫乐事的展示实体画（所有人都看得见），
 这里只画给使用者自己看的东西：刀口虚线（下一刀是金色）和悬着的刀（落刀时往下一扎）。
-点击板面：板空着 -> place；板上有东西 -> use（服务端判断是切还是取回）。坐标是站点像素（16 = 1 格，玩家在北面）。
+点击板面：板空着 -> place；板上有东西 -> use（服务端判断是切、取回，还是摆盘的做成 / 拿走）。坐标是站点像素（16 = 1 格，玩家在北面）。
+摆盘（HoD 的 dishes on the board）：底部抽屉列出快捷栏里现在能放上砧板的，点一格 = lay；板上的层由 Client/BlockItems 给所有人画。
 """
 import math
 
 from ...Shared.Rules import CuttingStation as Rules
+from ...Shared.Rules import DishStation
 from ...Shared.Rules.HandsOn import Cutting
 
 CAMERA = {"pos": (8.0, 21.0, -3.0), "target": (8.0, 1.0, 7.5), "fov": 55.0}
@@ -20,11 +22,12 @@ KNIFE_HOVER = 9.0                   # 刀的视觉中心悬多高：刀尖离食
 CHOP_SECONDS = 0.22
 BOARD_BOX = ((1.0, 0.0, 1.0), (15.0, 4.0, 15.0))
 HINTS = {
-    "empty": "点击砧板：放上手里的食材（最多 16 个）   潜行右键 = 原来的玩法",
+    "empty": "点击砧板放上手里的食材，或点下方物品栏：能切的切、能打底的摆盘   潜行右键 = 原来的玩法",
     "cut": "点击食材：切第 %d / %d 刀",
     "no_tool": "背包里没有合适的刀具：点击取回",
     "take": "点击取回",
-    "only_food": "只有能切的食材才能放上砧板",
+    "only_food": "只有能切的食材、或能打底的（面包、碗、签子……）才能放上砧板",
+    "no_layer": "这个放不上去：不是哪道菜的下一层",
 }
 
 
@@ -73,12 +76,21 @@ class BoardViewMixin(object):
             self.chopLeft = CHOP_SECONDS
         elif name == "hint":
             self.view.hint(HINTS.get(data.get("key"), ""))
+        elif name == "drawer":
+            self.view.drawer(data.get("items") or [])
+        elif name == "plated":
+            self.view.hint("做好了：点一下砧板拿走")
+
+    def onDrawer(self, index):
+        self.view.sendAction("lay", {"slot": int(index)})
 
     def onPointer(self, event):
         if event.kind != "down" or event.hit is None:
             return
         data = self.view.data
-        if not data.get("item"):
+        if data.get("layers") or data.get("dish"):
+            self.view.sendAction("use", {"mark": 0})
+        elif not data.get("item"):
             self.view.sendAction("place")
         else:
             self.view.sendAction("use", {"mark": int(data.get("marks") or 0)})
@@ -123,6 +135,9 @@ class BoardViewMixin(object):
         return ((a[0] + b[0]) * 0.5, KNIFE_HOVER, (a[2] + b[2]) * 0.5)
 
     def _hintText(self, item, plan, done):
+        data = self.view.data
+        if data.get("layers") or data.get("dish"):
+            return DishStation.statusText(data, lambda name: data.get("readyName") or name)
         if not item:
             return HINTS["empty"]
         if not self.view.data.get("cuttable"):

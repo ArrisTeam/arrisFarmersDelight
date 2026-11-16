@@ -7,7 +7,7 @@
 以及 LoadServerAddonScriptsAfter（前置包比本包后加载时）。
 """
 from ...QuModLibs.Server import Listen, serverApi
-from . import BoardLogic, GrillLogic, PanLogic, PotLogic
+from . import BoardLogic, DishCrafts, GrillLogic, PanLogic, PotLogic
 
 API_MODULE = "arrisDiegesisScripts.Api.Server"
 MIN_API_VERSION = 1
@@ -30,6 +30,7 @@ def tryRegister():
     PotLogic.register(api)
     PanLogic.register(api)
     GrillLogic.register(api)
+    DishCrafts.register()            # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）
     _state["registered"] = True
     return True
 

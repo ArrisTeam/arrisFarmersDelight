@@ -8,17 +8,20 @@
     use {"mark": i}  板上有能切的东西：背包 / 副手 / 主手里有合适的工具就落第 i 刀（只认下一刀，两刀间隔 ≥ 0.15 秒），
                      没有工具就取回（HoD：没有可用的刀时点食材 = 取回）
     take {}          取回板上的东西
-表现事件：tool {"item": 将用的工具名或 ""}（只发给本人）、chop {"mark", "last"}、hint {"key"}（只发给本人）。
+    lay {"slot": i}  快捷栏第 i 格放上砧板：能切的照切菜放，能打底 / 能接着往上放的走摆盘（DishBoard.py）
+板上有摆盘的东西时 use 交给 DishBoard.click（做成、拿走或全拿回来）。
+表现事件：tool {"item": 将用的工具名或 ""}、drawer {"items"}、hint {"key"}（都只发给本人）、chop {"mark", "last"}、plated {"item"}。
 """
 import copy
 import time
 
 from ...Server.Helpers.BlockItems import DropLegacyDisplays, PublishBoard
-from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ItemPosType
+from ...Server.Helpers import BoardDish as DishStore
+from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
-from ...Server.Helpers.Items import GetItemType, IsKnife
 from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
 from ...Shared.Data.Cutting import CuttingBoardDict
+from . import BoardTools, DishBoard
 from ...Shared.Rules import CuttingStation as Rules
 from ...Shared.Rules.HandsOn import Cutting
 
@@ -49,6 +52,8 @@ class BoardLogicMixin(object):
         self.count = 0
         self._started = False
         self._sinceCheck = 0.0
+        self._sinceDrawer = 0.0
+        self._drawers = {}
 
     # ---------------------------------------------------------------- 钩子
 
@@ -59,10 +64,25 @@ class BoardLogicMixin(object):
             self._started = True
             self._restart(self._boardItem())
         self._toolHint(playerId)
+        self._drawers.pop(playerId, None)
+        self._sendDrawer(playerId)
         return True
 
+    def onClose(self, playerId):
+        self._drawers.pop(playerId, None)
+
     def onCustomAction(self, playerId, name, data):
-        if name == "place":
+        board = self._blockData()
+        if name == "lay" and board is not None and _isMark(data.get("slot")) and 0 <= data["slot"] < DishBoard.HOTBAR:
+            key = DishBoard.lay(self, playerId, data["slot"], board)
+            accepted = key is None
+            if key:
+                self.station.effect("hint", {"key": key}, only=playerId)
+            self._publish()
+        elif name == "use" and board is not None and DishStore.hasAny(board):
+            accepted = DishBoard.click(self, playerId, board)
+            self._publish()
+        elif name == "place":
             accepted = self._place(playerId)
         elif name == "use":
             accepted = self._use(playerId, data.get("mark"))
@@ -71,10 +91,16 @@ class BoardLogicMixin(object):
         else:
             return False
         self._toolHint(playerId)
+        self._sendDrawer(playerId)
         return accepted
 
     def tick(self, dt):
         """板上的东西被经典玩法 / 别的途径改了：跟着重布刀口。"""
+        self._sinceDrawer += dt
+        if self._sinceDrawer >= RECHECK_SECONDS * 2.0:
+            self._sinceDrawer = 0.0
+            for playerId in list(self.station.users):
+                self._sendDrawer(playerId)
         self._sinceCheck += dt
         if self._sinceCheck < RECHECK_SECONDS:
             return
@@ -110,7 +136,7 @@ class BoardLogicMixin(object):
         item = self._boardItem(data)
         if not item:
             return False
-        tool = self._findTool(playerId) if self.recipe is not None else None
+        tool = BoardTools.findTool(playerId, self.recipe) if self.recipe is not None else None
         if tool is None:
             return self._take(playerId)
         if not _isMark(mark) or not self.cut.accept(time.time(), mark, True):
@@ -131,9 +157,9 @@ class BoardLogicMixin(object):
         batch = Cutting.batchSize(item["count"], Rules.toolLeft(toolItem) if wears else None)
         if batch > 0:
             for name, aux, count in Rules.resultsFor(self.recipe, batch):
-                self._give(playerId, name, aux, count)
+                BoardTools.give(playerId, self.station.dimensionId, name, aux, count)
             if wears:
-                self._wearTool(playerId, where, toolItem, batch)
+                BoardTools.wearTool(playerId, self.station.dimensionId, self.station.pos, where, toolItem, batch)
         rest = copy.deepcopy(item)
         rest["count"] -= batch
         if rest["count"] > 0:
@@ -154,39 +180,6 @@ class BoardLogicMixin(object):
         ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
         self._restart(None)
         return True
-
-    # ---------------------------------------------------------------- 工具与物品
-
-    def _findTool(self, playerId):
-        """按主手、副手、背包的顺序找第一件合适的工具：((格子类型, 下标), 物品) 或 None。"""
-        itemComp = compFactory.CreateItem(playerId)
-        candidates = [((ItemPosType.CARRIED, 0), itemComp.GetPlayerItem(ItemPosType.CARRIED, 0, True)),
-                      ((ItemPosType.OFFHAND, 0), itemComp.GetPlayerItem(ItemPosType.OFFHAND, 0, True))]
-        for slot, item in enumerate(itemComp.GetPlayerAllItems(ItemPosType.INVENTORY, True) or []):
-            candidates.append(((ItemPosType.INVENTORY, slot), item))
-        return Rules.pickTool(candidates, self.recipe, IsKnife, GetItemType)
-
-    def _wearTool(self, playerId, where, toolItem, uses):
-        """每切一件磨损一次；用坏了播放破碎声并清掉那一格（创造模式与不会损坏的工具由调用方排除）。"""
-        tool = copy.deepcopy(toolItem)
-        tool["durability"] -= uses
-        broken = tool["durability"] <= 0
-        if broken:
-            ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "random.break")
-        posType, slot = where
-        itemComp = compFactory.CreateItem(playerId)
-        if posType == ItemPosType.INVENTORY:
-            if broken:
-                itemComp.SetInvItemNum(slot, 0)
-            else:
-                itemComp.SetPlayerAllItems({(posType, slot): tool})
-        else:
-            itemComp.SetEntityItem(posType, None if broken else tool, 0)
-
-    def _give(self, playerId, name, aux, count):
-        info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, aux) or {}
-        for size in Rules.stacks(count, info.get("maxStackSize") or 64):
-            GiveOrDropItem(playerId, {"newItemName": name, "newAuxValue": aux, "count": size}, self.station.dimensionId)
 
     # ---------------------------------------------------------------- 方块实体数据与同步
 
@@ -215,8 +208,10 @@ class BoardLogicMixin(object):
         self._publish()
 
     def _publish(self):
-        item = self._boardItem()
-        self.station.state.setData({
+        board = self._blockData()
+        item = self._boardItem(board)
+        dish = DishBoard.fields(board) if board is not None else {"layers": [], "dish": {}, "ready": "", "readyName": ""}
+        self.station.state.setData(dict(dish, **{
             "item": _wireItem(item) if item else {},
             "cuttable": self.recipe is not None,
             "marks": self.cut.marks,
@@ -225,10 +220,18 @@ class BoardLogicMixin(object):
             "spots": [float(v) for v in self.cut.spots],
             "angles": [float(v) for v in self.cut.angles],
             "stroke": Rules.strokeOf(self.recipe) if self.recipe is not None else "",
-        })
+        }))
+
+    def _sendDrawer(self, playerId):
+        """快捷栏里现在能放上砧板的（DishBoard.drawerItems）；和上次发的一样就不发。"""
+        board = self._blockData()
+        items = DishBoard.drawerItems(playerId, board, self._boardItem(board)) if board is not None else [{}] * DishBoard.HOTBAR
+        if self._drawers.get(playerId) != items:
+            self._drawers[playerId] = items
+            self.station.effect("drawer", {"items": items}, only=playerId)
 
     def _toolHint(self, playerId):
-        tool = self._findTool(playerId) if self.recipe is not None else None
+        tool = BoardTools.findTool(playerId, self.recipe) if self.recipe is not None else None
         self.station.effect("tool", {"item": tool[1]["newItemName"] if tool else ""}, only=playerId)
 
 
