@@ -4,6 +4,7 @@
 容器格：0-5 食材，6 容器（碗等），7 成品。煮好的成品先进方块实体数据里的预览槽 previewItemSlot，
 容器格里有对应容器时再转到 7 号格（MoveFinishedMeals）。FD 原样的烹饪（Server/CookingPot.py）、
 手工烹饪（Server/HandCooking.py）和厨锅站点（Compat/Diegesis/PotLogic.py）都经这里改锅里的东西。
+站点的槽组 ingredients / served 经 ContainerSlots 直接绑在 0-5 与 7 号容器格上（前置包的 bindSlots）。
 煮了几份记在方块实体数据 potUsed（{成品名: 份数}，随锅存档，FD 的 usedRecipeTracker）：盛出时按它给经验（awardExperience）。
 """
 import random
@@ -42,6 +43,28 @@ def setInputs(dimensionId, blockPos, before, after):
         if (old.get("newItemName"), old.get("newAuxValue"), old.get("count")) != \
                 (new.get("newItemName"), new.get("newAuxValue"), new.get("count")):
             itemComp.SpawnItemToContainer(new if new.get("count", 0) > 0 else {}, index, blockPos, dimensionId)
+
+
+class ContainerSlots(object):
+    """前置包 bindSlots 要的存储（size / get / set）：方块自己的容器格 start .. start + count - 1。
+    站点读写它就是读写方块的容器：漏斗、经典界面、别的玩家看到的是同一份。get 空格返回 None。"""
+
+    def __init__(self, dimensionId, blockPos, start, count):
+        self.dimensionId = dimensionId
+        self.blockPos = tuple(blockPos)
+        self.start = start
+        self.count = count
+
+    def size(self):
+        return self.count
+
+    def get(self, index):
+        item = compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId)
+        return item if item and item.get("newItemName") and item.get("count", 0) > 0 else None
+
+    def set(self, index, item):
+        stored = item if item and item.get("count", 0) > 0 else {}
+        compFactory.CreateItem(levelId).SpawnItemToContainer(stored, self.start + index, self.blockPos, self.dimensionId)
 
 
 def resultItem(dimensionId, blockPos):

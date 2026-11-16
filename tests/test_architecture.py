@@ -45,6 +45,8 @@ PACKS = {
             "Compat/Diegesis/BoardLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PotLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PotSync.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/PotScoop.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/BookFill.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/PanLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/GrillLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardTools.py": {"forbid": {"Client"}, "engine": True},

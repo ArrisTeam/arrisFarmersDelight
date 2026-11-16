@@ -12,7 +12,6 @@ import time
 
 from ..Helpers import PotContainer
 from ..Helpers.Engine import compFactory, levelId, serverApi, GetBlockEntityData, ItemPosType
-from ..Helpers.Player import IsCreative
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 
 SAUCE = "arris:tomato_sauce"
@@ -78,7 +77,7 @@ def mcdk_test_book():
               "board": {"opened": boardOpened, "filled": boardFilled, "closed": boardClosed,
                         "onBoard": onBoard and (onBoard.get("newItemName"), onBoard.get("count"))},
               "duration_ms": int((time.time() - started) * 1000)}
-    expectTaken = 0 if IsCreative(playerId) else 32         # 创造模式不扣背包
+    expectTaken = 32                  # 锅的书放料照 HoD 的 fill：创造模式也照扣（砧板那边创造模式不扣，这里不看）
     result["ok"] = bool(potOpened and potFilled and inPot == 32 and tomatoesTaken == expectTaken and boardOpened and boardFilled
                         and result["board"]["onBoard"] == (SANDWICH, 3))
     return result

@@ -113,6 +113,8 @@ def lay(cells, kinds, parts, maxStackOf):
     for cell in cells:
         if keyOf(cell) is not None:
             sample.setdefault(keyOf(cell), cell)
+    for kind, _total in kinds:                       # 还没躺在锅里的料（照书新放进来的）用最朴素的物品字典
+        sample.setdefault(kind, {"newItemName": kind[0], "newAuxValue": kind[1], "count": 1})
     kindAt = [-1] * size
     placed = [0] * len(kinds)
     for slot in range(size):

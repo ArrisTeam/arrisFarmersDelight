@@ -1,34 +1,32 @@
 # -*- coding: utf-8 -*-
-"""PotLogic - 厨锅站点的服务端逻辑：放料、取回、搅拌评星、整批出锅、盛出（服务端）
+"""PotLogic - 厨锅站点的服务端逻辑：槽位规则、搅拌评星、整批出锅、盛出、取回、照书放料（服务端）
 
-对应 Hands-On Delight：station/PotLogic.java。锅里的东西照旧在厨锅的容器格和预览槽里（Server/Helpers/PotContainer.py），
+对应 Hands-On Delight：station/PotLogic.java。锅里的东西照旧在厨锅的容器格和预览槽里（Server/Helpers/PotContainer.py）：
+站点的槽组 ingredients（容器格 0-5）和 served（容器格 7）经 ContainerSlots 直接绑在上面，点击、Shift 点击、拖过多格、双击聚拢
+都由前置包的动作处理（光标栈在服务端，见 Shared/Actions），这里只管规则：
+    mayPlace   凑得成菜的料和别的东西都收，只有盛菜的容器不收（PotStation.mayPlace）；served 什么也放不进
+    onSlotChanged  食材格变了：下一刻按它做的那道菜把料摆开（shareOut），并记"料是手放的"（feedByHand）
+    onTaken    从 served 取走的算盛出：记做过几份、给经验
 计时、评星、勺子在 Server/HandCooking.py 的 PotHand 里：站点关了它们还在，厨师走开 2 秒后锅按 FD 原样自己煮。
-潜行右键照旧打开 FD 的厨锅界面。客户端动作：
-    stir  {"x", "z", "at"}  勺尖的位置（以方块中心为原点、世界朝向、-1..1）和厨师的钟（秒）；别人正握着勺子时不算
-    add   {"slot": 0..8}    把快捷栏第 slot 格整叠放进锅（只收配方里有的食材），按配方摆开
-    take  {"slot": 0..5}    取回锅里第 slot 格那种料
-    scoop {}                盛出煮好的菜：产出格里装好的直接拿，预览槽里的用背包里的容器装
-    bookFill {"key", "sets"} 食谱书里点的菜：从背包放 1 / 16 份料（BookFill.fillPot）
-表现事件：drawer {"items"}（只发给本人：快捷栏里能下锅的料）、served、scooped、hint {"key"}（只发给本人）；数据见 PotSync.py。
+站点开着时厨师手里拿着这道菜的容器、锅里有煮好的菜：开站被拒，FD 原样盛一份（PotServe.serveByHand）。自定义动作：
+    stir      {"x", "z", "at"}  勺尖的位置（方块中心为原点、世界朝向、-1..1）和厨师的钟（秒）；缺 x / z 当 0，别人握着勺子时不算
+    scoop     {"all", "from_inventory"}  盛一份 / 盛到没有，容器从光标栈或背包来（PotScoop.scoop）
+    take_back {}  最后一个沉着的食材格退给玩家（PotScoop.takeBack）
+    bookFill  {"key", "sets"}  食谱书里点的菜：从背包放 1 / 16 份整份的料（BookFill.fillPot）
+表现事件：served {"grade", "bonus"}（整批出锅）、scooped {"count"}（盛出）；控件和数据见 PotSync.py，世界外观广播见 Server/PotLook.py。
 """
-import copy
 import time
 
-from . import BookFill, PotSync
-from ...Server import HandCooking
+from . import BookFill, PotScoop, PotSync
+from ...Server import HandCooking, PotLook, PotServe
 from ...Server.Helpers import PotContainer
-from ...Server.Helpers.Engine import compFactory, GetBlockEntityData, ItemPosType
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
-from ...Server.Helpers.Player import GiveOrDropItem, IsCreative
+from ...Server.Helpers.Engine import GetBlockEntityData
+from ...Server.Helpers.Player import GiveOrDropItem
+from ...Shared.Rules import CookingPot as CookingPotRules
 from ...Shared.Rules import PotStation as Rules
 
 REACH = 6.0
-PUBLISH_SECONDS = 0.25           # 进度、星星、旁观者看到的勺子：每秒同步 4 次
-DRAWER_SECONDS = 0.5             # 快捷栏变了（捡到东西、换了格子）多久内跟上
-
-
-def _isIndex(value, size):
-    return isinstance(value, int) and not isinstance(value, bool) and 0 <= value < size
+PUBLISH_SECONDS = 0.25           # 站点数据（锅里的菜、几份、还要几秒……）每秒同步 4 次；控件每刻写、变了才发
 
 
 def _isNumber(value):
@@ -40,54 +38,79 @@ def _maxStack(kind):
 
 
 class PotLogicMixin(object):
-    """和前置包的 StationLogic 拼成站点逻辑类（register 里用 type() 组装，基类只在运行时拿得到）。"""
+    """和前置包的 StationLogic 拼成站点逻辑类（register 里用 type() 组装，基类和 kit 只在运行时拿得到）。"""
+
+    kit = None           # 前置包的服务端 Api（register 里放进去）
 
     def __init__(self, station):
         super(PotLogicMixin, self).__init__(station)
         self.hand = None
+        self.wanted = None            # 书里最后点的那道（配方序号）：锅里的料还做得成它时就是锅的选择，锅空了就忘
+        self._unsorted = False
         self._served = 0
         self._sincePublish = 0.0
-        self._sinceDrawer = 0.0
-        self._drawers = {}
+        self._dishName = None
+        dimensionId, pos = station.dimensionId, station.pos
+        station.state.bindSlots(Rules.GROUP_INGREDIENTS, PotContainer.ContainerSlots(dimensionId, pos, 0, Rules.INPUT_SLOTS))
+        station.state.bindSlots(Rules.GROUP_SERVED, PotContainer.ContainerSlots(dimensionId, pos, PotContainer.RESULT_SLOT, 1))
 
     # ---------------------------------------------------------------- 钩子
 
     def onOpen(self, playerId):
-        data = self._blockData()
+        station = self.station
+        data = GetBlockEntityData(station.dimensionId, station.pos)
         if data is None:
             return False
+        if PotServe.serveByHand(playerId, station.dimensionId, station.pos):
+            return False                  # 手里拿着这道菜的容器、锅里有煮好的菜：FD 原样盛一份，不开站点（HoD 的 opens）
         now = time.time()
-        self.hand = HandCooking.handOf(self.station.dimensionId, self.station.pos, data)
+        self.hand = HandCooking.handOf(station.dimensionId, station.pos, data)
         self.hand.spoon.open(playerId, now)
         self.hand.clock.attend(now)
         self._served = self.hand.served
-        self._drawers.pop(playerId, None)
-        self._sendDrawer(playerId)
-        self._publish(data)
+        self._refresh(now, data, True)
         return True
 
-    def onClose(self, playerId):
-        self._drawers.pop(playerId, None)
+    def onRemoved(self):
+        PotLook.attend(self.station.dimensionId, self.station.pos, [])
+
+    def mayPlace(self, ref, item):
+        return ref[0] == Rules.GROUP_INGREDIENTS and Rules.mayPlace(item)
+
+    def onSlotChanged(self, ref):
+        self._sincePublish = PUBLISH_SECONDS          # 锅里的东西变了：下一刻就重算站点数据（它能做哪道菜、沉着哪几格）
+        if ref[0] == Rules.GROUP_INGREDIENTS:
+            self._unsorted = True
+            if self.hand is not None:
+                self.hand.clock.feedByHand()
+
+    def onTaken(self, ref, item):
+        if ref[0] == Rules.GROUP_SERVED and item and self.actor:
+            station = self.station
+            PotServe.served(self.actor, station.dimensionId, GetBlockEntityData(station.dimensionId, station.pos), item,
+                            item.get("count") or 1)
+
+    def userData(self, playerId):
+        """只给他自己的两项：他盛出过几份这道菜、勺子在不在他手里。"""
+        if self.hand is None:
+            return None
+        return {"made": HandCooking.madeOf(playerId, self._dishName) if self._dishName else 0,
+                "here": self.hand.spoon.holder == playerId}
 
     def onCustomAction(self, playerId, name, data):
         if self.hand is None:
             return False
         if name == "stir":
             return self._stir(playerId, data)
-        if name == "add":
-            self._add(playerId, data.get("slot"))
-        elif name == "take":
-            self._take(playerId, data.get("slot"))
-        elif name == "scoop":
-            self._scoop(playerId)
+        if name == "scoop":
+            PotScoop.scoop(self, playerId, data)
+        elif name == "take_back":
+            PotScoop.takeBack(self, playerId)
         elif name == "bookFill":
-            key = BookFill.fillPot(self, playerId, data.get("key"), data.get("sets"), _maxStack)
-            if key:
-                self.station.effect("hint", {"key": key}, only=playerId)
+            BookFill.fillPot(self, playerId, data.get("key"), data.get("sets"), _maxStack)
         else:
             return False
-        self._sendDrawer(playerId)
-        self._publish()
+        self._refresh(time.time(), None, True)
         return True
 
     def tick(self, dt):
@@ -96,154 +119,105 @@ class PotLogicMixin(object):
             return
         now = time.time()
         hand.clock.attend(now)
-        saved = hand.clock.takeSaved(now)
-        if saved > 0:
-            self._giveBackSaved(saved)
-        if hand.served != self._served:
+        station = self.station
+        PotLook.attend(station.dimensionId, station.pos, station.users)
+        if self._unsorted:
+            self._unsorted = False
+            self._shareOut()
+        self._giveBack(now)
+        landed = hand.served != self._served
+        if landed:
             self._served = hand.served
-            self.station.effect("served", {"grade": hand.clock.grade, "bonus": hand.clock.bonus})
-            self._publish()
+            station.effect("served", {"grade": hand.clock.grade, "bonus": hand.clock.bonus})
         self._sincePublish += dt
-        if self._sincePublish >= PUBLISH_SECONDS:
-            self._publish()
-        self._sinceDrawer += dt
-        if self._sinceDrawer >= DRAWER_SECONDS:
-            self._sinceDrawer = 0.0
-            for playerId in list(self.station.users):
-                self._sendDrawer(playerId)
+        self._refresh(now, None, landed)
 
-    # ---------------------------------------------------------------- 动作
+    # ---------------------------------------------------------------- 搅
 
     def _stir(self, playerId, data):
         x, z, at = data.get("x"), data.get("z"), data.get("at")
-        if _isNumber(x) and _isNumber(z):
-            HandCooking.stir(self.hand, playerId, time.time(), float(x), float(z), float(at) if _isNumber(at) else None)
-        return True                      # 别人握着勺子也不回滚：旁观的勺子会按同步的位置走
+        now = time.time()
+        taken = HandCooking.stir(self.hand, playerId, now, float(x) if _isNumber(x) else 0.0, float(z) if _isNumber(z) else 0.0,
+                                 float(at) if _isNumber(at) else None)
+        if taken:
+            station = self.station
+            self._refresh(now, None, False)
+            PotLook.stroke(station.dimensionId, station.pos, GetBlockEntityData(station.dimensionId, station.pos), self.hand, now)
+        return True                       # 别人握着勺子也不回滚：旁观的勺子会按同步的位置走
 
-    def _add(self, playerId, slot):
-        if not _isIndex(slot, PotSync.HOTBAR):
-            return
-        itemComp = compFactory.CreateItem(playerId)
-        item = itemComp.GetPlayerItem(ItemPosType.INVENTORY, slot, True)
-        kind = Rules.keyOf(item)
-        if kind is None or not Rules.isIngredient(kind):
-            self.station.effect("hint", {"key": "not_food"}, only=playerId)
-            return
-        before = PotContainer.inputs(self.station.dimensionId, self.station.pos)
-        cells, placed = Rules.placeStack(before, item, _maxStack(kind))
-        if placed <= 0:
-            self.station.effect("hint", {"key": "full"}, only=playerId)
-            return
-        cells, rest = Rules.layout(cells, _maxStack) or (cells, [])
-        PotContainer.setInputs(self.station.dimensionId, self.station.pos, before, cells)
-        if not IsCreative(playerId):
-            left = copy.deepcopy(item)
-            left["count"] -= placed
-            itemComp.SetPlayerAllItems({(ItemPosType.INVENTORY, slot): left if left["count"] > 0 else None})
-            for stack in rest:
-                GiveOrDropItem(playerId, stack, self.station.dimensionId)
-        self.hand.clock.feedByHand()
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "random.splash")
+    # ---------------------------------------------------------------- 摆料、退料
 
-    def _take(self, playerId, slot):
-        if not _isIndex(slot, Rules.INPUT_SLOTS):
+    def _shareOut(self):
+        """食材格变了之后，料按它做的那道菜摆开（PotLogic.shareOut）：装不下的退给厨师。"""
+        station = self.station
+        before = PotContainer.inputs(station.dimensionId, station.pos)
+        if not any(Rules.keyOf(item) for item in before):
+            self.wanted = None
+        found = CookingPotRules.matchIndex(before)
+        laid = Rules.layout(before, _maxStack, self.wanted, found, bool(station.users))
+        if laid is None:
             return
-        before = PotContainer.inputs(self.station.dimensionId, self.station.pos)
-        cells, taken = Rules.takeKind(before, slot)
-        if not taken:
-            return
-        cells, rest = Rules.layout(cells, _maxStack) or (cells, [])
-        PotContainer.setInputs(self.station.dimensionId, self.station.pos, before, cells)
-        for stack in taken + rest:
-            GiveOrDropItem(playerId, stack, self.station.dimensionId)
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
+        PotContainer.setInputs(station.dimensionId, station.pos, before, laid[0])
+        for stack in laid[1]:
+            size, count = max(1, _maxStack((stack["newItemName"], stack.get("newAuxValue") or 0))), stack["count"]
+            while count > 0:
+                self._handOver(dict(stack, count=min(size, count)))
+                count -= size
 
-    def _scoop(self, playerId):
-        dimensionId, pos = self.station.dimensionId, self.station.pos
-        data = self._blockData()
-        if data is None:
-            return
-        served, ready = PotContainer.resultItem(dimensionId, pos), PotContainer.preview(data)
-        meal, given = served or ready, 0
-        if served:
-            GiveOrDropItem(playerId, copy.deepcopy(served), dimensionId)
-            PotContainer.setResultItem(dimensionId, pos, None)
-            given += served["count"]
-        if ready and (not served or ready["newItemName"] == served["newItemName"]):
-            count = self._takeVessels(playerId, ready, ready["count"])
-            if count > 0:
-                self._give(playerId, ready, count)
-                ready["count"] -= count
-                PotContainer.setPreview(data, ready)
-                PotContainer.dropExperience(ready["newItemName"], count, pos, dimensionId)
-                given += count
-            elif not served:
-                self.station.effect("hint", {"key": "need_vessel"}, only=playerId)
-        if given > 0:
-            HandCooking.addMade(playerId, meal["newItemName"], given)
-            ToAllPlayerPlaySound(dimensionId, pos, "bucket.fill_water")
-            self.station.effect("scooped", {})
+    def _cookOrFirst(self):
+        """东西该给谁：厨师（勺子在他手里）还在站点就给他，否则给站点里的第一位；没有人返回 None。"""
+        users = list(self.station.users)
+        cook = self.hand.spoon.holder if self.hand else None
+        return cook if cook in users else (users[0] if users else None)
 
-    def _takeVessels(self, playerId, meal, wanted):
-        """从背包里拿盛这道菜的容器（只比物品名，与锅自己装碗一致），返回拿到几个；不要容器的菜全给。"""
-        vessel = PotSync.vesselOf(meal)
-        if not vessel or IsCreative(playerId):
-            return wanted
-        itemComp = compFactory.CreateItem(playerId)
-        changed, got = {}, 0
-        for index, item in enumerate(itemComp.GetPlayerAllItems(ItemPosType.INVENTORY, True) or []):
-            if got < wanted and item and item.get("newItemName") == vessel[0] and item.get("count", 0) > 0:
-                used = min(item["count"], wanted - got)
-                item["count"] -= used
-                got += used
-                changed[(ItemPosType.INVENTORY, index)] = item if item["count"] > 0 else None
-        if changed:
-            itemComp.SetPlayerAllItems(changed)
-        return got
+    def _handOver(self, item):
+        station, to = self.station, self._cookOrFirst()
+        if to is None:
+            PotContainer.spill(station.dimensionId, station.pos, item)
+        else:
+            GiveOrDropItem(to, item, station.dimensionId)
+
+    def _giveBack(self, now):
+        """星星省下的料套数还给厨师（他还在工位才给，PotClock.takeSaved 已判断）；用料剩下的空容器也交给他。"""
+        clock = self.hand.clock
+        saved = clock.takeSaved(now)
+        if saved > 0:
+            self._giveBackSaved(saved)
+        for item in clock.takeLeftovers():
+            self._handOver(item)
 
     def _giveBackSaved(self, saved):
-        """星星省下的料套数还给厨师（他还在工位才给，PotClock.takeSaved 已判断）。"""
-        cook = self.hand.spoon.holder
-        if cook not in self.station.users:
+        station, cook = self.station, self.hand.spoon.holder
+        if cook not in station.users:
             return
-        before = PotContainer.inputs(self.station.dimensionId, self.station.pos)
-        cells = [copy.deepcopy(cell) for cell in before]
+        before = PotContainer.inputs(station.dimensionId, station.pos)
+        cells = [dict(cell) for cell in before]
         for cell in cells:
             if Rules.keyOf(cell):
                 back = min(saved, cell["count"])
-                GiveOrDropItem(cook, dict(copy.deepcopy(cell), count=back), self.station.dimensionId)
+                GiveOrDropItem(cook, dict(cell, count=back), station.dimensionId)
                 cell["count"] -= back
-        PotContainer.setInputs(self.station.dimensionId, self.station.pos, before, cells)
+        PotContainer.setInputs(station.dimensionId, station.pos, before, cells)
 
-    def _give(self, playerId, sample, count):
-        size = max(1, PotContainer.maxStackOf(sample["newItemName"], sample.get("newAuxValue") or 0))
-        while count > 0:
-            stack = {"newItemName": sample["newItemName"], "newAuxValue": sample.get("newAuxValue") or 0, "count": min(size, count)}
-            GiveOrDropItem(playerId, stack, self.station.dimensionId)
-            count -= stack["count"]
+    # ---------------------------------------------------------------- 控件与数据
 
-    # ---------------------------------------------------------------- 方块实体数据与同步
-
-    def _blockData(self):
-        return GetBlockEntityData(self.station.dimensionId, self.station.pos)
-
-    def _sendDrawer(self, playerId):
-        """快捷栏里能下锅的料；和上次发的一样就不发。"""
-        items = PotSync.drawerItems(playerId)
-        if self._drawers.get(playerId) != items:
-            self._drawers[playerId] = items
-            self.station.effect("drawer", {"items": items}, only=playerId)
-
-    def _publish(self, data=None):
-        self._sincePublish = 0.0
-        data = data if data is not None else self._blockData()
-        if data is not None:
-            self.station.state.setData(PotSync.stationData(self.station.dimensionId, self.station.pos, data, self.hand,
-                                                           time.time()))
+    def _refresh(self, now, data, publish):
+        """控件每刻写（变了才发）；站点数据 publish 为真或每 PUBLISH_SECONDS 重算一次。"""
+        for name, value in PotSync.controls(self.hand, now).items():
+            self.station.state.setControl(name, value)
+        if publish or self._sincePublish >= PUBLISH_SECONDS:
+            self._sincePublish = 0.0
+            station = self.station
+            data = data if data is not None else GetBlockEntityData(station.dimensionId, station.pos)
+            if data is not None:
+                items = station.state.getItems(Rules.GROUP_INGREDIENTS)
+                shared = PotSync.sharedData(data, self.hand, items)
+                self._dishName = PotSync.dishNameOf(shared)
+                station.state.setData(shared)
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点。"""
-    logicClass = type("CookingPotLogic", (PotLogicMixin, api.StationLogic), {})
-    api.registerStation(api.StationType(Rules.STATION_ID, Rules.POT_BLOCKS, logicClass, reach=REACH))
+    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PotStation.buildSchema）。"""
+    logicClass = type("CookingPotLogic", (PotLogicMixin, api.StationLogic), {"kit": api})
+    api.registerStation(api.StationType(Rules.STATION_ID, Rules.POT_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
     return logicClass
