@@ -286,6 +286,33 @@ def testMushroomColonyGrowsOnlyOnRichSoil():
     assert level.statesAt((0, 1, 0))["arris:growth"] == 7        # 满龄不再长
 
 
+def _use(name, pos, player="p1"):
+    args = {"blockName": name, "x": pos[0], "y": pos[1], "z": pos[2], "dimensionId": 0, "playerId": player, "face": 1}
+    Registry.dispatch("ServerBlockUseEvent", args, name)
+    return args
+
+
+def testShearsAndKnifeHarvestAColony():
+    level = _fresh().put((0, 1, 0), "arris:brown_mushroom_colony", **{"arris:growth": 7})
+    _hold(level, "p1", "minecraft:shears")
+    args = _use("arris:brown_mushroom_colony", (0, 1, 0))
+    assert level.statesAt((0, 1, 0))["arris:growth"] == 6 and args["cancel"] is True
+    assert [(e[0]["itemName"], e[0]["count"]) for e in level.entities] == [("minecraft:brown_mushroom", 1)]
+    assert level.sounds[-1][2] == "mob.sheep.shear"
+    level.entities[:] = []
+    _hold(level, "p1", "arris:iron_knife")
+    args = _use("arris:brown_mushroom_colony", (0, 1, 0))
+    assert level.statesAt((0, 1, 0))["arris:growth"] == 2        # 刀割完年龄清零（外观回到年龄 0）
+    assert [(e[0]["itemName"], e[0]["count"]) for e in level.entities] == [("minecraft:brown_mushroom", 2)]
+    level.entities[:] = []
+    args = _use("arris:brown_mushroom_colony", (0, 1, 0))        # 年龄 0 了：再割什么都没有
+    assert level.entities == [] and "cancel" not in args
+    _hold(level, "p1", "minecraft:iron_axe")
+    level.put((0, 1, 0), "arris:brown_mushroom_colony", **{"arris:growth": 7})
+    args = _use("arris:brown_mushroom_colony", (0, 1, 0))
+    assert level.entities == [] and "cancel" not in args and level.statesAt((0, 1, 0))["arris:growth"] == 7
+
+
 def testSproutColonyTurnsIntoAgeZeroLook():
     level = _fresh().put((0, 0, 0), "arris:rich_soil").put((0, 1, 0), "arris:brown_mushroom_colony", **{"arris:growth": 0})
     _patchRandom(_rng(0.9), MushroomColony)

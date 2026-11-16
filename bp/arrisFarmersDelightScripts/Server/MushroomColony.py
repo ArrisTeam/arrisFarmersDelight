@@ -3,12 +3,19 @@
 
 年龄 / 状态的对应与概率见 Shared/Rules/ColonyRules.py（JE 年龄 0-3，每次随机刻 25%，只在沃土上长）。
 掉落（年龄 0-3 掉 2/3/4/5 个蘑菇，剪刀剪满龄的菌落掉菌落本身）写在 loot_tables/arris_*_mushroom_colony*.json 里。
+右键收获照 MushroomColonyBlock.use：剪刀剪一个蘑菇、年龄 -1；刀割下全部蘑菇、年龄清零。
 """
 import random
 
 from .EventRegistry import registerHandler
 from .FarmWorld import FarmWorld
+from .Helpers.Engine import GetCarriedItem
+from .Helpers.Fx import ToAllPlayerPlaySound
+from .Helpers.Items import IsKnife
+from .Helpers.Player import SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Rules import ColonyRules, FarmEdits
+
+SHEARS = "minecraft:shears"
 
 
 def PlaceColony(world, pos, colonyName):
@@ -26,3 +33,32 @@ def OnMushroomColonyRandomTick(args):
     growth = ColonyRules.tickGrowth(world.growthAt(pos), random)
     if growth is not None:
         world.apply([FarmEdits.states(pos, {ColonyRules.GROWTH_STATE: growth})])
+
+
+def _toolOf(itemDict):
+    if not itemDict:
+        return None
+    itemName = itemDict["newItemName"]
+    if itemName == SHEARS:
+        return "shears"
+    return "knife" if IsKnife(itemName) else None
+
+
+@registerHandler("ServerBlockUseEvent", match=ColonyRules.COLONY_BLOCKS)
+def OnMushroomColonyUse(args):
+    playerId = args["playerId"]
+    held = GetCarriedItem(playerId)
+    tool = _toolOf(held)
+    pos = (args["x"], args["y"], args["z"])
+    dimensionId = args["dimensionId"]
+    world = FarmWorld(dimensionId)
+    plan = ColonyRules.harvest(world.growthAt(pos), tool)
+    if plan is None or SetPlayerUsedCD(playerId) is True:
+        return
+    growth, count = plan
+    world.apply([FarmEdits.states(pos, {ColonyRules.GROWTH_STATE: growth}),
+                 FarmEdits.drop(pos, ColonyRules.MUSHROOM_OF_COLONY[args["blockName"]], count)])
+    ToAllPlayerPlaySound(dimensionId, (pos[0] + 0.5, pos[1] + 0.5, pos[2] + 0.5),
+                         "mob.sheep.shear" if tool == "shears" else "dig.grass")
+    SetCarriedDurability(playerId, held, dimensionId, pos)
+    args["cancel"] = True

@@ -28,6 +28,8 @@ MUSHROOM_TO_COLONY = {
     "minecraft:brown_mushroom": "arris:brown_mushroom_colony",
     "minecraft:red_mushroom": "arris:red_mushroom_colony",
 }
+# 菌落 → 它长的那种蘑菇（右键收获掉的就是它）
+MUSHROOM_OF_COLONY = dict((colony, mushroom) for mushroom, colony in MUSHROOM_TO_COLONY.items())
 # 战利品表要掉的蘑菇数（JE 年龄 0-3 → 2/3/4/5；外观是单个蘑菇的 growth 0-1 掉 1 个）。表在 JSON 里，这里给测试对照
 MUSHROOMS_OF_AGE = (2, 3, 4, 5)
 SPROUT_MUSHROOMS = 1
@@ -62,3 +64,17 @@ def boneMealGrowth(growth, rnd):
         return False, None
     newAge = min(MAX_AGE, age + rnd.randint(1, 2))
     return True, GROWTH_OF_AGE[newAge]
+
+
+def harvest(growth, tool):
+    """右键收获（MushroomColonyBlock.use）：剪刀把年龄 -1、掉 1 个蘑菇；刀把年龄清零、掉"原来的年龄"个蘑菇。
+    年龄 0 的（没长出来）不能收，别的工具不算。tool 是 "shears" / "knife" / None。
+    返回 (新的 arris:growth, 掉几个蘑菇)，不能收返回 None。"""
+    age = ageOfGrowth(growth)
+    if age <= 0:
+        return None
+    if tool == "shears":
+        return GROWTH_OF_AGE[age - 1], 1
+    if tool == "knife":
+        return GROWTH_OF_AGE[0], age
+    return None

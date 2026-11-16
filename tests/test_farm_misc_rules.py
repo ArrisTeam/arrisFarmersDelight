@@ -157,6 +157,21 @@ def testColonyTotalTimeMatchesJe():
     assert abs(total / float(trials) - 4.0) < 0.2
 
 
+def testColonyHarvestByShearsAndKnife():
+    # MushroomColonyBlock.use：剪刀年龄 -1 掉 1 个，刀年龄清零掉"原来年龄"个；年龄 0 的不能收
+    assert Colony.harvest(7, "shears") == (6, 1)
+    assert Colony.harvest(6, "shears") == (4, 1)
+    assert Colony.harvest(4, "shears") == (2, 1)
+    assert Colony.harvest(5, "shears") == (2, 1)
+    assert Colony.harvest(7, "knife") == (2, 3)
+    assert Colony.harvest(6, "knife") == (2, 2)
+    assert Colony.harvest(4, "knife") == (2, 1)
+    for growth in (0, 1, 2, 3):
+        assert Colony.harvest(growth, "shears") is None and Colony.harvest(growth, "knife") is None
+    assert Colony.harvest(7, None) is None and Colony.harvest(7, "axe") is None
+    assert Colony.MUSHROOM_OF_COLONY["arris:red_mushroom_colony"] == "minecraft:red_mushroom"
+
+
 def testColonyMushroomsBecomeColoniesOnRichSoilOnly():
     assert Colony.MUSHROOM_TO_COLONY["minecraft:brown_mushroom"] == "arris:brown_mushroom_colony"
     assert Colony.MUSHROOM_TO_COLONY["minecraft:red_mushroom"] == "arris:red_mushroom_colony"
