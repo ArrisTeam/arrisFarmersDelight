@@ -1,0 +1,12 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:aggregate_feature": {
+    "description": {
+      "identifier": "arris:patch_wild_cabbages_feature"
+    },
+    "features": [
+      "arris:scatter_wild_cabbages_feature",
+      "arris:scatter_sandy_shrub_feature"
+    ]
+  }
+}

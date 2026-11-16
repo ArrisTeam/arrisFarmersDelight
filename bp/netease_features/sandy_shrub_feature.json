@@ -16,7 +16,8 @@
       "auto_rotate": false,
       "min_sides_must_attach": 1,
       "bottom": [
-        "minecraft:sand"
+        "minecraft:sand",
+        "minecraft:red_sand"
       ]
     }
   }
