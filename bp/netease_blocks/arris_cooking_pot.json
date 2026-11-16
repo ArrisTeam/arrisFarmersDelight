@@ -60,9 +60,6 @@
             "netease:face_directional": {
                 "type": "direction"
             },
-            "netease:listen_block_remove": {
-                "value": true
-            },
             "netease:neighborchanged_sendto_script": {
                 "value": true
             },
