@@ -6,7 +6,7 @@ HoD 的切法规则在 HandsOn/Cutting.py；这里只做农夫乐事配方表（
 - 工具判定照 JE，经典玩法同一套（fitsTool）：配方列出的工具、配方要求的物品类型（斧 / 镐 / 锹 / 锄）；
   刀切的配方另认任何刀（带 arris:knife 标签的下游刀），别的配方刀不行（JE 的原木要斧头削）；
 - 带 chance 的产物每切一件掷一次（JE 的 ChanceResult），工具上每级时运加 FORTUNE_BONUS；
-- 板上最多放一叠 BOARD_LIMIT（= HoD 一刀切透的整批 16）件；最后一刀切透整叠，件数受工具剩余耐久限制。
+- 板上能放一整叠（物品的最大堆叠，BoardStation.BOARD_MAX）；最后一刀切透其中的 BATCH（= HoD 一刀切透的整批 16）件，件数受工具剩余耐久限制。
 """
 import random
 
@@ -15,7 +15,7 @@ from .HandsOn import Cutting
 
 STATION_ID = "arris:cutting_board"
 BOARD_BLOCKS = ["arris:cutting_board"]   # 站点绑定的方块（两端共用同一个列表；附属包的砧板追加到这里）
-BOARD_LIMIT = Cutting.BATCH
+BATCH = Cutting.BATCH            # 最后一刀一次切透的件数
 FORTUNE_ID = 18                  # 时运的附魔编号（网易 EnchantType）
 FORTUNE_BONUS = 0.1              # JE 配置 cuttingBoardFortuneBonus：每级时运给有概率的产物加 10%
 _WEDGE_WORDS = frozenset(("pie", "cake", "cheesecake", "pizza", "tart", "quiche"))

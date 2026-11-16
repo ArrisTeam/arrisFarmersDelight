@@ -68,7 +68,7 @@ def mcdk_test_book():
     boardOpened = manager.open(playerId, list(boardPos))
     boardFilled = manager.action(playerId, list(boardPos), _custom("bookFill", {"key": "d:" + SANDWICH, "sets": 16}))
     data = GetBlockEntityData(dim, boardPos)
-    onBoard = data["dishDone"] if data else None
+    onBoard = data["cuttingDict"] if data else None
     boardClosed = manager.close(playerId, "self test")
     _clear(potPos, dim)
     _clear(boardPos, dim)

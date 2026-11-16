@@ -93,7 +93,7 @@ def testTheLastChopCutsTheWholeStackWithinTheToolsDurability():
     assert Rules.toolLeft(knife, 126) == 5
     assert Rules.toolLeft({"newItemName": "mod:stone_knife", "durability": 0}, 0) is None, "不会损坏的刀：耐久读作 0 也不限"
     assert Cutting.batchSize(12, Rules.toolLeft(knife)) == 5
-    assert Cutting.batchSize(40, None) == Rules.BOARD_LIMIT == 16
+    assert Cutting.batchSize(40, None) == Rules.BATCH == 16, "一刀切透 16 件；板上能放整叠，不是 16 个（BoardStation.BOARD_MAX）"
 
 
 def testResultsAreMultipliedMergedAndSplitIntoStacks():

@@ -2,8 +2,9 @@
 """McdkDishTest - 砧板摆盘的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
 不会自动运行，没有 RPC 端点；前置包（场景交互 · 前置）没装时跳过。直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径）：
-在第一个玩家脚下往 +x 3 / -z 2 格放一块砧板（要在站点的 6 格交互距离里），往快捷栏 0、1 号放料 -> 开站 -> 一层层 lay ->
-最后一层放下就自动做成 -> 板上是成品 -> use 拿走 -> 关站。会改玩家快捷栏 0、1 号格。
+在第一个玩家脚下往 +x 3 / -z 2 格放一块砧板（要在站点的 6 格交互距离里），往快捷栏 0、1 号放料 -> 开站 -> 一层层 place {from: 格号}
+（Shift 点托盘的那条路）-> 最后一层放下就自动做成 -> 板上（cuttingDict，和 HoD 一样成品躺在板的槽里）是成品 -> take 拿走 -> 关站。
+会改玩家快捷栏 0、1 号格。
     from arrisFarmersDelightScripts.Server.Debug import McdkDishTest as T
     return T.mcdk_test_dish()          面包 3 + 煎蛋 6 -> 3 个夹蛋三明治
     return T.mcdk_test_dish_dough()    小麦 5 + 水桶 1 -> 5 个面团，水桶原样还给厨师（HoD：水桶每轮都放回去，不限份数）
@@ -12,7 +13,6 @@
 import time
 
 from ..Helpers.Engine import compFactory, levelId, serverApi, GetBlockEntityData, ItemPosType
-from ..Helpers.Player import IsCreative
 
 SANDWICH = "arris:egg_sandwich"
 
@@ -32,7 +32,7 @@ def _stack(name, count):
 
 def _run(case, hotbar, lays, dish, made, back=None):
     """hotbar：快捷栏 0、1 号放的 (物品名, 个数)；lays：依次 lay 的格子；dish / made：板上该是什么、几个；
-    back：做成后还给厨师的 (物品名, 个数)——生存模式放上砧板时扣掉了，还回来正好和放之前一样多；创造模式不扣，会多出来。"""
+    back：做成后还给厨师的 (物品名, 个数)——放上砧板时扣掉了（HoD 创造模式也扣），还回来正好和放之前一样多。"""
     started = time.time()
     runtime = serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime")
     manager = runtime.getManager() if runtime is not None else None
@@ -51,11 +51,11 @@ def _run(case, hotbar, lays, dish, made, back=None):
     backBefore = _count(playerId, back[0]) if back else 0
     where = list(pos)
     opened = manager.open(playerId, where)
-    laid = [manager.action(playerId, where, _custom("lay", {"slot": slot})) for slot in lays]
+    laid = [manager.action(playerId, where, _custom("place", {"from": slot})) for slot in lays]
     data = GetBlockEntityData(dim, pos)
-    onBoard = data["dishDone"] if data else None
+    onBoard = data["cuttingDict"] if data else None
     returned = _count(playerId, back[0]) - backBefore if back else 0
-    took = manager.action(playerId, where, _custom("use", {"mark": 0}))
+    took = manager.action(playerId, where, _custom("take"))
     gained = _count(playerId, dish) - before
     closed = manager.close(playerId, "self test")
     blockInfo.SetBlockNew(pos, {"name": "minecraft:air"}, 0, dim)
@@ -64,7 +64,7 @@ def _run(case, hotbar, lays, dish, made, back=None):
               "onBoard": onBoard and (onBoard.get("newItemName"), onBoard.get("count")), "took": took, "gained": gained,
               "returned": returned, "closed": closed, "duration_ms": int((time.time() - started) * 1000)}
     result["ok"] = bool(opened and all(laid) and result["onBoard"] == (dish, made) and took and gained == made and closed
-                        and (not back or returned == (back[1] if IsCreative(playerId) else 0)))
+                        and (not back or returned == 0))
     return result
 
 

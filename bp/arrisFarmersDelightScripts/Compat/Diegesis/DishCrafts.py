@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DishCrafts - 前置包在场时，改在砧板上摆的菜工作台不再出（服务端）
 
-照 Hands-On Delight 在 JE 上的缺省（remove_crafting_recipes = true）：FD 的食物合成搬到砧板上（Compat/Diegesis/DishBoard.py），
+照 Hands-On Delight 在 JE 上的缺省（remove_crafting_recipes = true）：FD 的食物合成搬到砧板上（Compat/Diegesis/BoardAssemble.py），
 玩家自己的合成格（工作台、背包里的 2x2）拿成品时取消，并提示去砧板。
 拦的是"配方"不是"成品"：取结果时读合成格（Server/CraftReturns.readGrid），格子里的原料正好是这道菜在砧板上的某条配方才拦
 （Shared/Rules/DishStation.isDishCraft）。同一成品的别的配方照常——切片拼回整个派只有一种原料，不是砧板菜；

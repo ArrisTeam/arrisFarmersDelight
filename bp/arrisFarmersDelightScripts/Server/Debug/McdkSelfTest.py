@@ -135,8 +135,8 @@ def _custom(name, data=None):
 
 
 def caseCuttingBoardStation(playerId, base):
-    """场景交互前置在场时：开站 -> 放 3 块生牛肉 -> 手持铁刀切 1 刀 -> 6 块碎牛肉进背包、板清空 -> 关站。
-    直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径），前置没装则跳过。"""
+    """场景交互前置在场时：开站 -> 把背包里的 3 块生牛肉整叠放上去（place，from 是背包格）-> 铁刀在背包里（选中的快捷栏格）切 1 刀 ->
+    6 块碎牛肉进背包、板清空 -> 关站。直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径），前置没装则跳过。"""
     started = time.time()
     runtime = serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime")
     manager = runtime.getManager() if runtime is not None else None
@@ -150,11 +150,11 @@ def caseCuttingBoardStation(playerId, base):
     before = _inventoryCount(playerId, "arris:minced_beef")
     _carry(playerId, "minecraft:beef", 3)
     opened = manager.open(playerId, pos)
-    placed = manager.action(playerId, pos, _custom("place"))
+    placed = manager.action(playerId, pos, _custom("place", {"from": compFactory.CreateItem(playerId).GetSelectSlotId()}))
     data = GetBlockEntityData(dim, (x, y, z))
     onBoard = data["cuttingDict"]["count"] if data and data["cuttingDict"] else 0
     _carry(playerId, "arris:iron_knife")
-    cut = manager.action(playerId, pos, _custom("use", {"mark": 0}))
+    cut = manager.action(playerId, pos, _custom("chop", {"mark": 0, "at": 8.0}))
     gained = _inventoryCount(playerId, "arris:minced_beef") - before
     cleared = bool(data) and not data["cuttingDict"]
     closed = manager.close(playerId, "self test")

@@ -2,10 +2,10 @@
 """BookSources - 四个站点交给前置包的食谱书（客户端）
 
 书页在 Shared/Rules/StationBooks.py；这里按站点同步来的数据回答前置包 Client/Book.py 的问话（接口见那里）。
-锅、砧板摆盘的菜能从背包放料（书上再点一下选中的那道菜）：发 bookFill {"key", "sets"}，服务端 PotLogic / BoardLogic 交给 BookFill.py；
+锅、砧板摆盘的菜能从背包放料（书上再点一下选中的那道菜）：发 bookFill {"key", "sets"}，服务端 PotLogic 交给 BookFill.py、BoardLogic 交给 BoardAssemble.py；
 切的、煎锅、炉灶的书只看（HoD 一样）。前置包太旧、视图没有 book 接口时什么都不做。
 """
-from ...Shared.Rules import GrillStation, PanStation, PotStation
+from ...Shared.Rules import BoardStation, GrillStation, PanStation, PotStation
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.HandsOn import PotBonus
 
@@ -70,12 +70,15 @@ class BoardSource(_Source):
     def tabs(self):
         return Books.BOARD_TABS
 
+    def _layers(self):
+        return [item for item in self.view.state.getItems(BoardStation.GROUP_LAYERS) if item]
+
     def inStation(self):
-        data = self.view.data
-        return [item for item in list(data.get("layers") or []) + [data.get("item") or {}] if item]
+        board = self.view.state.getItem((BoardStation.GROUP_BOARD, 0))
+        return self._layers() + ([board] if board else [])
 
     def current(self):
-        return Books.boardCurrent(self.view.data.get("layers"), self.view.data.get("item"))
+        return Books.boardCurrent(self._layers(), self.view.state.getItem((BoardStation.GROUP_BOARD, 0)))
 
     def canFill(self, key):
         return bool(Books.dishOf(key))

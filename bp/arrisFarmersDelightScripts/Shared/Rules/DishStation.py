@@ -105,6 +105,15 @@ def leftOf(dish, kind, count, made):
     return count if kind[0] in dish["keeps"] else max(0, count - made)
 
 
+def makeOf(dish, stacks):
+    """板上这些层 stacks（[((物品名, aux), 个数)]，底座在前）做成 dish：{"made": 做了几份, "left": [((物品名, aux), 这层还剩几个)] 按层序,
+    "extras": [(物品名, aux, 个数)] 换成了别的东西的容器（桶、瓶、碗）一份还一套, "result": (物品名, aux, 个数)}（HoD 的 Assembling.make）。"""
+    made = roundsOf(dish, stacks)
+    return {"made": made, "left": [(kind, leftOf(dish, kind, count, made)) for kind, count in stacks],
+            "extras": [(name, aux, count * made) for name, aux, count in dish["extras"]],
+            "result": (dish["result"][0], dish["result"][1], made * dish["count"])}
+
+
 def statusText(data, nameOf=None):
     """站点数据 -> 摆盘时焦点界面底部的一行提示。data：layers（层的物品字典）、dish（做好的那叠）、ready（做成的菜名）。"""
     if data.get("dish"):

@@ -11,7 +11,7 @@
 """
 import math
 
-from .BoardMarks import SNAP, snapOffset
+from .BoardMarks import snapOffset
 
 CHOP_DOWN = 0.05         # BoardBehavior.CHOP_DOWN（76）：刀从悬着落到食物顶面
 CHOP_UP = 0.14           # :77 再抬回悬着的高度
