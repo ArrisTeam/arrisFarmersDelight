@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-# runner: py3
+# runner: both
 """战利品箱里追加的农夫乐事物品（Shared/Data/ChestLoot.py、Shared/Rules/ChestLoot.py、Server/ChestLoot.py）。
 
 JE 的 FDChestLoot 给 14 张原版箱子表各追加一张表（add_loot_table 修饰器）。基岩版没有战利品修饰器，也不能只加一个池
 （同路径文件整份替换原版），所以在箱子第一次被打开时由脚本追加；这里守住：表名对得上基岩版原版的文件、
 每张表的池数 / 次数 / 数量 / 权重照 JE、追加时原版掷出的物品原样保留。
+（表名是不是基岩版原版真有的文件，在 tests/test_vanilla_overrides.py 里对本机原版行为包查。）
 """
 from __future__ import print_function
 
@@ -13,13 +14,9 @@ import io
 import json
 import os
 import random
-import sys
 
 import fakeengine
 import fdtest
-
-sys.path.insert(0, os.path.join(fdtest.ROOT, "tools"))
-import gen_vanilla_overrides as gen  # noqa: E402
 
 world = fakeengine.install()
 Data = fdtest.load("Shared.Data.ChestLoot")
@@ -64,15 +61,6 @@ def testTableKeyAcceptsEveryPathSpelling():
 
 def testTheFourteenJeTablesAreCovered():
     assert sorted(Data.CHEST_LOOT) == sorted(BEDROCK_TABLES)
-
-
-def testTableNamesAreRealVanillaBedrockFiles():
-    vanilla = gen.find_vanilla()
-    if vanilla is None:
-        print("跳过：找不到本机原版行为包（FD_VANILLA_BP 可以指定）")
-        return
-    for key in BEDROCK_TABLES:
-        assert os.path.isfile(os.path.join(vanilla, "loot_tables", *(key + ".json").split("/"))), key
 
 
 def testEveryItemExists():

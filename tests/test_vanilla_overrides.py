@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: py3
-"""原版文件的覆盖版（tools/gen_vanilla_overrides.py 生成）：猫、农民交易、流浪商人交易。
+"""原版文件的覆盖版（tools/gen_vanilla_overrides.py 生成）：猫、农民交易、流浪商人交易；以及对本机原版行为包的其它核对。
 
 引擎里附加包的同路径文件整份替换原版，所以这三份是"原版整份拷来 + 只在列表末尾追加本模组内容"。这里守两件事：
 1. 追加的内容对（照 JE：猫被鳕鱼片 / 鲑鱼片吸引、驯服、繁殖、长大、治疗；农民收洋葱、番茄、卷心菜、稻米；
@@ -130,6 +130,16 @@ def testEveryModItemTheOverridesMentionExists():
 
 
 # ---- 与本机原版逐字比对 ----
+
+def testChestLootTableNamesAreRealVanillaFiles():
+    # Server/ChestLoot.py 按这些名字认原版战利品箱（Shared/Data/ChestLoot.py 的键），名字错了不会有任何报错，只是永远追加不上
+    vanilla = gen.find_vanilla()
+    if vanilla is None:
+        print("跳过：找不到本机原版行为包（FD_VANILLA_BP 可以指定）")
+        return
+    for key in sorted(fdtest.load("Shared.Data.ChestLoot").CHEST_LOOT):
+        assert os.path.isfile(os.path.join(vanilla, "loot_tables", *(key + ".json").split("/"))), key
+
 
 def testOverridesAreCurrentAgainstTheLocalVanillaPack():
     vanilla = gen.find_vanilla()
