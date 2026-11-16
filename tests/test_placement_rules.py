@@ -93,5 +93,13 @@ def testProbabilityBounds():
     assert 400 < hits < 800
 
 
+def testAimingAtABlockNeverEatsThePumpkinPie():
+    eats = Placement.eatsPumpkinPie
+    assert eats(False, False, False) and eats(False, True, True), "对着空气照常吃"
+    assert not eats(True, False, False) and not eats(True, True, False), "JE 缺省：对着方块只放不吃（放不下也不吃）"
+    assert eats(True, False, True), "配置要潜行才放：没潜行对着方块照常吃"
+    assert not eats(True, True, True)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

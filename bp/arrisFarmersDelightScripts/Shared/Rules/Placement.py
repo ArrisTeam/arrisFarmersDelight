@@ -56,3 +56,9 @@ def placesPumpkinPie(sneaking, sneakToPlace):
     配置 enablePumpkinPieSneakToPlace 为假（JE 缺省）：一律放；为真：只有潜行才放，不潜行照常吃。
     """
     return bool(sneaking) if sneakToPlace else True
+
+
+def eatsPumpkinPie(aimsAtBlock, sneaking, sneakToPlace):
+    """原版南瓜派右键时还能不能吃：准星对着方块、而且这一下该放方块时不吃（JE：useOn 返回放置的结果，放不下是 FAIL，
+    不会再落到"吃"）；对着空气，或者配置要求潜行而没潜行，照常吃。"""
+    return not (aimsAtBlock and placesPumpkinPie(sneaking, sneakToPlace))
