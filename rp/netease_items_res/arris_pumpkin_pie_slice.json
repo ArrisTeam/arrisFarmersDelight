@@ -1,0 +1,13 @@
+{
+    "format_version": "1.10",
+    "minecraft:item": {
+        "components": {
+            "minecraft:icon": "arris:pumpkin_pie_slice"
+        },
+        "description": {
+            "category": "Items",
+            "identifier": "arris:pumpkin_pie_slice",
+            "register_to_create_menu": true
+        }
+    }
+}

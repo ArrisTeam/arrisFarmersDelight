@@ -64,6 +64,9 @@
         "arris:chocolate_pie_slice": {
             "textures": "textures/items/chocolate_pie_slice"
         },
+        "arris:pumpkin_pie_slice": {
+            "textures": "textures/items/pumpkin_pie_slice"
+        },
         "arris:cod_roll": {
             "textures": "textures/items/cod_roll"
         },

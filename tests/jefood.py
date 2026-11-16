@@ -52,6 +52,7 @@ FOODS = {
     "apple_pie_slice": (3, 0.3, 16, None, False, 64),
     "sweet_berry_cheesecake_slice": (3, 0.3, 16, None, False, 64),
     "chocolate_pie_slice": (3, 0.3, 16, None, False, 64),
+    "pumpkin_pie_slice": (3, 0.3, 16, None, False, 64),
     "fruit_salad": (6, 0.6, 32, "bowl", False, 16),
     "glow_berry_custard": (7, 0.6, 32, "bottle", True, 16),
     "mixed_salad": (6, 0.6, 32, "bowl", False, 16),
@@ -119,7 +120,7 @@ _give([("hunger", 30, 0, 0.3)], "wheat_dough", "raw_pasta", "chicken_cuts")
 _give([("nausea", 12, 0, 0.3)], "nether_salad")
 _give([("regeneration", 5, 0, 1.0)], "fruit_salad", "mixed_salad")
 _give([("speed", 20, 0, 1.0)], "cake_slice")
-_give([("speed", 30, 0, 1.0)], "apple_pie_slice", "sweet_berry_cheesecake_slice", "chocolate_pie_slice")
+_give([("speed", 30, 0, 1.0)], "apple_pie_slice", "sweet_berry_cheesecake_slice", "chocolate_pie_slice", "pumpkin_pie_slice")
 
 # 效果提示（netease:customtips）：蓝字 = 有益，红字 = 有害，名字用基岩版中文，等级 >= 1 带罗马数字，时长 mm:ss
 ZH_NAMES = {"speed": "速度", "regeneration": "生命恢复", "absorption": "伤害吸收", "hunger": "饥饿", "nausea": "反胃",

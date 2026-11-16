@@ -73,6 +73,7 @@ FoodColors = {
     'arris:pasta_with_meatballs': 0x9B5C2E,
     'arris:pasta_with_mutton_chop': 0x926E3E,
     'arris:pie_crust': 0xBA894D,
+    'arris:pumpkin_pie_slice': 0xCA823E,
     'arris:pumpkin_slice': 0xC6751C,
     'arris:pumpkin_soup': 0x865E1A,
     'arris:ratatouille': 0x916233,
