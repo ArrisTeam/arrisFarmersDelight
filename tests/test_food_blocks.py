@@ -107,8 +107,17 @@ def testEatingAPieFeedsThePlayerAndTakesABite():
     _click()
     assert world.blocks[(0,) + POS]["data"]["blockStatus"] == 1.0
     assert world.players["p1"]["hunger"] == 13
-    assert world.entities["p1"]["effects"] == [("speed", 30, 1)]
+    assert abs(world.entities["p1"]["saturation"] - 6.8) < 1e-9, "营养 3 × 修饰 0.3 × 2 = 1.8 点饱和度"
+    assert world.entities["p1"]["effects"] == [("speed", 30, 0)], "JE 的派片是速度 I（等级值 0）30 秒"
     assert ("random.eat", POS) in world.sounds and _molang() == [1.0]
+
+
+def testEatingAPieNeverOverfillsHungerOrSaturation():
+    _pie(None)
+    world.players["p1"]["hunger"] = 19
+    world.entities["p1"]["saturation"] = 19.0
+    _click()
+    assert world.players["p1"]["hunger"] == 20 and world.entities["p1"]["saturation"] == 20
 
 
 def testThePieIsGoneAfterTheFourthBite():

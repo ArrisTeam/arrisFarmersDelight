@@ -8,9 +8,12 @@ from .Helpers.Placement import FacingOfAux
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, GiveOrDropItem
 from ..Shared.Data.Food import pieList, platePackagedFoodDict
 from ..Shared.Data.Slicing import PIE_BITES, SLICE_SOUND, pieSliceItems
+from ..Shared.Rules.Eating import SATURATION, eatenFood
 
-# 一个派 4 块；每吃一块：速度效果 30 秒、饥饿值 +3
-PIE_HUNGER = 3
+# 一个派 4 块；每吃一块等于吃一片派（JE 的 PIE_SLICE）：营养 3、饱和度修饰 0.3，速度 I 30 秒（不冒粒子）
+PIE_NUTRITION = 3
+PIE_SATURATION_MODIFIER = 0.3
+PIE_SPEED_SECONDS = 30
 
 
 def _takeBite(dimensionId, blockPos, blockEntityData):
@@ -20,6 +23,16 @@ def _takeBite(dimensionId, blockPos, blockEntityData):
     ToAllPlayerBlockMolang(blockPos, "variable.mod_pie", blockStatus)
     if blockStatus >= PIE_BITES:
         compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": "minecraft:air"}, 0, dimensionId)
+
+
+def _feedPlayer(playerId):
+    # 吃一片派的饥饿值与饱和度（Java 版 FoodData.eat 的算法）
+    playerComp = compFactory.CreatePlayer(playerId)
+    attrComp = compFactory.CreateAttr(playerId)
+    hunger, saturation = eatenFood(playerComp.GetPlayerHunger(), attrComp.GetAttrValue(SATURATION),
+                                   PIE_NUTRITION, PIE_SATURATION_MODIFIER)
+    playerComp.SetPlayerHunger(hunger)
+    attrComp.SetAttrValue(SATURATION, saturation)
 
 
 @registerHandler("ServerBlockUseEvent", match=pieList)
@@ -42,9 +55,8 @@ def OnEatPie(args):
         ToAllPlayerPlaySound(dimensionId, blockPos, SLICE_SOUND)
         return
     ToAllPlayerPlaySound(dimensionId, blockPos, "random.eat")
-    compFactory.CreateEffect(playerId).AddEffectToEntity("speed", 30, 1, False)
-    playerComp = compFactory.CreatePlayer(playerId)
-    playerComp.SetPlayerHunger(playerComp.GetPlayerHunger() + PIE_HUNGER)
+    compFactory.CreateEffect(playerId).AddEffectToEntity("speed", PIE_SPEED_SECONDS, 0, False)
+    _feedPlayer(playerId)
     _takeBite(dimensionId, blockPos, blockEntityData)
 
 

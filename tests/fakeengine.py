@@ -57,7 +57,7 @@ class FakeWorld(object):
     # ---- 预设 ----
     def addEntity(self, entityId, entityType, **fields):
         entity = {"type": entityType, "tamed": False, "health": 10.0, "maxHealth": 20.0, "fire": False, "owner": None,
-                  "effects": []}
+                  "effects": [], "saturation": 5.0}
         entity.update(fields)
         self.entities[entityId] = entity
         return entity
@@ -65,7 +65,7 @@ class FakeWorld(object):
     def addPlayer(self, playerId, hand=None, creative=False, pos=(0.5, 64.0, 0.5)):
         self.players[playerId] = {"hand": hand, "creative": creative, "pos": pos, "hunger": 10, "given": []}
         self.entities[playerId] = {"type": "minecraft:player", "tamed": False, "health": 20.0, "maxHealth": 20.0,
-                                   "fire": False, "owner": None, "effects": []}
+                                   "fire": False, "owner": None, "effects": [], "saturation": 5.0}
         return self.players[playerId]
 
     def setBlock(self, x, y, z, name, states=None, data=None, dim=DIMENSION):
@@ -126,7 +126,16 @@ class FakeWorld(object):
         def resetToMax(attrType):
             self.entities[target]["health"] = self.entities[target]["maxHealth"]
             return True
-        return {"IsEntityOnFire": lambda: self.entities[target]["fire"], "ResetToMaxValue": resetToMax}
+        def getAttr(attrType):
+            assert attrType == 5, "假引擎只实现了 AttrType.SATURATION"
+            return self.entities[target]["saturation"]
+
+        def setAttr(attrType, value, setDefault=1):
+            assert attrType == 5, "假引擎只实现了 AttrType.SATURATION"
+            self.entities[target]["saturation"] = value
+            return True
+        return {"IsEntityOnFire": lambda: self.entities[target]["fire"], "ResetToMaxValue": resetToMax,
+                "GetAttrValue": getAttr, "SetAttrValue": setAttr}
 
     def _EntityDefinitions(self, target):
         return {"IsTamed": lambda: self.entities[target]["tamed"]}
