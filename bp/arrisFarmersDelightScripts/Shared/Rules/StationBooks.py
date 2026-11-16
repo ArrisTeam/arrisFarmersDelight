@@ -3,7 +3,7 @@
 
 对应 Hands-On Delight 的 PotBook / BoardBook / SkilletBook / StoveBook。页的写法见场景交互 · 前置的 Shared/Book.py：
 {"key", "item"（成品）, "ways"（写法：[[这一格能放的 (物品名, aux), ...], ...]）, "foot"（脚注物品）, "note", "kind"（标签）}。
-- 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份几秒（JE 的 CookTime）；能从背包放料；
+- 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
   脚注是其余产物）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
 - 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（只煎一面的蛋按一面）；只看。
@@ -12,6 +12,7 @@ from ..Data.Cooking import CanCookedFoodDict
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from ..Data.Cutting import CuttingBoardDict
 from . import CookingPot, CuttingStation, DishStation, GrillStation, PanStation
+from .HandsOn import PotCooking
 
 CLOCK = "minecraft:clock"
 DISH_PREFIX = "d:"
@@ -75,7 +76,7 @@ def potPages():
         vessel = recipe.get("Vessel")
         foot = ([stack(vessel[0], vessel[1])] if _pair(vessel) else []) + [stack(CLOCK)]
         pages.append({"key": index, "item": stack(result[0], result[1], recipe.get("CookCount") or 1), "ways": ways,
-                      "foot": foot, "note": _seconds(CookingPot.cookSecondsOf(result[0])), "kind": None})
+                      "foot": foot, "note": _seconds(PotCooking.bookSeconds(CookingPot.cookSecondsOf(result[0]))), "kind": None})
     return pages
 
 

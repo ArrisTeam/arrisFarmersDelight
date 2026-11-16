@@ -147,5 +147,26 @@ def testProgressIsZeroWithoutABatch():
     assert clock.progress(10.0, 3) == 1.0
 
 
+def testTheConfigIsClampedAndFollowedByTheTimesTheBookAndTheStirringGate():
+    before = (Pot.COOKING_POT_TIME, Pot.STIRRING_REQUIRED)
+    try:
+        assert Pot.COOKING_POT_TIME == 1.0 and Pot.STIRRING_REQUIRED is True, "HandsOnConfig 的缺省"
+        Pot.COOKING_POT_TIME = 2.0
+        assert Pot.timeFor(5.0) == 10.0 and abs(Pot.bookSeconds(10.0) - 20.0 / 1.5) < 1e-9
+        Pot.COOKING_POT_TIME = 100.0
+        assert Pot.potTime() == 10.0, "上限 10"
+        Pot.COOKING_POT_TIME = 0.0
+        assert Pot.potTime() == 0.1 and Pot.timeFor(5.0) == 0.5, "下限 0.1"
+        Pot.COOKING_POT_TIME = 1.0
+        assert abs(Pot.bookSeconds(10.0) - 10.0 / 1.5) < 1e-9, "一份在站点里 10 / 1.5 = 6.7 秒"
+        clock = newClock()
+        clock.attend(0.0)
+        assert clock.advance(0.0, TICK, 10.0, 3) == Pot.WAITING, "厨师在场、手放的料、不搅：等勺子"
+        Pot.STIRRING_REQUIRED = False
+        assert clock.advance(TICK, TICK, 10.0, 3) == Pot.FD_WAY, "stirring_required 关了：不搅也照 FD 原样自己煮"
+    finally:
+        Pot.COOKING_POT_TIME, Pot.STIRRING_REQUIRED = before
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

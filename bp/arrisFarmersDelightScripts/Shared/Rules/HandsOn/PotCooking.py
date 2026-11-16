@@ -10,6 +10,10 @@
 让整合包里的自动化继续能用。星级奖励见 PotBonus，评星见 StirSkill。
 
 时间一律是秒。原版逐刻累加 cookTime 并用 saved 攒小数；这里直接按 dt 连续累加，效果相同。
+
+配置（HoD 的 config/handson_delight.properties，这里是模块级的值，改了就两端都变，因为两端是同一份脚本）：
+COOKING_POT_TIME 是 cooking_pot_time（一份煮多久是配方时长的几倍，0.1..10，缺省 1.0；FD 原样、整批、书上的时间都跟着它），
+STIRRING_REQUIRED 是 stirring_required（缺省 True：厨师在工位放的料等勺子；关掉时不搅也按 FD 原样自己煮）。
 """
 import math
 
@@ -17,11 +21,16 @@ from .Mth import EPS, NEVER, TICK, clamp, isFinite, roundToTick, truncDiv
 from .PotBonus import CARRY_CAP, servePlan
 from .StirSkill import StirSkill
 
+COOKING_POT_TIME = 1.0   # cooking_pot_time：HandsOnConfig 缺省 1.0
+STIRRING_REQUIRED = True # stirring_required：HandsOnConfig 缺省 true
+SHORTEST_TIME = 0.1      # 配置里时长倍率的下限 / 上限（HandsOnConfig.readTime 夹进这个范围）
+LONGEST_TIME = 10.0
 PACE = 1.5               # 一份的烹饪速度是 FD 原版的 1.5 倍
 SLOWEST_BATCH = 16       # 批量再大也只按 16 份算慢
 STIR_WINDOW = 2.0        # 原 STIR_TICKS = 40：一次搅动让锅"算被搅过"这么久，勺子停了它就停
 AWAY = 2.0               # 原 AWAY = 40：厨师离开工位这么久后，他放的料按 FD 原样自己煮
 HERE = 0.1               # 原 HERE = 2：厨师"此刻在工位"的判定（工位每刻上报一次，留一刻余量）
+FALL_RATE = 2.0          # 不煮时进度每秒掉几秒：FD 每刻 cookTime - 2
 
 WAITING = 0              # advance 的结果：这一步不煮（厨师的料在等勺子）
 FD_WAY = 1               # FD 原样：一份一份自己煮，每秒走一秒
@@ -33,9 +42,19 @@ def batchSpeed(batch):
     return PACE / math.sqrt(clamp(batch, 1, SLOWEST_BATCH))
 
 
-def timeFor(recipeSeconds, times=1.0):
-    """配置的烹饪时长倍率作用后的总时长（原 HandsOnConfig.scaled：至少一刻，取整到整刻）。"""
-    return roundToTick(recipeSeconds * times)
+def potTime():
+    """配置的烹饪时长倍率，夹进 0.1..10（HandsOnConfig.readTime / cookingPotTime）。"""
+    return clamp(float(COOKING_POT_TIME), SHORTEST_TIME, LONGEST_TIME)
+
+
+def timeFor(recipeSeconds, times=None):
+    """配置的烹饪时长倍率作用后的总时长（原 HandsOnConfig.scaled：至少一刻，取整到整刻）；times 缺省取配置里的倍率。"""
+    return roundToTick(recipeSeconds * (potTime() if times is None else times))
+
+
+def bookSeconds(recipeSeconds):
+    """食谱书上这道菜写几秒：一份在站点里的用时 = 配方时长 x 配置倍率 / 1.5（HoD 的 PotBook：cookTime * 倍率 / 20 / speed(1)）。"""
+    return recipeSeconds * potTime() / batchSpeed(1)
 
 
 def batchOf(servingsLeft, mealCount, resultCount, maxStack, sameMeal=True):
@@ -81,6 +100,7 @@ class PotClock(object):
         self.savedAt = NEVER
         self._fed = -1               # 上一步锅里有几件料（-1：还没看过）
         self._handFed = False
+        self.leftovers = []          # 厨师在工位时用料剩下的空容器（奶桶的桶），等站点交给他（PotCooking.leftovers）
 
     def stir(self, now):
         self.stirredUntil = now + STIR_WINDOW
@@ -109,6 +129,25 @@ class PotClock(object):
         self._handFed = False
         self._fed = count
 
+    def keepLeftover(self, item, now):
+        """用料剩下的空容器：厨师此刻在工位就留着，交给他（返回 True）；否则返回 False，由锅照 FD 掉在锅边。
+        只在厨师在场时留：留着的东西不随锅存档，锅在他拿走之前被拆了就丢了（PotCooking.keepLeftover）。"""
+        if not self.here(now):
+            return False
+        self.leftovers.append(item)
+        return True
+
+    def takeLeftovers(self):
+        """留着的空容器，只给一次（站点每刻来取，PotCooking.takeLeftovers）。"""
+        taken, self.leftovers = self.leftovers, []
+        return taken
+
+    def forgotten(self, now):
+        """留着却没人取的（厨师正好那一刻走了）：返回来，让锅照 FD 掉在锅边（PotCooking.throwOutForgotten）。"""
+        if not self.leftovers or self.here(now):
+            return []
+        return self.takeLeftovers()
+
     def reloaded(self):
         """从存档读回之后调：读回来的料早就在锅里了，只有此后进来的才说明谁在喂。"""
         self._fed = -1
@@ -124,8 +163,11 @@ class PotClock(object):
             self.cookTime = min(total - TICK, self.cookTime * pace / self.pace)
         self.pace = pace
 
-    def advance(self, now, dt, total, batch, stirringRequired=True, inMenu=False):
-        """锅在煮的这一步（加热着、配方有效）推进 dt 秒。返回 WAITING / FD_WAY / STIRRED。"""
+    def advance(self, now, dt, total, batch, stirringRequired=None, inMenu=False):
+        """锅在煮的这一步（加热着、配方有效）推进 dt 秒。返回 WAITING / FD_WAY / STIRRED。
+        stirringRequired 缺省取配置里的 STIRRING_REQUIRED。"""
+        if stirringRequired is None:
+            stirringRequired = STIRRING_REQUIRED
         if self.farmersDelightsWay(now, stirringRequired, inMenu):
             self.keepTimeAt(1.0, total)
             self.batch = 0
@@ -141,6 +183,10 @@ class PotClock(object):
 
     def finished(self, total):
         return self.cookTime >= total - EPS
+
+    def fall(self, dt):
+        """这一步不煮（没热源、没有配方、成品放不下）：进度每刻掉 2 刻，也就是每秒掉 2 秒（FD 的 cookingTick：cookTime - 2）。"""
+        self.cookTime = max(0.0, self.cookTime - FALL_RATE * dt)
 
     def progress(self, total, batch=1):
         """表盘上的进度 0..1；没有可煮的批（batch 为 0）或总时长为 0 时是 0。"""
