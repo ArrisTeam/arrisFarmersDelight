@@ -1,0 +1,28 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:wheat_dough_from_egg"
+        },
+        "ingredients": [
+            {
+                "count": 3,
+                "data": 0,
+                "item": "minecraft:wheat"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:egg"
+            }
+        ],
+        "result": {
+            "count": 3,
+            "data": 0,
+            "item": "arris:wheat_dough"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

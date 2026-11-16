@@ -55,5 +55,10 @@ DishList = [
     {"result": ('arris:sweet_berry_cheesecake_item', 0), "count": 1, "ingredients": [('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:milk_bucket', 0), ('arris:pie_crust', 0), ('minecraft:milk_bucket', 0)], "source": 'arris_sweet_berry_cheesecake1.json'},
     {"result": ('arris:sweet_berry_cheesecake_item', 0), "count": 1, "ingredients": [('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('minecraft:sweet_berries', 0), ('arris:milk_bottle', 0), ('arris:pie_crust', 0), ('arris:milk_bottle', 0)], "source": 'arris_sweet_berry_cheesecake2.json'},
     {"result": ('arris:sweet_berry_cookie', 0), "count": 8, "ingredients": [('minecraft:wheat', 0), ('minecraft:wheat', 0), ('minecraft:sweet_berries', 0)], "source": 'arris_sweet_berry_cookie.json'},
-    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:wheat', 0), ('minecraft:wheat', 0), ('minecraft:wheat', 0), ('minecraft:water_bucket', 0)], "source": 'arris_wheat_dough.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:wheat', 0), ('minecraft:water_bucket', 0)], "source": 'arris_wheat_dough.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:wheat', 0), ('minecraft:water_bucket', 0)], "source": 'arris_wheat_dough2.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:water_bucket', 0), ('minecraft:wheat', 0)], "source": 'arris_wheat_dough3.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:wheat', 0), ('minecraft:water_bucket', 0)], "source": 'arris_wheat_dough4.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 1, "ingredients": [('minecraft:water_bucket', 0), ('minecraft:wheat', 0)], "source": 'arris_wheat_dough5.json'},
+    {"result": ('arris:wheat_dough', 0), "count": 3, "ingredients": [('minecraft:wheat', 0), ('minecraft:wheat', 0), ('minecraft:wheat', 0), ('minecraft:egg', 0)], "source": 'arris_wheat_dough_from_egg.json'},
 ]

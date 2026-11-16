@@ -55,8 +55,10 @@ def testLayersGrowIntoADish():
 def testTheThinnestLayerDecidesHowMany():
     assert Rules.rounds([5, 2, 9]) == 2
     assert Rules.rounds([40, 30]) == Rules.BATCH
-    assert Rules.containerOf("arris:wheat_dough")["itemName"] == "minecraft:bucket"
+    assert Rules.containerOf("arris:cod_roll")["itemName"] == "minecraft:bowl"
     assert Rules.containerOf("arris:egg_sandwich") is None
+    # 面团有水桶（桶原样留着）和鸡蛋（什么都不还）两种做法，字典按成品名查分不出来：水桶写在有序配方的 result 数组里
+    assert Rules.containerOf("arris:wheat_dough") is None
 
 
 def testTheHint():

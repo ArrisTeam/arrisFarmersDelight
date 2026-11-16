@@ -15,7 +15,6 @@ itemChangeBlockDict = {
 # 别再列在这里（会还两遍）。这里按成品名查、分不出是哪条配方做的，一份配方也只能还一种容器、一个：
 # 同一成品有几条配方而退还的不一样（牛奶桶 / 牛奶瓶、水桶留着），或者要还两个以上（海带卷、蜂蜜火腿），只能做成有序配方走 result 数组
 shapedRecipeContainerDict = {
-    "arris:wheat_dough": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0},
     "arris:milk_bottle": {"itemName": "minecraft:bucket", "count": 1, "auxValue": 0, "perCraft": 4},
     "arris:honey_cookie": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0, "perCraft": 8},
     "arris:stuffed_potato": {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0},
