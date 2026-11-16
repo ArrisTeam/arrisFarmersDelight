@@ -24,7 +24,15 @@ fdtest.load("dolorContainer.Std.Defaults")   # 库的缺省实现（标准交互
 
 RULES = Items.ItemRules(lambda name, aux: 64)
 HOTBAR, INVENTORY, COMBINED = Collections.HOTBAR, Collections.INVENTORY, Collections.COMBINED
-STEW = Recipes.CookingPotRecipeList[0]   # 蘑菇煲：红蘑菇 ×2 / 棕蘑菇 ×2 / 红 + 棕，碗盛
+# 夹具配方（不依赖真配方表，插在表头 = 下标 0）：红蘑菇 ×2 / 棕蘑菇 ×2 / 红 + 棕，碗盛
+STEW = {"Recipe": [[("minecraft:red_mushroom", 0)] * 2, [("minecraft:brown_mushroom", 0)] * 2,
+                   [("minecraft:red_mushroom", 0), ("minecraft:brown_mushroom", 0)]],
+        "CookResult": ("minecraft:mushroom_stew", 0), "Vessel": ("minecraft:bowl", 0), "PushItem": [], "text": u"测试蘑菇煲"}
+# 卷心菜叶在 FD 1.3.4 里只是食材；拿它当容器的夹具配方造出"既是容器又是食材"的东西
+WRAP = {"Recipe": [[("test:filling", 0)]], "CookResult": ("test:wrap", 0), "Vessel": ("arris:cabbage_leaf", 0),
+        "PushItem": [], "text": u"测试卷"}
+Recipes.CookingPotRecipeList.insert(0, STEW)
+Recipes.CookingPotRecipeList.append(WRAP)
 
 
 def _menu(side=Libs.SERVER):
@@ -178,7 +186,7 @@ def testShiftClickNeverPutsAVesselThatDoesNotFitIntoTheIngredientSlots():
 
 
 def testShiftClickTreatsAnItemThatIsBothVesselAndIngredientAsFood():
-    leaf = "arris:cabbage_leaf"   # 饺子、卷心菜卷的容器，也是别的食谱的食材
+    leaf = "arris:cabbage_leaf"   # 夹具 WRAP 的容器，也是卷心菜卷等真配方的食材
     assert Book.isAmbiguous(leaf) and not Book.isPureVessel(leaf) and Book.isPureVessel("minecraft:bowl")
     state = State(_menu())
     state.put((HOTBAR, 0), _item(leaf, 4))

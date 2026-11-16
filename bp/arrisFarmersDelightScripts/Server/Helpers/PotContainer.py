@@ -5,6 +5,8 @@
 容器格里有对应容器时再转到 7 号格（MoveFinishedMeals）。FD 原样的烹饪（Server/CookingPot.py）、
 手工烹饪（Server/HandCooking.py）和厨锅站点（Compat/Diegesis/PotLogic.py）都经这里改锅里的东西。
 """
+import random
+
 from .Engine import compFactory, levelId, System
 from ...Shared.Rules import CookingPot as CookingPotRules
 
@@ -117,4 +119,15 @@ def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
     itemComp.SpawnItemToContainer(resultDict, RESULT_SLOT, blockPos, dimensionId)
     previewItemSlot["count"] -= amount
     setPreview(blockEntityData, previewItemSlot)
-    System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+    dropExperience(resultItemName, amount, blockPos, dimensionId)
+
+
+def dropExperience(resultItemName, count, blockPos, dimensionId):
+    """盛出 count 个 resultItemName 给的经验（JE：每份按配方的 experience，零头按概率进一），锅上方一个经验球。"""
+    x, y, z = blockPos
+    value = CookingPotRules.experienceOrb(CookingPotRules.experienceOf(resultItemName), count, random.random())
+    if value <= 0:
+        return
+    orbId = System.CreateEngineEntityByTypeStr("minecraft:xp_orb", (x + 0.5, y + 1, z + 0.5), (0, 0), dimensionId)
+    if orbId:
+        compFactory.CreateExp(orbId).SetOrbExperience(value)

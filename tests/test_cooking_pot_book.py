@@ -130,8 +130,15 @@ def testVesselNamesFollowTheRecipeTable():
 
 def testVesselAndIngredientRoles():
     assert Book.isPureVessel("minecraft:bowl") and not Book.isAmbiguous("minecraft:bowl")
-    # 卷心菜叶是饺子、卷心菜卷的容器，也是别的食谱的食材
-    assert Book.isAmbiguous("arris:cabbage_leaf") and not Book.isPureVessel("arris:cabbage_leaf")
+    # FD 1.3.4 的卷心菜叶只是食材；下游配方拿它当容器时就两样都是
+    assert not Book.isAmbiguous("arris:cabbage_leaf") and not Book.isPureVessel("arris:cabbage_leaf")
+    wrap = {"Recipe": [[("test:filling", 0)]], "CookResult": ("test:wrap", 0), "Vessel": ("arris:cabbage_leaf", 0),
+            "PushItem": [], "text": "x"}
+    Recipes.CookingPotRecipeList.append(wrap)
+    try:
+        assert Book.isAmbiguous("arris:cabbage_leaf") and not Book.isPureVessel("arris:cabbage_leaf")
+    finally:
+        Recipes.CookingPotRecipeList.remove(wrap)
     assert "minecraft:carrot" in Book.ingredientNames()
     assert not Book.isPureVessel("minecraft:carrot") and not Book.isAmbiguous("minecraft:carrot")
     assert not Book.isPureVessel(None) and not Book.isAmbiguous(None)

@@ -171,6 +171,7 @@ class PotLogicMixin(object):
                 self._give(playerId, ready, count)
                 ready["count"] -= count
                 PotContainer.setPreview(data, ready)
+                PotContainer.dropExperience(ready["newItemName"], count, pos, dimensionId)
                 given += count
             elif not served:
                 self.station.effect("hint", {"key": "need_vessel"}, only=playerId)

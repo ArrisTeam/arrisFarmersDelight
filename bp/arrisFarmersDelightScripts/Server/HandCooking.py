@@ -75,14 +75,16 @@ def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
     maxStack = PotContainer.maxStackOf(meal["newItemName"], meal["newAuxValue"])
     same = not ready or ready["newItemName"] == meal["newItemName"]
     mealCount = ready.get("count", 0) if same else 0
-    hand.batch = PotCooking.batchOf(PotStation.servingsLeft(slots), mealCount, 1, maxStack, same)
+    perServing = meal.get("count") or 1  # 一份出几个（JE 的配方结果数量：饺子 2 个）
+    hand.batch = PotCooking.batchOf(PotStation.servingsLeft(slots), mealCount, perServing, maxStack, same)
     if hand.batch <= 0:
         return                           # 预览槽满了或装着别的菜：等它被盛走，计时停在原处
     hand.mode = clock.advance(now, dt, hand.total, hand.batch)
     if hand.mode != PotCooking.WAITING and clock.finished(hand.total):
         PotContainer.cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItems)
         if hand.mode == PotCooking.STIRRED:
-            _serveTheBatch(hand, dimensionId, blockPos, blockEntityData, slots, meal, pushItems, mealCount + 1, maxStack, now)
+            _serveTheBatch(hand, dimensionId, blockPos, blockEntityData, slots, meal, pushItems, mealCount + perServing,
+                           maxStack, now)
         else:
             clock.cookTime = 0.0
     _writeTimer(blockEntityData, max(0.0, hand.total - clock.cookTime), hand.total)
@@ -97,7 +99,7 @@ def _writeTimer(blockEntityData, left, total):
 
 def _serveTheBatch(hand, dimensionId, blockPos, blockEntityData, slots, meal, pushItems, mealCount, maxStack, now):
     """搅着的一批出了第一份：整批跟着出锅，星星多送的份数一起进预览槽（PotCooking.serveTheBatch）。"""
-    plan = hand.clock.serve(now, mealCount, 1, maxStack)
+    plan = hand.clock.serve(now, mealCount, meal.get("count") or 1, maxStack)
     if plan.cooked > 1:
         PotContainer.cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItems, plan.cooked - 1)
     if plan.extraItems > 0:
