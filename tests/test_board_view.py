@@ -159,6 +159,38 @@ def testTheBlockItemsOffsetPutsTheFoodWhereTheStationDrawsIt():
         assert abs(world[2] - (C.STATION_POS[2] + 0.5 + offset[1])) < 1e-6, aux
 
 
+def _stationPlaces(view):
+    """站点里画着的道具，换成方块里的格（离方块西北下角），按高度排。"""
+    places = []
+    for prop in view.props.live():
+        world = view.toWorld(*prop.center)
+        places.append((round(world[1] - C.STATION_POS[1], 4), round(world[0] - C.STATION_POS[0], 4), round(world[2] - C.STATION_POS[2], 4), round(prop.scale, 4)))
+    return sorted(places)
+
+
+def _blockPlaces(items):
+    offset = C.BlockItems._boardOffset(C.STATION_POS)
+    placed = C.BlockItems.BlockDisplay.layout(C.BlockItems.BlockDisplay.KIND_BOARD, items, C.BlockItems._itemType, C.STATION_POS, offset)
+    return sorted((round(p.center[1], 4), round(p.center[0], 4), round(p.center[2], 4), round(p.scale, 4)) for p in placed)
+
+
+def testTheStationAndTheBlockItemsPutEverythingAtTheSamePlaceAndSize():
+    """开站、关站板上的东西不跳：食物、一叠、方块、插着的工具、摆盘的层，站点里画的和 Client/BlockItems 画的是同一个位置同一个大小。"""
+    cases = [({"0": C.item("arris:cabbage", 1)}, C.item("arris:cabbage", 1), []),
+             ({"0": C.item("arris:cabbage", 5)}, C.item("arris:cabbage", 5), []),
+             ({"0": C.item("minecraft:oak_log", 2)}, C.item("minecraft:oak_log", 2), []),
+             ({"0": C.item("arris:iron_knife")}, C.item("arris:iron_knife"), []),
+             ({"L0": C.item("minecraft:bread", 2), "L1": C.item("arris:beef_patty", 2), "L2": C.item("arris:tomato", 2)}, None,
+              [C.item("minecraft:bread", 2), C.item("arris:beef_patty", 2), C.item("arris:tomato", 2)])]
+    for items, board, layers in cases:
+        behavior, view = _open(board, layers=layers)
+        _frames(behavior, 3)
+        station, outside = _stationPlaces(view), _blockPlaces(items)
+        assert len(station) == len(outside) and station, (items, station, outside)
+        for here, there in zip(station, outside):
+            assert all(abs(a - b) < 0.004 for a, b in zip(here, there)), (items, here, there)
+
+
 def testLayersAreStackedEachWithItsOwnTurnAndTheFirstIsTheBigOne():
     layers = [C.item("minecraft:bread", 2), C.item("arris:beef_patty", 2), C.item("arris:tomato", 2)]
     behavior, view = _open(layers=layers)

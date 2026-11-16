@@ -68,7 +68,7 @@ class Thing(object):
         x, y, z = self.mover.pos
         scale = self.size * self.mover.scale
         upright = self.kind == UPRIGHT
-        center = (self.draw.cx + x, Scene.TOP + y + (scale * Scene.SPRITE_SPAN / 2.0 if upright else Scene.FLAT_LIFT * self.mover.scale),
+        center = (self.draw.cx + x, Scene.TOP + y + (Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale),
                   self.draw.cz + z)
         along = (math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn)))
         if self.prop is None:

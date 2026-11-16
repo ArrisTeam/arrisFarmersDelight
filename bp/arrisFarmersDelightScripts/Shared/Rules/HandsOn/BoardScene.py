@@ -34,6 +34,12 @@ def scaleOf(size):
     return size / SPRITE_SPAN
 
 
+def uprightLift(scale):
+    """立着的东西（方块类、插着的工具）的道具中心离它底边多高：贴图轴心在底边中点、缩放 1 时边长 SPRITE_SPAN，中心在边长一半处。
+    砧板站点（BoardThing）和没开站时的 Client/BlockItems 都按它摆，实机要标定立着的东西离板面多高只改这一处。"""
+    return scale * SPRITE_SPAN / 2.0
+
+
 def itemScale(isBlock=False):
     """等着切的东西的缩放：方块类按物品画、缩到 BLOCK_SCALE，图标画 ITEM_SIZE 像素。"""
     return scaleOf(BLOCK_SIZE if isBlock else ITEM_SIZE)

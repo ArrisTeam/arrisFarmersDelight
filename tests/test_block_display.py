@@ -35,6 +35,7 @@ def testABoardShowsOneItemAndTheRightPose():
     assert abs(moved[0].center[0] - (0.5 - 1.5 / 16.0)) < 1e-9 and moved[0].center[2] == 0.5, "挪到板底座中间"
     block, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:oak_log")}, _typeOf, (1, 64, 1))
     assert not block.flat, "方块类立在板上"
+    assert abs(block.center[1] - (BD.BOARD_TOP + 2.6 / 16.0)) < 1e-9 and abs(block.scale - 0.65) < 1e-9, "照站点里：缩放 0.65、中心在底边上半个边长（2.6 像素）"
     tool, = BD.layout(BD.KIND_BOARD, {"0": _item("arris:iron_knife")}, _typeOf, (1, 64, 1))
     assert not tool.flat and tool.roll == BD.TOOL_ROLL, "工具竖着、刀尖朝下"
     assert BD.layout(BD.KIND_BOARD, {"0": {}}, _typeOf, (1, 64, 1)) == []

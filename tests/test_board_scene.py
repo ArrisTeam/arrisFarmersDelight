@@ -51,6 +51,10 @@ def testEachLayerIsOneStepHigherAndHasItsOwnFixedTurnAndOffset():
     assert poses[0]["turn"] == 0.0 and (poses[0]["x"], poses[0]["z"]) == Motion.layerJitter(0)
 
 
+def testAnUprightThingsCentreIsHalfItsEdgeAboveItsBottom():
+    assert _close(Scene.uprightLift(1.0), 4.0) and _close(Scene.uprightLift(0.65), 2.6) and _close(Scene.uprightLift(Scene.itemScale(True)), Scene.BLOCK_SIZE / 2.0)
+
+
 def testTheCarvedToolIsPlantedAtTheJavaHeightAndTheKnifeTipPointsDown():
     assert _close(Scene.CARVED_Y, 0.23 * 16.0 - 1.01) and Scene.CARVED_SCALE == 0.6
     assert Scene.KNIFE_ROLL == 135.0 and Scene.KNIFE_TIP > 0.0

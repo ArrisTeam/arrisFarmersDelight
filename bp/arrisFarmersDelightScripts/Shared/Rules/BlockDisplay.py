@@ -85,7 +85,7 @@ def boardLayout(item, itemType, offset=(0.0, 0.0)):
     shown = _single(item)
     cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if itemType == "block":
-        return [Placement(shown, (cx, BOARD_TOP + 0.125 * BLOCK_SCALE, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
+        return [Placement(shown, (cx, BOARD_TOP + BoardScene.uprightLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
     if itemType in TOOL_TYPES:
         return [Placement(shown, (cx, (BoardScene.CARVED_Y + BoardScene.TOP) / 16.0, cz), False, (0.7071, -0.7071), TOOL_ROLL,
                           CARVED_SCALE)]

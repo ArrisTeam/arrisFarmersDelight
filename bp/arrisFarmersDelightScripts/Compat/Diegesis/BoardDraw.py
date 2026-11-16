@@ -102,7 +102,7 @@ class Draw(object):
         if kind == "tool":
             self.pile.hide()
             self.item.set(board, UPRIGHT, CARVED_SCALE)
-            self.item.put(0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - CARVED_SCALE * Scene.SPRITE_SPAN / 2.0, 0.0)
+            self.item.put(0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - Scene.uprightLift(CARVED_SCALE), 0.0)
             return
         isBlock = kind == "block"
         self.item.set(board, UPRIGHT if isBlock else FLAT, Scene.itemScale(isBlock))
@@ -155,7 +155,7 @@ class Draw(object):
             Motion.lift(ghost.mover, (pose["x"], pose["y"], pose["z"]))
         elif carved:
             ghost = self._ghost(stack, UPRIGHT, CARVED_SCALE)
-            Motion.pullOut(ghost.mover, (0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - CARVED_SCALE * Scene.SPRITE_SPAN / 2.0, 0.0))
+            Motion.pullOut(ghost.mover, (0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - Scene.uprightLift(CARVED_SCALE), 0.0))
         else:
             isBlock = self.isBlock(stack)
             ghost = self._ghost(stack, UPRIGHT if isBlock else FLAT, Scene.itemScale(isBlock))
