@@ -12,7 +12,12 @@
 			},
 			"bones": [
 				{
+					"name": "pan",
+					"pivot": [-8, 0, 8]
+				},
+				{
 					"name": "skillet",
+					"parent": "pan",
 					"pivot": [-8, 0, 8],
 					"rotation": [0, 180, 0]
 				},
@@ -33,6 +38,27 @@
 								"west": {"uv": [34, 6], "uv_size": [2, 12]},
 								"up": {"uv": [38, 8], "uv_size": [-2, -2]},
 								"down": {"uv": [34, 18], "uv_size": [-2, -2]}
+							}
+						}
+					]
+				},
+				{
+					"name": "handle_glow",
+					"parent": "handle",
+					"pivot": [-8, 0, 8],
+					"cubes": [
+						{
+							"origin": [-9.08, -5.08, 18.92],
+							"size": [2.16, 12.16, 2.16],
+							"pivot": [-8, 2, 20],
+							"rotation": [90, 0, 0],
+							"uv": {
+								"north": {"uv": [0, 0], "uv_size": [1, 1]},
+								"east": {"uv": [0, 0], "uv_size": [1, 1]},
+								"south": {"uv": [0, 0], "uv_size": [1, 1]},
+								"west": {"uv": [0, 0], "uv_size": [1, 1]},
+								"up": {"uv": [0, 0], "uv_size": [1, 1]},
+								"down": {"uv": [0, 0], "uv_size": [1, 1]}
 							}
 						}
 					]
@@ -98,7 +124,6 @@
 				},
 				{
 					"name": "shelf",
-					"parent": "skillet",
 					"pivot": [-8, 8, 8],
 					"cubes": [
 						{
@@ -158,6 +183,66 @@
 								"west": {"uv": [0, 21], "uv_size": [1, 15]},
 								"up": {"uv": [1, 29], "uv_size": [-1, -1]},
 								"down": {"uv": [1, 29], "uv_size": [-1, -1]}
+							}
+						}
+					]
+				},
+				{
+					"name": "oil_0",
+					"parent": "pan",
+					"pivot": [-8, 1.03, 8],
+					"rotation": [0, 0, 0],
+					"cubes": [
+						{
+							"origin": [-9, 1.02, 7],
+							"size": [2, 0.02, 2],
+							"uv": {
+								"up": {"uv": [0, 0], "uv_size": [64, 64]}
+							}
+						}
+					]
+				},
+				{
+					"name": "oil_1",
+					"parent": "pan",
+					"pivot": [-8, 1.03, 8],
+					"rotation": [0, 90, 0],
+					"cubes": [
+						{
+							"origin": [-9, 1.02, 7],
+							"size": [2, 0.02, 2],
+							"uv": {
+								"up": {"uv": [0, 0], "uv_size": [64, 64]}
+							}
+						}
+					]
+				},
+				{
+					"name": "oil_2",
+					"parent": "pan",
+					"pivot": [-8, 1.03, 8],
+					"rotation": [0, 180, 0],
+					"cubes": [
+						{
+							"origin": [-9, 1.02, 7],
+							"size": [2, 0.02, 2],
+							"uv": {
+								"up": {"uv": [0, 0], "uv_size": [64, 64]}
+							}
+						}
+					]
+				},
+				{
+					"name": "oil_3",
+					"parent": "pan",
+					"pivot": [-8, 1.03, 8],
+					"rotation": [0, 270, 0],
+					"cubes": [
+						{
+							"origin": [-9, 1.02, 7],
+							"size": [2, 0.02, 2],
+							"uv": {
+								"up": {"uv": [0, 0], "uv_size": [64, 64]}
 							}
 						}
 					]

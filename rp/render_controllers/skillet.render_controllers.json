@@ -1,0 +1,86 @@
+{
+	"format_version": "1.8.0",
+	"render_controllers": {
+		"controller.render.arris_skillet": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.default"
+				}
+			],
+			"textures": [
+				"Texture.default"
+			],
+			"part_visibility": [
+				{
+					"handle_glow": false
+				},
+				{
+					"oil_0": false
+				},
+				{
+					"oil_1": false
+				},
+				{
+					"oil_2": false
+				},
+				{
+					"oil_3": false
+				}
+			]
+		},
+		"controller.render.arris_skillet_glow": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.glow"
+				}
+			],
+			"textures": [
+				"Texture.glow"
+			],
+			"part_visibility": [
+				{
+					"*": false
+				},
+				{
+					"handle_glow": "variable.mod_scene > 0.5 && variable.mod_handle_lit > 0.5"
+				}
+			]
+		},
+		"controller.render.arris_skillet_oil": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.oil"
+				}
+			],
+			"textures": [
+				"Texture.oil"
+			],
+			"part_visibility": [
+				{
+					"*": false
+				},
+				{
+					"oil_0": "variable.mod_scene > 0.5 && variable.mod_oil_s0 > 0.01"
+				},
+				{
+					"oil_1": "variable.mod_scene > 0.5 && variable.mod_oil_s1 > 0.01"
+				},
+				{
+					"oil_2": "variable.mod_scene > 0.5 && variable.mod_oil_s2 > 0.01"
+				},
+				{
+					"oil_3": "variable.mod_scene > 0.5 && variable.mod_oil_s3 > 0.01"
+				}
+			],
+			"color": {
+				"r": 1.0,
+				"g": 1.0,
+				"b": 1.0,
+				"a": "variable.mod_oil_a"
+			}
+		}
+	}
+}

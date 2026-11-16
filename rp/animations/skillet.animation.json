@@ -17,7 +17,56 @@
 				"0.0": {
 					"effect": "sizzle"
 				}
-			} 
+			}
+		},
+		"animation.skillet.scene": {
+			"loop": true,
+			"bones": {
+				"pan": {
+					"position": [
+						0,
+						"variable.mod_pan_y",
+						"variable.mod_pan_z"
+					],
+					"rotation": [
+						"variable.mod_pan_rx",
+						0,
+						0
+					]
+				},
+				"oil_0": {
+					"position": [
+						"variable.mod_oil_x0",
+						0,
+						"variable.mod_oil_z0"
+					],
+					"scale": "variable.mod_oil_s0"
+				},
+				"oil_1": {
+					"position": [
+						"variable.mod_oil_x1",
+						0,
+						"variable.mod_oil_z1"
+					],
+					"scale": "variable.mod_oil_s1"
+				},
+				"oil_2": {
+					"position": [
+						"variable.mod_oil_x2",
+						0,
+						"variable.mod_oil_z2"
+					],
+					"scale": "variable.mod_oil_s2"
+				},
+				"oil_3": {
+					"position": [
+						"variable.mod_oil_x3",
+						0,
+						"variable.mod_oil_z3"
+					],
+					"scale": "variable.mod_oil_s3"
+				}
+			}
 		}
 	}
 }
