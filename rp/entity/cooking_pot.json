@@ -16,7 +16,8 @@
         "smoke": "animation.cooking_pot.smoke",
         "bubble": "animation.cooking_pot.bubble",
         "shelf": "animation.cooking_pot.shelf",
-        "boil": "animation.cooking_pot.boil"
+        "boil": "animation.cooking_pot.boil",
+        "ladle_hidden": "animation.cooking_pot.ladle_hidden"
       },
       "render_controllers": [
         "controller.render.default"
@@ -31,7 +32,8 @@
       "scripts":{
         "initialize": [
           "variable.mod_heat = 0.0;",
-          "variable.mod_shelf = 0.0;"
+          "variable.mod_shelf = 0.0;",
+          "variable.mod_ladle_hidden = 0.0;"
         ],
         "animate": [
           {
@@ -45,6 +47,9 @@
           },
           {
             "shelf": "variable.mod_shelf == 0.0"
+          },
+          {
+            "ladle_hidden": "variable.mod_ladle_hidden == 1.0"
           }
         ]
       },

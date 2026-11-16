@@ -142,7 +142,7 @@ def statusText(data):
     """站点同步来的数据 -> 焦点界面底部的一行提示（星星和进度在徽章上）。mode 是锅上一步的煮法（WAITING / FD_WAY / STIRRED）。"""
     if data.get("meals"):
         need = "（要%s）" % data.get("vesselName") if data.get("vesselName") else ""
-        return "点上方的菜盛出 %d 份%s   拖动勺子接着搅" % (data["meals"], need)
+        return "点锅边浮着的菜盛出 %d 份%s   拖动勺子接着搅" % (data["meals"], need)
     if not any(keyOf(slot) for slot in data.get("inputs") or []):
         return "点下方物品栏把食材放进锅里   潜行右键 = 原来的界面"
     if not data.get("dish"):

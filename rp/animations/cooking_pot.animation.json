@@ -10,6 +10,15 @@
 				}
 			}
 		},
+		"animation.cooking_pot.ladle_hidden": {
+			"loop": true,
+			"override_previous_animation": true,
+			"bones": {
+				"ladle": {
+					"scale": 0
+				}
+			}
+		},
 		"animation.cooking_pot.smoke": {
 			"loop": true,
 			"animation_length": 2,

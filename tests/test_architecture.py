@@ -39,8 +39,12 @@ PACKS = {
             "Client": {"forbid": {"Server", "Compat"}, "engine": True},
             # 联动模块按端分：服务端的不碰 Client/，客户端的不碰 Server/
             "Compat/Diegesis/BoardLogic.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/PotLogic.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/PotSync.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/ServerBoot.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardView.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/PotView.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/PotSpoon.py": {"forbid": {"Server", "Client", "QuModLibs"}, "engine": False},
             "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True},
         },
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},
