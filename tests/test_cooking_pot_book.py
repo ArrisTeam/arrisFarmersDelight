@@ -3,15 +3,44 @@
 """厨锅食谱书的规则（Shared/Rules/CookingPotBook.py）：搜索、详情格、补食材的计划。纯数据，不碰库。"""
 from __future__ import print_function
 
+import io
+import json
+import os
+import re
+
 import fdtest
 
 Book = fdtest.load("Shared.Rules.CookingPotBook")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes")
+SCRIPTS = os.path.join(fdtest.BP, fdtest.SCRIPTS)
 
 
 def testSlotLayoutMatchesTheContainer():
     assert (Book.INPUT_SLOTS, Book.VESSEL_SLOT, Book.RESULT_SLOT, Book.POT_SLOTS) == (6, 6, 7, 8)
     assert Book.BOOK_CELLS == Book.POT_SLOTS
+
+
+def _serverConstants():
+    """服务端那边定义的容器格号（引擎模块离线导不了，按源码文本读）：烹饪 tick 读写的就是这几格。"""
+    for name in ("Server/Helpers/PotContainer.py", "Server/CookingPot.py"):
+        path = os.path.join(SCRIPTS, *name.split("/"))
+        if not os.path.isfile(path):
+            continue
+        text = io.open(path, encoding="utf-8").read()
+        found = dict((key, re.search(r"^%s = (\d+)$" % key, text, re.M)) for key in ("INPUT_SLOTS", "VESSEL_SLOT", "RESULT_SLOT"))
+        if all(found.values()):
+            return dict((key, int(match.group(1))) for key, match in found.items())
+    raise AssertionError("服务端模块里找不到 INPUT_SLOTS / VESSEL_SLOT / RESULT_SLOT 的定义")
+
+
+def testSlotLayoutMatchesTheServerAndTheBlockJson():
+    # 界面模型的格号是写在 Shared 里的一份：与烹饪 tick 读写的格号、方块 JSON 声明的容器大小对不上时，界面会读写错格子
+    assert _serverConstants() == {"INPUT_SLOTS": Book.INPUT_SLOTS, "VESSEL_SLOT": Book.VESSEL_SLOT,
+                                  "RESULT_SLOT": Book.RESULT_SLOT}
+    path = os.path.join(fdtest.BP, "netease_blocks", "arris_cooking_pot.json")
+    block = json.load(io.open(path, encoding="utf-8"))["minecraft:block"]["components"]
+    assert block["netease:block_container"]["container_size"] == Book.POT_SLOTS
+    assert "netease:listen_block_remove" not in block   # 库的方块宿主在运行期开方块移除事件，JSON 里再写会让方块与图标都不画
 
 
 def testEveryVariantFitsInTheIngredientSlots():
