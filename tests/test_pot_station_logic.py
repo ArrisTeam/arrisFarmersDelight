@@ -23,7 +23,7 @@ def testOpeningBindsTheSlotsAndSendsTheStateTheDataAndTheControls():
     assert sorted(state["controls"]) == ["heated", "progress", "spoon_x", "spoon_z", "stars", "stirring"]
     assert payload["hand"] is None and payload["yaw"] == 0
     shared = state["data"]
-    assert sorted(shared) == ["batch", "bonus", "cook_left", "dish", "grade", "here", "made", "meal", "mode", "open_stars", "sunk",
+    assert sorted(shared) == ["batch", "bonus", "cook_left", "dish", "grade", "here", "made", "made_all", "meal", "mode", "open_stars", "sunk",
                               "vessel", "vessel_name"], sorted(shared)
     assert shared["here"] is True and shared["made"] == 0 and shared["open_stars"] == 1 and shared["sunk"] == []
     assert shared["dish"] == {} and shared["meal"] == {} and shared["vessel"] == {}

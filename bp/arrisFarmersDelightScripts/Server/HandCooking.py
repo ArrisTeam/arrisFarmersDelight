@@ -142,6 +142,12 @@ def madeOf(playerId, dishName):
     return int(cache.get(dishName) or 0)
 
 
+def madeMap(playerId):
+    """playerId 做过的每道菜各盛出过几份（新字典）：食谱书上每道菜开了几颗星按它算。"""
+    madeOf(playerId, "")
+    return dict(_made[playerId])
+
+
 def addMade(playerId, dishName, count):
     total = madeOf(playerId, dishName) + count
     _made[playerId][PotContainer.plain(dishName)] = total

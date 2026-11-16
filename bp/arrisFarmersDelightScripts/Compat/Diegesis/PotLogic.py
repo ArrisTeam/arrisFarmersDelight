@@ -91,11 +91,11 @@ class PotLogicMixin(object):
                             item.get("count") or 1)
 
     def userData(self, playerId):
-        """只给他自己的两项：他盛出过几份这道菜、勺子在不在他手里。"""
+        """只给他自己的几项：他盛出过几份这道菜、每道菜各盛出过几份（食谱书上的星星）、勺子在不在他手里。"""
         if self.hand is None:
             return None
         return {"made": HandCooking.madeOf(playerId, self._dishName) if self._dishName else 0,
-                "here": self.hand.spoon.holder == playerId}
+                "made_all": HandCooking.madeMap(playerId), "here": self.hand.spoon.holder == playerId}
 
     def onCustomAction(self, playerId, name, data):
         if self.hand is None:

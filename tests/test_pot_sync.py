@@ -106,14 +106,15 @@ def testEachPlayerGetsHisOwnMadeCountAndWhetherTheSpoonIsInHisHand():
     HandCooking.addMade("b", SAUCE, 9)
     K.feed(manager, TOMATO, 16)
     logic = manager.stations[(0, POT)].logic
-    assert logic.userData("a") == {"made": 0, "here": True}
+    assert logic.userData("a") == {"made": 0, "made_all": {}, "here": True}
     assert manager.open("b", list(POT)), "第二个人也能开：勺子给后来开的（没人在搅时）"
     manager.tick(0.3)
-    assert logic.userData("b") == {"made": 9, "here": True} and logic.userData("a") == {"made": 0, "here": False}
+    assert logic.userData("b") == {"made": 9, "made_all": {SAUCE: 9}, "here": True}, "每道菜各做过几份：食谱书上的星星按它算"
+    assert logic.userData("a") == {"made": 0, "made_all": {}, "here": False}
     states = fake.world.take("a", Protocol.EP_STATE)
     assert [s[2]["state"]["data"]["here"] for s in states if "here" in s[2]["state"].get("data", {})][-1] is False
     assert _data(manager)["open_stars"] == 2, "握着勺子的是 b：他做过 9 份，开 2 颗星"
-    assert "made" not in _data(manager) and "here" not in _data(manager), "这两项不在共享的部分里"
+    assert "made" not in _data(manager) and "made_all" not in _data(manager) and "here" not in _data(manager), "这几项不在共享的部分里"
     K.do(manager, "b", K.custom("stir", x=0.3, z=0.3, at=1.0))
     assert K.do(manager, "a", K.custom("stir", x=-0.3, z=-0.3, at=1.0)), "别人握着勺子：动作照收（不回滚）"
     assert abs(_controls(manager)["spoon_x"] - 0.3) < 0.02, "但 a 的这一下不算：勺子还在 b 手里（勺尖量化到 1/32）"
