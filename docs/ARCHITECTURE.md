@@ -17,6 +17,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）
                         GrillStation（炉灶站点：六个烤位在哪、一面多久、该翻的那件、提示文字）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
+                        StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
@@ -50,6 +51,7 @@ Compat/
                         PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；
                         GrillLogic（服务端）+ GrillView（客户端）= 炉灶站点；
                         DishBoard + BoardTools（服务端，砧板站点的摆盘与刀具）、DishCrafts（工作台不再出砧板菜）；
+                        BookSources（客户端，把各站点的食谱书交给前置包）+ BookFill（服务端，照书从背包放料）；
                         未安装则不做任何事
 ```
 
