@@ -6,7 +6,7 @@
 规则（违反即失败；确需例外写进 PACKS 里的 allowLong 并注明理由）：
 1. Shared/ 不导入引擎（mod.*）、QuModLibs、Server、Client、Compat、Api；Server/ 与 Client/ 互不导入，也不导入 Compat/。
    农夫乐事的 Api/ 只导入 Shared/；前置包的 Api/Server.py 是服务端门面（不导入 Client），Api/Client.py 反之
-2. 脚本（QuModLibs 除外）不出现 import sys、__import__、namedtuple、eval / exec、pickle / marshal 反序列化
+2. 脚本（QuModLibs、dolorContainer 等拷入件除外）不出现 import sys、__import__、namedtuple、eval / exec、pickle / marshal 反序列化
    （网易机审与安全规则）；不用星号导入（modMain.py 的 QuMod 模板除外）
 3. 每个相对导入都要解析到真实存在的模块 / 包（层级写错只有引擎加载时才炸，且会连累整条导入链）
 4. 服务端的 @AllowCall 端点必须同时 @InjectHttpPlayerId：玩家身份只认引擎注入的；端点名在同一端唯一
@@ -26,6 +26,10 @@ import fdtest
 
 MAX_FILE_LINES = 250
 MAX_FUNCTION_LINES = 120
+# 只读的拷入件，不进下面的任何规则：QuModLibs 由 kit 拷入；dolorContainer 与 dolorLayouts.py（布局编译产物）由 dolorContainer
+# 仓库的 tools/vendor.py 生成，改动与完整性由 tests/test_dolor_vendor.py 守着（行数、模块命名、导入写法都不归本文件管）
+VENDORED_DIRS = ("QuModLibs", "dolorContainer")
+GENERATED_FILES = ("dolorLayouts.py",)
 SHADOW_NAMES = {"random", "time", "math", "copy", "json", "string", "types", "traceback", "common", "mod",
                 "collections", "re", "os", "uuid", "weakref", "functools", "itertools"}
 _SHARED_RULE = {"forbid": {"Server", "Client", "Compat", "Api", "QuModLibs"}, "engine": False}
@@ -77,10 +81,10 @@ def _sources(pack):
     scriptsDir = PACKS[pack]["dir"]
     for root, dirs, files in os.walk(scriptsDir):
         rel = os.path.relpath(root, scriptsDir).replace("\\", "/")
-        if rel == "QuModLibs" or rel.startswith("QuModLibs/"):
+        if rel.split("/", 1)[0] in VENDORED_DIRS:
             continue
         for name in files:
-            if name.endswith(".py"):
+            if name.endswith(".py") and not (rel == "." and name in GENERATED_FILES):
                 relPath = (name if rel == "." else rel + "/" + name)
                 path = os.path.join(root, name)
                 yield relPath, path, io.open(path, encoding="utf-8").read()
