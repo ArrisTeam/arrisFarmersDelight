@@ -5,28 +5,20 @@ import random
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory
 from ..Shared.Data.Effects import negativeEffect
+from ..Shared.Rules import FoodEffects as Rules
 
 COMFORT = "arris:comfort"
 NOURISHMENT = "arris:nourishment"
 
 
-@registerHandler("PlayerEatFoodServerEvent")
+@registerHandler("PlayerEatFoodServerEvent", match=Rules.HANDLED)
 def OnPlayerEatFood(args):
-    playerId = args["playerId"]
-    itemName = args["itemDict"]["newItemName"]
-    effectComp = compFactory.CreateEffect(playerId)
-    effectDictList = effectComp.GetAllEffects()
-    if not effectDictList:
-        return
-    if itemName == "arris:milk_bottle":
-        # 牛奶瓶：随机清除一个效果
-        effectComp.RemoveEffectFromEntity(effectDictList[random.randint(0, len(effectDictList) - 1)]["effectName"])
-    elif itemName == "arris:hot_cocoa":
-        # 热可可：清除一个负面效果
-        for effectDict in effectDictList:
-            if effectDict["effectName"] in negativeEffect:
-                effectComp.RemoveEffectFromEntity(effectDict["effectName"])
-                break
+    # 牛奶瓶、热可可的追加结算：做什么由 Shared/Rules/FoodEffects.py 决定，这里只执行
+    effectComp = compFactory.CreateEffect(args["playerId"])
+    active = [effectDict["effectName"] for effectDict in effectComp.GetAllEffects() or []]
+    for action in Rules.eatActions(args["itemDict"]["newItemName"], active, random):
+        if action[0] == Rules.REMOVE:
+            effectComp.RemoveEffectFromEntity(action[1])
 
 
 @registerHandler("PlayerHungerChangeServerEvent")

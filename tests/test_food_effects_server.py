@@ -65,6 +65,38 @@ def _player(*effects):
     return comp
 
 
+def _eat(itemName):
+    # ModServer 把物品名当匹配键传给 dispatch
+    args = {"playerId": PLAYER, "itemDict": {"newItemName": itemName, "newAuxValue": 0, "count": 1}, "hunger": 0, "nutrition": 0.0}
+    Registry.dispatch("PlayerEatFoodServerEvent", args, itemName)
+
+
+def testHotCocoaClearsOneRandomHarmfulEffect():
+    removed = set()
+    for _ in range(80):
+        comp = _player("speed", "poison", "weakness", "arris:nourishment")
+        _eat("arris:hot_cocoa")
+        assert len(comp.log) == 1 and comp.log[0][0] == "remove" and comp.log[0][1] in ("poison", "weakness"), comp.log
+        removed.add(comp.log[0][1])
+    assert removed == set(["poison", "weakness"]), "不该总是清第一个: %r" % removed
+
+
+def testMilkBottleClearsOneEffect():
+    comp = _player("speed", "poison")
+    _eat("arris:milk_bottle")
+    assert len(comp.log) == 1 and comp.log[0][1] in ("speed", "poison")
+    comp = _player()
+    _eat("arris:milk_bottle")
+    assert comp.log == []
+
+
+def testOrdinaryFoodDoesNotTouchEffects():
+    comp = _player("poison", "speed")
+    _eat("minecraft:apple")
+    _eat("arris:cooked_rice")
+    assert comp.log == []
+
+
 def testNourishmentCancelsHungerLossButNotEating():
     _player("arris:nourishment")
     loss = {"playerId": PLAYER, "hunger": 15, "hungerBefore": 16}
