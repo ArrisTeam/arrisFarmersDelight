@@ -29,7 +29,7 @@
                 }
             },
             "minecraft:loot": {
-                "table": "loot_tables/air_loot.json"
+                "table": "loot_tables/stuffed_pumpkin_block.json"
             },
             "minecraft:block_light_absorption": {
                 "value": 0

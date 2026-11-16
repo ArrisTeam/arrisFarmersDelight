@@ -39,7 +39,7 @@
                             "function": "set_data"
                         }
                     ],
-                    "name": "minecraft:bone",
+                    "name": "minecraft:bone_meal",
                     "type": "item",
                     "weight": 1
                 }

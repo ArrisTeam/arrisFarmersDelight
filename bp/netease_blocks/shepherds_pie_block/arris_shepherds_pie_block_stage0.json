@@ -29,7 +29,7 @@
                 }
             },
             "minecraft:loot": {
-                "table": "loot_tables/bowl.json"
+                "table": "loot_tables/shepherds_pie_block.json"
             },
             "minecraft:block_light_absorption": {
                 "value": 0

@@ -29,7 +29,7 @@
                 }
             },
             "minecraft:loot": {
-                "table": "loot_tables/bowl.json"
+                "table": "loot_tables/rice_roll_medley_block.json"
             },
             "minecraft:block_light_absorption": {
                 "value": 0
