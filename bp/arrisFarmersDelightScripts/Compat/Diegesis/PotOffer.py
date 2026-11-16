@@ -5,6 +5,8 @@
 数都在 Shared/Rules/HandsOn/PotServe.py 里。
 - 悬着的容器：汤煮好了、手空着、背包里有盛它的容器，光标在锅心 5 像素内就悬出那只容器；点一下它浸进汤里、盛满、
   提起来滴着汤、朝屏幕下方端走（同时发 scoop，容器从背包里扣）。
+- 方块容器（南瓜盅用的南瓜，isFilledNotDipped）不浸进汤里：缩小了悬在锅沿上方（FILLED_SCALE / FILLED_LIFT），点一下汤从锅心朝它
+  溅 8 滴、舀进去；
 - 取回沉下去的东西（offerTakeBack）：没有悬着的碗、汤里有倒进去 / 打进去 / 化掉的料，整个汤面接点击（PotView 里薄薄的一层 sunk，
   漂着的料比它高、照旧点得到）；光标在汤面上时悬出要取回的那样（液体是它的空容器，蛋和糖是它自己），点一下它浸下去、
   舀回来（变回装满的桶 / 瓶）、端给厨师（dipOffered），东西回背包。倒进去的桶和瓶在锅里留到这一锅煮好才把空的还回背包。
@@ -39,6 +41,9 @@ class PotOffer(object):
         self.takesBack = False              # 汤面接不接"取回"的点击（PotServe.takeBackOf 的 enabled）
         self.dip = None                     # 正在浸的那一下：[PotServe.Dip, 掉落物 id, 换成装满的了没有, 装满是什么物品]
         self.scoopedAt = -10.0
+        self.scoopedHere = -10.0            # 手上拿着容器点汤的那一下（碗落进去的地方已经敲过水波）
+        self.ladled = None                  # 刚往方块容器里舀：它悬在哪（锅自己的坐标），等服务端说盛了就朝它溅几滴
+        self._blocks = {}
 
     def _vessel(self):
         """这锅煮好的菜要的容器的物品名；没有菜、不要容器、背包里没有都是 None。"""
@@ -57,8 +62,8 @@ class PotOffer(object):
         cursor = self._cursor(surface + PotServe.OFFER_LIFT)
         spoon = owner.gesture.stroking or owner.hover[0] == "ladle"
         carrying = owner.view.hand is not None
-        self.offer = PotServe.offerOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, vessel is not None, False,
-                                      self.dip is not None)
+        self.offer = PotServe.offerOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, vessel is not None,
+                                      vessel is not None and self._isBlock(vessel), self.dip is not None)
         shown, place = (vessel, self.offer) if vessel is not None else (None, None)
         back = self._sunkItem() if self.offer is None else None
         self.takesBack, hung = PotServe.takeBackOf(cursor, surface, owner.clock, self.scoopedAt, True, spoon, carrying, self.offer is not None,
@@ -71,6 +76,26 @@ class PotOffer(object):
         self.offered = (shown, place, back if hung is not None else None)
         owner.view.ghost({"item": {"newItemName": shown, "newAuxValue": 0, "count": 1}, "at": owner.toStation(*place["pos"]),
                           "size": place["size"]})
+
+    def _isBlock(self, name):
+        """这个容器是方块（南瓜）：往里舀，不浸下去（PotBehavior.isFilledNotDipped）。"""
+        if name not in self._blocks:
+            info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, 0) or {}
+            self._blocks[name] = info.get("itemType") == "block"
+        return self._blocks[name]
+
+    def scooped(self):
+        """服务端说盛了一份（scooped 效果）。返回"本人这一下已经敲过水波了"（正浸着碗，或刚拿着碗点过汤）：场景就只放声音。
+        刚往方块容器里舀的，汤从锅心朝它溅 8 滴（PotBehavior.onEffect）。"""
+        owner, scene = self.owner, self.owner.scene
+        if self.ladled is not None:
+            surface = scene.liquid.surfaceY()
+            rise = (self.ladled[0] - 8.0, self.ladled[1] - surface, self.ladled[2] - 8.0)
+            a, b = scene.world(8.0, surface, 8.0), scene.world(8.0 + rise[0], surface + rise[1], 8.0 + rise[2])
+            PotFx.particle(PotFx.DROPLET, a, color=scene.liquid.brothColor, count=PotServe.LADLED_DROPS,
+                           velocity=tuple((b[i] - a[i]) * 16.0 for i in range(3)))
+            self.ladled = None
+        return self.dip is not None or owner.clock - self.scoopedHere <= PotServe.BYSTANDER_WINDOW
 
     def _cursor(self, height):
         """光标射线落在这个高度的水平面上的哪一点（锅自己的坐标 (x, z)，PotBehavior 的 view.cursorOn）：悬着的东西正好在光标底下。
@@ -135,6 +160,10 @@ class PotOffer(object):
             return False
         meal = view.data.get("meal") or self.owner.scene.look.meal
         view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": True})
+        if self.offer["block"]:              # 方块容器不浸：记下它悬在哪，等服务端说盛了朝它溅几滴
+            self.ladled, self.offer, self.scoopedAt = self.offer["pos"], None, self.owner.clock
+            self._dropOffered()
+            return True
         self._dipOffered(self.offered[0], self.offer, meal["newItemName"] if meal else None)
         return True
 
@@ -185,7 +214,7 @@ class PotOffer(object):
         x, _, z = self.owner.toLocal(point)
         scene.model.ripple(x, z, 0.45)
         PotFx.particle(PotFx.SPLASH, scene.world(x, scene.liquid.surfaceY(), z), color=scene.liquid.brothColor, count=4)
-        self.scoopedAt = self.owner.clock
+        self.scoopedAt = self.scoopedHere = self.owner.clock
 
     def close(self):
         self._dropOffered()

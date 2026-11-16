@@ -204,13 +204,15 @@ class PotScene(object):
     def removeProp(self, entityId):
         compFactory.CreateItem(levelId).DeleteClientDropItemEntity(entityId)
 
-    def event(self, name, payload):
-        """一次性的表现。盛出：锅心溅水、舀的一声（出锅时星星的闪在开着站点的人那边，见 PotView）。"""
+    def event(self, name, payload, rung=False):
+        """一次性的表现。盛出：锅心溅水、舀的一声（出锅时星星的闪在开着站点的人那边，见 PotView）。
+        rung：盛的人自己那边，碗落进汤的地方已经敲过水波了（PotBehavior.onEffect 的 dip / scoopedHere），只放声音。"""
         self.awake = AWAKE_SECONDS
         if name == "scooped":
             where = self.world(8.0, self.liquid.surfaceY(), 8.0)
-            self.model.ripple(8.0, 8.0, 0.5)
-            PotFx.particle(PotFx.SPLASH, where, color=self.liquid.brothColor, count=4)
+            if not rung:
+                self.model.ripple(8.0, 8.0, 0.5)
+                PotFx.particle(PotFx.SPLASH, where, color=self.liquid.brothColor, count=4)
             play("scoop", where, 0.55, 1.0)
 
     # ---------------------------------------------------------------- 收场
