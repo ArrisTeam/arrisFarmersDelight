@@ -55,7 +55,7 @@
                 ],
                 "animate": [
                     {
-                        "sizzle_sound": "variable.mod_heat == 1.0"
+                        "sizzle_sound": "variable.mod_heat == 1.0 && variable.mod_scene < 0.5"
                     },
                     {
                         "shelf": "variable.mod_shelf == 0.0"

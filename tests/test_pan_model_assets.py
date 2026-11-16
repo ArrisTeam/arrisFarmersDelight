@@ -90,7 +90,7 @@ def testTheEntityKeepsItsOldBehaviourAndAddsTheScene():
     assert description["identifier"] == "arris:skillet" and description["geometry"] == {"default": "geometry.skillet"}
     assert description["animations"]["scene"] == "animation.skillet.scene" and "shelf" in description["animations"] and "sizzle_sound" in description["animations"]
     animate = description["scripts"]["animate"]
-    assert {"sizzle_sound": "variable.mod_heat == 1.0"} in animate and {"shelf": "variable.mod_shelf == 0.0"} in animate and "scene" in animate
+    assert {"sizzle_sound": "variable.mod_heat == 1.0 && variable.mod_scene < 0.5"} in animate and {"shelf": "variable.mod_shelf == 0.0"} in animate and "scene" in animate
     assert {"variable.mod_heat", "variable.mod_shelf", "variable.mod_scene"} <= initialized(), "原来的两个变量照旧初始化"
 
 
