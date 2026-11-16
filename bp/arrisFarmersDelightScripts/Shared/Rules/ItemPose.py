@@ -47,6 +47,12 @@ def uprightMatrix(facingX, facingZ, roll):
     return _mul(_ry(math.degrees(math.atan2(-facingX, -facingZ))), _rz(roll))
 
 
+def lyingMatrix(yaw, pitch=0.0, roll=0.0):
+    """平躺着再转：先躺平（贴图朝上、贴图的上边朝世界 +Z），再照 JE 场景节点的欧拉角（度，顺序 y、x、z）转。
+    厨锅里漂着的料用它：yaw 是在液面上转的角，pitch / roll 是随波的晃和翻身。"""
+    return _mul(_mul(_mul(_ry(yaw), _rx(pitch)), _rz(roll)), _rx(90.0))
+
+
 def pivotFor(center, matrix, scale):
     """视觉中心 -> 轴心（贴图底边中点）：中心 = 轴心 + R·(0, 半边长, 0)。坐标是格。"""
     half = ITEM_SPAN / 16.0 * scale * 0.5
