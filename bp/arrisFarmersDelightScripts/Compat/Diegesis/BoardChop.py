@@ -2,7 +2,10 @@
 """BoardChop - 砧板站点的一刀：校验、落刀、最后一刀整叠切开（服务端）
 
 对应 Hands-On Delight：station/BoardLogic.java 的 chop（456-523）。动作 chop {"mark": 刀口序号, "at": 板面 z, "at_x": 板面 x, "yaw": 操作者的方向}：
-- 板上有东西、刀口序号正好是下一个、离上一刀不到 0.15 秒（3 刻）的拒绝（refused，客户端据此撤回画好的切口）；间隔从这一刻起算，工具不对也算；
+- 板上有东西、刀口序号正好是下一个（还得在这件东西的刀口数以内）、离上一刀不到 0.15 秒（3 刻）的拒绝（refused，客户端据此撤回画好的切口）；
+  间隔从这一刻起算，工具不对也算；有层时板上的不是等着切的，也拒绝；
+- 配方现查（logic.recipe 是 tick 每 0.25 秒复查一次的缓存，外面的人在两次复查之间换了板就是上一件东西的）：板上的 key 和 logic.itemKey 对不上、
+  或缓存的配方不是现查的那个，就重布刀口（logic.restart()）、这一刀不算；产物按现查的配方算；
 - 刀是光标栈上切得了的，光标栈空着就是背包里第一个切得了的（BoardTools.findTool），找不到也拒绝；
 - 不是最后一刀：发 chopped {at, spot, angle, tool, item}，所有人听到刀声；
 - 最后一刀：重布刀口，整叠最多 16 件一件件切（每件结算一次产物、磨损一次工具，"耐久"附魔免掉的不磨，磨到工具坏了批就停），
@@ -14,6 +17,7 @@ from . import BoardGive, BoardTools
 from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.Player import IsCreative
 from ...Shared.Rules import CuttingStation as Rules
+from ...Shared.Rules.BoardStation import keyOf
 
 KNIFE_SOUND = "ambient.cutting_board.knife"
 YAWS = (0, 90, 180, 270)
@@ -47,10 +51,14 @@ def chop(logic, playerId, data):
     station = logic.station
     item = logic.boardItem()
     mark = data.get("mark")
-    if item is None or not isinstance(mark, int) or isinstance(mark, bool) or not 0 <= mark < logic.cut.plan.marks \
-            or not logic.cut.accept(time.time(), mark, True):
+    recipe = logic.env().recipeOf(item) if item is not None else None       # 现查：缓存的 logic.recipe 可能是上一件东西的
+    if item is not None and (keyOf(item) != logic.itemKey or logic.recipe is not recipe):
+        logic.restart()                  # 板在两次复查之间被换了：刀口和配方都是旧的，这一刀不算（HoD 每刻都查）
         return refuse(logic)
-    found = BoardTools.findTool(logic, playerId, item) if logic.recipe is not None else None
+    if recipe is None or logic.layers() or not isinstance(mark, int) or isinstance(mark, bool) \
+            or not 0 <= mark < min(logic.cut.plan.marks, len(logic.cut.spots)) or not logic.cut.accept(time.time(), mark, True):
+        return refuse(logic)
+    found = BoardTools.findTool(logic, playerId, item)
     if found is None:
         return refuse(logic)
     where, tool = found
@@ -60,16 +68,17 @@ def chop(logic, playerId, data):
     if not last:
         station.effect("chopped", look)
         return True
-    return _cutTheStack(logic, playerId, item, where, tool, look)
+    return _cutTheStack(logic, playerId, item, recipe, where, tool, look)
 
 
-def _cutTheStack(logic, playerId, item, where, tool, look):
-    """最后一刀（506-522）：整叠最多 16 件一起切开。"""
+def _cutTheStack(logic, playerId, item, recipe, where, tool, look):
+    """最后一刀（506-522）：整叠最多 16 件一起切开；产物按现查的配方算。"""
     wears = not IsCreative(playerId) and BoardTools.maxDurability(tool) > 0
     batch, spent = Rules.wearFor(item["count"], BoardTools.usesLeft(tool) if wears else None, Rules.unbreakingOf(tool))
     if batch <= 0:
+        logic.restart()                  # 工具已经没有耐久（或板上没有可切的）：刀口落满了不重布的话，以后每一刀都被拒
         return refuse(logic)
-    pieces = Rules.resultsFor(logic.recipe, batch, fortune=Rules.fortuneOf(tool))
+    pieces = Rules.resultsFor(recipe, batch, fortune=Rules.fortuneOf(tool))
     if wears:
         worn, broke = BoardTools.worn(tool, spent)
         BoardGive.writeTool(logic, playerId, where, worn, broke)

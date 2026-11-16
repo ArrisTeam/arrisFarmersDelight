@@ -313,6 +313,52 @@ def testTheMarksStartOverWhenTheBoardIsChangedFromOutsideButNotWhenOnlyTheCountI
     assert _logic(manager).cut.marks == 0 and _logic(manager).cut.plan.marks == 1
 
 
+def testAChopOnABoardSwappedBetweenTwoRechecksIsRefusedAndNeverCutByTheOldRecipe():
+    """板在 tick 的两次复查（0.25 秒一次）之间被外面换了（经典玩法、漏斗）：缓存的刀口和配方是上一件东西的。
+    原来最后一刀拿着缓存的卷心菜配方切稻穗：稻穗换成了卷心菜叶。现在这一刀不算、重布刀口，下一刀按现在板上的东西切。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, CABBAGE, 16)
+    _knife(7, 250)
+    K.effects()
+    data["cuttingDict"] = {"newItemName": "arris:rice_panicle", "newAuxValue": 0, "count": 16}      # 外面换了板，tick 还没来复查
+    assert _logic(manager).itemKey == (CABBAGE, 0), "还没复查：缓存的还是卷心菜"
+    assert _chop(manager, 0) and _names(K.effects()) == ["refused"], "这一刀不算"
+    assert K.board(data) == ("arris:rice_panicle", 16), "板上的没动"
+    assert K.count("arris:cabbage_leaf") == 0 and K.count("arris:rice") == 0 and K.count("arris:straw") == 0, "没有按旧配方发产物，也没发新的"
+    assert _inv(7)["durability"] == 250, "刀没磨"
+    assert _logic(manager).itemKey == ("arris:rice_panicle", 0) and _logic(manager).cut.marks == 0, "刀口按现在的东西重布了"
+    K.advance(0.2)
+    assert _chop(manager, 0) and K.board(data) is None
+    assert K.count("arris:rice") == 16 and K.count("arris:straw") == 16 and K.count("arris:cabbage_leaf") == 0, "再来一刀按稻穗的配方切"
+    # 换成切不了的东西：同样拒绝，不抛、不发东西
+    assert _place(manager, CABBAGE, 3)
+    K.effects()
+    data["cuttingDict"] = {"newItemName": "minecraft:diamond", "newAuxValue": 0, "count": 3}
+    K.advance(0.2)
+    assert _chop(manager, 0) and _names(K.effects()) == ["refused"] and K.board(data) == ("minecraft:diamond", 3)
+    assert K.count("arris:cabbage_leaf") == 0 and _logic(manager).recipe is None, "换成没有配方的东西：缓存的配方也清了"
+
+
+def testAChopOnABoardWithBothAnItemAndLayersIsRefusedNotARaise():
+    """方块实体数据里板上的东西（有配方）和摆盘的层同时有（/setblock、旧存档、别的路径）：站点重布刀口时没有刀口（cut.spots 是空的），
+    原来 chop 序号 0 通得过 accept、到 _look 里取 spots[0] 抛 IndexError 把整站的人踢掉。现在有层时一律拒绝，序号超出刀口数也拒绝。"""
+    manager, data = K.setup()
+    data["cuttingDict"] = {"newItemName": CABBAGE, "newAuxValue": 0, "count": 4}
+    data["dishLayers"] = [{"newItemName": "minecraft:bread", "newAuxValue": 0, "count": 1}]
+    K.opened(manager)
+    _knife(7, 250)
+    assert _logic(manager).recipe is not None and _logic(manager).cut.spots == [], "前提：有配方，但因为有层没有刀口"
+    for mark in (0, 1, 5):
+        K.effects()
+        assert _chop(manager, mark) and _names(K.effects()) == ["refused"], mark
+        K.advance(0.2)
+    assert K.board(data) == (CABBAGE, 4) and K.layers(data) == [("minecraft:bread", 1)], "板和层原样"
+    assert K.count("arris:cabbage_leaf") == 0 and _inv(7)["durability"] == 250
+    assert "a" in manager.sessions, "没有把人踢出站点"
+    assert _state(manager).getItem(("board", 0))["count"] == 4, "站点照常"
+
+
 def testTheTopLayerComesBackAndThenWhatLiesOnTheBoard():
     manager, data = K.setup()
     K.opened(manager)
