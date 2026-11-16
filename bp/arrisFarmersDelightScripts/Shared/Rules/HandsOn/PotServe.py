@@ -2,7 +2,8 @@
 """PotServe - 用容器从煮好的汤里盛一份：悬在汤面上的半透明容器，点一下浸下去、提上来、端走（双端）
 
 移植自 Hands-On Delight 的 client/PotBehavior.java：offerBowl（575-618 行）、offerTakeBack（620-666 行）、dipOffered（541-551 行）、
-常量 209-217 / 309-319 行，和 client/KitchenMotions.java 的 Dip（573-685 行）。时间一律是秒；位置是场景像素（锅中心在 (8, 8)，y 向上）。
+onItemClick / onEffect 里盛一份的涟漪水花声音（527-537、684-700 行）、常量 209-217 / 309-319 行，和 client/KitchenMotions.java 的 Dip（573-685 行）。
+时间一律是秒；位置是场景像素（锅中心在 (8, 8)，y 向上）。
 倒进去的液体、打进去的蛋、溶掉的粉末这类"手把东西倒进汤里"的动作在 PotServeHands / PotServePour。
 
 空手悬在煮好的汤上、背包里有能盛汤的容器时，容器半透明地悬在光标下面（offerOf）：点一下就盛，Shift 盛到没有。盛的时候容器按 Dip 的时间线
@@ -17,6 +18,7 @@ import math
 
 from .Mth import lerp
 from .PotServeMath import ITEM_DRAWN, mix, out, pose, smooth
+from .PotSounds import shotOf
 
 OFFERED = 0x8CFFFFFF          # 悬着的容器半透明的白（ARGB 着色）
 OFFER_LIFT = 1.5              # 悬在汤面上方这么高（像素）
@@ -42,6 +44,10 @@ SPLASH_SPREAD = 0.6
 DRIP_RISE = (0.0, -2.0, 0.0)
 DRIP_SPREAD = 0.6
 DRIP_FADE = 0.4               # 端走的前 40% 还在滴
+SPLASH_UP = (0.0, 7.0, 0.0)   # 旁人看到的水花（贴着汤面随机处）的升速（PB 119）
+BYSTANDER_RIPPLE = 0.5        # 旁人看到的涟漪（锅中心）
+BYSTANDER_WINDOW = 1.0        # 厨师自己在这么久（秒）以内敲过涟漪就不再补
+LADLED_DROPS = 8              # 舀进方块容器时溅向它的水滴数
 
 
 def offerOf(cursor, surface, now, scoopedAt, focused=True, spoon=False, carrying=False, hasContainer=True, block=False, busy=False):
@@ -77,6 +83,32 @@ def takeBackOf(cursor, surface, now, scoopedAt, focused=True, spoon=False, carry
 def awayFallback(at, surface):
     """玩家屏幕底部那个点算不出来时的缺省：就在悬着的位置上方 8 像素（PB 548）。"""
     return (at[0], surface + 8.0, at[2])
+
+
+def carriedBowlOn(point, surface, color):
+    """手里拿着碗直接点在汤上（PB 527-537 的 onItemClick）：碗落进去的地方敲一圈 0.45 的涟漪、溅起 4 簇水花。point 是光标落在液面上的 (x, z)。
+    声音由服务端的 "scooped" 效果放（scooped()）。返回事件列表。"""
+    return [{"type": "ripple", "x": point[0], "z": point[1], "strength": RIPPLE},
+            {"type": "splash", "count": SPLASHES, "pos": (point[0], surface, point[1]), "rise": SPLASH_RISE, "spread": SPLASH_SPREAD, "color": color}]
+
+
+def scooped(surface, color, now=None, scoopedHere=None, dipping=False, block=False, into=None):
+    """服务端说有人盛了一份（"scooped" 效果，PB 684-700）：这一份的涟漪、水花、声音。返回事件列表。
+
+    厨师自己盛的时候碗落进汤的那一下已经由 Dip / carriedBowlOn 敲过涟漪了（正在 Dip、或 scoopedHere 在 BYSTANDER_WINDOW 秒以内），
+    就不再敲；旁边的人看到的是碗落在汤的某处：锅中心一圈 BYSTANDER_RIPPLE 的涟漪 + 汤面上随机处 4 簇水花（"pos": None）。
+    block：舀进方块容器（南瓜）——汤从汤面中心往 into（容器的位置，场景像素）溅出 8 滴；最后是舀的声音。color 是 ARGB 的汤色。
+    """
+    events = []
+    if not dipping and (scoopedHere is None or now - scoopedHere > BYSTANDER_WINDOW):
+        events.append({"type": "ripple", "x": POT_CENTER, "z": POT_CENTER, "strength": BYSTANDER_RIPPLE})
+        events.append({"type": "splash", "count": SPLASHES, "pos": None, "rise": SPLASH_UP, "spread": 0.0, "color": color})
+    if block and into is not None:
+        centre = (POT_CENTER, surface, POT_CENTER)
+        events.append({"type": "droplets", "count": LADLED_DROPS, "pos": centre, "rise": (into[0] - centre[0], into[1] - centre[1], into[2] - centre[2]),
+                       "spread": 0.3, "color": color})
+    events.append(shotOf("scoop"))
+    return events
 
 
 class Dip(object):

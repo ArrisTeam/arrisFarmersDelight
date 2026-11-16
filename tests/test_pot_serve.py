@@ -161,6 +161,32 @@ def testTheDipFollowsTheSurfaceWhenTheSoupIsLadledLower():
     assert Serve.awayFallback(AT, SURFACE) == (8.0, SURFACE + 8.0, 8.0)
 
 
+def testABowlInTheHandClickedOnTheSoupRingsWhereItWentIn():
+    events = Serve.carriedBowlOn((9.5, 6.25), SURFACE, BROTH)
+    assert events == [{"type": "ripple", "x": 9.5, "z": 6.25, "strength": 0.45},
+                      {"type": "splash", "count": 4, "pos": (9.5, SURFACE, 6.25), "rise": (0.0, 6.0, 0.0), "spread": 0.6, "color": BROTH}]
+
+
+def testTheScoopedEffectRingsTheSoupForBystandersOnly():
+    events = Serve.scooped(SURFACE, BROTH, now=10.0, scoopedHere=-10.0)
+    assert [e["type"] for e in events] == ["ripple", "splash", "sound"]
+    assert events[0] == {"type": "ripple", "x": 8.0, "z": 8.0, "strength": 0.5}
+    assert events[1] == {"type": "splash", "count": 4, "pos": None, "rise": (0.0, 7.0, 0.0), "spread": 0.0, "color": BROTH}, "汤面上随机处，升速 7"
+    assert events[2] == {"type": "sound", "name": "scoop", "volume": 0.55, "pitch": 1.0, "at": "broth"}
+    assert [e["type"] for e in Serve.scooped(SURFACE, BROTH)] == ["ripple", "splash", "sound"], "不知道厨师自己什么时候盛过：当旁人"
+    assert [e["type"] for e in Serve.scooped(SURFACE, BROTH, now=10.0, scoopedHere=9.5)] == ["sound"], "厨师自己 1 秒内敲过了：只补声音"
+    assert [e["type"] for e in Serve.scooped(SURFACE, BROTH, now=10.0, scoopedHere=8.9)] == ["ripple", "splash", "sound"], "超过 1 秒的当旁人"
+    assert [e["type"] for e in Serve.scooped(SURFACE, BROTH, dipping=True)] == ["sound"], "正在 Dip 浸着：Dip 自己敲过了"
+
+
+def testLadlingIntoAPumpkinSplashesDropsTowardsIt():
+    into = (8.0, SURFACE + 5.0, 9.0)
+    events = Serve.scooped(SURFACE, BROTH, dipping=True, block=True, into=into)
+    assert [e["type"] for e in events] == ["droplets", "sound"]
+    assert events[0] == {"type": "droplets", "count": 8, "pos": (8.0, SURFACE, 8.0), "rise": (0.0, 5.0, 1.0), "spread": 0.3, "color": BROTH}
+    assert [e["type"] for e in Serve.scooped(SURFACE, BROTH, dipping=True, block=True)] == ["sound"], "容器的位置不知道就不溅"
+
+
 # ---------------------------------------------------------------- 倒液体
 
 def testPouringTimesAndTheLipLandsOnTheTarget():
