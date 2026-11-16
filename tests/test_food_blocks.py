@@ -4,7 +4,8 @@
 
 JE 的 FeastBlock：每份盛一次，要对应的容器（碗）；盛完最后一份，有空盘的菜（hasLeftovers）留下空盘、再点一下收走，
 没有空盘的菜（南瓜盅）整道消失 —— 最后一份照样盛给玩家。
-JE 的 PieBlock：手里拿刀右键派切下一片掉出来（不吃、不耗刀），否则吃一口；4 口吃完派就没了。
+JE 的 PieBlock：手里拿刀右键派切下一片掉出来（不吃、不耗刀），否则吃一口（Player.canEat(false)：创造模式或饥饿值没满，
+否则什么也不发生）；4 口吃完派就没了。
 """
 from __future__ import print_function
 
@@ -118,6 +119,28 @@ def testEatingAPieNeverOverfillsHungerOrSaturation():
     world.entities["p1"]["saturation"] = 19.0
     _click()
     assert world.players["p1"]["hunger"] == 20 and world.entities["p1"]["saturation"] == 20
+
+
+def testAFullPlayerCannotEatAPieAndTheAttemptDoesNotTakeTheClickCooldown():
+    _pie(None)
+    world.players["p1"]["hunger"] = 20
+    args = {"x": POS[0], "y": POS[1], "z": POS[2], "dimensionId": 0, "playerId": "p1", "blockName": "arris:apple_pie", "aux": 0}
+    Registry.dispatch("ServerBlockUseEvent", args, "arris:apple_pie")
+    assert world.timers == [], "吃不了的一下不占交互冷却（也不挥手），放行给手里的东西"
+    assert world.blocks[(0,) + POS]["data"]["blockStatus"] == 0.0 and world.entities["p1"]["effects"] == []
+    assert world.sounds == [] and _molang() == [] and world.players["p1"]["hunger"] == 20
+
+
+def testKnifeSlicingIgnoresHungerAndCreativeAlwaysEats():
+    _pie(KNIFE)
+    world.players["p1"]["hunger"] = 20
+    _click()
+    assert world.blocks[(0,) + POS]["data"]["blockStatus"] == 1.0 and world.spawnedNames() == [("arris:apple_pie_slice", 1)]
+    _pie(None)
+    world.players["p1"]["hunger"] = 20
+    world.players["p1"]["creative"] = True
+    _click()
+    assert world.blocks[(0,) + POS]["data"]["blockStatus"] == 1.0 and world.entities["p1"]["effects"] == [("speed", 30, 0)]
 
 
 def testThePieIsGoneAfterTheFourthBite():

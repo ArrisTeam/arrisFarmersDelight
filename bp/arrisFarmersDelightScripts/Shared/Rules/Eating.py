@@ -9,6 +9,11 @@ MAX_HUNGER = 20
 SATURATION = 5
 
 
+def canEat(hunger, creative):
+    """JE Player.canEat(false)：创造模式，或饥饿值没满，才吃得了一份不带"总能吃"的食物（派方块的一口就是这样）。"""
+    return bool(creative) or hunger < MAX_HUNGER
+
+
 def eatenFood(hunger, saturation, nutrition, saturationModifier):
     """吃一份营养值 nutrition、饱和度修饰 saturationModifier 的食物 -> (新的饥饿值, 新的饱和度)。"""
     newHunger = min(MAX_HUNGER, hunger + nutrition)

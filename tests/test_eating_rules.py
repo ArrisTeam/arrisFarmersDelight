@@ -18,6 +18,13 @@ def testPieSliceGivesThreeHungerAndOnePointEightSaturation():
     assert hunger == 13 and _near(saturation, 6.8)
 
 
+def testOnlyAHungryOrCreativePlayerCanEat():
+    # JE Player.canEat(false)：创造模式或饥饿值没满；派方块的一口不带"总能吃"
+    assert Eating.canEat(0, False) and Eating.canEat(19, False) and Eating.canEat(19.5, False)
+    assert not Eating.canEat(20, False)
+    assert Eating.canEat(20, True)
+
+
 def testNothingGoesPastTheCaps():
     assert Eating.eatenFood(19, 19.0, 3, 0.3) == (20, 20)
     assert Eating.eatenFood(20, 20.0, 3, 0.3) == (20, 20)

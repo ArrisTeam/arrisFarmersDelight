@@ -5,10 +5,10 @@ from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, Ge
 from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerBlockMolang
 from .Helpers.Items import IsKnife
 from .Helpers.Placement import FacingOfAux
-from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, GiveOrDropItem
+from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetNotCreateItem, GiveOrDropItem
 from ..Shared.Data.Food import pieList, platePackagedFoodDict
 from ..Shared.Data.Slicing import PIE_BITES, SLICE_SOUND, pieSliceItems
-from ..Shared.Rules.Eating import SATURATION, eatenFood
+from ..Shared.Rules.Eating import SATURATION, canEat, eatenFood
 
 # 一个派 4 块；每吃一块等于吃一片派（JE 的 PIE_SLICE）：营养 3、饱和度修饰 0.3，速度 I 30 秒（不冒粒子）
 PIE_NUTRITION = 3
@@ -40,14 +40,17 @@ def OnEatPie(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimensionId"]
     playerId = args["playerId"]
+    handItemDict = GetCarriedItem(playerId)
+    sliceItem = pieSliceItems.get(args["blockName"])
+    cutting = bool(sliceItem and handItemDict and IsKnife(handItemDict["newItemName"]))
+    if not cutting and not canEat(compFactory.CreatePlayer(playerId).GetPlayerHunger(), IsCreative(playerId)):
+        return          # JE PieBlock.consumeBite：吃不了（饥饿值满了）什么也不发生，这一下放行，也不占交互冷却
     if SetPlayerUsedCD(playerId) is True:
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    handItemDict = GetCarriedItem(playerId)
-    sliceItem = pieSliceItems.get(args["blockName"])
-    if sliceItem and handItemDict and IsKnife(handItemDict["newItemName"]):
+    if cutting:
         # 手里拿着刀：切下一片掉在派上，不吃、不耗刀（JE 的 PieBlock.cutSlice）
         _takeBite(dimensionId, blockPos, blockEntityData)
         System.CreateEngineItemEntity({"newItemName": sliceItem, "newAuxValue": 0, "count": 1}, dimensionId,
