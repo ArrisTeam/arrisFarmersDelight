@@ -7,7 +7,12 @@ itemChangeBlockDict = {
     "arris:apple_pie_item": "arris:apple_pie",
     "arris:sweet_berry_cheesecake_item": "arris:sweet_berry_cheesecake",
     "arris:chocolate_pie_item": "arris:chocolate_pie",
+    # 原版南瓜派（JE 的 PlacePumpkinPieMixin）：对方块使用就放成 arris:pumpkin_pie，没有自己的 *_item
+    "minecraft:pumpkin_pie": "arris:pumpkin_pie",
 }
+# JE 配置 enablePumpkinPieSneakToPlace（缺省 false）：为 true 时原版南瓜派要潜行才放成方块，不潜行照常吃
+PUMPKIN_PIE = "minecraft:pumpkin_pie"
+PUMPKIN_PIE_SNEAK_TO_PLACE = False
 # "合成后还给玩家的空容器"（linkage 的旧接口，下游包按成品名登记自己的无序配方）：从合成栏取出 key 物品时返还 value 容器，
 # perCraft 是配方一份的产出数（缺省 1），一次取出 N 个按 N // perCraft 份还。按成品名查、分不出是哪条配方，
 # 只适合"这个成品的无序配方都只还这一种容器、一份一个"的情况。
@@ -27,7 +32,8 @@ shapedRecipeContainerDict = {
 pieList = [
     "arris:apple_pie",
     "arris:sweet_berry_cheesecake",
-    "arris:chocolate_pie"
+    "arris:chocolate_pie",
+    "arris:pumpkin_pie"
 ]
 
 # 盘装食物

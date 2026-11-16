@@ -8,7 +8,7 @@ from ..QuModLibs.Client import Listen
 from .Engine import compFactory, levelId, unwrap, blockEntityExData
 
 _HEATED = ("arris:skillet", "arris:cooking_pot")
-_PIES = ("arris:apple_pie", "arris:chocolate_pie", "arris:sweet_berry_cheesecake")
+_PIES = ("arris:apple_pie", "arris:chocolate_pie", "arris:sweet_berry_cheesecake", "arris:pumpkin_pie")
 
 
 @Listen("ModBlockEntityLoadedClientEvent")

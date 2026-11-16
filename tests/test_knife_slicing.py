@@ -134,7 +134,8 @@ def testBreakingAPieDropsOneSlicePerRemainingServing():
 
 def testEachPieDropsItsOwnSlice():
     for pie, sliceItem in (("arris:chocolate_pie", "arris:chocolate_pie_slice"),
-                           ("arris:sweet_berry_cheesecake", "arris:sweet_berry_cheesecake_slice")):
+                           ("arris:sweet_berry_cheesecake", "arris:sweet_berry_cheesecake_slice"),
+                           ("arris:pumpkin_pie", "arris:pumpkin_pie_slice")):
         _setUp()
         world.setBlock(POS[0], POS[1], POS[2], pie, data={"blockStatus": 2.0})
         _break(pie)

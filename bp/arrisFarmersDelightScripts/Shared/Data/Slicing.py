@@ -11,6 +11,7 @@ pieSliceItems = {
     "arris:apple_pie": "arris:apple_pie_slice",
     "arris:chocolate_pie": "arris:chocolate_pie_slice",
     "arris:sweet_berry_cheesecake": "arris:sweet_berry_cheesecake_slice",
+    "arris:pumpkin_pie": "arris:pumpkin_pie_slice",
 }
 
 CAKE = "minecraft:cake"

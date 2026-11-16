@@ -143,6 +143,17 @@ def testCuttingTheLastSliceRemovesThePie():
     assert world.spawnedNames() == [("arris:sweet_berry_cheesecake_slice", 1)]
 
 
+def testThePumpkinPieIsEatenAndCutLikeTheOtherPies():
+    # JE 1.3 的南瓜派方块也是 PieBlock：吃一口是一片 pumpkin_pie_slice（营养 3、饱和度 0.3、速度 I 30 秒），拿刀切下的也是它
+    _pie(None, blockName="arris:pumpkin_pie")
+    _click()
+    assert world.blocks[(0,) + POS]["data"]["blockStatus"] == 1.0 and world.players["p1"]["hunger"] == 13
+    assert world.entities["p1"]["effects"] == [("speed", 30, 0)]
+    _pie(KNIFE, blockName="arris:pumpkin_pie", eaten=3.0)
+    _click()
+    assert world.blockName(*POS) == "minecraft:air" and world.spawnedNames() == [("arris:pumpkin_pie_slice", 1)]
+
+
 def testAPieWithoutASliceItemIsStillEatenWithAKnife():
     # 下游追加的派（pieList 里有、切片表里没有）：拿刀也只能吃
     FoodBlocks.pieList.append("test:custom_pie")

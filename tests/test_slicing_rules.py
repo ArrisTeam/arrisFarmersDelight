@@ -42,9 +42,11 @@ def testCandleCakeNamesAndTheirCandles():
 
 def testEveryPieHasASliceAndTheCutBoardGivesTheSame():
     assert sorted(Data.pieSliceItems) == sorted(Food.pieList)
+    placedBy = dict((block, item) for item, block in Food.itemChangeBlockDict.items())
     for pie, sliceItem in Data.pieSliceItems.items():
-        # 砧板上切 4 片整派用的就是同一种切片
-        assert (sliceItem, 4) in [(d["itemName"], d["count"]) for d in Cutting.CuttingBoardDict[(pie + "_item", 0)]["itemList"]]
+        # 砧板上切 4 片整派用的就是同一种切片；整派的物品是放出这个方块的那件（多数叫 *_item，南瓜派是原版的 minecraft:pumpkin_pie）
+        assert pie in placedBy, pie
+        assert (sliceItem, 4) in [(d["itemName"], d["count"]) for d in Cutting.CuttingBoardDict[(placedBy[pie], 0)]["itemList"]]
 
 
 def testSliceDrops():
