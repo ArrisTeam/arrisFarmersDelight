@@ -116,13 +116,15 @@ def testEveryJeHorseFeedUserAcceptsTheFeedAndTheTraderLlamaDoesNot():
         assert args["cancel"] is False and _count() == 3 and world.entities["v1"]["effects"] == [], entityType
 
 
-def testWildAnimalsAreLeftAlone():
+def testWildAnimalsGetNothingAndTheItemIsNotEaten():
+    # 没驯服：什么都不发生（JE 也是）；右键仍被接管（取消），免得 bribeable 记号让引擎白白吃掉物品
     for hand, entityType in ((HORSE_FEED, "minecraft:horse"), (DOG_FOOD, "minecraft:wolf")):
         _setUp(hand)
         world.addEntity("v1", entityType, tamed=False, health=2.0)
         args = _interact()
-        assert args["cancel"] is False and _count() == 3
+        assert args["cancel"] is True and _count() == 3
         assert world.entities["v1"]["health"] == 2.0 and world.entities["v1"]["effects"] == []
+        assert world.players["p1"]["given"] == [] and world.sounds == []
 
 
 def testDogFoodHealsTamedWolfGivesThreeEffectsAndReturnsTheBowl():
@@ -170,11 +172,13 @@ def testHoldingTheClickFeedsOnlyOncePerCooldownButStillCancelsTheDefault():
 def testOwnerIsTheFallbackWhenTheEngineCannotTellIfTamed():
     _setUp(HORSE_FEED)
     world.addEntity("v1", "minecraft:horse", tamed=None, owner="p9", health=1.0)
-    assert _interact()["cancel"] is True
+    _interact()
+    assert _count() == 2 and len(world.entities["v1"]["effects"]) == 2
     for owner in (None, "", "-1"):
         _setUp(HORSE_FEED)
         world.addEntity("v1", "minecraft:horse", tamed=None, owner=owner, health=1.0)
-        assert _interact()["cancel"] is False, repr(owner)
+        _interact()
+        assert _count() == 3 and world.entities["v1"]["effects"] == [], repr(owner)
 
 
 def testOtherItemsAreNotDispatched():
@@ -200,9 +204,29 @@ def testComponentsAreAddedToTheJeTemptedAnimals():
     assert "arris:cabbage" in _json(_addEntity("minecraft:rabbit")["minecraft:behavior.tempt"])["items"]
     world.components.clear()
     assert "arris:dog_food" in _json(_addEntity("minecraft:wolf")["minecraft:behavior.beg"])["items"]
-    for entityType in ("minecraft:llama", "minecraft:cow", "minecraft:cat"):
+    for entityType in ("minecraft:cow", "minecraft:cat", "minecraft:trader_llama", "minecraft:pig"):
         world.components.clear()
         assert _addEntity(entityType) == {}, entityType
+
+
+def testEveryFeedUserGetsTheFeedMarkerForItsItem():
+    # 没有这个记号，客户端不会把右键发给服务端：马饲料没反应，狗粮会被玩家吃掉
+    _setUp(HORSE_FEED)
+    for itemName, entityTypes in Mobs.FEED_USERS.items():
+        for entityType in entityTypes:
+            world.components.clear()
+            marker = _addEntity(entityType)["minecraft:bribeable"]
+            assert _json(marker) == {"bribe_items": [itemName], "bribe_cooldown": 0}, entityType
+    # 不是马饲料 / 狗粮的使用者就不加（行商羊驼不在 JE 的标签里）
+    world.components.clear()
+    assert "minecraft:bribeable" not in _addEntity("minecraft:rabbit")
+
+
+def testOnlyTheJeTemptedAnimalsAreTemptedByHorseFeed():
+    _setUp(HORSE_FEED)
+    for entityType in ("minecraft:llama", "minecraft:skeleton_horse", "minecraft:zombie_horse"):
+        world.components.clear()
+        assert "minecraft:behavior.tempt" not in _addEntity(entityType), entityType
 
 
 if __name__ == "__main__":

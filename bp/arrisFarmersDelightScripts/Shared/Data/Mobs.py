@@ -3,7 +3,12 @@
 
 喂食（右键驯服的生物）照 JE 的 DogFoodItem / HorseFeedItem；吸引（tempt / beg）照 JE 的 CommonEvents.onAnimalsJoinWorld：
 马、驴、骡被马饲料吸引，兔子被卷心菜和卷心菜叶吸引，狼向狗粮讨食。
-追加的组件会整个盖掉原版同名组件，所以下面的 JSON 都是原版（3.10）的同名组件加上本模组的物品，原版没动的字段原样抄来。
+追加的 tempt / beg 会整个盖掉原版同名组件，所以 JSON 都是原版（3.10）的同名组件加上本模组的物品，原版没动的字段原样抄来。
+
+喂食要靠 bribeable 这个"记号"组件：官方文档说"玩家右键实体"事件（PlayerInteractServerEvent）在玩家"可以与实体交互"时才来，
+也就是目标对手里的物品有交互时；没有交互的话马饲料触发不了这个事件，狗粮（现在是能吃的）还会被玩家吃掉。bribeable 是原版
+只有海豚用的"贿赂"组件，加在马和狼身上没有任何自带行为，只让引擎认为"这个物品能对它用"（按钮写"喂食"）；
+真正的喂食由 Server/Livestock.py 在右键事件里处理并取消，所以引擎自己的"贿赂"从不执行。
 """
 HORSE_FEED = "arris:horse_feed"
 DOG_FOOD = "arris:dog_food"
@@ -25,17 +30,29 @@ FEED_RETURNS = {DOG_FOOD: "minecraft:bowl"}
 
 _HORSE_TEMPT = '{"priority": 5, "speed_multiplier": 1.2, "items": ["arris:horse_feed", "golden_apple", "appleEnchanted", "golden_carrot"]}'
 
+
+def _feedMarker(itemName):
+    # 这个物品能对它用的记号；bribe_cooldown 为 0（右键事件里总是取消，引擎自己的"贿赂"从来不会执行）
+    return '{"bribe_items": ["%s"], "bribe_cooldown": 0}' % itemName
+
+
 # 下面几个"追加组件"表：键是组件名，值是组件的 JSON 串；horse / wolf 两张是对外联动契约的一部分（下游可以往里加）
 horseComponentsDict = {
     "minecraft:behavior.tempt": _HORSE_TEMPT,
+    "minecraft:bribeable": _feedMarker(HORSE_FEED),
 }
 
 wolfComponentsDict = {
     "minecraft:behavior.beg": '{"priority": 9, "look_distance": 8, "look_time": [2, 4], "items": ["arris:dog_food", "bone", "porkchop", "cooked_porkchop", "chicken", "cooked_chicken", "beef", "cooked_beef", "rotten_flesh", "muttonraw", "muttoncooked", "rabbit", "cooked_rabbit"]}',
+    "minecraft:bribeable": _feedMarker(DOG_FOOD),
 }
 
-donkeyComponentsDict = {"minecraft:behavior.tempt": _HORSE_TEMPT}
-muleComponentsDict = {"minecraft:behavior.tempt": _HORSE_TEMPT}
+donkeyComponentsDict = {"minecraft:behavior.tempt": _HORSE_TEMPT, "minecraft:bribeable": _feedMarker(HORSE_FEED)}
+muleComponentsDict = {"minecraft:behavior.tempt": _HORSE_TEMPT, "minecraft:bribeable": _feedMarker(HORSE_FEED)}
+# 骷髅马、僵尸马、羊驼：只有喂食记号（JE 里它们吃马饲料的增益，但不被马饲料吸引）
+skeletonHorseComponentsDict = {"minecraft:bribeable": _feedMarker(HORSE_FEED)}
+zombieHorseComponentsDict = {"minecraft:bribeable": _feedMarker(HORSE_FEED)}
+llamaComponentsDict = {"minecraft:bribeable": _feedMarker(HORSE_FEED)}
 
 rabbitComponentsDict = {
     "minecraft:behavior.tempt": '{"priority": 3, "speed_multiplier": 1, "items": ["golden_carrot", "carrot", "dandelion", "arris:cabbage", "arris:cabbage_leaf"]}',
@@ -46,6 +63,9 @@ livestockComponents = {
     "minecraft:horse": horseComponentsDict,
     "minecraft:donkey": donkeyComponentsDict,
     "minecraft:mule": muleComponentsDict,
+    "minecraft:skeleton_horse": skeletonHorseComponentsDict,
+    "minecraft:zombie_horse": zombieHorseComponentsDict,
+    "minecraft:llama": llamaComponentsDict,
     "minecraft:wolf": wolfComponentsDict,
     "minecraft:rabbit": rabbitComponentsDict,
 }

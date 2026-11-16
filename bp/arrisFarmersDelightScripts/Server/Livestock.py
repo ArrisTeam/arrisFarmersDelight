@@ -3,7 +3,9 @@
 
 喂食照 JE 的 DogFoodItem / HorseFeedItem：右键驯服的生物，回满血并得到状态效果，吃掉手里一份（狗粮还给一个碗，创造模式不耗）。
 JE 是在"玩家右键实体"的事件里直接处理并取消，这里同样用 PlayerInteractServerEvent，不再借原版的治疗 / 繁殖组件
-（那条路只在生物满血时才触发喂食事件，也只认马和狼）。喂食规则与吸引 / 讨食的组件都在 Shared/Data/Mobs.py。
+（那条路只在生物满血时才触发喂食事件，也只认马和狼）。右键事件只在目标对手里的物品有交互时才来，
+所以马、狼身上加了 bribeable 记号（见 Shared/Data/Mobs.py 开头的说明），否则能吃的狗粮会被玩家吃掉、马饲料没有任何反应。
+喂食规则与吸引 / 讨食的组件都在 Shared/Data/Mobs.py。
 """
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, GetCarriedItem, GetEngineTypeStr
@@ -29,14 +31,15 @@ def _isTamed(entityId):
 
 @registerHandler("PlayerInteractServerEvent", match=FEED_USERS)
 def OnFeedTamedAnimal(args):
-    # 右键驯服的目标：回满血、加状态效果、吃掉一份，并取消原版对这次右键的处理（JE 同样取消，不骑也不开背包）
+    # 右键驯服的目标：回满血、加状态效果、吃掉一份，并取消原版对这次右键的处理（JE 同样取消，不骑也不开背包）。
+    # 这种物品对这种生物的右键一律由这里接管：没驯服的什么都不发生（JE 也是），也不让 bribeable 记号白白吃掉物品
     playerId = args["playerId"]
     victimId = args["victimId"]
     feed = feedFor(args["itemDict"]["newItemName"], GetEngineTypeStr(victimId))
-    if feed is None or not _isTamed(victimId):
+    if feed is None:
         return
     args["cancel"] = True
-    if SetPlayerUsedCD(playerId) is True:
+    if not _isTamed(victimId) or SetPlayerUsedCD(playerId) is True:
         return
     compFactory.CreateAttr(victimId).ResetToMaxValue(HEALTH)
     effectComp = compFactory.CreateEffect(victimId)
