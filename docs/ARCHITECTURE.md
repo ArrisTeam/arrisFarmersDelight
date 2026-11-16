@@ -9,7 +9,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
   Data/                 纯数据表：Cooking  Cutting  CookingPotRecipes  Farming  Food  Blocks  Effects  Mobs  GuideBook
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
-                        PotStation（厨锅站点：份数、放料、按配方把料摆进几格、取回、星级与提示文字）
+                        PotStation（厨锅站点：份数、放料、按配方把料摆进几格、取回、徽章与提示文字）
+                        PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）
 Api/
@@ -21,6 +22,7 @@ Server/                 服务端
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
+  HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
@@ -33,7 +35,8 @@ Compat/
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
                         BoardLogic（服务端）+ BoardView（客户端）= 切菜板站点；
-                        PotLogic + PotSync（服务端）+ PotView + PotSpoon（客户端）= 厨锅站点；未安装则不做任何事
+                        PotLogic + PotSync（服务端）+ PotView + PotSpoon（客户端）= 厨锅站点；
+                        PanLogic（服务端）+ PanView + PanGesture（客户端）= 煎锅站点；未安装则不做任何事
 ```
 
 ## 分层与导入规则（tests/test_architecture.py 守着）
