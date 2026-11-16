@@ -178,7 +178,8 @@ def testTheBoardMakesItOnABowlOutOfTheNineJavaIngredients():
     dishes = [dish for dish in Dishes.DishList if dish["result"][0] == _name("stage0")]
     assert len(dishes) == 1 and dishes[0]["count"] == 1, "无序配方只有一条做法"
     assert sorted(dishes[0]["ingredients"]) == sorted(ingredients + [("minecraft:bowl", 0)])
-    assert Rules.isDishResult(_name("stage0")) and Rules.blocksAtTable(_name("stage0")), "它是砧板菜，工作台要拦"
+    grid = tuple(sorted(name for name, _aux in ingredients + [("minecraft:bowl", 0)]))
+    assert Rules.isDishResult(_name("stage0")) and Rules.isDishCraft(_name("stage0"), grid), "它是砧板菜，工作台摆出这条配方要拦"
     assert Rules.isBase(("minecraft:bowl", 0))
     layers = [("minecraft:bowl", 0)]
     for kind in ingredients:
@@ -186,8 +187,10 @@ def testTheBoardMakesItOnABowlOutOfTheNineJavaIngredients():
         assert Rules.fitsNext(layers, kind), kind
         layers.append(kind)
     assert Rules.completed(layers)["result"] == (_name("stage0"), 0)
-    # 蜂蜜瓶的玻璃瓶和工作台一样还给厨师
-    assert Rules.containerOf(_name("stage0")) == {"itemName": "minecraft:glass_bottle", "count": 1, "auxValue": 0}
+    # 蜂蜜瓶的玻璃瓶还给厨师（JE 的合成剩余物；工作台上由 Server/CraftReturns.py 按生成的表补还）
+    assert dishes[0]["extras"] == [("minecraft:glass_bottle", 0, 1)] and dishes[0]["keeps"] == []
+    returns = fdtest.load("Shared.Data.CraftReturns").CraftReturns[_name("stage0")]
+    assert len(returns) == 1 and returns[0]["returns"] == {"minecraft:honey_bottle": "minecraft:glass_bottle"}
 
 
 # ---- 盛菜 ----
