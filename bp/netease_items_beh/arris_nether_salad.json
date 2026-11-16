@@ -22,7 +22,7 @@
                 "using_converts_to": "minecraft:bowl"
             },
             "minecraft:max_stack_size": 16,
-            "minecraft:use_duration": 30.0
+            "minecraft:use_duration": 32
         },
         "description": {
             "category": "arris_farmers_delight",

@@ -18,7 +18,7 @@
                 "value": "§9瞬间恢复少量生命值"
             },
             "minecraft:max_stack_size": 16,
-            "minecraft:use_duration": 30.0
+            "minecraft:use_duration": 32
         },
         "description": {
             "category": "arris_farmers_delight",

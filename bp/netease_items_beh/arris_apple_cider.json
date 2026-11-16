@@ -13,12 +13,12 @@
                     }
                 ],
                 "using_converts_to": "minecraft:glass_bottle"
-            },            
+            },
             "netease:customtips": {
                 "value": "§9伤害吸收 (01:00)"
             },
             "minecraft:max_stack_size": 16,
-            "minecraft:use_duration": 30.0
+            "minecraft:use_duration": 32
         },
         "description": {
             "category": "arris_farmers_delight",

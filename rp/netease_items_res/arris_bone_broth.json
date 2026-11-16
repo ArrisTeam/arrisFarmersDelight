@@ -2,6 +2,7 @@
     "format_version": "1.10",
     "minecraft:item": {
         "components": {
+            "minecraft:use_animation": "drink",
             "minecraft:icon": "arris:bone_broth"
         },
         "description": {
