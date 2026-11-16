@@ -121,6 +121,8 @@ class PotLogicMixin(object):
         hand.clock.attend(now)
         station = self.station
         PotLook.attend(station.dimensionId, station.pos, station.users)
+        if self.wanted is not None and not any(Rules.keyOf(item) for item in PotContainer.inputs(station.dimensionId, station.pos)):
+            self.wanted = None            # 料被煮光了（站点收不到格变化）：书里点过的不再算数（PotLogic.tick 里的 wanted = null）
         if self._unsorted:
             self._unsorted = False
             self._shareOut()

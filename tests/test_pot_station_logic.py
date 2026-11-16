@@ -203,6 +203,22 @@ def testTheBookPutsWholeSetsFromTheInventoryAndLaysThemOut():
     assert K.shape(K.cells())[:2] == [(TOMATO, 17), (TOMATO, 17)]
 
 
+def testWhatTheBookPickedIsForgottenWhenTheFoodIsCookedAwayWithoutAnySlotChange():
+    # PotLogic.java:154-156：tick 每刻查，锅里一件料也没有就忘掉 wanted；料被烹饪煮光时站点收不到格变化，shareOut 不会跑
+    manager, data = K.setup()
+    fake.give("a", 9, TOMATO, 20)
+    K.opened(manager)
+    assert K.do(manager, "a", K.custom("bookFill", key=K.sauceIndex(), sets=1))
+    logic = manager.stations[(0, POT)].logic
+    assert logic.wanted == K.sauceIndex()
+    manager.tick(0.05)
+    assert logic.wanted == K.sauceIndex(), "锅里还有料：还算数"
+    for index in range(6):
+        fake.containers[(0, POT)][index] = None    # 煮光了：直接把格子清掉，站点没有收到格变化
+    manager.tick(0.05)
+    assert logic.wanted is None, "锅空了：不再优先摆书里点过的那道"
+
+
 def testTheBookTakesOnlyWholeSetsAndNothingWhenThePotHoldsFoodTheDishDoesNotUse():
     manager, data = K.setup()
     fake.give("a", 9, TOMATO, 7)
