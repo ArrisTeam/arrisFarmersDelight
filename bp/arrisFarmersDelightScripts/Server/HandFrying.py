@@ -63,6 +63,8 @@ def byFarmersDelight(dimensionId, blockPos, blockEntityData=None):
     if hand is not None:
         hand.frying.farmersDelightsWay()
         save(hand, blockEntityData)
+    elif blockEntityData is not None and blockEntityData[SAVE_KEY]:
+        blockEntityData[SAVE_KEY] = None            # 重启之后还没人读过的存档：这锅归 FD 了，别让它之后又被读回来
 
 
 def fry(hand, dimensionId, blockPos, blockEntityData, dt, fireAspect=0):

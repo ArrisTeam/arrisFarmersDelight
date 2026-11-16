@@ -308,6 +308,17 @@ def testASavedPanKeepsFryingAfterARestart():
     assert reloaded.frying.byHand and near(reloaded.frying.down, saved["down"]) and reloaded.frying.batch == 2, "读回来接着煎"
 
 
+def testFarmersDelightsOwnRightClickAfterARestartDropsTheOldSave():
+    manager, data = P.setup()
+    data["cookingDict"] = {"newItemName": BEEF, "newAuxValue": 0, "count": 2}
+    data["panFrying"] = {"byHand": True, "down": 0.5, "up": 0.0, "batch": 2}
+    HandFrying.byFarmersDelight(0, P.PAN, data)                 # 重启后还没人读过存档，玩家用 FD 原样的右键把牛肉取走再放别的
+    assert data["panFrying"] is None, "存档作废：这锅归 FD 了"
+    data["cookingDict"] = {"newItemName": PORK, "newAuxValue": 0, "count": 1}
+    hand = HandFrying.handOf(0, P.PAN, data)
+    assert not hand.frying.byHand and hand.frying.down == 0.0, "之后读不回旧的进度"
+
+
 def testAnEmptiedPanForgetsItsProgress():
     manager, data = P.setup()
     P.opened(manager)

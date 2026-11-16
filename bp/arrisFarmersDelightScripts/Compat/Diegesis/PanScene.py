@@ -120,17 +120,17 @@ class PanScene(object):
         model.pan(pan.rot[0], (pan.pos[0] - 8.0, pan.pos[1], pan.pos[2] - 8.0))
         model.glow(show.handleOutlined(self.hovered))
         model.oil(show.oil.puddles())
+        itemComp = compFactory.CreateItem(levelId)
         for name, node in show.nodes.items():
             if name != "pan":
-                self._prop(name, pan, node)
+                self._prop(itemComp, name, pan, node)
 
     # ---------------------------------------------------------------- 掉落物
 
-    def _prop(self, name, pan, node):
+    def _prop(self, itemComp, name, pan, node):
         item = node.item if node.visible else None
         kind = (item["newItemName"], item.get("newAuxValue") or 0) if item else None
         prop = self.props.get(name)
-        itemComp = compFactory.CreateItem(levelId)
         if prop is not None and prop[1] != kind:
             itemComp.DeleteClientDropItemEntity(prop[0])
             del self.props[name]
