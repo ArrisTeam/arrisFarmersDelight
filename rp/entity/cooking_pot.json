@@ -5,11 +5,13 @@
       "identifier": "arris:cooking_pot",
       "materials": {
         "default": "entity_alphatest",
-        "broth": "arris_pot_broth"
+        "broth": "arris_pot_broth",
+        "glow": "arris_pot_glow"
       },
       "textures": {
         "default": "textures/entity/cooking_pot",
-        "broth": "textures/entity/cooking_pot_broth"
+        "broth": "textures/entity/cooking_pot_broth",
+        "glow": "textures/entity/cooking_pot_glow"
       },
       "geometry": {
         "default": "geometry.cooking_pot"
@@ -23,7 +25,8 @@
       },
       "render_controllers": [
         "controller.render.arris_cooking_pot",
-        "controller.render.arris_cooking_pot_broth"
+        "controller.render.arris_cooking_pot_broth",
+        "controller.render.arris_cooking_pot_glow"
       ],
       "particle_effects": {
         "steam_0":  "arris:steam_0",
@@ -43,7 +46,8 @@
           "variable.mod_spoon_z = 0.0;",
           "variable.mod_spoon_rx = 0.0;",
           "variable.mod_spoon_ry = 0.0;",
-          "variable.mod_spoon_rz = -22.5;"
+          "variable.mod_spoon_rz = -22.5;",
+          "variable.mod_spoon_lit = 0.0;"
         ],
         "animate": [
           {

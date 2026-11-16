@@ -16,7 +16,29 @@
 					"broth": false
 				},
 				{
+					"ladle_glow": false
+				},
+				{
 					"lid": "variable.mod_open < 0.5"
+				}
+			]
+		},
+		"controller.render.arris_cooking_pot_glow": {
+			"geometry": "Geometry.default",
+			"materials": [
+				{
+					"*": "Material.glow"
+				}
+			],
+			"textures": [
+				"Texture.glow"
+			],
+			"part_visibility": [
+				{
+					"*": false
+				},
+				{
+					"ladle_glow": "variable.mod_open > 0.5 && variable.mod_spoon_lit > 0.5"
 				}
 			]
 		},

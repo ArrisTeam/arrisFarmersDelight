@@ -3,7 +3,7 @@
 
 模型（rp/entity/cooking_pot.json）缺省是合着盖的农夫乐事原样；场景接管之后 mod_open = 1：盖子收起，液面那一层露出来。
 - molang：variable.mod_open、mod_level（液面比锅底内面高多少像素，0..6.5）、mod_spoon_x/y/z 与 mod_spoon_rx/ry/rz
-  （ladle 骨骼的位移和欧拉角，换算在 Shared/Rules/PotModelMath.py）；
+  （ladle 骨骼的位移和欧拉角，换算在 Shared/Rules/PotModelMath.py）、mod_spoon_lit（勺子描一圈亮边：光标在柄上、能抓）；
 - 着色器（rp/shaders/glsl/arris_pot_broth_vertex.glsl / _fragment.glsl）的四组数经 SetBlockEntityExtraUniforms 给：
   1 = (r, g, b, a) 汤色与浓度，2 = (mottle 的 255 档 + edgeBoil 的小数, 汤转过的弧度, 碎料的钟, 液面比内胆中心高多少像素)，
   3 = 两个水波，每个两个数：位置（x + 128 z，各按 1/16 像素取整）和"强度的百分数 + 年龄（秒）"，
@@ -88,6 +88,10 @@ class PotModel(object):
             self._set("variable.mod_spoon_" + axis, value)
         for axis, value in zip("xyz", rotation):
             self._set("variable.mod_spoon_r" + axis, value)
+
+    def glow(self, lit):
+        """勺子描不描亮边（Diegesis 的 hover outline：光标下能用的东西描出轮廓；这里是 ladle_glow 骨骼，一层反面的壳）。"""
+        self._set("variable.mod_spoon_lit", 1.0 if lit else 0.0)
 
     def ripple(self, x, z, strength):
         """液面上 (x, z)（锅自己的坐标，像素）起一个水波，strength 是 JE 的水波高度（0.09 .. 0.5）。"""

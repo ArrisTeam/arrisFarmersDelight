@@ -256,6 +256,25 @@
 					]
 				},
 				{
+					"name": "ladle_glow",
+					"parent": "ladle",
+					"pivot": [-8, 3, 8],
+					"cubes": [
+						{
+							"origin": [-9.08, 2.92, 6.92],
+							"size": [2.16, 12.16, 2.16],
+							"uv": {
+								"north": {"uv": [0, 0], "uv_size": [1, 1]},
+								"east": {"uv": [0, 0], "uv_size": [1, 1]},
+								"south": {"uv": [0, 0], "uv_size": [1, 1]},
+								"west": {"uv": [0, 0], "uv_size": [1, 1]},
+								"up": {"uv": [0, 0], "uv_size": [1, 1]},
+								"down": {"uv": [0, 0], "uv_size": [1, 1]}
+							}
+						}
+					]
+				},
+				{
 					"name": "broth",
 					"parent": "pot",
 					"pivot": [-8, 2, 8],

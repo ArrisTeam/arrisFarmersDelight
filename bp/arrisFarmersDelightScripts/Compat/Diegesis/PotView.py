@@ -4,7 +4,8 @@
 对应 Hands-On Delight：client/PotBehavior.java 的 onEvent 和只给本人看的部分。锅里的画面（汤面、漂着的料、勺子、气泡、声音）
 是谁都看得见的世界场景（PotScene.py），这里只把本人的手交给它，并照 JE 的规矩把点击变成动作：
 - 机位、飞入照 HoD 的 scenes/cooking_pot.json：相机 (8, 41, -21) 看 (8, 6.5, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；
-- 勺子只能抓露在锅沿上面的柄：按住拖动搅，一按一松不到 0.3 秒勺子留在手里随光标搅，再按一下放下。勺尖由场景按 HoD 的
+- 勺子只能抓露在锅沿上面的柄（场景文件里 ladle 的碰撞盒，锅里那段杆不算）：手空着、光标在柄上时整根勺子描一圈亮边
+  （Diegesis 的 hover outline）；按住拖动搅，一按一松不到 0.3 秒勺子留在手里随光标搅，再按一下放下。勺尖由场景按 HoD 的
   手感算，每 0.12 秒报一次服务端（stir，世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）；
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
   （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
@@ -65,6 +66,7 @@ class PotViewMixin(object):
         scene, self.scene = self.scene, None
         if scene is not None:
             scene.hand, scene.aim, scene.onSend, scene.startsOf = False, None, None, None
+            scene.model.glow(False)
 
     def onState(self, changes):
         BookSources.refresh(self.view)
@@ -78,6 +80,7 @@ class PotViewMixin(object):
         self.clock += dt
         if self.scene is not None:
             self.hud.frame(dt)
+            self.scene.model.glow(self.hover[0] == "ladle" and self.view.hand is None and not self.scene.hand)
 
     # ---------------------------------------------------------------- 坐标
 
