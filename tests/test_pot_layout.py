@@ -157,5 +157,71 @@ def testPlanFillPicksTheWayThatMakesTheMostAndStaysWithWhatLiesInThePot():
     assert beef in kinds and mince not in kinds and sets == 1, "锅里已有牛肉：只能走牛肉那种写法"
 
 
+
+def _stackOf(key):
+    """离线的堆叠上限（引擎里是 GetItemBasicInfo 给的）：桶一个、蛋和蜂蜜瓶 16，其余 64。"""
+    return 1 if key[0].endswith("_bucket") else (16 if key[0] in ("minecraft:egg", "minecraft:honey_bottle") else 64)
+
+
+def _thrown(kinds):
+    """扔进去的样子：同种的叠在一起，一格一堆（StationAudit.thrown）。"""
+    cells = []
+    for key, count in kinds:
+        while count > 0:
+            cells.append(_item(key, min(count, _stackOf(key))))
+            count -= _stackOf(key)
+    return cells
+
+
+def _auditOne(recipe, variant, failures):
+    """一道菜的一种写法照 StationAudit 过一遍：一份、两份、三份扔进去（同种叠在一格），选出的菜摆开之后锅读得懂，一份时摆出来正是它自己；
+    书里点这道、背包够两份：放得进去、摆出来是它自己、锅读得懂。装不下的（奶桶叠不起来）按 JE 的容忍跳过。"""
+    parts, order = {}, []
+    for key in variant:
+        key = (key[0], key[1])
+        if key not in parts:
+            parts[key] = 0
+            order.append(key)
+        parts[key] += 1
+    name, wanted = recipe["CookResult"][0], sorted((key[0], key[1]) for key in variant)
+    for times in (1, 2, 3):
+        kinds = [(key, parts[key] * times) for key in order]
+        thrown = _thrown(kinds)
+        if len(thrown) > Layout.INPUT_SLOTS:
+            continue
+        choice = Layout.choose(kinds, _stackOf, None, CookingPot.matchIndex(thrown), False)
+        label = "%s x%d" % (name, times)
+        if choice is None:
+            if Layout.fits(dict(kinds), parts, _stackOf):
+                failures.append(label + " 扔进去：装得下却什么也没选出来")
+            continue
+        laid, rest = Layout.lay(Layout.cellsOf(thrown), kinds, choice[1], _stackOf)
+        if rest or CookingPot.matchIndex(laid) is None:
+            failures.append(label + " 扔进去：摆成了锅读不懂的样子")
+        elif times == 1 and sorted(Layout.keyOf(cell) for cell in laid if cell) != wanted:
+            failures.append(label + " 扔进去：一份没有摆成它自己")
+    plan = Layout.planFill([variant], {}, dict((key, parts[key] * 2) for key in order), 2, _stackOf)
+    if plan is None:
+        failures.append(name + " 书里点：什么也没放进去")
+        return
+    each, sets = plan
+    laid, rest = Layout.lay([None] * Layout.INPUT_SLOTS, [(key, each[key] * sets) for key in order], each, _stackOf)
+    if rest or sorted(Layout.keyOf(cell) for cell in laid if cell) != wanted or CookingPot.matchIndex(laid) is None:
+        failures.append(name + " 书里点：没有摆成它自己")
+
+
+def testEveryDishCanBeMadeFromItsFoodThrownInAndPickedInTheBook():
+    # PotTests.everyDishFromItsFoodThrownIn（StationAudit）：配方表里的每道菜的每种写法都要做得出来；
+    # 以后加配方、改 choose / lay / planFill，这里先红，不要等玩家在世界里撞上
+    failures, audited = [], 0
+    for recipe in Recipes.CookingPotRecipeList:
+        for variant in recipe["Recipe"]:
+            if variant and len(set(variant)) <= Layout.INPUT_SLOTS and len(variant) <= Layout.INPUT_SLOTS:
+                audited += 1
+                _auditOne(recipe, variant, failures)
+    assert audited >= 100, audited
+    assert failures == [], "%d 条做不出来，头几条：%r" % (len(failures), failures[:5])
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
