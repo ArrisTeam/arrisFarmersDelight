@@ -19,7 +19,11 @@ _MUSHROOM_COLONIES = ("arris:red_mushroom_colony", "arris:brown_mushroom_colony"
 _RICE_UPPER = ("arris:rice_upper_crop_stage0", "arris:rice_upper_crop_stage1", "arris:rice_upper_crop_stage2",
                "arris:rice_upper_crop_stage3")
 _CROP_GROUND = ("minecraft:farmland", "arris:rich_soil_farmland_moist", "arris:rich_soil_farmland", "minecraft:grass_block")
-_RICE_GROUND = ("minecraft:farmland", "minecraft:grass_block", "minecraft:dirt")
+# 稻米脚下：JE 的 minecraft:dirt 方块标签（FD 把沃土也加了进去）加上耕地（RiceBlock.mayPlaceOn）
+_RICE_GROUND = ("minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mycelium",
+                "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots",
+                "arris:rich_soil", "minecraft:farmland", "arris:rich_soil_farmland", "arris:rich_soil_farmland_moist")
+_RICE_STAGES = ("arris:rice_stage0", "arris:rice_stage1", "arris:rice_stage2", "arris:rice_stage3")
 _MUSHROOM_GROUND = ("arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2",
                     "arris:organic_compost_stage3", "arris:rich_soil")
 # 破坏时有概率掉稻草的方块
@@ -44,9 +48,10 @@ def _setBlock(pos, name, dimensionId, handling=0):
 
 @registerHandler("BlockNeighborChangedServerEvent", match=cropsDict)
 def OnCropNeighborChanged(args):
-    # 下方不再是耕地 / 草方块时作物掉落
+    # 下方不再是耕地 / 草方块（稻米：泥土类 / 耕地，水下的草方块会退化成泥土）时作物掉落
     neighborPos = (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"])
-    if neighborPos == _below(args) and args["toBlockName"] not in _CROP_GROUND:
+    ground = _RICE_GROUND if args["blockName"] in _RICE_STAGES else _CROP_GROUND
+    if neighborPos == _below(args) and args["toBlockName"] not in ground:
         _setBlock((args["posX"], args["posY"], args["posZ"]), "minecraft:air", args["dimensionId"], handling=1)
 
 
@@ -141,11 +146,10 @@ def OnServerItemUse(args):
 
 def _plantRice(playerId, itemDict, blockName, face, pos, dimensionId):
     x, y, z = pos
-    if blockName not in ("minecraft:dirt", "minecraft:grass_block", "arris:rich_soil") or face != 1:
-        ShowTip(playerId, "水稻貌似无法种植在这个方块上...")
-        return
+    if blockName not in _RICE_GROUND or face != 1:
+        return                           # 和 JE 的 RiceItem 一样：不是泥土类 / 耕地的顶面就不提示
     if GetBlockName((x, y + 1, z), dimensionId) != "minecraft:water":
-        ShowTip(playerId, "水稻需要种植在静止的水中")
+        ShowTip(playerId, "这株作物很难在水洼外生存。")
         return
     SetNotCreateItem(playerId, itemDict)
     ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "dig.grass")
