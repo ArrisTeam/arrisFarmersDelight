@@ -4,20 +4,21 @@
 模型（rp/entity/cooking_pot.json）缺省是合着盖的农夫乐事原样；场景接管之后 mod_open = 1：盖子收起，液面那一层露出来。
 - molang：variable.mod_open、mod_level（液面比锅底内面高多少像素，0..6.5）、mod_spoon_x/y/z 与 mod_spoon_rx/ry/rz
   （ladle 骨骼的位移和欧拉角，换算在 Shared/Rules/PotModelMath.py）；
-- 着色器（rp/shaders/glsl/arris_pot_broth_fragment.glsl）的两组数经 SetBlockEntityExtraUniforms 给：
-  1 = (r, g, b, a) 汤色与浓度，2 = (mottle, turned, edgeBoil, 液面比内胆中心高多少像素)，
-  3、4 = 四个水波，每个两个数：位置（x + 128 z，各按 1/16 像素取整）和"强度的百分数 + 年龄（秒）"。
+- 着色器（rp/shaders/glsl/arris_pot_broth_vertex.glsl / _fragment.glsl）的四组数经 SetBlockEntityExtraUniforms 给：
+  1 = (r, g, b, a) 汤色与浓度，2 = (mottle 的 255 档 + edgeBoil 的小数, 汤转过的弧度, 碎料的钟, 液面比内胆中心高多少像素)，
+  3 = 两个水波，每个两个数：位置（x + 128 z，各按 1/16 像素取整）和"强度的百分数 + 年龄（秒）"，
+  4 = 煮好的汤里浮着的碎料的四个配料槽（碎料的钟和槽怎么打包见 Shared/Rules/PotPiecesLook.py）。
 值没变就不调引擎。方块实体在本端重建之后（刚进世界、区块重载）引擎那边的值全丢了、模型回到合着盖的样子，而且不一定有
 加载事件（实机：进世界十来秒后重建过一次，没有事件）：check() 隔一会儿读回 mod_open，对不上就 reset()，下一帧整份重推。
 """
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Rules import PotModelMath
+from ...Shared.Rules import PotModelMath, PotPiecesLook
 
 FLOOR_TOP = 2.0          # 锅底内面的高度（像素）
 TANK_MIDDLE = 5.25       # 内胆（2 .. 8.5）的中心高度
 EPSILON = 1.0e-3
-TURN = 2.0 * 3.14159265358979
-WAVES = 4
+MOTTLE_STEPS = 255.0     # mottle 取整到这么多档，edgeBoil 塞在它的小数里
+WAVES = 2
 WAVE_LIFE = 0.9          # 水波过了这么久就看不见了（着色器里 0.23 秒衰减到 1/e）
 
 
@@ -68,11 +69,17 @@ class PotModel(object):
     def open(self, opened):
         self._set("variable.mod_open", 1.0 if opened else 0.0)
 
-    def liquid(self, surface, color, mottle, turned, edgeBoil):
-        """surface：液面高度（像素，锅自己的坐标）；color：(r, g, b, a) 各 0..1（JE LiquidLook 的 ARGB）；turned：弧度。"""
+    def liquid(self, surface, color, mottle, turned, edgeBoil, pieces=0.0):
+        """surface：液面高度（像素，锅自己的坐标）；color：(r, g, b, a) 各 0..1（JE LiquidLook 的 ARGB）；turned：弧度；
+        pieces：碎料的钟（PiecesClock.packed()）。"""
         self._set("variable.mod_level", surface - FLOOR_TOP)
         self._uniform(1, color)
-        self._uniform(2, (mottle, turned % TURN, edgeBoil, surface - TANK_MIDDLE))
+        mottled = float(int(max(0.0, min(1.0, mottle)) * MOTTLE_STEPS + 0.5)) + max(0.0, min(0.99, edgeBoil))
+        self._uniform(2, (mottled, turned % PotPiecesLook.TURN_WRAP, pieces, surface - TANK_MIDDLE))
+
+    def slots(self, slots):
+        """汤里的碎料是哪几种配料切的（PotPiecesLook.dishSlots 的四个数）。"""
+        self._uniform(4, slots)
 
     def ladle(self, tip, turn=PotModelMath.IDENTITY):
         """tip：勺子下端在锅自己坐标里的位置（像素）；turn：相对靠着的样子又转了多少（3×3）。"""
@@ -101,5 +108,5 @@ class PotModel(object):
                 packed += [float(cellX + 128 * cellZ), float(int(strength * 100.0 + 0.5)) + min(age, 0.999)]
             else:
                 packed += [0.0, 0.0]
-        self._uniform(3, packed[0:4])
-        self._uniform(4, packed[4:8])
+        self._uniform(3, packed)
+

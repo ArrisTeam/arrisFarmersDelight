@@ -4,7 +4,7 @@
 对应 Hands-On Delight 的 client/PotBehavior.frame：JE 的场景 idle_visible，32 格内每个客户端都按同步来的状态自己算全部动作。
 这里每口加载着的厨锅一份（PotScenes.py 管登记和每帧调度）：状态来自服务端广播（Shared/Rules/PotLookState.py），
 动作照 HoD 的纯计算（Shared/Rules/HandsOn 的 PotLiquid / PotSpoonMotion / PotDrift），画法是
-- 方块实体模型：开盖、液面高度与汤色（自定义着色器）、勺子骨骼（PotModel.py）；
+- 方块实体模型：开盖、液面高度与汤色（自定义着色器）、煮好的汤里浮着的碎料、勺子骨骼（PotModel.py）；
 - 漂着的料：客户端掉落物，平躺在液面上绕圈；
 - 粒子、声音、一批煮好的收尾：PotSceneFx.py。
 全部用"锅自己的坐标"（像素，方块朝北时 +x 东、+z 南，锅心 (8, *, 8)），出手时按方块朝向换到世界。
@@ -18,8 +18,8 @@ from .PotSceneFx import SceneFx, play
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.BrothColors import PouredColors
 from ...Shared.Data.FoodColors import FoodColors
-from ...Shared.Rules import ItemPose, PotLookState, PotModelMath
-from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotLiquid, PotSpoonMotion
+from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook
+from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
 
 SLOTS = PotLookState.SLOTS
 ITEM_SCALE = 3.2 / ItemPose.ITEM_SPAN       # JE 的料是 3.2 像素见方
@@ -55,6 +55,8 @@ class PotScene(object):
         self.onSend = None
         self.startsOf = None                  # startsOf(件数) -> 一次放进好几件时各从哪飞进来（PotView 按屏幕底边算）
         self.brothOf = None                   # 菜名 -> 汤色 0xRRGGBB（PotScenes 装上）
+        self.pieces = PotPiecesLook.PiecesClock()
+        self.piecesShown = 0                  # 上回要浮几块：多出来的每块咕噜一声（PotBehavior.pieces）
 
     # ---------------------------------------------------------------- 状态
 
@@ -130,8 +132,11 @@ class PotScene(object):
         spoon.step(dt, self.clock, self.hand, look.stirring, self.aim if self.hand else None, synced, liquid.surfaceY())
         drift.step(dt, self.clock, present, liquid.surfaceY(), spoon.throughX, spoon.throughZ, spoon.grip, spoon.swirl,
                    spoon.swirlSign, random.random)
+        self._pieces(dt)
         self.model.open(True)
-        self.model.liquid(liquid.drawnSurfaceY(), PotLiquid.toUnit(liquid.color), liquid.mottle, liquid.turned, liquid.edgeBoil)
+        self.model.liquid(liquid.drawnSurfaceY(), PotLiquid.toUnit(liquid.color), liquid.mottle, liquid.turned, liquid.edgeBoil,
+                          self.pieces.packed())
+        self.model.slots(self.pieces.slots)
         self.model.ladle((8.0 + spoon.tipX, spoon.spoonEnd, 8.0 + spoon.tipZ), (spoon.rot[0:3], spoon.rot[3:6], spoon.rot[6:9]))
         if spoon.ripple:
             self.model.ripple(8.0 + spoon.rippleX, 8.0 + spoon.rippleZ, PotSpoonMotion.RIPPLE_STRENGTH)
@@ -145,6 +150,21 @@ class PotScene(object):
             wx, wz = PotModelMath.localToWorld(self.facing, spoon.sendX, spoon.sendZ)
             self.onSend(wx, wz, spoon.sendAt)
         return True
+
+    def _pieces(self, dt):
+        """煮好的汤里浮着的碎料：份数定块数，一块块冒上来，各敲一圈涟漪、咕噜一声；一批刚煮好时等料化完再冒。"""
+        meal = self.look.meal
+        name = meal["newItemName"] if meal else None
+        slots = PotPiecesLook.dishSlots(name) if name else PotPiecesLook.EMPTY
+        wanted = PotPiecesKinds.piecesCount(PotLookState.servingsOf(self.look)) if any(slots) else 0
+        if self.fx.finishing:
+            wanted = min(wanted, self.piecesShown)
+        elif wanted != self.piecesShown:
+            self.fx.sounds.blub(wanted - self.piecesShown)
+            self.piecesShown = wanted
+        for index in self.pieces.step(dt, wanted, name, slots):
+            x, z = PotPiecesLook.wayOf(index, self.liquid.turned % PotPiecesLook.TURN_WRAP)
+            self.model.ripple(8.0 + x, 8.0 + z, PotPiecesPiece.RISE_RING)
 
     def _moveProps(self, present):
         look, drift = self.look, self.drift

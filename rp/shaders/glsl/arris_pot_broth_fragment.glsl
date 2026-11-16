@@ -3,7 +3,9 @@
 // 厨锅的汤面（片元）：照 Diegesis 的 LiquidRenderer 逐格算。
 // 清水是一张平的面（surface）：贴着锅壁一圈亮线，斜着看映出天色；锅里有料、烧热之后是 16 x 16 格的一张（mottled）：
 // 每格按随汤转动的噪声分 7 档明暗，靠壁一圈偏亮，沿壁两格按节拍翻沫。颜色和各项强弱由脚本每帧经
-// SetBlockEntityExtraUniforms 给（Compat/Diegesis 的厨锅场景），贴图是 Diegesis 的 liquid.png（32 帧，每帧 0.1 秒）。
+// SetBlockEntityExtraUniforms 给（Compat/Diegesis 的厨锅场景）。贴图 32 x 512（tools/gen_pot_broth.py）：左 16 列是 Diegesis 的
+// liquid.png（32 帧，每帧 0.1 秒），第 16..23 列从上到下是六张 8 x 8 的碎料图案。同一个骨骼里的碎料面片也走这里：
+// 位置、图案号、颜色由顶点着色器算好（v_piece / v_tint），这里只取图案的一格、染色。
 precision highp float;
 
 #include "fragmentVersionCentroidUV.h"
@@ -16,15 +18,18 @@ LAYOUT_BINDING(0) uniform sampler2D TEXTURE_0;
 
 // (r, g, b, a)：汤色与"浓度"（JE LiquidLook 的 ARGB，各 0..1）
 uniform vec4 EXTRA_ACTOR_UNIFORM1;
-// (mottle 0..1, turned 弧度, edgeBoil 0..1, 液面比内胆中心高多少像素)
+// (mottle 的 255 档 + edgeBoil 的小数, 汤转过的弧度, 碎料的钟（顶点着色器用）, 液面比内胆中心高多少像素)
 uniform vec4 EXTRA_ACTOR_UNIFORM2;
-// 四个水波，每个两个数：位置（x、z 各按 1/16 像素取整，x + 128 z）和"强度的百分数 + 年龄（秒，不到 1）"
+// 两个水波，每个两个数：位置（x、z 各按 1/16 像素取整，x + 128 z）和"强度的百分数 + 年龄（秒，不到 1）"
 uniform vec4 EXTRA_ACTOR_UNIFORM3;
-uniform vec4 EXTRA_ACTOR_UNIFORM4;
 
 varying vec4 light;
 varying vec4 fogColor;
 varying vec3 v_rel;
+// 碎料：(图案里的 u, v, 图案号, 1)；汤面是 0
+varying vec4 v_piece;
+// 碎料：颜色和露出汤面多少
+varying vec4 v_tint;
 
 const float CELLS = 16.0;          // LiquidSim.WAKE_CELLS
 const float HALF = 4.0;            // 内胆半宽（像素）
@@ -45,6 +50,11 @@ const float WAVE_FADE = 0.23;
 const float WAVE_LIGHT = 6.0;      // MOTTLE_WAVE_LIGHT
 const float WAVE_STEPS = 8.0;      // WAKE_STEPS
 const vec2 LIGHT = vec2(-0.5, -0.6);   // 场景的光从镜头这一侧的左上方来（液面上的分量）
+// 贴图的布局：整张 32 x 512，汤面的纹理占左半，碎料图案 8 x 8 一张、从第 16 列起往下排
+const float SHEET_WIDE = 32.0;
+const float SHEET_HIGH = 512.0;
+const float BITS_U = 16.0;
+const float BIT = 8.0;
 const vec3 SKY = vec3(0.85, 0.93, 1.0);
 
 float hash(vec2 p) {
@@ -76,22 +86,33 @@ vec2 waveSlope(vec2 p, vec2 wave) {
 
 // 环的坡朝着光的一侧亮、背着的一侧暗，和整张面一样分档
 vec3 waveLit(vec3 rgb, vec2 p) {
-	vec2 slope = waveSlope(p, EXTRA_ACTOR_UNIFORM3.xy) + waveSlope(p, EXTRA_ACTOR_UNIFORM3.zw)
-		+ waveSlope(p, EXTRA_ACTOR_UNIFORM4.xy) + waveSlope(p, EXTRA_ACTOR_UNIFORM4.zw);
+	vec2 slope = waveSlope(p, EXTRA_ACTOR_UNIFORM3.xy) + waveSlope(p, EXTRA_ACTOR_UNIFORM3.zw);
 	float lit = clamp(dot(slope, LIGHT) * WAVE_LIGHT, -0.3, 0.45);
 	lit = floor(lit * WAVE_STEPS + 0.5) / WAVE_STEPS;
 	return rgb * (1.0 + min(0.0, lit)) + (1.0 - rgb) * max(0.0, lit);
 }
 
 void main() {
+	if (v_piece.w > 0.5) {
+		// 一块碎料：图案的一格（灰度）乘它的颜色；图案外面是透明的，面下的那部分被汤盖住
+		vec2 at = clamp(floor(v_piece.xy * BIT), 0.0, BIT - 1.0);
+		float kind = floor(v_piece.z + 0.5);
+		vec4 bit = texture2D(TEXTURE_0, vec2((BITS_U + at.x + 0.5) / SHEET_WIDE, (kind * BIT + at.y + 0.5) / SHEET_HIGH));
+		vec4 piece = vec4(v_tint.rgb * bit.rgb * light.rgb, bit.a * v_tint.a);
+		piece.rgb = mix(piece.rgb, fogColor.rgb, fogColor.a);
+		gl_FragColor = piece;
+		return;
+	}
+
 	vec3 tint = EXTRA_ACTOR_UNIFORM1.rgb;
 	float clearness = log(max(1.0 - EXTRA_ACTOR_UNIFORM1.a, 0.002));
-	float mottle = EXTRA_ACTOR_UNIFORM2.x;
+	float mottle = floor(EXTRA_ACTOR_UNIFORM2.x) / 255.0;
 	float turned = EXTRA_ACTOR_UNIFORM2.y;
-	float edgeBoil = EXTRA_ACTOR_UNIFORM2.z;
+	float edgeBoil = fract(EXTRA_ACTOR_UNIFORM2.x);
 	float above = EXTRA_ACTOR_UNIFORM2.w;
 
-	vec2 q = clamp(uv, 0.0, 0.9999);
+	// 几何里汤面的贴图坐标只占左上四分之一（右边留给碎料的面片）
+	vec2 q = clamp(uv * 2.0, 0.0, 0.9999);
 	vec2 p = q * (2.0 * HALF) - HALF;                  // 这一点离锅心多远（像素）
 	vec3 rgb;
 	float alpha = 1.0 - exp(clearness * SURFACE_PATH);
@@ -139,7 +160,7 @@ void main() {
 	// 贴图按位置取：16 像素见方的一帧盖住整个内胆还有余，只露出中间一块
 	vec2 guv = clamp(vec2(0.5 + (p.x + p.y * 0.5) / 16.0, 0.5 + (p.y + above) / 16.0), 0.02, 0.98);
 	float frame = floor(mod(TIME * 10.0, FRAMES));
-	vec4 grain = texture2D(TEXTURE_0, vec2(guv.x, (guv.y + frame) / FRAMES));
+	vec4 grain = texture2D(TEXTURE_0, vec2(guv.x * 0.5, (guv.y + frame) / FRAMES));
 
 	vec4 color = vec4(min(rgb, vec3(1.0)) * grain.rgb, clamp(alpha, 0.0, 1.0) * grain.a);
 	color.rgb *= light.rgb;

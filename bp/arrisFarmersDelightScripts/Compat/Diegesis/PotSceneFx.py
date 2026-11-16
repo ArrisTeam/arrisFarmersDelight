@@ -50,6 +50,11 @@ class SceneFx(object):
     def busy(self):
         return bool(self.pops) or self.finish is not None
 
+    @property
+    def finishing(self):
+        """一批刚煮好，料还在胀大缩没：碎料等它们走完才浮上来（PotFinish 的 waiting）。"""
+        return self.finish is not None and self.finish.waiting
+
     # ---------------------------------------------------------------- 每帧
 
     def step(self, dt, near):

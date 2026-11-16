@@ -4,7 +4,7 @@
 		"arris_pot_broth:entity": {
 			"vertexShader": "shaders/glsl/arris_pot_broth_vertex.glsl",
 			"fragmentShader": "shaders/glsl/arris_pot_broth_fragment.glsl",
-			"+states": [ "Blending", "DisableDepthWrite" ],
+			"+states": [ "Blending", "DisableDepthWrite", "DisableCulling" ],
 			"+defines": [ "USE_SKINNING" ]
 		}
 	}
