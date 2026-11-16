@@ -2,10 +2,14 @@
     "format_version": "1.10",
     "minecraft:item": {
         "components": {
-            "minecraft:max_damage": 1016,
+            "minecraft:max_damage": 2031,
             "minecraft:max_stack_size": 1,
+            "netease:fire_resistant": {
+                "value": true
+            },
             "netease:weapon": {
                 "attack_damage": 6,
+                "enchantment": 15,
                 "level": 3,
                 "type": "sword"
             }
