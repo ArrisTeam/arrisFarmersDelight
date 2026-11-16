@@ -33,6 +33,7 @@ from . import FoodBlocks  # noqa: F401
 from . import Storage  # noqa: F401
 from . import RopeAndNet  # noqa: F401
 from . import TatamiMats  # noqa: F401
+from . import RopeFences  # noqa: F401
 from . import FoodEffects  # noqa: F401
 from . import Livestock  # noqa: F401
 from . import Tools  # noqa: F401
