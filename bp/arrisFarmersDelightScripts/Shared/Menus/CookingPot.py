@@ -26,12 +26,17 @@ MAX_PICK = 4095
 # 开着的界面每这么多刻重读一次热源、进度、预览（它们由 Server/CookingPot.py 的 tick 在会话之外改；5 Hz，与烹饪的处理节拍一致）
 DATA_EVERY = 4
 
-_stateReader = [None]
+_stateReader, _takenHandler = [None], [None]
 
 
 def setStateReader(reader):
     """服务端登记读数函数 reader(实例键) -> {"heated": 布尔, "progress": 0-1, "preview": 物品堆或 None}（缺的键不发）。"""
     _stateReader[0] = reader
+
+
+def setTakenHandler(handler):
+    """服务端登记：成品格里的东西被拿走时 handler(玩家 id, 实例键, 物品堆) 记一笔（Server/CookingPotHost.py）。"""
+    _takenHandler[0] = handler
 
 
 def stateFrom(data, cookSeconds):
@@ -166,6 +171,11 @@ class CookingPotMenu(Menus.Menu):
         s.routes(*routes())
 
     # ---------------------------------------------------------------- 服务端：界面数据
+
+    def onTaken(self, session, ref, stack):
+        """成品格被拿走（点、Shift 点、丢出都算，FD 的 CookingPotResultSlot.onTake 一样）：交给服务端登记的处理。"""
+        if _takenHandler[0] is not None and ref[0] == OUTPUT:
+            _takenHandler[0](session.playerId, session.instance.key, stack)
 
     def dataValues(self, instance):
         read = _stateReader[0]

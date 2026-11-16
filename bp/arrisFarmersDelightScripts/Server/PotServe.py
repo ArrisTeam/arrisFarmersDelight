@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """PotServe - 盛菜：从锅里取一份、记"做过几份"、给经验；右键拿着容器直接盛（服务端）
 
-站点的盛出（Compat/Diegesis/PotScoop.py）、从产出格取走（PotLogic.onTaken）和右键盛（经典玩法是 Server/CookingPotHost.py；
+站点的盛出（Compat/Diegesis/PotScoop.py）、从产出格取走（PotLogic.onTaken；经典界面里取走是 takenFromMenu）和右键盛（经典玩法是 Server/CookingPotHost.py；
 前置包在场时是站点拒绝开站那一下，PotLogic.onOpen）共用这里。对应 FD 的 useHeldItemOnMeal / CookingPotBlock.use 与 HoD 的
 PotServing：手里拿着这道菜的容器（只比物品名）、锅里有煮好的菜：容器 -1，菜 -1 份，一份菜进背包（放不下掉在脚下），
 算"做过一份"（开第 2、3 颗星用），不给经验（FD 的右键盛也不给）。站点的盛出和从产出格取走才给经验（HoD 的 served）。
@@ -40,6 +40,13 @@ def served(playerId, dimensionId, blockEntityData, dish, count):
     where = compFactory.CreatePos(playerId).GetFootPos()
     if where is not None and blockEntityData is not None:
         PotContainer.awardExperience(blockEntityData, where, dimensionId)
+
+
+def takenFromMenu(playerId, dimensionId, blockPos, stack):
+    """经典界面（dolorContainer）里成品格被拿走了 stack：FD 的 CookingPotResultSlot.onTake 会 onCraftedBy，HoD 的星星读"任何方式做出
+    的份数"，所以和站点里取走一样记做过几份、给还没给的经验（PotLogic.onTaken）。"""
+    if stack and stack.get("newItemName"):
+        served(playerId, dimensionId, GetBlockEntityData(dimensionId, blockPos), stack, stack.get("count") or 1)
 
 
 def serveByHand(playerId, dimensionId, blockPos):

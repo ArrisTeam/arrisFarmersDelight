@@ -505,6 +505,26 @@ def testActionsOnlyTakeValuesFromTheirSchema():
     assert len(menu.actions["pick"].fields) == 1 and len(menu.actions["search"].fields) == 1
 
 
+def testWhatIsTakenFromTheResultSlotIsHandedToTheServersTakenHandler():
+    class Instance(object):
+        key = "0:10:64:10"
+
+    class Session(object):
+        playerId, instance = "a", Instance()
+
+    heard = []
+    PotMenu.setTakenHandler(lambda playerId, key, stack: heard.append((playerId, key, stack)))
+    try:
+        menu, stack = _menu(), _item("arris:dumplings", 3)
+        menu.onTaken(Session(), (PotMenu.OUTPUT, 0), stack)
+        assert heard == [("a", "0:10:64:10", stack)], "成品格拿走的：玩家、实例键、拿走的那一堆"
+        menu.onTaken(Session(), (PotMenu.INGREDIENTS, 0), stack)
+        assert len(heard) == 1, "别的格子不算"
+    finally:
+        PotMenu.setTakenHandler(None)
+    _menu().onTaken(Session(), (PotMenu.OUTPUT, 0), stack)      # 没登记处理（离线）：什么都不做
+
+
 def testCompiledLayoutIsRegisteredForBothProfiles():
     table = fdtest.load("dolorLayouts").LAYOUTS
     layout = table[PotMenu.MENU]

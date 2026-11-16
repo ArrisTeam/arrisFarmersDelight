@@ -104,6 +104,18 @@ def testTheServedSlotIsTakeOnlyAndTakingFromItCountsAsServed():
     assert not K.do(manager, "a", K.click(K.slot(0, "served"))), "只能取，放不回去"
 
 
+def testTakingFromTheClassicScreensResultSlotCountsAsServedToo():
+    # FD 的 CookingPotResultSlot.onTake -> onCraftedBy、HoD 的 openStars 读"任何方式做出的份数"：经典界面里取走也要记
+    manager, data = K.setup()
+    assert HandCooking.madeOf("a", "arris:dumplings") == 0
+    K.PotServe.takenFromMenu("a", 0, POT, {"newItemName": "arris:dumplings", "newAuxValue": 0, "count": 3, "userData": {}})
+    assert HandCooking.madeOf("a", "arris:dumplings") == 3
+    K.PotServe.takenFromMenu("a", 0, POT, {"newItemName": "arris:dumplings", "newAuxValue": 0, "count": 2, "userData": {}})
+    assert HandCooking.madeOf("a", "arris:dumplings") == 5, "再取走的接着记"
+    K.PotServe.takenFromMenu("a", 0, POT, None)
+    assert HandCooking.madeMap("a") == {"arris:dumplings": 5}, "没有东西不记"
+
+
 def testScoopingWithTheBowlsInHandTakesOneServingAPieceAndTheLastBowlHoldsTheDish():
     manager, data = K.setup()
     K.setMeal(SAUCE, 3, data)

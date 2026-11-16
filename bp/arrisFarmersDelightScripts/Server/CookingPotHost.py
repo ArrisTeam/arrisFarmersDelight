@@ -34,6 +34,13 @@ class CookingPotHost(Block.Host):
         return Block.OPEN if DOLOR_SCREEN else Block.PASS
 
 
+def taken(playerId, key, stack):
+    """经典界面里成品格被拿走了（PotMenu.onTaken）：算盛出，记做过几份（Server/PotServe.py）。"""
+    place = Block.parseKey(key)
+    if place is not None:
+        PotServe.takenFromMenu(playerId, place[0], place[1], stack)
+
+
 def readState(key):
     """界面数据：读厨锅的方块实体数据换成热源、进度、预览（换算见 PotMenu.stateFrom）；读不到（区块没加载）时什么都不给。"""
     place = Block.parseKey(key)
@@ -42,5 +49,6 @@ def readState(key):
 
 
 PotMenu.setStateReader(readState)
+PotMenu.setTakenHandler(taken)
 Api.registerContainerType(Api.ContainerType(CONTAINER_TYPE, "tile.arris:cooking_pot.name", PotMenu.MENU,
                                             host=CookingPotHost((COOKING_POT,))))
