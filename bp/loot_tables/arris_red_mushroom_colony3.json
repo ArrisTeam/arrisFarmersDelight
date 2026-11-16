@@ -1,22 +1,46 @@
 {
     "pools": [
         {
+            "rolls": 1,
             "entries": [
                 {
+                    "type": "item",
+                    "name": "minecraft:red_mushroom",
                     "functions": [
                         {
-                            "count": {
-                                "max": 5,
-                                "min": 5
-                            },
-                            "function": "set_count"
+                            "function": "set_count",
+                            "count": 5
+                        },
+                        {
+                            "function": "set_count",
+                            "count": 0,
+                            "conditions": [
+                                {
+                                    "condition": "match_tool",
+                                    "item": "minecraft:shears",
+                                    "count": 1
+                                }
+                            ]
                         }
-                    ],
-                    "name": "minecraft:red_mushroom",
-                    "type": "item"
+                    ]
+                }
+            ]
+        },
+        {
+            "rolls": 1,
+            "conditions": [
+                {
+                    "condition": "match_tool",
+                    "item": "minecraft:shears",
+                    "count": 1
                 }
             ],
-            "rolls": 1
+            "entries": [
+                {
+                    "type": "item",
+                    "name": "arris:red_mushroom_colony"
+                }
+            ]
         }
     ]
 }

@@ -42,7 +42,7 @@
         "permutations": [
             {
                 "components": {
-                    "minecraft:loot": "loot_tables/arris_brown_mushroom_colony0.json",
+                    "minecraft:loot": "loot_tables/arris_brown_mushroom_colony_sprout.json",
                     "minecraft:material_instances": {
                         "*": {
                             "ambient_occlusion": false,
@@ -68,7 +68,7 @@
             },
             {
                 "components": {
-                    "minecraft:loot": "loot_tables/arris_brown_mushroom_colony0.json",
+                    "minecraft:loot": "loot_tables/arris_brown_mushroom_colony_sprout.json",
                     "minecraft:material_instances": {
                         "*": {
                             "ambient_occlusion": false,
