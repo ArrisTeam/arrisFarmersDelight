@@ -69,6 +69,7 @@ FoodColors = {
     'arris:netherite_knife': 0x432D36,
     'arris:noodle_soup': 0x90752D,
     'arris:onion': 0x937D44,
+    'arris:onion_soup': 0x886830,
     'arris:pasta_with_meatballs': 0x9B5C2E,
     'arris:pasta_with_mutton_chop': 0x926E3E,
     'arris:pie_crust': 0xBA894D,

@@ -1,0 +1,13 @@
+{
+    "format_version": "1.10",
+    "minecraft:item": {
+        "components": {
+            "minecraft:icon": "arris:onion_soup"
+        },
+        "description": {
+            "category": "Items",
+            "identifier": "arris:onion_soup",
+            "register_to_create_menu": true
+        }
+    }
+}

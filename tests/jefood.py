@@ -76,6 +76,7 @@ FOODS = {
     "fish_stew": (12, 0.8, 32, "bowl", False, 16),
     "chicken_soup": (12, 0.8, 32, "bowl", False, 16),
     "fried_rice": (12, 0.8, 32, "bowl", False, 16),
+    "onion_soup": (12, 0.8, 32, "bowl", False, 16),
     "pumpkin_soup": (14, 0.75, 32, "bowl", False, 16),
     "baked_cod_stew": (14, 0.75, 32, "bowl", False, 16),
     "noodle_soup": (14, 0.75, 32, "bowl", False, 16),
@@ -110,7 +111,7 @@ def _give(effects, *names):
 _give([("absorption", 60, 0, 1.0)], "apple_cider")
 _give([(NOURISHMENT, 30, 0, 1.0)], "cooked_rice")
 _give([(NOURISHMENT, 60, 0, 1.0)], "bone_broth", "bacon_and_eggs", "ratatouille")
-_give([(NOURISHMENT, 180, 0, 1.0)], "cookbeef_stew", "vegetable_soup", "fish_stew", "chicken_soup", "fried_rice",
+_give([(NOURISHMENT, 180, 0, 1.0)], "onion_soup", "cookbeef_stew", "vegetable_soup", "fish_stew", "chicken_soup", "fried_rice",
       "steak_and_potatoes", "pasta_with_meatballs", "pasta_with_mutton_chop", "mushroom_rice", "grilled_salmon")
 _give([(NOURISHMENT, 300, 0, 1.0)], "pumpkin_soup", "baked_cod_stew", "noodle_soup", "roasted_mutton_chops",
       "vegetable_noodles", "squid_ink_pasta", "roast_chicken", "stuffed_pumpkin", "honey_glazed_ham", "shepherds_pie")

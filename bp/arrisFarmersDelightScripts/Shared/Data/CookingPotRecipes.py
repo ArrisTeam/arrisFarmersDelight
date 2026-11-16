@@ -94,6 +94,8 @@ CookingPotRecipeList = [
      "CookResult": ("arris:fish_stew", 0), "Vessel": _BOWL, "PushItem": [], "text": "鱼肉炖"},
     {"Recipe": _ways("arris:pumpkin_slice", _CABBAGE, _RAW_PORK, _MILK),
      "CookResult": ("arris:pumpkin_soup", 0), "Vessel": _BOWL, "PushItem": [], "text": "南瓜汤"},
+    {"Recipe": _ways("arris:onion", "arris:onion", "minecraft:bread", _MILK),
+     "CookResult": ("arris:onion_soup", 0), "Vessel": _BOWL, "PushItem": [], "text": "洋葱汤"},
     {"Recipe": _ways(_RAW_COD, "minecraft:potato", "minecraft:egg", "arris:tomato"),
      "CookResult": ("arris:baked_cod_stew", 0), "Vessel": _BOWL, "PushItem": [], "text": "烘焙鳕鱼炖"},
     {"Recipe": _ways("arris:raw_pasta", "minecraft:egg", "minecraft:dried_kelp", _RAW_PORK),

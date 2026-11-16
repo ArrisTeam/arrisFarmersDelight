@@ -211,6 +211,9 @@
         "arris:pumpkin_soup": {
             "textures": "textures/items/pumpkin_soup"
         },
+        "arris:onion_soup": {
+            "textures": "textures/items/onion_soup"
+        },
         "arris:ratatouille": {
             "textures": "textures/items/ratatouille"
         },
