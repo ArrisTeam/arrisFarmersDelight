@@ -32,6 +32,11 @@ def _at(value):
     return round(min(16.0, max(0.0, float(value))), 3)
 
 
+def _name(value):
+    """事件走线格式只收 str：py2 里下游包加的配方、引擎给的名字可能是 unicode。"""
+    return value.encode("utf-8") if not isinstance(value, str) and hasattr(value, "encode") else value
+
+
 def refuse(logic):
     logic.station.effect("refused", {})
     return True
@@ -41,9 +46,9 @@ def _look(logic, data, mark, tool, item, recipe):
     """chopped 的载荷：落在哪、哪一刀的线、什么工具、切的什么、怎么切（刀 / 削皮 / 劈 / 砸 / 铲 / 撬 / 剪）、是不是方块、切出什么（客户端放声音、飞碎屑用）。
     at / at_x / yaw 来自客户端，只当画碎屑的位置，夹进板面。"""
     out = {"at": _at(data["at"]) if _number(data.get("at")) else 8.0, "spot": round(logic.cut.spots[mark], 4),
-           "angle": round(logic.cut.angles[mark], 4), "tool": tool["newItemName"], "item": item["newItemName"],
+           "angle": round(logic.cut.angles[mark], 4), "tool": _name(tool["newItemName"]), "item": _name(item["newItemName"]),
            "yaw": data["yaw"] if data.get("yaw") in YAWS else 0, "stroke": Rules.strokeOf(recipe),
-           "block": logic.env().typeOf(item) == "block", "yields": [entry["itemName"] for entry in recipe["itemList"]][:MOST_YIELDS]}
+           "block": logic.env().typeOf(item) == "block", "yields": [_name(entry["itemName"]) for entry in recipe["itemList"]][:MOST_YIELDS]}
     if _number(data.get("at_x")):
         out["at_x"] = _at(data["at_x"])
     return out

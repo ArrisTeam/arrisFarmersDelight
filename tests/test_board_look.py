@@ -123,6 +123,25 @@ def testAnAssembledDishIsBroadcastWithItsFinishButNotItsLayers():
         BoardLook.enable(False)
 
 
+def testNamesInTheBroadcastAreAlwaysPlainStrEvenForARecipeWithUnicodeNames():
+    """py2 里下游包加的配方（从 JSON 读来的）名字可能是 unicode，事件走线格式只收 str：整个 chopped 被丢掉的话，站点里的人连一刀的动画都没有。"""
+    cutting = K.potfake.load("Shared.Data.Cutting")
+    manager, data = _setup()
+    cutting.CuttingBoardDict[("x:thing", 0)] = {"itemList": [{"itemName": u"x:piece", "count": 2}], "tool": cutting.knifeList}
+    try:
+        K.opened(manager)
+        assert _place(manager, "x:thing", 1)
+        _knife()
+        assert _chop(manager)
+        look = [look for look in _looks("b") if look["event"] == "chopped"][0]
+        assert look["yields"] == ["x:piece"] and all(type(name) is str for name in look["yields"] + [look["tool"], look["item"]]), look
+        assert "chopped" in [name for name, _data in K.effects()], "站点里的人也收到了这一刀"
+        assert K.count("x:piece") == 2
+    finally:
+        del cutting.CuttingBoardDict[("x:thing", 0)]
+        BoardLook.enable(False)
+
+
 def testTheServerPlaysNoFixedBoardSoundsAnyMore():
     """原来服务端对所有人放刀声（不分工具）、放 / 插 dig.wood、取 armor.equip_leather、做成 random.pop；现在由两边的客户端按声音表放。"""
     manager, data = _setup()
