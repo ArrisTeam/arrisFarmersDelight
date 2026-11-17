@@ -138,5 +138,22 @@ def testDishLayersStackOnTheBoardAndTheDishLiesAlone():
     done = BD.layout(BD.KIND_BOARD, dict(items, D=dish), lambda item: "", (3, 64, 3))
     assert len(done) == 1 and done[0].item["newItemName"] == "arris:egg_sandwich"
 
+def testLiquidLayersAreNotDrawnAndEggLayersAreDrawnOpenedLikeAtTheStation():
+    """站点里手倒完、磕完以后：液体层什么也不画（容器走了）、蛋层是打开的蛋；没开站点时板上的展示也是这样，开关站那几层不跳（BoardHands.lookOf）。"""
+    wheat = _item("minecraft:wheat", 3)
+    items = {"0": None, BD.layerKey(0): wheat, BD.layerKey(1): _item("minecraft:milk_bucket", 3), BD.layerKey(2): _item("minecraft:egg", 3),
+             BD.layerKey(3): _item("minecraft:sugar", 3), BD.layerKey(4): _item("minecraft:water_bucket", 3)}
+    placements = BD.layout(BD.KIND_BOARD, items, lambda item: "", (3, 64, 3))
+    assert [p.item["newItemName"] for p in placements] == ["minecraft:wheat", "arris:egg_look_0", "minecraft:sugar"], "奶桶、水桶不画；蛋是打开的蛋；别的原样"
+    assert all(p.item["count"] == 1 and p.flat for p in placements)
+    heights = [p.center[1] for p in placements]
+    base = BD.BOARD_TOP + 0.02
+    expected = [base + index * 0.65 / 16.0 for index in (0, 2, 3)]
+    assert all(abs(got - want) < 0.003 for got, want in zip(heights, expected)), "液体层虽然不画，它那一层的高度照留：后面的层不往下掉"
+    assert [p.scale for p in placements] == [BD.BoardScene.scaleOf(10.0), BD.BoardScene.scaleOf(9.0), BD.BoardScene.scaleOf(9.0)]
+    bottom = BD.layout(BD.KIND_BOARD, {BD.layerKey(0): _item("minecraft:milk_bucket", 2), BD.layerKey(1): wheat}, lambda item: "", (3, 64, 3))
+    assert [p.item["newItemName"] for p in bottom] == ["minecraft:milk_bucket", "minecraft:wheat"], "第 0 层是底座：容器照旧画"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

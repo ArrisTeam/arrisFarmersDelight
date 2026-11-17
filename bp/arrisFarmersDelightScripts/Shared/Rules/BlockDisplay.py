@@ -9,12 +9,13 @@
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
 - 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物；位置和每件的转角跟着炉灶朝向转（StoveFacing：FD 的
   DefaultStoveRenderer 按 FACING 转、HoD 的炉灶站点是 Orientation.BLOCK），开着站点、谁都看得见的场景、这里的展示是同一套。
-- 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。
+- 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。液体层（奶桶、蜂蜜瓶……）不画、蛋层画成打开的蛋：和站点里手倒完、磕完以后的样子
+  一个样（HandsOn/BoardHands.lookOf），关站、开站时那几层不跳。
 """
 import math
 
 from . import StoveFacing
-from .HandsOn import BoardScene, StoveLayout
+from .HandsOn import BoardHands, BoardScene, StoveLayout
 from .Ticks import posHash
 
 KIND_BOARD = "board"
@@ -114,10 +115,13 @@ def boardDishLayout(layers, dish, seed, offset=(0.0, 0.0)):
         return [Placement(_single(dish), (cx, BOARD_TOP + 0.02, cz), True, (1.0, 0.0), 0.0, FOOD_SCALE)]
     placements = []
     for index, layer in enumerate(item for item in layers if isItem(item)):
+        look = BoardHands.lookOf(index, layer)
+        if look is None:
+            continue                                  # 倒进去的液体：容器倒完就走了，这一层什么也不画（层的高度照留）
         pose = BoardScene.layerPose(index)
         angle = math.radians(pose["turn"])
         center = (cx + pose["x"] / 16.0, BOARD_TOP + 0.02 + pose["y"] / 16.0, cz + pose["z"] / 16.0)
-        placements.append(Placement(_single(layer), center, True, (math.cos(angle), math.sin(angle)), 0.0,
+        placements.append(Placement(_single(look), center, True, (math.cos(angle), math.sin(angle)), 0.0,
                                     BoardScene.scaleOf(BoardScene.layerSize(index))))
     return placements
 
