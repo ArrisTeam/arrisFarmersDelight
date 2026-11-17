@@ -44,6 +44,7 @@ class FakeWorld(object):
         self.blocks = {}        # (dim, x, y, z) -> {"name", "states", "data"}
         self.itemEntities = {}  # id -> itemDict
         self.spawned = []       # [(itemDict, dim, pos)]
+        self.motions = {}       # 掉落物实体 id -> SetMotion 给的初速（每刻几格；id 是 CreateEngineItemEntity 返回的 item1000、item1001……）
         self.destroyed = []     # 被 DestroyEntity 删掉的实体 id
         self.sounds = []        # [(声音名, 位置)]
         self.soundArgs = []     # [Call("*", "OnPlaySound", ...) 的完整载荷]，和 sounds 一一对应：要看音量 / 音调时读它
@@ -72,11 +73,15 @@ class FakeWorld(object):
                                    "fire": False, "owner": None, "effects": [], "saturation": 5.0}
         return self.players[playerId]
 
-    def setBlock(self, x, y, z, name, states=None, data=None, dim=DIMENSION):
-        self.blocks[(dim, x, y, z)] = {"name": name, "states": states, "data": data}
+    def setBlock(self, x, y, z, name, states=None, data=None, dim=DIMENSION, aux=0):
+        self.blocks[(dim, x, y, z)] = {"name": name, "states": states, "data": data, "aux": aux}
 
     def blockName(self, x, y, z, dim=DIMENSION):
         return self.blocks.get((dim, x, y, z), {"name": "minecraft:air"})["name"]
+
+    def blockAux(self, x, y, z, dim=DIMENSION):
+        """方块的 aux（只有朝向状态的方块就是 direction 状态 0 南 1 西 2 北 3 东）；没给的是 0。"""
+        return self.blocks.get((dim, x, y, z), {}).get("aux", 0)
 
     def runTimers(self):
         timers, self.timers = self.timers, []
@@ -133,6 +138,9 @@ class FakeWorld(object):
                 "AddTimer": lambda seconds, func, *params: self.timers.append((seconds, func, params)),
                 "GetGameRulesInfoServer": lambda: {"option_info": {}}}
 
+    def _ActorMotion(self, target):
+        return {"SetMotion": lambda motion: self.motions.__setitem__(target, tuple(motion)) or True}
+
     def _ModAttr(self, target):
         return {"GetAttr": lambda key: self.modAttr.get((target, key)),
                 "SetAttr": lambda key, value: self.modAttr.__setitem__((target, key), value)}
@@ -187,7 +195,8 @@ class FakeWorld(object):
             self.blocks[(dim,) + tuple(pos)] = {"name": blockDict["name"], "states": None, "data": None}
             return True
         return {"SetBlockNew": setBlockNew,
-                "GetBlockNew": lambda pos, dim=DIMENSION: {"name": self.blockName(pos[0], pos[1], pos[2], dim), "aux": 0}}
+                "GetBlockNew": lambda pos, dim=DIMENSION: {"name": self.blockName(pos[0], pos[1], pos[2], dim),
+                                                           "aux": self.blockAux(pos[0], pos[1], pos[2], dim)}}
 
     def _BlockState(self, target):
         def getStates(pos, dim=DIMENSION):
@@ -247,6 +256,7 @@ def install():
     module.DestroyEntity = destroyEntity
     module.GetBlockEntityData = lambda dim, pos: (world.blocks.get((dim,) + tuple(pos)) or {}).get("data")
     module.GetBlockName = lambda pos, dim: world.blockName(pos[0], pos[1], pos[2], dim)
+    module.GetBlockAux = lambda pos, dim: world.blockAux(pos[0], pos[1], pos[2], dim)
     module.GetEngineTypeStr = lambda entityId: (world.entities.get(entityId) or {}).get("type")
     module.GetCarriedItem = lambda playerId, getUserData=False: world.comp("Item", playerId).GetPlayerItem(0, 0, getUserData)
     module.SetCarriedItem = lambda playerId, itemDict: world.comp("Item", playerId).SetEntityItem(0, itemDict, 0)

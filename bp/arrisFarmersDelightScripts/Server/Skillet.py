@@ -5,7 +5,9 @@
 锅里的东西只存在方块实体数据 cookingDict，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 煎锅站点（场景交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
 一件煎多久照 JE（SkilletBlock.getSkilletCookingTime：6 秒，方块里那件煎锅带火焰附加 I 是 4 秒、II 起 3 秒）；
-含水的煎锅（液体层有水）不能煎：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE SkilletBlockEntity.cookingTick）。
+含水的煎锅（液体层有水）不能煎：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE SkilletBlockEntity.cookingTick：ItemUtils.dropItems，
+每叠从方块里随机一点掉出来）。煎好的一件从锅心往上、往侧面带着初速弹出去（cookAndOutputItems:102-105，Helpers/Drops.PopFromPan）；拆了锅锅里的东西也是随机散出来
+（SkilletBlock.onRemove 的 Containers.dropItemStack，Helpers/Drops.ScatterItem）。
 右键放食物照 JE 的 addItemToCook：锅空着、或锅里是同一种（数据也一样）就放进去，叠到一叠的最大数量为止、剩下的留在手里，每放进去一次这一件的计时从头算；
 别的放不进去，什么也不发生。放进去响一声挂灯，锅原本是空的又在热源上再响一声下料，空手取回不响（Shared/Rules/SkilletRules 的 SOUND_*）。
 """
@@ -14,7 +16,8 @@ import time
 from . import HandFrying, PanLook, SkilletItem
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, PublishSkillet
-from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
+from .Helpers.Drops import PopFromPan, ScatterItem
+from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetBlockName, GetCarriedItem, SetCarriedItem, \
     ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
@@ -143,7 +146,7 @@ def _floodDrop(blockEntityData, dimensionId, blockPos):
     if not cookingDict:
         return
     HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
-    System.CreateEngineItemEntity(cookingDict, dimensionId, (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5))
+    ScatterItem(dimensionId, blockPos, cookingDict)
     blockEntityData["cookingDict"] = None
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
     PublishSkillet(dimensionId, blockPos, None)
@@ -159,13 +162,13 @@ def OnSkilletTick(args):
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
-    _cook(args, dimensionId, blockPos, blockEntityData)
+    _cook(dimensionId, blockPos, blockEntityData)
     if PanLook.enabled():
         # 世界外观广播（前置包在场时才开）：锅里的东西、热源、两面熟度变了就发给附近的人
         PanLook.tick(dimensionId, blockPos, blockEntityData, HandFrying.handOf(dimensionId, blockPos, blockEntityData), now)
 
 
-def _cook(args, dimensionId, blockPos, blockEntityData):
+def _cook(dimensionId, blockPos, blockEntityData):
     if _isWaterlogged(dimensionId, blockPos):
         _floodDrop(blockEntityData, dimensionId, blockPos)
         return
@@ -188,7 +191,7 @@ def _cook(args, dimensionId, blockPos, blockEntityData):
     cookingDict["count"] -= 1
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
     output = {"itemName": CanCookedFoodDict[cookingDict["newItemName"]], "auxValue": cookingDict.get("newAuxValue", 0), "count": 1}
-    System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 0.3, args["posZ"] + 0.5))
+    PopFromPan(dimensionId, blockPos, output)
     if cookingDict["count"] <= 0:
         blockEntityData["cookingDict"] = None
         PublishSkillet(dimensionId, blockPos, None)
@@ -210,7 +213,7 @@ def OnSkilletRemove(args):
         DropLegacyDisplays(blockEntityData)
         cookingDict = blockEntityData["cookingDict"]
         if cookingDict:
-            System.CreateEngineItemEntity(cookingDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+            ScatterItem(dimensionId, blockPos, cookingDict)
         PublishSkillet(dimensionId, blockPos, None)
     # 方块的战利品表是空的，煎锅自己在这里掉（连耐久、附魔一起；方块实体丢了也掉一把新的，不能凭空没了）
     SkilletItem.dropStored(blockEntityData, dimensionId, blockPos)

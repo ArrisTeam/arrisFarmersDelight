@@ -2,7 +2,8 @@
 # runner: both
 """东西从方块里掉出来 / 弹出去（Shared/Rules/ItemDrops.py 的位置和初速，Server/Helpers/Drops.py 把它们交给引擎）对 JE：
 Containers.dropItemStack（ItemUtils.dropItems 对炉灶的每个烤位调它）：x、z 在 0.125 .. 0.875，y 在 0 .. 0.75，一次掉 10..30 个，初速三角分布（横向 0、竖直 0.2，偏差 0.11485）；
-FD 的 ItemUtils.spawnItemEntity 烤好弹出：横向高斯乘 0.01、往上 0.1。
+FD 的 ItemUtils.spawnItemEntity 烤好弹出：横向高斯乘 0.01、往上 0.1；砧板切出一件（CuttingBoardBlockEntity.java:89-92）：从板的 FACING 逆时针那一边、离中心 0.2、离底 0.2 弹出，
+初速 stepX * 0.2、0、stepZ * 0.2；煎锅煎好一件（SkilletBlockEntity.java:102-105）：从锅心上 0.3、FACING 顺时针那一边，初速 stepX * 0.08、0.25、stepZ * 0.08。
 """
 from __future__ import print_function
 
@@ -67,6 +68,48 @@ def testAPoppedItemRisesAtATenthWithAGaussianSidewaysSpeedOfAHundredth():
         assert y == 0.1 and abs(x) < 0.1 and abs(z) < 0.1
 
 
+# ---- 砧板切出来 / 煎锅煎好：往方块侧面弹，朝哪边看方块的朝向 ----
+
+CLOCKWISE = {"north": "east", "east": "south", "south": "west", "west": "north"}          # Direction.getClockWise
+COUNTER = dict((after, before) for before, after in CLOCKWISE.items())                    # Direction.getCounterClockWise
+STEP = {"north": (0, -1), "east": (1, 0), "south": (0, 1), "west": (-1, 0)}               # (getStepX, getStepZ)
+OPPOSITE = {"north": "south", "south": "north", "east": "west", "west": "east"}
+STATE = {0: "south", 1: "west", 2: "north", 3: "east"}                                    # netease:face_directional 的 direction 状态
+
+
+def _javaBoardSide(direction):
+    """JE 砧板的 FACING = context.getHorizontalDirection().getOpposite()，朝着放它的玩家 = direction 状态；弹向 FACING.getCounterClockWise()。"""
+    return STEP[COUNTER[STATE[direction]]]
+
+
+def _javaPanSide(direction):
+    """JE 煎锅的 FACING = context.getHorizontalDirection()（玩家面朝的方向），锅柄朝着玩家 = direction 状态，所以 FACING 是它的反方向；弹向 FACING.getClockWise()。"""
+    return STEP[CLOCKWISE[OPPOSITE[STATE[direction]]]]
+
+
+def testTheBoardPopsWhatItCutToTheCounterClockwiseSideOfItsFacing():
+    for direction in range(4):
+        dx, dz = _javaBoardSide(direction)
+        at, motion = Rules.boardPop(direction)
+        assert at == (0.5 + dx * 0.2, 0.2, 0.5 + dz * 0.2), (direction, at)
+        assert motion == (dx * 0.2, 0.0, dz * 0.2), (direction, motion)
+    assert [Rules.boardPop(direction)[1][::2] for direction in range(4)] == [(0.2, 0.0), (0.0, 0.2), (-0.2, 0.0), (0.0, -0.2)],         "玩家站在南边朝北放下的板（direction 南）：切出来的往东，也就是玩家的右手边"
+
+
+def testThePanPopsWhatItCookedUpAndToTheSideOfItsFacingClockwise():
+    for direction in range(4):
+        dx, dz = _javaPanSide(direction)
+        at, motion = Rules.panPop(direction)
+        assert at == (0.5, 0.3, 0.5), (direction, at)
+        assert motion == (dx * 0.08, 0.25, dz * 0.08), (direction, motion)
+
+
+def testTheBoardAndThePanThrowToTheSameHandSideForTheSamePlayerPosition():
+    """同一位玩家站在锅 / 板的同一侧放下它们（两个方块的 direction 状态一样），切出来的和煎好的往同一边弹。"""
+    for direction in range(4):
+        assert _javaBoardSide(direction) == _javaPanSide(direction), direction
+
+
 def testTheEngineGetsTheItemAtThePositionAndTheMotionAfterwards():
     fake.reset()
     entityId = Drops.PopItem(0, (1.5, 2.5, 3.5), {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 1}, (0.0, 0.1, 0.0))
@@ -83,6 +126,29 @@ def testNoMotionIsSetWhenTheEngineCreatedNoItem():
     finally:
         Drops.System.CreateEngineItemEntity = original
     assert fake.motions == {}
+
+
+def testPoppingFromTheBoardAndThePanReadsTheBlocksDirectionAndPlacesTheItemBesideItOrAboveIt():
+    for direction in range(4):
+        fake.reset()
+        fake.blockAux[(0, (10, 64, 10))] = direction
+        item = {"newItemName": "arris:cabbage_leaf", "newAuxValue": 0, "count": 2}
+        boardId = Drops.PopFromBoard(0, (10, 64, 10), item)
+        panId = Drops.PopFromPan(0, (10, 64, 10), item)
+        (_i, _d, boardAt), (_j, _e, panAt) = fake.spawned
+        dx, dz = _javaBoardSide(direction)
+        assert boardAt == (10.5 + dx * 0.2, 64.2, 10.5 + dz * 0.2) and fake.motions[boardId] == (dx * 0.2, 0.0, dz * 0.2), direction
+        assert panAt == (10.5, 64.3, 10.5) and fake.motions[panId] == (dx * 0.08, 0.25, dz * 0.08), direction
+
+
+def testTheHolidayCreatorsAuxOfADirectionIsReadToo():
+    """假日创造者实验玩法下 direction 1 / 2 / 3 的 aux 是 4 / 8 / 12：弹的方向照样对（读 aux 走 Placement.directionOfAux）。"""
+    for direction, aux in ((1, 4), (2, 8), (3, 12)):
+        fake.reset()
+        fake.blockAux[(0, (10, 64, 10))] = aux
+        Drops.PopFromBoard(0, (10, 64, 10), {"newItemName": "arris:cabbage_leaf", "newAuxValue": 0, "count": 1})
+        dx, dz = _javaBoardSide(direction)
+        assert list(fake.motions.values()) == [(dx * 0.2, 0.0, dz * 0.2)], direction
 
 
 def testScatterItemSplitsBigStacksIntoChunksAndKeepsTheirOtherKeys():

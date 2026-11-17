@@ -12,7 +12,7 @@ Frying.save / load）：服务器重启、区块卸载再加载之后接着煎�
 """
 from . import PanLook
 from .Helpers.BlockItems import PublishSkillet
-from .Helpers.Engine import System
+from .Helpers.Drops import PopFromPan
 from .Helpers.Player import GiveOrDropItem
 from ..Shared.Rules import HandsOnOptions as Options
 from ..Shared.Rules import PanStation
@@ -112,8 +112,7 @@ def _handOut(hand, dimensionId, blockPos, done):
     返回是不是给了厨师（客户端据此演东西抬起缩没，还是抛出锅外）。"""
     cook = _cookAt(hand)
     if cook is None:
-        x, y, z = blockPos
-        System.CreateEngineItemEntity(done, dimensionId, (x + 0.5, y + 0.3, z + 0.5))
+        PopFromPan(dimensionId, blockPos, done)                   # HoD 的 jumpOut：和 FD 的煎锅一样从锅里往侧面弹出去
         return False
     GiveOrDropItem(cook, done, dimensionId)
     return True

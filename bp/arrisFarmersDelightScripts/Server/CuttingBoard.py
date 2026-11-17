@@ -3,15 +3,17 @@
 
 照 JE（FD 的 CuttingBoardBlock.use）：板空着时手里什么都能整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
 板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）就当是拿工具来切：工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），
-带 chance 的产物按概率给。空手取回，创造模式取回的东西不给玩家（:68）。放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的
-FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
+带 chance 的产物按概率给，从板的侧面带着初速弹出去（CuttingBoardBlockEntity:89-92，Helpers/Drops.PopFromBoard）。空手取回，创造模式取回的东西不给玩家（:68）。
+放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的 FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
+拆了板：板上的东西从方块里随机一点掉出来（CuttingBoardBlock.onRemove 的 Containers.dropItemStack，Helpers/Drops.ScatterItem）。
 板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
 from .EventRegistry import registerHandler
 from .Helpers import BoardDish
 from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
-from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
+from .Helpers.Drops import PopFromBoard, ScatterItem
+from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
 from .Helpers.Items import CanStack, GetItemType, GetMaxStack, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
@@ -118,12 +120,10 @@ def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerI
 
 
 def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId):
-    """切一件：产物掉在板上方（带 chance 的按概率），飞碎屑、响切声，工具掉一点耐久，提示还剩几个。"""
-    x, y, z = blockPos
+    """切一件：产物从板的侧面弹出去（带 chance 的按概率；FD 的 spawnItemEntity，朝板的朝向逆时针那一边），飞碎屑、响切声，工具掉一点耐久，提示还剩几个。"""
     fortune = CuttingStation.fortuneOf(carriedDict)
     for name, aux, count in CuttingStation.resultsFor(result, 1, fortune=fortune):
-        System.CreateEngineItemEntity({"newItemName": name, "newAuxValue": aux, "count": count}, dimensionId,
-                                      (x + 0.5, y + 0.5, z + 0.5))
+        PopFromBoard(dimensionId, blockPos, {"newItemName": name, "newAuxValue": aux, "count": count})
     ToAllPlayerCrumbs(dimensionId, blockPos, cuttingDict["newItemName"])
     yields = [entry["itemName"] for entry in result["itemList"]]
     ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.processed(
@@ -150,6 +150,6 @@ def OnCuttingBoardRemove(args):
     DropLegacyDisplays(blockEntityData)
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
-        System.CreateEngineItemEntity(ItemData.restored(cuttingDict), dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+        ScatterItem(dimensionId, blockPos, ItemData.restored(cuttingDict))              # FD 的 Containers.dropItemStack：从方块里随机一点掉出来
     BoardDish.spill(dimensionId, blockPos, blockEntityData)
     PublishBoard(dimensionId, blockPos, None)
