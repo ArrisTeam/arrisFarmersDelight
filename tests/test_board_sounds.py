@@ -110,7 +110,8 @@ def testBadEventDataNeverRaises():
 
 def _names():
     names = set([Sounds.KNIFE_CUT, Sounds.AXE_STRIP, Sounds.SHOVEL_FLATTEN, Sounds.SHEEP_SHEAR, Sounds.BOARD_PLACE, Sounds.BOARD_CARVE,
-                 Sounds.BOARD_REMOVE, Sounds.WOOD_HIT, Sounds.ITEM_PICKUP])
+                 Sounds.BOARD_REMOVE, Sounds.WOOD_HIT, Sounds.ITEM_PICKUP, Sounds.BUCKET_EMPTY, Sounds.BOTTLE_EMPTY, Sounds.EGG_CRACK])
+    names.update(Sounds.HAND_SOUNDS.values())
     names.update(Sounds.HIT.values())
     names.update(Sounds.BREAK.values())
     return names

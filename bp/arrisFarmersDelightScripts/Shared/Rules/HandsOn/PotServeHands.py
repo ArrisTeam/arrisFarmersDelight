@@ -112,9 +112,10 @@ class Shake(object):
 
 class Crack(object):
     """蛋在锅沿敲开、蛋液落进汤里。start：手从哪来；rim：蛋最低点磕在哪（场景像素）；onto：蛋液落点 (x, _, z)；landY：液面；
-    sinks：蛋液落到面上后沉下去（打进汤里的蛋）还是留在原地等调用方接手；turn：蛋液绕竖轴躺着的度数。"""
+    sinks：蛋液落到面上后沉下去（打进汤里的蛋）还是留在原地等调用方接手；turn：蛋液绕竖轴躺着的度数；
+    liquid：落点是不是一个液面（JE 的 liquid 节点，砧板上打在食物上是 null）：不是就落下去不起涟漪、不溅水花、也没有锅里那一声噗。"""
 
-    def __init__(self, start, rim, onto, landY, size=EGG_SIZE, insideSize=EGG_INSIDE, sinks=True, yaw=0.0, turn=0.0):
+    def __init__(self, start, rim, onto, landY, size=EGG_SIZE, insideSize=EGG_INSIDE, sinks=True, yaw=0.0, turn=0.0, liquid=True):
         self.start = tuple(start)
         self.size = size
         self.insideSize = insideSize
@@ -124,6 +125,7 @@ class Crack(object):
         self.sinks = sinks
         self.yaw = yaw
         self.turn = turn
+        self.liquid = liquid
         self.age = 0.0
         self.knocked = self.opened = self.landed = self.done = False
 
@@ -191,10 +193,11 @@ class Crack(object):
         if not self.landed:
             self.landed = True
             events.append({"type": "shake", "node": "inside", "amount": 0.12, "seconds": 0.15})
-            events.append({"type": "ripple", "x": self.over[0], "z": self.over[2], "strength": 0.35})
-            events.append({"type": "splash", "count": 3, "pos": (self.over[0], land, self.over[2]), "rise": (0.0, 6.0, 0.0), "spread": 0.5,
-                           "color": SPLASH_EGG})
-            events.append(shotOf("plopEgg"))
+            if self.liquid:
+                events.append({"type": "ripple", "x": self.over[0], "z": self.over[2], "strength": 0.35})
+                events.append({"type": "splash", "count": 3, "pos": (self.over[0], land, self.over[2]), "rise": (0.0, 6.0, 0.0), "spread": 0.5,
+                               "color": SPLASH_EGG})
+                events.append(shotOf("plopEgg"))
         if not self.sinks:
             self.done = True
             return {"egg": hidden, "inside": self._inside((self.over[0], land, self.over[2]), 1.0, False)}, events

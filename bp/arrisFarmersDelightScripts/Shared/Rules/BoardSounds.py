@@ -10,11 +10,14 @@
     BOARD_PLACE / BOARD_CARVE  dig.wood（FD 的 place_item / carve_tool 就是原版木头的放置声）
     BOARD_REMOVE / WOOD_HIT    hit.wood（FD 的 remove_item 是原版木头的击打声）
     ITEM_PICKUP                random.pop
+    BUCKET_EMPTY / BOTTLE_EMPTY bucket.empty_water / bottle.empty（手倒液体层：KitchenMotions.Pour，岩浆桶也是水桶那一声）
+    TURTLE_EGG_CRACK           block.turtle_egg.crack（手磕蛋层：KitchenLooks.crack）
     被切东西的材质击打 / 破坏    hit.* / dig.*（按物品名里的词分类，认不出是木头，和 JE 的 material() 一样）
 随机的那一点音调由调用方传进来的 rng 给（测试里换成定值）。站点里的人（客户端 BoardView）和旁观的人（客户端 BoardWatch）用同一份，所以两边听到的一样。
 """
 import random
 
+from .HandsOn import BoardHands as Hands
 from .HandsOn import Cutting
 
 KNIFE_CUT = "ambient.cutting_board.knife"
@@ -26,6 +29,9 @@ BOARD_CARVE = "dig.wood"
 BOARD_REMOVE = "hit.wood"
 WOOD_HIT = "hit.wood"
 ITEM_PICKUP = "random.pop"
+BUCKET_EMPTY = "bucket.empty_water"
+BOTTLE_EMPTY = "bottle.empty"
+EGG_CRACK = "block.turtle_egg.crack"
 
 KNOCK = (WOOD_HIT, 0.25, 1.6)                   # 刀敲在食物上、没落在刀口线上（本人）
 BOUNCE = (WOOD_HIT, 0.4, 1.4)                   # 板不收：弹回的那一声（本人）
@@ -35,6 +41,12 @@ PICKUP_STROKE = (ITEM_PICKUP, 0.35, 1.3)        # 最后一刀：切好的东西
 CARVE = (BOARD_CARVE, 1.0, 0.8)                 # 插一把工具
 REMOVE = (BOARD_REMOVE, 0.6, 0.9)               # 拔出插着的工具
 ASSEMBLED = ((BOARD_PLACE, 0.8, 0.75), (ITEM_PICKUP, 0.35, 1.4))      # 做成一道菜
+POUR_BUCKET = (BUCKET_EMPTY, 0.45, 1.0)         # 手倒液体层：液体从桶里开始流（Pour:229-230）
+POUR_BOTTLE = (BOTTLE_EMPTY, 0.45, 1.0)         # 从瓶 / 碗里开始流
+EGG_KNOCK = (EGG_CRACK, 0.35, 1.5)              # 手磕蛋层：蛋磕在板沿上（KitchenLooks:115）
+EGG_LANDED = (BOARD_PLACE, 0.4, 1.4)            # 蛋液落到食物上、这一层露出来（BoardBehavior:2024）
+# 手的动作（PotServePour / PotServeHands）发的声音事件里的逻辑名 -> 基岩版的声音名；音量、音调事件自己带着（和上面几行同一个数）
+HAND_SOUNDS = {"bucket_empty": BUCKET_EMPTY, "bottle_empty": BOTTLE_EMPTY, "egg_crack": EGG_CRACK}
 
 # 被切的东西是什么做的（JE 取它的方块的 SoundType）：(材质, 名字里的词)，先到先得；黏土按砂砾算（JE 的 clay 就是砂砾的声音）
 _MATERIALS = (
@@ -60,6 +72,25 @@ def materialOf(itemName, yields=()):
             if any(key in words or (len(key) > 4 and any(key in word for word in words)) for key in keys):
                 return material
     return "wood"
+
+
+def handSound(event):
+    """手的动作发的 sound 事件（PotSounds.shotOf 的形状：name / volume / pitch）-> (声音名, 音量, 音调)；不认识的名字是 None。"""
+    name = HAND_SOUNDS.get(event.get("name"))
+    return (name, event["volume"], event["pitch"]) if name is not None else None
+
+
+def handSounds(data):
+    """放下一层之后手还要出的声音 [(延迟秒, (声音名, 音量, 音调))]。data 是 placed 效果：at 是层号、item 是放的什么。倒液体：液体开始流时一声（0.5 秒）；
+    磕蛋：磕在板沿上一声（0.36 秒）、蛋液落到食物上一声（0.9 秒）。旁观的人没有手的动画，只听这些；站点里的人从手的动作里听同样的。
+    底座、别的东西和坏数据是空表。"""
+    at, name = data.get("at"), data.get("item")
+    if isinstance(at, bool) or not isinstance(at, int) or not isinstance(name, (str, type(u""))):
+        return []
+    kind = Hands.kindOf(at, name)
+    if kind == Hands.POUR:
+        return [(Hands.flowAt(), POUR_BUCKET if Hands.isBucket(name) else POUR_BOTTLE)]
+    return [(Hands.knockAt(), EGG_KNOCK), (Hands.landsBy(), EGG_LANDED)] if kind == Hands.CRACK else []
 
 
 def snipBite(rng=random.random):
