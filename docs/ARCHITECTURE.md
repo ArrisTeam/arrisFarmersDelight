@@ -64,7 +64,7 @@ Server/                 服务端
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
   CropTicks FarmWorld   作物随机刻（照 JE 的生长概率）与它读写世界的那一层；OrganicCompost MushroomColony Straw 同属种植
-  HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送
+  HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送；料换了菜进度从头来（Shared/Rules/PotRecipeMemory），有人开着经典界面也按 FD 原样
   PotLook               厨锅的世界外观广播：锅里有什么、勺子在哪、煮到哪，发给 32 格内的人，静态部分写进方块实体数据
   PotServe              盛菜：取一份、记"做过几份"、给经验；主手拿着容器右键直接盛
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
@@ -75,7 +75,7 @@ Server/                 服务端
   PanLook StoveLook     煎锅 / 炉灶的世界外观广播：东西、两面烤到哪、翻面 / 取走 / 放不进 / 烤好的一次性事件，发给 32 格内的人（站点开不开着都一样），
                         新走进 32 格的人单发一份当前的、样子没变时每 5 秒再单发一份（广播丢了就这么补）、开站那一刻单发给开站的人
                         （Helpers/LookWatch：玩家位置快照 + 每口锅 / 灶一份"已经收到当前样子的人和时刻"）
-  CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数
+  CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数；宿主的 onViewers 告诉烹饪谁开着界面
   CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
   TableSync             下游在服务端追加的表发给客户端：玩家进服发一次累计的差异，之后每 5 秒看表变没变、补发（客户端的站点表现读的是客户端那一份表）
@@ -248,6 +248,8 @@ JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格
   （`arris_pot_meal|物品名|aux|份数`），悬停文字写进 `customTips`（JE 的"装有 N 份：" + 菜名，前面留着 `%name%%category%…` 那几个占位符）。
   玩家是创造模式时（`ServerPlayerTryDestroyBlockEvent` 记一笔）不掉；那一格这时是移动中的方块（活塞推着走）不算拆。
   和煎锅一样，命令 / 脚本把厨锅换掉也会掉一口锅（方块没了的事件里分不出是谁拆的）。
+- 拆锅时煮过几份还没领的经验在锅心（方块中心）弹出来（`OnCookingPotRemove` -> `PotContainer.awardExperience`，FD 的 `onRemove` 里 `getUsedRecipesAndPopExperience`）：
+  不看是谁拆的，创造模式拆也弹；那一格是移动中的方块（活塞推着走）不算拆，记着的份数留着。
 - 放置：引擎放方块的时候看不到物品，所以放置前（`ServerEntityTryPlaceBlockEvent`，`ModServer` 新挂的监听）读手里那口锅的 `extraId` 记一笔，
   方块实体建好（`ServerPlaceBlockEntityEvent`）时写进预览槽；记录按位置、5 秒过期（放置被取消就作废）。
 - 实机核对过（3.10）：装着 3 份番茄酱的厨锅拆掉，背包里是一口带 `extraId` 和"装有3份：番茄酱"的厨锅，没有散落的番茄酱、没有多掉一口锅；
