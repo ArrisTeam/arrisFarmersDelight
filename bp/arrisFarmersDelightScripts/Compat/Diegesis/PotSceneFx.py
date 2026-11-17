@@ -8,7 +8,7 @@ PotScene 每帧调 step；数都照 HoD 的纯计算（PotLiquid 的粒子速率
 import random
 
 from . import PotFx
-from ...Shared.Rules import PotLookState
+from ...Shared.Rules import PotLookState, SceneScatter
 from ...Shared.Rules.HandsOn import PotDrift, PotFinish, PotLiquid, PotServe, PotSounds
 
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
@@ -91,7 +91,7 @@ class SceneFx(object):
         scene, liquid = self.scene, self.scene.liquid
         surface = liquid.surfaceY()
         for _ in range(liquid.emitBubbles):
-            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), FLOOR + 0.2 + (surface - FLOOR - 0.2) * random.random())
+            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), SceneScatter.liquidBubbleHeight(FLOOR, surface, random.random()))
         for pop in list(self.pops):
             pop[0] -= dt
             if pop[0] <= 0.0:

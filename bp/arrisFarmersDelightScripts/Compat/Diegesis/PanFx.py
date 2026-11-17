@@ -7,15 +7,15 @@
     pan_smoke 贴锅面熟了冒的烟（steam 帧，染 58C8C6C2，1.8-2.6 像素，活 1.6-2.4 秒）-> arris_diegesis:steam
     steam / glint / dust                                                           -> 前置包同名的
     heat      热锅上的热浪（HoD 的 heat 四帧，染 48FFFFFF）                         -> arris:pan_heat（rp/particles/arris_pan_heat.json）
-位置的抖动、速度的抖动照 Diegesis 的 SceneParticles.spawn（位置每轴 gauss * spread，速度每轴 gauss * max(0.3, |v| * 0.25)）。
+位置的抖动、速度的抖动照 Diegesis 的 SceneParticles.spawn（位置每轴 gauss * spread，速度每轴 gauss * max(0.3, |v| * 0.25)，gauss 是 nextGaussian() * 0.5），
+算式在 Shared/Rules/SceneScatter（炉灶、厨锅场景也用它）。
 声音名 -> 基岩版的声音：煎锅自己的两条沿用 FD 的声音定义（自带 20 倍 / 2 倍的音量，这里除回去，和厨锅同一个做法），其余是原版的
 （挂灯 block.lantern.*、捡东西 random.pop、岩浆噗 liquid.lavapop、营火噼啪 block.campfire.crackle、蛋壳 block.turtle_egg.crack）。
 """
-import math
 import random
 
 from . import PotFx
-from ...Shared.Rules import PanModelMath, SoundMix
+from ...Shared.Rules import PanModelMath, SceneScatter, SoundMix
 from ...Shared.Rules.HandsOn.PotServeMath import rotateY
 
 SOUNDS = {      # HoD 的声音 -> 基岩版的声音名；定义里采样自带的音量 / 音调经 Shared/Rules/SoundMix 除回去（挂灯放置声原来没除，比 JE 高 1.1 倍）
@@ -37,10 +37,6 @@ STYLES = {      # 样式 -> (粒子, 缺省色 ARGB, 大小倍数, 活多久（�
     "dust": ("arris_diegesis:dust", 0x99C0B090, 1.0, None),
     "heat": (HEAT, 0x48FFFFFF, 3.5, (0.8, 1.3)),
 }
-
-
-def _gauss(spread):
-    return random.gauss(0.0, 1.0) * spread
 
 
 class PanFx(object):
@@ -74,10 +70,9 @@ class PanFx(object):
         argb = event["color"] or defaultColor
         rgb, alpha = argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0
         velocity = event["vel"]
-        jitter = max(0.3, math.sqrt(velocity[0] ** 2 + velocity[1] ** 2 + velocity[2] ** 2) * 0.25)
         for _ in range(int(event["count"])):
-            at = tuple(event["pos"][i] + _gauss(event["spread"]) for i in range(3))
-            speed = (velocity[0] + _gauss(jitter), velocity[1] + _gauss(jitter), velocity[2] + _gauss(jitter))
+            at = SceneScatter.spawnPoint(event["pos"], event["spread"])
+            speed = SceneScatter.spawnVelocity(velocity)
             vx, vz = rotateY((speed[0], 0.0, speed[2]), PanModelMath.worldYaw(self.facing))[::2]
             PotFx.particle(identifier, self.world(at), color=rgb, alpha=alpha, scale=scale, count=1,
                            life=random.uniform(*life) if life else None, velocity=(vx, speed[1], vz))

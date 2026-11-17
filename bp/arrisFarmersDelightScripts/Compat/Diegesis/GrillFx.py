@@ -11,12 +11,13 @@ glint 闪光，diegesisRp/particles）和本包 / 原版的声音。JE 的粒子
   照 PanFx.STYLES 的 heat），点着的烤架每秒 1.6 个，空烤架也有（JE 的 heat() 不看有没有东西）。
 声音是农夫乐事自己的煎锅声（rp/sounds/skillet）和原版的方块声，JE 用的灯笼的三种声音（LANTERN_STEP / PLACE / HIT）在基岩版里是 block.lantern.*、
 拾取声（ITEM_PICKUP）是 random.pop；定义里采样自带的音量（煎锅声 20 倍 / 2 倍）、音调（挂灯放置声 1.1 倍）经 Shared/Rules/SoundMix 除回去。
-放上去、取走、烤好、被拒的声音都在这里放（谁都听得见，不再靠服务端的世界广播）。粒子是一次性的：每颗按 spread 把速度各抖一点再放。
+放上去、取走、烤好、被拒的声音都在这里放（谁都听得见，不再靠服务端的世界广播）。粒子是一次性的：每颗的起点按 spread、初速按 max(0.3, |v| * 0.25) 各散一点再放
+（Diegesis 的 SceneParticles.spawn，算式在 Shared/Rules/SceneScatter）。
 """
 import random
 
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Rules import SoundMix
+from ...Shared.Rules import SceneScatter, SoundMix
 from ...Shared.Rules.HandsOn import StoveFx
 from .PanFx import PAN_SMOKE
 
@@ -87,6 +88,7 @@ def play(effects, where):
         identifier, color, alpha, scale, life = style
         base = where(effect.place, effect.offset)
         for _ in range(max(1, int(effect.count))):
-            jitter = [random.uniform(-effect.spread, effect.spread) for _ in range(3)] if effect.spread else [0.0, 0.0, 0.0]
-            velocity = tuple(effect.velocity[axis] + jitter[axis] for axis in range(3))
-            particle(identifier, base, color=color, alpha=alpha, scale=scale, count=1, life=life, velocity=velocity)
+            scatter = SceneScatter.spawnPoint((0.0, 0.0, 0.0), effect.spread)          # 像素；各轴同样的散布，炉灶朝哪都一样，不用跟着转
+            velocity = SceneScatter.spawnVelocity(effect.velocity)
+            at = tuple(base[axis] + scatter[axis] / 16.0 for axis in range(3))
+            particle(identifier, at, color=color, alpha=alpha, scale=scale, count=1, life=life, velocity=velocity)
