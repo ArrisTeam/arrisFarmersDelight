@@ -20,7 +20,8 @@
 
 食谱书的翻页箭头是 Minecraft Java 版原版书本界面的图（`assets/minecraft/textures/gui/book.png` 里的四格，Mojang 的素材）：JE 的
 Hands-On Delight 画的就是它，这里直接裁来用（`diegesisRp/textures/handson/ui/book_arrow_*.png`，`tools/gen_book_assets.py --arrows`）。
-本包只在网易版《我的世界》（正版代理）里分发使用。
+砧板刀口虚线的贴图 `rp/textures/particle/arris_board_mark.png` 也是 Java 版原版的 `assets/minecraft/textures/block/white_concrete.png`（Mojang 的素材）：HoD 的虚线贴的就是它，
+原样拷来。本包只在网易版《我的世界》（正版代理）里分发使用。
 
 两者的许可原文相同：
 

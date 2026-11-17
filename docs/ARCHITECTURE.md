@@ -106,7 +106,8 @@ Compat/
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
                         BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools / BoardEmit（服务端）+ BoardView + BoardDraw /
-                        BoardDrawEvents / BoardThing / BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter / BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
+                        BoardDrawEvents / BoardThing / BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardStand（立着的刀 / 工具，
+                        借来的半透明粒子）/ BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotPick + PotHud + PotOffer（客户端，开着站点的人：点击、拾取盒和
                         拿着东西点下去怎么办（盛 / 点锅口放进去，松手才发）、勺子在手里时的 busy() 和冻住的悬停、徽章和提示、悬着的容器和它浸汤的动作）= 厨锅站点；
