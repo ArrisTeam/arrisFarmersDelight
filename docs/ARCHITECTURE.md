@@ -115,7 +115,7 @@ Compat/
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotPick + PotHud + PotOffer（客户端，开着站点的人：点击、拾取盒和
                         拿着东西点下去怎么办（盛 / 点锅口放进去，松手才发）、勺子在手里时的 busy() 和冻住的悬停、徽章和提示、悬着的容器和它浸汤的动作）= 厨锅站点；
-                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands + PotBiome（客户端）= 谁都看得见的锅里场景：开盖、
+                        PotScenes + PotScene + PotProps + PotSceneFx + PotModel + PotFx + PotHands + PotBiome（客户端）= 谁都看得见的锅里场景：开盖、
                         汤面（清水按所在群系取色）、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
                         PanLogic（服务端）+ PanView（客户端，开着站点的人）+ PanScenes / PanScene / PanModel / PanFx（客户端，谁都看得见的
                         锅里场景：食物落进来、颠锅、油膜热气）= 煎锅站点，世界外观由 Server/PanLook 广播；
