@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """BoardDrawEvents - 砧板站点里板上东西的一次性动画：拿走、弹回、切开飘走、削皮升起、做成融掉弹出、凑成了落定、铲一铲缩一点、点到活上抖一下（客户端）
 
-从 BoardDraw.py 拆出来（Draw 的一个基类，用它的 ghosts / shown / layers / item / after / isBlock / surface / fromCursor）。
+从 BoardDraw.py 拆出来（Draw 的一个基类，用它的 ghosts / shown / layers / item / hand / after / isBlock / surface / fromCursor / fromPlayer）。
 对应 Hands-On Delight：client/BoardBehavior.java 的 taken / pulledOut / bounced / pop（654-727、1620-1652）、blockDone（1459-1475）、
-refresh 末尾凑成一道菜时各层落定（490-506）、drawWear（516-544）、impact 的 shake（1045-1047）。
+refresh 末尾凑成一道菜时各层落定（490-506）、drawWear（516-544）、impact 的 shake（1045-1047）、dress / arrives（1963-2027：液体层、蛋层交给手）。
 """
 from . import BoardFx
 from .BoardThing import FLAT, UPRIGHT
 from ...Shared.Rules import BoardSounds as Sounds
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
+from ...Shared.Rules.HandsOn import BoardHands as Hands
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
@@ -18,6 +19,29 @@ CLEARED_WINDOW = 1.0         # 层刚被清空这么久之内收到的 assembled
 
 
 class DrawEvents(object):
+    def _dress(self, thing, index, layer):
+        """第 index 层画成什么（dress，1963-1984）：液体层不画、蛋画成打开的蛋、别的原样（BoardHands.lookOf）；返回它躺的位置 (x, y, z)。"""
+        pose = Scene.layerPose(index)
+        look = Hands.lookOf(index, layer)
+        if look is None:
+            thing.blank()
+        else:
+            thing.set(look, FLAT, Scene.scaleOf(Scene.layerSize(index)), pose["turn"])
+        return (pose["x"], pose["y"], pose["z"])
+
+    def land(self, thing, home, index, name, fromPlayer, still):
+        """第 index 层（物品 name）放到位（arrives，1990-2034）：液体由手端着容器来倒、蛋由手来磕（still() 说这一层还在不在，蛋落下时才露出来），
+        别的从玩家那边飞来（fromPlayer）或从光标上方落下。"""
+        kind = Hands.kindOf(index, name)
+        if kind == Hands.POUR:
+            self.hand.pour(index, name, home, fromPlayer)
+        elif kind == Hands.CRACK:
+            self.hand.crack(index, name, thing, home, fromPlayer, still)
+        elif fromPlayer:
+            Motion.landFromPlayer(thing.mover, home, self.fromPlayer())
+        else:
+            Motion.land(thing.mover, home, self.fromCursor(home, Motion.DROP_HEIGHT))
+
     def _ghost(self, item, kind, scale, turn=0.0):
         self.ghost = (self.ghost + 1) % GHOSTS
         thing = self.ghosts[self.ghost]
@@ -68,21 +92,21 @@ class DrawEvents(object):
         """层凑成了菜（assembled 效果，状态已经是层清空、菜躺在板上）：made 是做成的各层（物品，底座在前）。板上原来就摆着的在原位，
         没摆过的（书里点的菜一气呵成：放好、做成）先从玩家那边一层隔一层飞来（JE 的 arrive）；都落了各层缩小沉进去，菜弹出来。
         返回各层都落完要多久：落完那一刻放做成的声音和面粉。"""
-        seen, arrive, order, homes = self._seen(), 0.0, 0, []
+        seen, arrive, order, homes = self._seen(), self.hand.remaining(), 0, []         # 手还在倒 / 磕的先等它放好（pourUntil，1526）
         self.item.hide()
         for index, layer in enumerate(made[:MOST_LAYERS]):
-            pose = Scene.layerPose(index)
             thing = self.layers[index]
-            thing.set(layer, FLAT, Scene.scaleOf(Scene.layerSize(index)), pose["turn"])
-            home = (pose["x"], pose["y"], pose["z"])
+            home = self._dress(thing, index, layer)
             homes.append((thing, home))
             if index < len(seen) and seen[index] == keyOf(layer):
-                thing.put(*home)
+                if not self.hand.pending(thing):
+                    thing.put(*home)                          # 蛋还在手上的这一层等蛋落下才露出来
                 continue
+            name = layer["newItemName"]
             delay, order = order * Motion.LAYER_STAGGER, order + 1
-            arrive = max(arrive, delay + Motion.PLAYER_LAND_TIME + Motion.SETTLE_TIME)
+            arrive = max(arrive, delay + Hands.takes(index, name))
             thing.hide()
-            self.after(delay, lambda t=thing, h=home: Motion.landFromPlayer(t.mover, h, self.fromPlayer()))
+            self.after(delay, lambda t=thing, h=home, i=index, n=name: self.land(t, h, i, n, True, lambda: True))
         self.melting = arrive + Motion.MELT_TIME + 0.05
         board = self.shown["board"]
         lift = 0.0 if not board or board[2] == "block" else Scene.pileLift(board[1])

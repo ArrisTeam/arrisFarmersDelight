@@ -5,12 +5,14 @@
 HoD 把图标切成体素、按刀口分开；这里是客户端掉落物，整张图：食物平躺（一叠不止一个时底下再垫一张、转一个角度），方块类立着，
 摆盘的层一层层叠起来（每层带一点固定的偏转偏移），插着的工具刀尖朝下。每样东西一个 Thing（Mover 管位置 / 缩放，道具跟着）：
 手放下的东西从光标上方弧着落下、再落定；书里一次放好几层的，从屏幕下沿（玩家那边）一层隔一层飞来；拿走的抬起来缩没；板不收的落在板顶又弹回；
-最后一刀切开的食物往上飘着缩没；层凑成菜时各层缩小沉进去、菜弹出来。开站期间本端不画 Client/BlockItems 那份（hide），关站还原。位置是离板面中心的偏移 (x, 离板面的高, z)，
-中心由 BoardView 按方块朝向算好交进来。
+最后一刀切开的食物往上飘着缩没；层凑成菜时各层缩小沉进去、菜弹出来。液体层和蛋层不是落下来的：一只手端着容器 / 蛋来倒、磕（BoardHandDraw，照 JE 的 arrives），
+倒完容器走了、这一层什么也不画，蛋落稳了这一层才露出来、画成打开的蛋（BoardHands.lookOf）。开站期间本端不画 Client/BlockItems 那份（hide），关站还原。
+位置是离板面中心的偏移 (x, 离板面的高, z)，中心由 BoardView 按方块朝向算好交进来。
 """
 import math
 
 from .BoardDrawEvents import CARVED_SCALE, GHOSTS, DrawEvents
+from .BoardHandDraw import Hand
 from .BoardThing import FLAT, UPRIGHT, Thing
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.Cutting import CuttingBoardDict
@@ -35,6 +37,7 @@ class Draw(DrawEvents):
         self.pile = Thing(self)
         self.layers = [Thing(self) for _ in range(MOST_LAYERS)]
         self.ghosts = [Thing(self) for _ in range(GHOSTS)]
+        self.hand = Hand(self)                          # 倒液体层、磕蛋层的那只手（同一时刻一只）
         self.ghost = 0
         self.shown = {"board": None, "layers": []}      # 现在画着的：板上的 (身份, 数量, 种类)、各层的身份
         self.clock = 0.0
@@ -150,11 +153,9 @@ class Draw(DrawEvents):
             if index >= len(layers):
                 thing.hide()
                 continue
-            pose = Scene.layerPose(index)
-            thing.set(layers[index], FLAT, Scene.scaleOf(Scene.layerSize(index)), pose["turn"])
-            home = (pose["x"], pose["y"], pose["z"])
+            home = self._dress(thing, index, layers[index])
             if index in arriving:
-                thing.hide()                                             # 新放的一层：先藏着，到时候再落下
+                thing.hide()                                             # 新放的一层：先藏着，到时候再落下（液体层、蛋层由手放）
                 self.after(arriving.index(index) * Motion.LAYER_STAGGER, lambda t=thing, h=home, i=index, k=keys[index]: self._arrive(t, h, i, k, together))
             elif index < len(old) and old[index] == keys[index]:
                 continue
@@ -167,10 +168,11 @@ class Draw(DrawEvents):
         """一层落到位：书里一次放好几层的从玩家那边飞来（弧高 2.5 倍），手放的从光标上方落下。排队等的时候这一层已经换了就不演。"""
         if index >= len(self.shown["layers"]) or self.shown["layers"][index] != key:
             return
-        if fromPlayer:
-            Motion.landFromPlayer(thing.mover, home, self.fromPlayer())
-        else:
-            Motion.land(thing.mover, home, self.fromCursor(home, Motion.DROP_HEIGHT))
+        self.land(thing, home, index, key[0], fromPlayer, lambda: self._present(index, key))
+
+    def _present(self, index, key):
+        """第 index 层现在还是 key 吗（手磕的蛋落下时问：取走了就不露出来）。层正沉进做成的菜时状态已经清空、层是动画的，算还在。"""
+        return self.melting > 0.0 or (index < len(self.shown["layers"]) and self.shown["layers"][index] == key)
 
     # ---------------------------------------------------------------- 每帧与收场
 
@@ -183,9 +185,11 @@ class Draw(DrawEvents):
         self.steps = [step for step in self.steps if step[0] > self.clock]
         for _at, run in due:
             run()
+        self.hand.frame(dt)
         for thing in [self.item, self.pile] + self.layers + self.ghosts:
             thing.frame(dt)
 
     def close(self):
+        self.hand.drop()
         for thing in [self.item, self.pile] + self.layers + self.ghosts:
             thing.drop()

@@ -47,6 +47,13 @@ class Thing(object):
         self.turn = turn
         self.dirty = True
 
+    def blank(self):
+        """这一层什么也不画（倒进去的液体：容器倒完就走了，BoardHands.lookOf 是 None）。"""
+        self.drop()
+        self.item = None
+        self.mover.visible = False
+        self.dirty = True
+
     def put(self, x, y, z, visible=True):
         """直接摆到偏移 (x, y, z)，缩放回到 1（不走动画）。"""
         self.mover.move(x, y, z)

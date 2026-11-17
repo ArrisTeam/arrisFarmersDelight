@@ -7,8 +7,9 @@
 arris_diegesis:glint。站点里的人和旁观的人（BoardWatch，没有站点视图）都从 puffAt 放：一阵碎屑的起点和初速是操作者那边的站点像素，按他的朝向
 转到世界。USE_OWN_DUST 关掉（粒子出了毛病时）就退回前置包自带的 arris_diegesis:dust（只有颜色和个数，旁观的人则没有碎屑）。
 声音经 CustomAudio，名字是原版的；放什么、多大声在 Shared/Rules/BoardSounds（站点里的人 BoardEffects 和旁观的人 BoardWatch 用同一张表），
-这里只管放；剪刀头两口和敲一声只有本人听得到，在 BoardCutter / BoardView 里直接放。
+这里只管放；剪刀头两口和敲一声只有本人听得到，在 BoardCutter / BoardView 里直接放。放液体层时手倒下的水滴（dropletsAt）和磕蛋的蛋壳碎屑（puffAt）在 BoardHandDraw 里放。
 """
+from . import PotFx
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.FoodColors import FoodColors
 from ...Shared.Rules import BoardDust as Dust
@@ -65,6 +66,14 @@ def puffAt(geometry, yaw, blockPos, puff, color, view=None):
     if view is not None:
         return view.particles(DUST, view.toStation(*world), color, count)
     return None
+
+
+def dropletsAt(geometry, yaw, blockPos, point, velocity, color, count):
+    """在站点像素 point 放一阵水滴（倒液体的水柱、倒空时瓶口的两滴：前置包的 droplet 粒子，和厨锅倒液体同一个）：velocity 是站点像素每秒、转到世界方向，
+    color 是 0xRRGGBB。起点和速度是操作者那边的站点像素，按他的朝向 yaw 转到世界（旁观的人没有手的动画，不放水滴）。"""
+    world = geometry.stationPointToWorld(yaw, point[0], point[1], point[2], blockPos[0], blockPos[1], blockPos[2])
+    along = geometry.transformDirection(geometry.stationMatrices(yaw)[0], velocity[0], velocity[1], velocity[2])
+    return PotFx.particle(PotFx.DROPLET, world, color=color, count=count, velocity=tuple(16.0 * part for part in along))
 
 
 def flourAt(view, point):

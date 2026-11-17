@@ -62,6 +62,7 @@ PACKS = {
             "Compat/Diegesis/BoardDraw.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardDrawEvents.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardThing.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/BoardHandDraw.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardCutter.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardFx.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardEffects.py": {"forbid": {"Server"}, "engine": True},
