@@ -22,9 +22,6 @@ from .Mth import EPS, NEVER, TICK, clamp, isFinite, roundToTick, truncDiv
 from .PotBonus import CARRY_CAP, servePlan
 from .StirSkill import StirSkill
 
-COOKING_POT_TIME = 1.0   # cooking_pot_time：HandsOnConfig 缺省 1.0
-SHORTEST_TIME = 0.1      # 配置里时长倍率的下限 / 上限（HandsOnConfig.readTime 夹进这个范围）
-LONGEST_TIME = 10.0
 PACE = 1.5               # 一份的烹饪速度是 FD 原版的 1.5 倍
 SLOWEST_BATCH = 16       # 批量再大也只按 16 份算慢
 STIR_WINDOW = 2.0        # 原 STIR_TICKS = 40：一次搅动让锅"算被搅过"这么久，勺子停了它就停
@@ -43,8 +40,8 @@ def batchSpeed(batch):
 
 
 def potTime():
-    """配置的烹饪时长倍率，夹进 0.1..10（HandsOnConfig.readTime / cookingPotTime）。"""
-    return clamp(float(COOKING_POT_TIME), SHORTEST_TIME, LONGEST_TIME)
+    """配置的烹饪时长倍率（HandsOnConfig.cookingPotTime：夹进 0.1..10，厨锅站点关了是 1）。"""
+    return Options.cookingPotTime()
 
 
 def timeFor(recipeSeconds, times=None):

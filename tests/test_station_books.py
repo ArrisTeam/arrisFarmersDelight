@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import dgtest
 import fdtest
+from optkit import Config
 
 Books = fdtest.load("Shared.Rules.StationBooks")
 Book = dgtest.load("Shared.Book")
@@ -34,13 +35,9 @@ def testPotPagesFollowTheRecipeTable():
     assert [item["newItemName"] for item in dumplings["foot"]] == [Books.CLOCK], "饺子不要容器，只有时钟"
     sauce = next(page for page in pages if page["item"]["newItemName"] == "arris:tomato_sauce")
     assert sauce["note"] == "3 秒" and sauce["foot"][0]["newItemName"] == "minecraft:bowl"
-    before = PotCooking.COOKING_POT_TIME
-    try:
-        PotCooking.COOKING_POT_TIME = 2.0
+    with Config(cooking_pot_time=2.0):
         slow = next(page for page in Books.potPages() if page["item"]["newItemName"] == "arris:dumplings")
         assert slow["note"] == "13 秒", "cooking_pot_time 2.0：书上的时间也翻倍（20 / 1.5）"
-    finally:
-        PotCooking.COOKING_POT_TIME = before
 
 
 def testPotPagesKeepTheAlternativesOfEachSlotForTheBookToCycle():

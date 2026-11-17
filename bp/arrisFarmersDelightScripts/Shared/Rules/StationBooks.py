@@ -6,13 +6,15 @@
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
   脚注是全部产物（产物不止一种才有，含主产物，BoardBook.java:55）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
-- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（只煎一面的蛋按一面）；只看。
+- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（SkilletBook / StoveBook：2 * sideTicks，蛋也是两面的时间）；只看。
+三种时间都带着配置里的倍率（cooking_pot_time / skillet_time / stove_time，站点关了算 1.0），书上写的就是服务端此刻的时间（两端同一份配置表）。
 """
 from ..Data.Cooking import CanCookedFoodDict
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from ..Data.Cutting import CuttingBoardDict
 from . import CookingPot, CuttingStation, DishStation, GrillStation, PanStation
 from .HandsOn import PotCooking
+from .HandsOn.Mth import roundInt
 
 CLOCK = "minecraft:clock"
 DISH_PREFIX = "d:"
@@ -29,7 +31,8 @@ def stack(name, aux=0, count=1):
 
 
 def _seconds(value):
-    return "%d 秒" % int(round(value))
+    """页脚的秒数：Java 的 Math.round（半数进位），不是 Python 的 round（py3 里 2.5 是 2）。"""
+    return "%d 秒" % roundInt(value)
 
 
 def _pair(value):

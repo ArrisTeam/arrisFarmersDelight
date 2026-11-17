@@ -149,19 +149,19 @@ def testProgressIsZeroWithoutABatch():
 
 
 def testTheCookingTimeConfigIsClampedAndFollowedByTheTimesAndTheBook():
-    before = Pot.COOKING_POT_TIME
-    try:
-        assert Pot.COOKING_POT_TIME == 1.0, "HandsOnConfig 的缺省"
-        Pot.COOKING_POT_TIME = 2.0
+    assert Pot.potTime() == 1.0, "HandsOnConfig 的缺省"
+    assert abs(Pot.bookSeconds(10.0) - 10.0 / 1.5) < 1e-9, "一份在站点里 10 / 1.5 = 6.7 秒"
+    with Config(cooking_pot_time=2.0):
         assert Pot.timeFor(5.0) == 10.0 and abs(Pot.bookSeconds(10.0) - 20.0 / 1.5) < 1e-9
-        Pot.COOKING_POT_TIME = 100.0
+    with Config(cooking_pot_time=100.0):
         assert Pot.potTime() == 10.0, "上限 10"
-        Pot.COOKING_POT_TIME = 0.0
+    with Config(cooking_pot_time=0.0):
         assert Pot.potTime() == 0.1 and Pot.timeFor(5.0) == 0.5, "下限 0.1"
-        Pot.COOKING_POT_TIME = 1.0
-        assert abs(Pot.bookSeconds(10.0) - 10.0 / 1.5) < 1e-9, "一份在站点里 10 / 1.5 = 6.7 秒"
-    finally:
-        Pot.COOKING_POT_TIME = before
+    with Config(cooking_pot_time=2.0, cooking_pot=False):
+        assert Pot.potTime() == 1.0 and Pot.timeFor(5.0) == 5.0, "厨锅站点关了：这口锅是 FD 自己的，倍率算 1"
+    with Config(cooking_pot_time=2.0, skillet=False, stove=False, cutting_board=False):
+        assert Pot.timeFor(5.0) == 10.0, "别的站点关了不相干"
+    assert Pot.timeFor(5.0) == 5.0, "with 块出来放回原样"
 
 
 def _waitingOrCooking(*args, **kwargs):

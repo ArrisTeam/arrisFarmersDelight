@@ -20,19 +20,6 @@ def _hand():
     return HandCooking.handOf(0, POT)
 
 
-def _setConfig(**values):
-    """改 PotCooking 里的配置值，返回改之前的（交给 _restore）。"""
-    before = dict((name, getattr(PotCooking, name)) for name in values)
-    for name, value in values.items():
-        setattr(PotCooking, name, value)
-    return before
-
-
-def _restore(before):
-    for name, value in before.items():
-        setattr(PotCooking, name, value)
-
-
 def _tomatoes(each):
     """漏斗放进来的番茄：0、1 号格各 each 个（番茄酱每份要两格各 1 个，所以是 each 份）。"""
     fake.setContainer(POT, 0, TOMATO, each)
@@ -206,18 +193,15 @@ def testTheClassicPathStillGivesTheExperienceWhereTheMealLandsInTheResultSlot():
 
 def testTheCookingTimeConfigScalesEveryWayOfCooking():
     manager, data = K.setup()
-    before = _setConfig(COOKING_POT_TIME=2.0)
-    try:
+    with Config(cooking_pot_time=2.0):
         _tomatoes(8)
         K.alone(21.0)
         assert K.preview()["count"] == 2 and _hand().total == 10.0, "倍率 2：一份 10 秒"
         assert abs(PotCooking.bookSeconds(5.0) - 10.0 / PotCooking.batchSpeed(1)) < 1e-9
-        _setConfig(COOKING_POT_TIME=100.0)
+    with Config(cooking_pot_time=100.0):
         assert PotCooking.timeFor(5.0) == 50.0, "夹进 0.1..10"
-        _setConfig(COOKING_POT_TIME=0.0)
+    with Config(cooking_pot_time=0.0):
         assert abs(PotCooking.timeFor(5.0) - 0.5) < 1e-9
-    finally:
-        _restore(before)
 
 
 def testStirringCanBeSwitchedOffAndTheFoodTheCookPutInCooksByItself():
