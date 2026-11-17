@@ -23,6 +23,7 @@ KEYS = tuple(str(place) for place in range(GrillStation.PLACES)) + ("cookingInde
 GUARD_SECONDS = 0.5        # 换方块引发的移除事件，这么久以内算换方块自己的
 SETTLE_SECONDS = 1.0       # 换完之后重发世界外观多久
 PENDING_SECONDS = 5.0      # 快照等新方块实体多久，再等不到就丢在地上
+LIMIT = 32                 # 记录攒到这么多时，把早该到期的先收掉（定时器没跑的兜底）
 _swaps = {}                # (维度, 坐标) -> Swap
 _TEXT = type(u"")
 
@@ -75,6 +76,8 @@ def swap(dimensionId, blockPos, newName, now=None):
     oldName = GetBlockName(blockPos, dimensionId)
     if oldName == newName:
         return False
+    if len(_swaps) >= LIMIT:
+        _prune(now)
     previous = _swaps.get(key)
     carried = previous.data if previous is not None and previous.data is not None else snapshot(GetBlockEntityData(dimensionId, blockPos))
     direction = _directionOf(blockPos, dimensionId)
@@ -121,6 +124,13 @@ def settling(dimensionId, blockPos, now):
     """刚换完方块、快照已经写进去了：这一秒里炉灶每一步重发世界外观（Stove.OnStoveTick）。"""
     record = _swaps.get((dimensionId, _pos(blockPos)))
     return record is not None and record.data is None and 0.0 <= now - record.at < SETTLE_SECONDS
+
+
+def _prune(now):
+    """记录攒多了：早该到期（PENDING_SECONDS 之后）的先按到期处理，该丢的东西照丢。"""
+    for key, record in list(_swaps.items()):
+        if now - record.at > PENDING_SECONDS + 1.0:
+            _giveUp(key, record)
 
 
 def _giveUp(key, record):

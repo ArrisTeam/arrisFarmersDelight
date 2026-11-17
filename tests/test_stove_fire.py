@@ -277,6 +277,23 @@ def testIfTheNewBlockEntityNeverComesTheFoodIsDroppedNotLost():
     assert all(pos == (10.5, 64.5, 10.5) for _item, _dim, pos in fake.spawned)
 
 
+def testStaleRecordsArePrunedWhenManyPileUpAndTheirFoodIsDroppedNotLost():
+    """定时器没跑（热重载、出错）时记录不能一直攒着：攒到 LIMIT 条，下一次换方块先把早该到期的按到期处理，该丢的东西照丢。"""
+    manager, data = F.setup(events="silent", look=False)
+    F.setBlock(UNLIT)
+    for index in range(F.StoveSwap.LIMIT):
+        stale = F.StoveSwap.Swap(UNLIT, LIT, {"0": {"itemDict": {"newItemName": BEEF, "newAuxValue": 0, "count": 1}, "cookTimer": 30}},
+                                 fake.world.time - 100.0)
+        F.StoveSwap._swaps[(0, (100 + index, 64, 100))] = stale
+    fresh = F.StoveSwap.Swap(UNLIT, LIT, {}, fake.world.time)
+    F.StoveSwap._swaps[(0, (999, 64, 999))] = fresh
+    _light()
+    assert F.blockName() == LIT
+    assert sorted(F.StoveSwap._swaps) == sorted([F.KEY, (0, (999, 64, 999))], key=repr), "过期的都收了，没过期的别的位置的记录、这次的新记录还在"
+    assert F.groundItems() == [BEEF] * F.StoveSwap.LIMIT, "还没写进去的快照里的东西丢在各自的炉灶位置"
+    assert all(pos[1] == 64.5 for _item, _dim, pos in fake.spawned)
+
+
 def testTwoSwapsInARowCarryTheSameFood():
     """点着又马上灭（快照还没写进新方块实体）：第二次接着用第一次的快照，不是拍一份空的。"""
     manager, data = F.setup(events="silent", entity="never", look=False)
