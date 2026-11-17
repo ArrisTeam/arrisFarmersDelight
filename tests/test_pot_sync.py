@@ -4,6 +4,7 @@
 站点数据（共享的部分和每人自己的两项）。引擎是 potfake.py 里的假的。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import potkit as K
 from potkit import BOWL, POT, SAUCE, TOMATO, fake

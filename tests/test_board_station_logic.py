@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import random
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import boardkit as K
 from boardkit import fake

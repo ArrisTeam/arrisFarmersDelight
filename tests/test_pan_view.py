@@ -5,6 +5,7 @@
 托盘只亮煎得了的、食谱书挂上、关站收拾干净。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgstation
 import panclient as C
 

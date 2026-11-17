@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 
+import prereq  # noqa: F401 - 徽章要对着前置包的界面和牌子的源码：它不在这个仓库里，旁边没有就跳过
 import fdtest
 
 Glyphs = fdtest.load("Shared.Rules.HandsOn.PotBadgeGlyphs")

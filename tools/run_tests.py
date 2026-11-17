@@ -11,7 +11,8 @@
     py -3 tools/run_tests.py            跑全部
     py -3 tools/run_tests.py cooking    只跑文件名含 cooking 的
 Python 2.7 解释器按顺序找：环境变量 FD_PY2、`py -2.7`、`python2`、`python`（版本须为 2.7）。
-测试以退出码 0 表示通过；77 表示缺少外部资源而跳过（例如没有 clone .refs）。
+测试以退出码 0 表示通过；77 表示缺少外部资源而跳过（例如没有 clone .refs；要场景交互前置包源码的用例在旁边没有它时也是，
+见 tests/prereq.py）。最后一行汇总：共几项、失败几项，有跳过的再写跳过几项。
 """
 from __future__ import print_function
 
@@ -87,7 +88,8 @@ def main(argv):
     failed = [r for r in results if r[2] not in ("ok", "SKIP")]
     for name, tag, status in results:
         print("[%s] %-48s %s" % (tag, name, status))
-    print("\n%d 项，失败 %d" % (len(results), len(failed)))
+    skipped = len([r for r in results if r[2] == "SKIP"])
+    print("\n%d 项，失败 %d%s" % (len(results), len(failed), "，跳过 %d" % skipped if skipped else ""))
     return 1 if failed else 0
 
 

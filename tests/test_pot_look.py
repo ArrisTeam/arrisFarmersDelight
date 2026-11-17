@@ -4,6 +4,7 @@
 一次性事件只给没开站点的旁观者；样子没变时刚走进 32 格的人单发一份，发出去的过几秒再补（间隔加倍）。引擎是 potfake.py 里的假的。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import potkit as K
 from potkit import BOWL, POT, SAUCE, TOMATO, fake

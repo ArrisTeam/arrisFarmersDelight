@@ -3,6 +3,7 @@
 """四个站点的食谱书页（Shared/Rules/StationBooks.py）：页的写法、当前在做的菜、服务端放料挑写法和份数。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 from optkit import Config

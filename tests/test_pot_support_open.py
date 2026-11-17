@@ -7,6 +7,7 @@ sneakFallback，所以潜行的右键不被客户端取消、到服务端的方�
 from __future__ import print_function
 
 import bootkit as B
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgflow as F
 from optkit import Config
 

@@ -13,6 +13,7 @@ import random
 import sys
 import types
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgstation
 import dgtest
 import fdtest

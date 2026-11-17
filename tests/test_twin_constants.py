@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # runner: py3
-"""两处各抄一份、互相不能导入的常量要一样：服务端和客户端各有一份的（两端不互相导入），本包和前置包各有一份的（两个包不互相导入）。
-抄的时候是一样的，改的时候只改了一边就悄悄对不上——旁观的人少听一种声音、外观广播和内核的旁观范围差几格，离线和游戏里都不报错。
-这里按源码里的赋值读（不导入模块：那几个模块都带着引擎）。"""
+"""两处各抄一份、互相不能导入的常量要一样：服务端和客户端各有一份的（两端不互相导入）。
+抄的时候是一样的，改的时候只改了一边就悄悄对不上——旁观的人少听一种声音，离线和游戏里都不报错。
+这里按源码里的赋值读（不导入模块：那几个模块都带着引擎）。本包和前置包各有一份的常量在 tests/test_prereq_constants.py（要前置包的源码在旁边才跑）。"""
 from __future__ import print_function
 
 import ast
@@ -12,7 +12,6 @@ import os
 import fdtest
 
 FD = os.path.join(fdtest.BP, fdtest.SCRIPTS)
-KERNEL = os.path.join(fdtest.ROOT, "diegesisBp", "arrisDiegesisScripts")
 
 
 def constant(root, relative, name):
@@ -33,10 +32,8 @@ def testTheBoardEventsBystandersHearAreTheSameListOnBothSides():
     assert server == client and server, (sorted(server), sorted(client))
 
 
-def testTheLookBroadcastReachesAsFarAsTheKernelsWatchers():
-    ours = constant(FD, "Server/Helpers/LookWatch.py", "RANGE")
-    kernel = constant(KERNEL, "Shared/Protocol.py", "WATCH_RANGE")
-    assert ours == kernel == 32.0, (ours, kernel)             # Diegesis 的 ActiveStation.WATCH_RANGE
+def testTheLookBroadcastReachesAsFarAsDiegesisWatchesAStation():
+    assert constant(FD, "Server/Helpers/LookWatch.py", "RANGE") == 32.0             # Diegesis 的 ActiveStation.WATCH_RANGE
 
 
 def testScenesAreDrawnAndHeardAsFarAsInJava():

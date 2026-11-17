@@ -5,6 +5,7 @@
 点火 / 灭火的东西（AbstractStoveBlock.tryToIgnite / tryToExtinguish）。对外的 StoveList / CanProvideHeatBlockList（linkage.md）不动。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 

@@ -12,6 +12,7 @@ import math
 import sys
 import types
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 

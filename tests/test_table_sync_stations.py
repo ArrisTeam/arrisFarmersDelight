@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import sys
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import boardclient as C            # 先导入：它换上假的 QuModLibs 和客户端引擎，后面才能导入 Client/ 下的模块
 import fdtest

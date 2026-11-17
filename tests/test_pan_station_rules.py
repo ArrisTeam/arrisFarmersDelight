@@ -3,6 +3,7 @@
 """煎锅站点的纯规则（Shared/Rules/PanStation.py）：能煎什么、一面多久、站点声明、放得进吗。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 

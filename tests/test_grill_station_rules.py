@@ -5,6 +5,7 @@
 kitchenThingsOpenTheStove 在这里和 test_grill_station_logic.py 里。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 

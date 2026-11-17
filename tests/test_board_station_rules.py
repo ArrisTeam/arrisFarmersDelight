@@ -6,6 +6,7 @@
 """
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgkit  # noqa: F401 - 先于内核的 import：它把 diegesisBp 放进 sys.path（站点声明要在前置包的 schema 上建一遍）
 import fdtest
 from arrisDiegesisScripts.Shared import Schema as KernelSchema

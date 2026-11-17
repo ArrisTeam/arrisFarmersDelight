@@ -4,6 +4,7 @@
 放料、摆料、盛出、取回、照书放料、右键盛菜、经验。引擎是 potfake.py 里的假的；烹饪与外观广播见 test_pot_cooking_server.py。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import potkit as K
 from potkit import BOWL, POT, SAUCE, TOMATO, fake

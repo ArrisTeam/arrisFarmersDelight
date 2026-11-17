@@ -2,18 +2,17 @@
 # runner: py3
 """架构守卫：分层与导入方向、机审禁用写法、相对导入可解析、RPC 端点身份注入、文件与函数长度。
 
-两个包都查：农夫乐事行为包（bp/arrisFarmersDelightScripts）与场景交互前置包（diegesisBp/arrisDiegesisScripts）。
+查的是农夫乐事行为包（bp/arrisFarmersDelightScripts）。场景交互前置包不在这个仓库里：它的规则表和它自己多出来的两条在它那边
+（tests/dgarch.py、tests/test_diegesis_architecture.py），那份测试把这里的 PACKS 换成它的规则表，同一套检查再跑一遍。
 规则（违反即失败；确需例外写进 PACKS 里的 allowLong 并注明理由）：
 1. Shared/ 不导入引擎（mod.*）、QuModLibs、Server、Client、Compat、Api；Server/ 与 Client/ 互不导入，也不导入 Compat/。
-   农夫乐事的 Api/ 只导入 Shared/；前置包的 Api/Server.py 是服务端门面（不导入 Client），Api/Client.py 反之
+   Api/ 只导入 Shared/
 2. 脚本（QuModLibs、dolorContainer 等拷入件除外）不出现 import sys、__import__、namedtuple、eval / exec、pickle / marshal 反序列化
    （网易机审与安全规则）；不用星号导入（modMain.py 的 QuMod 模板除外）
 3. 每个相对导入都要解析到真实存在的模块 / 包（层级写错只有引擎加载时才炸，且会连累整条导入链）
 4. 服务端的 @AllowCall 端点必须同时 @InjectHttpPlayerId：玩家身份只认引擎注入的；端点名在同一端唯一
 5. 模块名不与 py2 会被隐式相对导入劫持的标准库 / 引擎顶层名同名（random.py、time.py、common.py……）
 6. 代码文件 ≤ 250 行（Shared/Data/ 纯数据表除外）、函数 ≤ 120 行
-7. 前置包：调度与计算模块保持纯 Python（离线可测），不导入引擎、QuModLibs 和 Engine / EngineWorld；
-   Protocol 里的每个端点名都在对应的一端有 @AllowCall 函数
 """
 from __future__ import print_function
 
@@ -21,7 +20,6 @@ import ast
 import io
 import os
 
-import dgtest
 import fdtest
 
 MAX_FILE_LINES = 250
@@ -104,23 +102,7 @@ PACKS = {
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},
         "endpoints": [("server", "CookingPotAddFood"), ("client", "OnPlaySound")],
     },
-    "diegesis": {
-        "dir": os.path.join(dgtest.PACK, dgtest.SCRIPTS),
-        "rules": {
-            "Shared": _SHARED_RULE,
-            "Api/Server.py": {"forbid": {"Client", "QuModLibs"}, "engine": False},
-            "Api/Client.py": {"forbid": {"Server", "QuModLibs"}, "engine": False},
-            "Server": {"forbid": {"Client"}, "engine": True},
-            "Client": {"forbid": {"Server"}, "engine": True},
-        },
-        "allowLong": {},
-        "endpoints": [("server", "DiegesisOpen"), ("client", "DiegesisOpened")],
-    },
 }
-DIEGESIS_PURE = {"Server/Manager.py", "Server/Station.py", "Server/Registry.py", "Server/Session.py",
-                 "Server/Runtime.py", "Server/Sync.py", "Server/Dispatch.py", "Server/Upkeep.py", "Server/Admit.py", "Server/Undo.py",
-                 "Client/Registry.py", "Client/Shot.py",
-                 "Client/Hub.py", "Client/PropMath.py", "Api/Server.py"}
 
 
 def _sources(pack):
@@ -333,27 +315,6 @@ def testEveryFarmersDelightBroadcastHasItsClientEndpoint():
     assert len(names) >= 6, "至少有这几个：OnPotLook、OnPanLook、OnStoveLook、OnBoardLook、OnBlockItems、OnTableSync；找到 %r" % (names,)
     missing = ["%s 的 %s" % found for found in names if ("client", found[1]) not in seen]
     assert not missing, "客户端没有同名的 @AllowCall 函数: %s" % missing
-
-
-def testDiegesisProtocolEndpointsExistOnTheRightSide():
-    Protocol = dgtest.load("Shared.Protocol")
-    seen, _ = _endpoints("diegesis")
-    toServer = (Protocol.EP_OPEN, Protocol.EP_CLOSE, Protocol.EP_ACTION)
-    toClient = (Protocol.EP_OPENED, Protocol.EP_DENIED, Protocol.EP_CLOSED, Protocol.EP_STATE, Protocol.EP_EFFECT)
-    missing = [("server", n) for n in toServer if ("server", n) not in seen]
-    missing += [("client", n) for n in toClient if ("client", n) not in seen]
-    assert not missing, "Protocol 里的端点没有对应的 @AllowCall 函数: %s" % missing
-
-
-def testDiegesisPureModulesStayPure():
-    problems = []
-    for relPath, path, source in _sources("diegesis"):
-        if relPath not in DIEGESIS_PURE:
-            continue
-        for kind, parts, node in _importTargets(relPath, ast.parse(source)):
-            if kind == "engine" or (parts and (parts[0] == "QuModLibs" or parts[-1] in ("Engine", "EngineWorld"))):
-                problems.append("%s:%d 纯逻辑模块导入了 %s" % (relPath, node.lineno, ".".join(parts or ["mod"])))
-    assert not problems, "\n".join(problems)
 
 
 def testModuleNamesDoNotShadow():

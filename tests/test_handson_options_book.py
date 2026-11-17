@@ -7,6 +7,7 @@ from __future__ import print_function
 import io
 import os
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgstation
 import fdtest
 import panclient as C

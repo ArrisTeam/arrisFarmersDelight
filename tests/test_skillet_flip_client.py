@@ -6,6 +6,7 @@ JE：玩家正用着煎锅（player.isUsingItem() 且用的是 SkilletItem）、
 这里只在"右键按住着（HoldReporter.down）而且手里（主手或副手）拿着煎锅"时报一个 SkilletFlip；是不是真在煎、在不在翻由服务端核对（Server/SkilletHand.onFlip）。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest  # noqa: F401 - 把 diegesisBp 放进 sys.path（boardclient 要它的 Geometry / Schema）
 import boardclient as C
 import fdtest

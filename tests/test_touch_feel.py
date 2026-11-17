@@ -5,6 +5,7 @@
 各站点在哪调、调了什么，在各自的 test_*_view.py 里。"""
 from __future__ import print_function
 
+import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
 
