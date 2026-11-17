@@ -8,7 +8,8 @@
 炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
 右键放上去的照这里每件 30 秒烤好弹出。
 站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
-上面盖了东西（锅、煎锅、任何方块，Shared/Rules/StoveCover）：烤架上的东西全丢出来，生的熟的、手放的 FD 的都一样（FD 的 shouldDropItems）。
+上面盖了东西（锅、煎锅、任何方块，Shared/Rules/StoveCover）：烤架上的东西全丢出来，生的熟的、手放的 FD 的都一样（FD 的 shouldDropItems）；
+丢出来和拆炉灶掉的东西都是 FD 的 ItemUtils.dropItems：每件从方块里随机一点掉出来、带随机初速；烤好的从灶面弹出去（Helpers/Drops.py）。
 烤架的世界外观（东西、冒烟等翻、烤好的汽和闪）每一步照 StoveLook 广播给附近的人，站点开不开着都一样。
 """
 import time
@@ -16,7 +17,8 @@ import time
 from . import HandGrill, StoveLook, StoveSwap
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
-from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
+from .Helpers.Drops import PopOut, ScatterItem
+from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
@@ -117,7 +119,7 @@ def _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
     for index in range(STOVE_SLOTS):
         item = HandGrill.slotItem(blockEntityData, index)
         if item:
-            System.CreateEngineItemEntity(item, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
+            ScatterItem(dimensionId, blockPos, item)
             blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
         if hand is not None:
             hand.grill.farmersDelightsWay(index)
@@ -179,7 +181,7 @@ def OnStoveTick(args):
         # 配方被附属包移除了：原样退回生食，别让它卡在烤位上
         output = {"itemName": cookedName, "auxValue": rawDict.get("newAuxValue", 0), "count": 1} if cookedName else rawDict
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
-        System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
+        PopOut(dimensionId, (args["posX"] + 0.5, args["posY"] + 1.0, args["posZ"] + 0.5), output)       # FD cookAndOutputItems:128-130
         finished = True
     settling = StoveSwap.settling(dimensionId, blockPos, now)
     if finished or settling:
@@ -225,6 +227,6 @@ def OnStoveRemove(args):
         data = blockEntityData[str(index)]
         itemDict = data.get("itemDict") if data else None
         if itemDict:
-            System.CreateEngineItemEntity(itemDict, dimensionId, (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5))
+            ScatterItem(dimensionId, blockPos, itemDict)
     DropLegacyDisplays(blockEntityData)
     Publish(dimensionId, blockPos, KIND_STOVE, {})

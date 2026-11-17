@@ -152,7 +152,7 @@ def testBreakingAnUnlitStoveDropsTheFoodAndForgetsTheStove():
                                                              "auxValue": 0, "dimension": 0}, blockName)
         published = K.BlockItems.stopRecording()
         assert sorted(F.groundItems()) == ["minecraft:beef", "minecraft:chicken"], blockName
-        assert all(pos == (10.5, 64.5, 10.5) for _item, _dim, pos in fake.spawned), "在方块中心"
+        assert all(K.droppedInside(entry) for entry in fake.spawned), "每件从方块里随机一点掉出来（ItemUtils.dropItems）"
         assert K.HandGrill.peek(0, K.STOVE) is None and K.StoveLook._sent == {}, "手放的进度和广播记录都忘掉"
         assert len(published) == 1 and published[0]["items"] == {} and published[0]["kind"] == "stove", "客户端的展示清掉"
 

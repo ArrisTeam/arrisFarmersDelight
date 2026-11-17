@@ -142,6 +142,12 @@ def hand_of():
     return HandGrill.handOf(0, STOVE)
 
 
+def droppedInside(entry):
+    """fake.spawned 的一项 (物品, 维度, 位置) 是不是 JE 的 Containers.dropItemStack 从炉灶方块里掉出来的：x、z 在 0.125 .. 0.875，y 在 0 .. 0.75（掉落物宽 0.25）。"""
+    _item, _dim, pos = entry
+    return 0.125 <= pos[0] - STOVE[0] <= 0.875 and 0.0 <= pos[1] - STOVE[1] <= 0.75 and 0.125 <= pos[2] - STOVE[2] <= 0.875
+
+
 def _grouped():
     """StoveLook 发出去的 [(载荷, [收到的玩家])]：同一个载荷对象发给每个附近的人一次。"""
     out, index = [], {}

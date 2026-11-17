@@ -150,7 +150,7 @@ def testAPotSetOnTheStoveThrowsEverythingOffTheGrillAsFarmersDelightDoes():
     sent = K.BlockItems.stopRecording()
     assert K.names(data) == [None] * 6, "全丢出来了"
     assert sorted(item["newItemName"] for item, _, _ in fake.spawned) == [BEEF] * 3, "一件一个掉落物，不分手放的还是 FD 原样的"
-    assert all(pos == (K.STOVE[0] + 0.5, K.STOVE[1] + 0.5, K.STOVE[2] + 0.5) for _, _, pos in fake.spawned)
+    assert all(K.droppedInside(entry) for entry in fake.spawned), "每件从方块里随机一点掉出来（ItemUtils.dropItems），不是都叠在方块中心"
     assert not any(K.hand_of().grill.byHand(place) for place in range(6)) and K.hand_of().grill.up(0) == 0.0, "手放的进度作废"
     assert sent and sent[-1]["kind"] == "stove" and all(not entry for entry in sent[-1]["items"].values()), "世界里的展示清空"
     K.step(5.0)

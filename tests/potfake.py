@@ -118,6 +118,11 @@ class Comp(object):
     def SetOrbExperience(self, value):
         self.fake.orbs[self.owner]["value"] = value
 
+    def SetMotion(self, motion):
+        """CreateActorMotion(实体).SetMotion：记下掉落物的初速（每刻几格）。"""
+        self.fake.motions[self.owner] = tuple(motion)
+        return True
+
 
 class Factory(object):
     def __init__(self, fake):
@@ -157,6 +162,7 @@ class Fake(object):
         self.containers = {}
         self.blockEntities = {}
         self.spawned = []
+        self.motions = {}                 # 实体 id -> SetMotion 给的初速（掉落物的 id 是 CreateEngineItemEntity 返回的 item1、item2……）
         self.orbs = {}
         self.calls = []
         self.multi = []

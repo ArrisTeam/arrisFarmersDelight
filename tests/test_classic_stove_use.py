@@ -48,6 +48,42 @@ def testWhenTheLowestSlotsAreFullTheNextOneIsTheFirstFreeAfterThem():
     assert K.names(data) == [BEEF] * 5 + [None], "2 号、再 4 号"
 
 
+# ---------------------------------------------------------------- 烤好弹出、盖住 / 拆了丢出来
+
+def testTheCookedFoodPopsOutOfTheGrillWithALittleSidewaysAndUpwardSpeed():
+    _stove()
+    F.give("a", BEEF, 1)
+    F.use()
+    K.step(31.0)
+    assert F.groundItems() == ["minecraft:cooked_beef"]
+    _item, _dim, pos = fake.spawned[0]
+    assert pos == (K.STOVE[0] + 0.5, K.STOVE[1] + 1.0, K.STOVE[2] + 0.5), "FD 从 y + 1.0 弹出（原来是 y + 1.3、没有初速）"
+    motion = fake.motions["item1"]
+    assert motion[1] == 0.1 and abs(motion[0]) < 0.1 and abs(motion[2]) < 0.1, "往上 0.1、横向是高斯乘 0.01"
+
+
+def testACoveredStoveScattersItsFoodInsideTheBlockEachWithItsOwnSpeed():
+    data = _stove(covered="minecraft:stone")
+    for place in range(6):
+        F.lay(data, place)
+    K.step(0.5)
+    assert K.names(data) == [None] * 6 and len(fake.spawned) == 6
+    assert all(K.droppedInside(entry) for entry in fake.spawned), "每件从方块里随机一点掉出来，不是都在方块中心"
+    assert len(set(pos for _item, _dim, pos in fake.spawned)) == 6, "六件六个点"
+    for number in range(6):
+        motion = fake.motions["item%d" % (number + 1)]
+        assert abs(motion[0]) <= 0.11485 and abs(motion[1] - 0.2) <= 0.11485 and abs(motion[2]) <= 0.11485, "三角分布：横向以 0 为中心，竖直以 0.2 为中心"
+
+
+def testBreakingTheStoveScattersItsFoodTheSameWay():
+    data = _stove()
+    for place in (0, 3):
+        F.lay(data, place)
+    F.EventRegistry.dispatch("BlockRemoveServerEvent", {"x": K.STOVE[0], "y": K.STOVE[1], "z": K.STOVE[2], "fullName": "arris:stove", "auxValue": 0, "dimension": 0},
+                             "arris:stove")
+    assert len(fake.spawned) == 2 and all(K.droppedInside(entry) for entry in fake.spawned) and len(fake.motions) == 2
+
+
 # ---------------------------------------------------------------- 放上去的声音
 
 def _played():
