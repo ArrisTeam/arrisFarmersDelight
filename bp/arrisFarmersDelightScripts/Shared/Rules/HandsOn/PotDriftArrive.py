@@ -45,27 +45,27 @@ class Arrivals(object):
         self.startX = [0.0] * slots
         self.startZ = [0.0] * slots
         self.sinking = [False] * slots
-        self.again = [0] * slots          # 手忙着时又放进来的次数：手走完再来一次（PotBehavior 的 again）
+        self.again = [False] * slots      # 手忙着时又放进来了：手走完再来一次（PotBehavior 的 again 是布尔，放了几回也只记一次）
         self.staged = [False] * slots     # 这格是一次放进好几件里会沉的一件：手从 startX / startZ 出发（FromPlayer），轮到它时 takeStart 取一次
 
     def clear(self, slot):
         """这格空了（或安静地重画）：不再到达，排着队的手也不来了（PotBehavior.java:725-727、734）。"""
         self.arriving[slot] = False
-        self.again[slot] = 0
+        self.again[slot] = False
         self.staged[slot] = False
 
     def more(self, slot, events, busy):
-        """这格里又放进了同种的、会沉的东西（个数涨了）：手还忙着（busy）、或这一格还在等轮到，就记一次，手走完再来一次；否则马上来一次
-        （PotBehavior.java:757-763 的 again / splashIn）。一次放进来多个算一次手；手忙着时又放了几回就排几次，不丢。"""
+        """这格里又放进了同种的、会沉的东西（个数涨了）：手还忙着（busy）、或这一格还在等轮到，就记下来，手走完再来一次；否则马上来一次
+        （PotBehavior.java:757-763 的 again / splashIn）。一次放进来多个算一次手；手忙着时又放了几回也只记一次（again 是布尔），走完只再来一次。"""
         if busy or self.waiting(slot):
-            self.again[slot] += 1
+            self.again[slot] = True
         else:
             events.append((EVENT_POUR, slot))
 
     def handDone(self, slot, events):
         """这格的手走完了：排着队的还有就再来一次（PotBehavior.java:1428-1431）。"""
-        if self.again[slot] > 0:
-            self.again[slot] -= 1
+        if self.again[slot]:
+            self.again[slot] = False
             events.append((EVENT_POUR, slot))
 
     def takeStart(self, slot):

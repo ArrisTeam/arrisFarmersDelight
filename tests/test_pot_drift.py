@@ -399,23 +399,22 @@ def testOnlyTheSinkersAmongSeveralKeepAStartForTheirHand():
     assert drift.arrivals.takeStart(1) is None, "格子空了：不再有出发点"
 
 
-def testAnotherOfTheSameSinkerGetsItsOwnHandAndNeverGetsLost():
-    # PotBehavior.java:757-763（more / again）、1428-1431：手闲着马上再来一只，忙着就排队，走完再来；手忙着时又放了几回就来几只
+def testAnotherOfTheSameSinkerGetsItsOwnHandAndSeveralWhileBusyQueueOnlyOne():
+    # PotBehavior.java:279-280（again 是 boolean[]）、757-763（more / again）、1428-1431：手闲着马上再来一只，忙着就记下来，走完只再来一次；
+    # 手忙着时又放了几回也一样（原来放几回排几只）
     drift = D.PotDrift()
     drift.more(0, False)
     assert drift.events == [(D.EVENT_POUR, 0)], "手闲着：马上再来一只"
     del drift.events[:]
     drift.more(0, True)
     drift.more(0, True)
-    assert drift.events == [] and drift.arrivals.again[0] == 2, "手忙着：排着，不丢"
+    drift.more(0, True)
+    assert drift.events == [] and drift.arrivals.again[0] is True, "手忙着：记下来，放几回都只记一次"
     drift.handDone(0)
-    assert drift.events == [(D.EVENT_POUR, 0)] and drift.arrivals.again[0] == 1
+    assert drift.events == [(D.EVENT_POUR, 0)] and drift.arrivals.again[0] is False, "走完只再来一只"
     del drift.events[:]
     drift.handDone(0)
-    assert drift.events == [(D.EVENT_POUR, 0)] and drift.arrivals.again[0] == 0
-    del drift.events[:]
-    drift.handDone(0)
-    assert drift.events == [], "排的队走完了：手走完就是走完了"
+    assert drift.events == [], "这一只走完就是走完了：前面放了几回也不再来"
 
 
 def testAStackThatIsStillWaitingForItsTurnQueuesToo():
@@ -424,9 +423,9 @@ def testAStackThatIsStillWaitingForItsTurnQueuesToo():
     assert drift.arrivals.waiting(1)
     del drift.events[:]
     drift.more(1, False)
-    assert drift.events == [] and drift.arrivals.again[1] == 1, "还在等轮到自己：当手忙着"
+    assert drift.events == [] and drift.arrivals.again[1] is True, "还在等轮到自己：当手忙着"
     drift.clear(1)
-    assert drift.arrivals.again[1] == 0, "格子空了：排着队的也不来了（PotBehavior.java:734）"
+    assert drift.arrivals.again[1] is False, "格子空了：排着队的也不来了（PotBehavior.java:734）"
     drift.handDone(1)
     assert drift.events == []
 

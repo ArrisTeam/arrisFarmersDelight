@@ -60,6 +60,28 @@ def testAnotherEggStackedIntoTheSameSlotGetsItsOwnHandAndTheNextOneWaitsItsTurn(
     assert len(sounds("block.turtle_egg.crack")) == 2, "磕了两次（第三个蛋放进来时第二只还没来，一共两只手）"
 
 
+def testSeveralMoreEggsStackedWhileTheHandIsBusyBringOnlyOneMoreHand():
+    # PotBehavior.java:279-280（again 是 boolean[]）、757-763、1428-1431：手忙着时无论又放了几次，走完只再来一次（原来放几回排几只）
+    scene = setup()
+    scene.apply(C.look([("minecraft:egg", 1)], sunk=[0]))
+    run(scene, 0.2)
+    scene.apply(C.look([("minecraft:egg", 2)], sunk=[0]))
+    run(scene, 0.1)
+    hands = [scene.hands.going[0]["motion"]]
+    for count in (3, 4, 5):                                 # 第一只手还在演：又放了三回
+        scene.apply(C.look([("minecraft:egg", count)], sunk=[0]))
+        run(scene, 0.1)
+    assert scene.hands.going[0]["motion"] is hands[0] and scene.drift.arrivals.again[0] is True
+    for _ in range(int(7.0 / DT)):
+        scene.frame(DT, True)
+        entry = scene.hands.going.get(0)
+        if entry is not None and entry["motion"] is not hands[-1]:
+            hands.append(entry["motion"])
+    assert len(hands) == 2, "第一只之后只再来一只（放了三回也一样）：%d 只" % len(hands)
+    assert scene.hands.going == {} and scene.drift.arrivals.again[0] is False
+    assert len(sounds("block.turtle_egg.crack")) == 2, "一共磕了两次"
+
+
 def testAStackThatFloatsGrowsWithoutAHand():
     scene = setup()
     scene.apply(C.look([("minecraft:carrot", 1)]))
