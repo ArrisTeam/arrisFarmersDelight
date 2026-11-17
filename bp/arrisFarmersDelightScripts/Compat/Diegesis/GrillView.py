@@ -7,6 +7,8 @@
 - 机位照场景文件：相机 (8, 50.5, -21) 看 (8, 16, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；没有提示行、没有抽屉（chrome 是 java）；
 - 底部托盘（前置包按 usable 列出背包里烤得了的食物）点一叠就拿到手上；拿着一叠点烤架：左键每个空位摆一件，右键只摆离光标最近的
   空位那一个；Shift 点托盘里的食物直接整叠摆上去（槽规则放行，内核自己做）；
+- Shift 点托盘里的一叠（前置包 onInventoryShiftClick 钩子，空手时先问这里）：有营火配方的整叠摆上去，发 place {from: 背包格号}，
+  服务端放进去回 placed、放不进（蛋、满了）回 refused，落下 / 弹开大家都看得见；前置包没有这个钩子的老版本走内核自己的 QUICK_MOVE；
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
   既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
@@ -60,6 +62,14 @@ class GrillViewMixin(object):
 
     def onState(self, changes):
         BookSources.refresh(self.view)
+
+    def onInventoryShiftClick(self, slot, item):
+        """空手 Shift 点托盘里背包槽 slot 的那一叠（StoveBehavior.onInventoryShiftClick）：有营火配方的（蛋也算，服务端再弹回）发 place {from}，
+        返回真 = 自己处理了，内核不再发 QUICK_MOVE；没有配方的返回假。"""
+        if not item or not Rules.hasRecipe(item.get("newItemName")):
+            return False
+        self.view.sendAction("place", {"from": slot})
+        return True
 
     # ---------------------------------------------------------------- 拾取
 

@@ -231,6 +231,17 @@ def testThePanIsOutlinedWhileWhatIsCarriedFitsIntoIt():
     behavior.onClose()
 
 
+def testShiftClickOnTheTrayAsksTheBehaviorFirstAndAFryableStackGoesInWithAPlaceFromTheSlot():
+    """前置包的 onInventoryShiftClick 钩子（空手 Shift 点托盘里的一叠先问表现）：有营火配方的发 place {from: 背包格号}，返回真；
+    没有配方的返回假、什么也不发（内核照旧）。"""
+    behavior, view = make(food=None)
+    assert behavior.onInventoryShiftClick(7, item("minecraft:beef", 12)) is True
+    assert view.actions[-1] == ("place", {"from": 7})
+    assert behavior.onInventoryShiftClick(0, item("minecraft:egg", 3)) is True and view.actions[-1] == ("place", {"from": 0})
+    assert behavior.onInventoryShiftClick(5, item("minecraft:stick", 1)) is False and behavior.onInventoryShiftClick(5, None) is False
+    assert len(view.actions) == 2
+
+
 def testOpeningHangsTheSkilletBookAndClosingCleansUp():
     behavior, view = make()
     assert view.booked is not None and view.booked.__class__.__name__ == "PanSource"

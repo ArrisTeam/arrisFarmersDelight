@@ -10,7 +10,8 @@
   光标放上去、或食物等着翻面时锅柄描一圈亮边（hover outline）；
 - 锅里的食物（food 的碰撞盒）：点一下（左键）颠一下，熟了、或点右键：全拿回背包；
 - 手上拿着东西（托盘里拿起一叠，或开站这一下就拿着）点锅的任何地方（mouth / food / handle 的碰撞盒）：放进去，左键整叠、右键一个，
-  放不进的那一件弹开（服务端判，回 refused）；托盘里 Shift 点是库的 QUICK_MOVE，整叠进锅；
+  放不进的那一件弹开（服务端判，回 refused）；托盘里空手 Shift 点（前置包 onInventoryShiftClick 钩子）发 place {from: 背包格号}，整叠进锅（一批为止），
+  放不进同样弹开；前置包没有这个钩子的老版本走内核自己的 QUICK_MOVE；
 - 托盘只列煎得了的东西（usable）；食谱书照旧挂（BookSources），只看。
 坐标：HoD 的场景坐标（锅柄朝 +z）经 PanModelMath 换到世界，再经 view.toStation 到站点像素，所以随方块朝向转。
 """
@@ -115,6 +116,14 @@ class PanViewMixin(object):
         if self.view.hand is not None:
             boxes.insert(1, self._box("mouth", Math.MOUTH_BOX))          # 拿着东西时锅口也认（drop zone）
         return boxes
+
+    def onInventoryShiftClick(self, slot, item):
+        """空手 Shift 点托盘里背包槽 slot 的那一叠（SkilletBehavior.onInventoryShiftClick）：有营火配方的发 place {from}，返回真 = 自己处理了，
+        内核不再发 QUICK_MOVE；没有配方的返回假。"""
+        if not item or not Rules.canFry(item.get("newItemName")):
+            return False
+        self.view.sendAction("place", {"from": slot})
+        return True
 
     def onOpen(self):
         self.scene = PanScenes.ensure(self.view.dimensionId, self.view.pos)

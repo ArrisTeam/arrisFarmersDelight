@@ -361,6 +361,18 @@ def testTheFreePlacesAreTheStationsStateNotWhatIsDrawn():
     assert view.behavior._free() == [True] * 6
 
 
+def testShiftClickOnTheTrayAsksTheBehaviorFirstAndAFoodStackGoesOnWithAPlaceFromTheSlot():
+    """前置包的 onInventoryShiftClick 钩子（空手 Shift 点托盘里的一叠先问表现）：有营火配方的发 place {from: 背包格号}，返回真（蛋也发，
+    JE 是这么写的，服务端再弹回）；没有配方的返回假、什么也不发（内核照旧）。"""
+    view = make()
+    behavior = view.behavior
+    assert behavior.onInventoryShiftClick(7, item(BEEF, 8)) is True
+    assert actions()[-1] == ("place", {"from": 7})
+    assert behavior.onInventoryShiftClick(3, item("minecraft:egg", 4)) is True and actions()[-1] == ("place", {"from": 3})
+    assert behavior.onInventoryShiftClick(5, item("minecraft:stick")) is False and behavior.onInventoryShiftClick(5, None) is False
+    assert len(actions()) == 2
+
+
 def testRightClickingElsewhereWithAStackInHandIsLeftToTheKernelToPutAway():
     view = make(pieces={1: item(BEEF)})
     view.setHand(item(BEEF, 5))
