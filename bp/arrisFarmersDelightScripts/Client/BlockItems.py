@@ -19,7 +19,7 @@ KNIFE_TAG = "arris:knife"
 _shown = {}        # (维度, 坐标) -> [掉落物 id]
 _last = {}         # (维度, 坐标) -> (kind, items)：最后一份内容
 _hidden = set()    # 站点在画、本端不画的方块
-_itemTypes = {}    # (名字, aux) -> 物品类型
+_itemInfo = {}     # (名字, aux) -> (物品类型, 一叠最多几个)
 _knifeTags = {}    # 物品名 -> 带不带 arris:knife 标签
 
 
@@ -37,12 +37,20 @@ def _currentDimension():
     return compFactory.CreateGame(levelId).GetCurrentDimension()
 
 
-def _itemType(item):
+def _info(item):
     key = (item.get("newItemName"), item.get("newAuxValue") or 0)
-    if key not in _itemTypes:
+    if key not in _itemInfo:
         info = compFactory.CreateItem(levelId).GetItemBasicInfo(key[0], key[1]) or {}
-        _itemTypes[key] = info.get("itemType") or ""
-    return _itemTypes[key]
+        _itemInfo[key] = (info.get("itemType") or "", info.get("maxStackSize") or 64)
+    return _itemInfo[key]
+
+
+def _itemType(item):
+    return _info(item)[0]
+
+
+def _maxStack(item):
+    return _info(item)[1]
 
 
 def isKnife(name):
@@ -67,8 +75,8 @@ def _boardOffset(pos):
 
 
 def _facingYaw(pos):
-    """炉灶、砧板的朝向（度）：炉灶的烤位和每件的转角（FD 的 DefaultStoveRenderer 按 FACING 转）、砧板上插着的工具（FD 的 renderItemCarved 按 FACING 转）
-    都跟着方块转；方块读不到按 aux 0。"""
+    """方块的朝向（度）：炉灶的烤位和每件的转角（FD 的 DefaultStoveRenderer 按 FACING 转）、砧板和煎锅上的食物（FD 的 CuttingBoardRenderer / SkilletRenderer 按 FACING 转）、
+    砧板上插着的工具（renderItemCarved 按 FACING 转）都跟着方块转；方块读不到按 aux 0。"""
     block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
     return StoveFacing.yawOfAux(block[1] if block else 0)
 
@@ -112,10 +120,9 @@ def release(dimensionId, pos):
 
 
 def _layoutOf(kind, items, pos):
-    """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：砧板要板底座的偏移、朝向和"是不是插着的工具""画成方块还是平躺的图标"，炉灶要朝向。"""
+    """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：三种方块都要朝向和一叠最多几个，砧板还要站点里板底座的偏移和"是不是插着的工具""画成方块还是平躺的图标"。"""
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
-    yaw = _facingYaw(pos) if kind in (BlockDisplay.KIND_BOARD, BlockDisplay.KIND_STOVE) else 0
-    return BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw, _boardEnv.isCarving, _boardEnv.isBlock)
+    return BlockDisplay.layout(kind, items, _itemType, pos, offset, _facingYaw(pos), _boardEnv.isCarving, _boardEnv.isBlock, _maxStack)
 
 
 def show(dimensionId, pos, kind, items):

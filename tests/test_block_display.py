@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""方块上物品的客户端渲染：摆法（Shared/Rules/BlockDisplay.py）与姿态换算（Shared/Rules/ItemPose.py）。"""
+"""方块上物品的客户端渲染：摆法（Shared/Rules/BlockDisplay.py）与姿态换算（Shared/Rules/ItemPose.py）。
+砧板这几条测的是砧板站点在场时板上的摆法（和站点里一样，开站关站不跳），所以按装了前置包算（linkkit.link）；
+没装前置包 / 站点关着时 FD 自己的渲染器（砧板、煎锅、炉灶）在 test_classic_block_display.py。"""
 from __future__ import print_function
 
 import math
 
 import fdtest
+import linkkit
+
+linkkit.link()        # 砧板站点在场（HandsOnOptions.cuttingBoard）：板上的东西摆成站点里的样子
 
 BD = fdtest.load("Shared.Rules.BlockDisplay")
 Pose = fdtest.load("Shared.Rules.ItemPose")
@@ -119,21 +124,22 @@ def testAStuckToolIsTurnedByItsKindPicksAndHoesMoreAndTheTridentLess():
 
 
 def testTheSkilletStacksLayersByCount():
-    assert [BD.skilletLayers(n) for n in (0, 1, 2, 16, 17, 33, 49, 64)] == [0, 1, 2, 2, 3, 4, 5, 5]
+    """FD 的 SkilletRenderer（逐项对 Java 的在 test_classic_block_display.py）：1 + ceil(个数 / 最大叠数 * 4) 张，一层叠一层。"""
+    assert [BD.modelCount(n, 64) for n in (1, 2, 16, 17, 33, 49, 64)] == [1, 2, 2, 3, 4, 5, 5]
     layers = BD.layout(BD.KIND_SKILLET, {"0": _item("minecraft:beef", 20)}, _typeOf, (3, 64, -7))
     assert len(layers) == 3 and all(p.flat for p in layers)
     heights = [p.center[1] for p in layers]
-    assert heights == sorted(heights) and abs(heights[1] - heights[0] - BD.LAYER_STEP) < 1e-9, "一层叠一层"
+    assert heights == sorted(heights) and abs(heights[1] - heights[0] - BD.FD_LAYER_RISE) < 1e-9, "一层叠一层"
     again = BD.layout(BD.KIND_SKILLET, {"0": _item("minecraft:beef", 20)}, _typeOf, (3, 64, -7))
     assert [p.center for p in again] == [p.center for p in layers], "同一个煎锅每次画都一样，不会跳"
-    assert all(abs(p.center[0] - 0.5) <= 0.06 and abs(p.center[2] - 0.5) <= 0.06 for p in layers)
+    assert all(abs(p.center[0] - 0.5) <= BD.FD_SPREAD + 1e-9 and abs(p.center[2] - 0.5) <= BD.FD_SPREAD + 1e-9 for p in layers)
 
 
 def testTheStoveFillsItsSixPlaces():
     slots = {"0": _item("minecraft:beef"), "3": _item("minecraft:cod"), "5": {}, "4": None}
     placed = BD.layout(BD.KIND_STOVE, slots, _typeOf, (0, 64, 0))
     assert [(p.center[0], p.center[2]) for p in placed] == [BD.STOVE_SLOTS[0], BD.STOVE_SLOTS[3]]
-    assert all(p.flat and p.center[1] > BD.STOVE_TOP for p in placed)
+    assert all(p.flat and p.center[1] == BD.FD_STOVE_HEIGHT > 1.0 for p in placed)
 
 
 def testTheStoveLayoutTurnsAboutTheBlockCentreWithTheStovesFacing():

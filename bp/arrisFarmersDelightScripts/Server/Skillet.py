@@ -25,7 +25,7 @@ from .Helpers.Items import CanStack, GetMaxStack
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data.Cooking import CanCookedFoodDict
 from ..Shared.Rules import SkilletRules as Rules
-from ..Shared.Rules.BlockDisplay import skilletLayers
+from ..Shared.Rules.BlockDisplay import modelCount
 from ..Shared.Rules.Ticks import Pacer
 
 SKILLET = "arris:skillet"
@@ -187,7 +187,8 @@ def _cook(dimensionId, blockPos, blockEntityData):
     blockEntityData["cookTimer"] -= TICK_STEP
     if blockEntityData["cookTimer"] > 1.0:
         return
-    layersBefore = skilletLayers(cookingDict["count"])
+    stack = GetMaxStack(cookingDict)
+    layersBefore = modelCount(cookingDict["count"], stack)       # 展示的层数（FD 的 getModelCount）：变了才重发
     cookingDict["count"] -= 1
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
     output = {"itemName": CanCookedFoodDict[cookingDict["newItemName"]], "auxValue": cookingDict.get("newAuxValue", 0), "count": 1}
@@ -198,7 +199,7 @@ def _cook(dimensionId, blockPos, blockEntityData):
     else:
         # 改了嵌套字典必须整体回写：只改取回来的字典，区块卸载后数量会恢复原样（刷熟食）
         blockEntityData["cookingDict"] = cookingDict
-        if skilletLayers(cookingDict["count"]) != layersBefore:
+        if modelCount(cookingDict["count"], stack) != layersBefore:
             PublishSkillet(dimensionId, blockPos, cookingDict)
 
 
