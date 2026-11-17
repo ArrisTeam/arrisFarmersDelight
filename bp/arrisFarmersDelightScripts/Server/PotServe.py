@@ -22,14 +22,21 @@ def vesselName(meal):
     return vessel[0] if vessel else None
 
 
-def takeServing(blockEntityData):
-    """从预览槽里取一份（1 个）：返回这份菜的物品字典；没有菜返回 None。"""
-    meal = PotContainer.preview(blockEntityData)
+def servingFrom(meal):
+    """从 meal（预览槽里那一叠的字典）里取一份（1 个）：返回这份菜的物品字典，meal 的 count 少 1；没有菜返回 None。只改传进来的这个字典。"""
     if not meal:
         return None
     dish = {"newItemName": meal["newItemName"], "newAuxValue": meal.get("newAuxValue") or 0, "count": 1}
     meal["count"] -= 1
-    PotContainer.setPreview(blockEntityData, meal)
+    return dish
+
+
+def takeServing(blockEntityData):
+    """从预览槽里取一份（1 个）：返回这份菜的物品字典；没有菜返回 None。"""
+    meal = PotContainer.preview(blockEntityData)
+    dish = servingFrom(meal)
+    if dish is not None:
+        PotContainer.setPreview(blockEntityData, meal)
     return dish
 
 

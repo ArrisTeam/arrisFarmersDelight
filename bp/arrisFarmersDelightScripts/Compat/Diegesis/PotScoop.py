@@ -49,7 +49,9 @@ def _useContainer(logic, name, fromInventory, selected):
 
 
 def scoop(logic, playerId, data):
-    """一个 scoop 动作（见模块说明）。返回盛了几份。"""
+    """一个 scoop 动作（见模块说明）。返回盛了几份。
+    锅里的写（做过几份、经验、预览槽里少了几份菜）撤不回来，动作中间抛了异常，前置包只把站点和背包窗口放回原样：所以先在窗口里把容器扣完、
+    菜给完（盛的时候只改预览槽的一份拷贝），表现事件发完，最后才写锅：预览槽里菜减少是最后一步，抛了异常也不会窗口里什么都没拿到、锅里却少了菜。"""
     ctx, station = logic.ctx, logic.station
     dimensionId, pos = station.dimensionId, station.pos
     blockData = GetBlockEntityData(dimensionId, pos)
@@ -57,12 +59,15 @@ def scoop(logic, playerId, data):
     if blockData is None or (fromInventory and ctx.getHand() is not None):
         return 0
     selected = selectedSlot(playerId)
+    meal = dict(PotContainer.preview(blockData))
     count, first = 0, None
     while True:
-        name = PotServe.vesselName(PotContainer.preview(blockData))
+        name = PotServe.vesselName(meal)
         if not name or not _useContainer(logic, name, fromInventory, selected):
             break
-        dish = PotServe.takeServing(blockData)
+        dish = PotServe.servingFrom(meal)
+        if meal["count"] <= 0:
+            meal = {}
         first, count = first or dish, count + 1
         if not fromInventory and ctx.getHand() is None:
             ctx.setHand(dish)                      # 最后一个容器用完了：盛出来的菜就在手里（Java 的 setCarried）
@@ -71,9 +76,10 @@ def scoop(logic, playerId, data):
         if not everything:
             break
     if count:
-        PotServe.served(playerId, dimensionId, blockData, first, count)
         station.effect("scooped", {"count": count})
         PotLook.event(dimensionId, pos, "scooped", {"count": count}, skip=station.users)
+        PotServe.served(playerId, dimensionId, blockData, first, count)
+        PotContainer.setPreview(blockData, meal)
     return count
 
 

@@ -77,15 +77,20 @@ def offhandOf(playerId):
     return compFactory.CreateItem(playerId).GetPlayerItem(ItemPosType.OFFHAND, 0, True)
 
 
-def writeTool(logic, playerId, where, tool, broke):
-    """用过的工具写回它来的地方（工具那一格先写，产物后给：坏了的刀留空，产物别落进去被盖掉）。where 是 (HAND,) / (INV, 格) / (OFFHAND,)。
-    tool 是 None 表示用坏了（broke 为真时播放破碎声）。"""
+def putTool(logic, where, tool):
+    """用过的工具写回光标栈 / 背包窗口里它来的地方（动作作废时跟着窗口一起丢）。工具那一格先写，产物后给：坏了的刀留空，产物别落进去被盖掉
+    （HoD 的次序）。where 是 (HAND,) / (INV, 格) / (OFFHAND,)；副手不在窗口里，这里不碰，见 settleTool。tool 是 None 表示用坏了。"""
     ctx = logic.ctx
     if where[0] == HAND:
         ctx.setHand(tool)
     elif where[0] == INV:
         ctx.inventory[where[1]] = tool
-    else:
+
+
+def settleTool(logic, playerId, where, tool, broke):
+    """用过的工具直接写进引擎的那一半：副手里的刀、刀碎的声音。动作里撤不回来的事：前面哪一步抛了异常，动作作废，站点和背包窗口放回原样，
+    已经写进副手的刀却放不回去（刀磨损了或没了、产物没出）。所以它是动作的最后一步，调用方在别的都做完之后才调。"""
+    if where[0] == OFFHAND:
         compFactory.CreateItem(playerId).SetEntityItem(ItemPosType.OFFHAND, tool, 0)
     if broke:
         ToAllPlayerPlaySound(logic.station.dimensionId, logic.station.pos, "random.break")

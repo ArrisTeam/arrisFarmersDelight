@@ -21,7 +21,7 @@ def envFor(logic):
 
 
 def findTool(logic, playerId, onBoard):
-    """chop 用哪把工具：((来处, ...), 物品) 或 None。来处见 BoardGive.writeTool。"""
+    """chop 用哪把工具：((来处, ...), 物品) 或 None。来处见 BoardGive.putTool。"""
     env, ctx = envFor(logic), logic.ctx
     hand = ctx.getHand()
     if hand is not None:

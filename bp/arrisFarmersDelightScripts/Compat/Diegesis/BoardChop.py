@@ -10,7 +10,7 @@
 - 不是最后一刀：发 chopped {at, spot, angle, tool, item, stroke, block, yields}，开着站点的人和附近旁观的人（BoardEmit）各自按 Shared/Rules/BoardSounds 放刀声
   （刀、斧削皮、剪刀、被切材质的击打声分着来，服务端不再放一个固定的）；
 - 最后一刀：重布刀口，整叠最多 16 件一件件切（每件结算一次产物、磨损一次工具，"耐久"附魔免掉的不磨，磨到工具坏了批就停），
-  工具那一格先写回、产物后给厨师，板上剩下的留着；发 chopped 多带 count / done。创造模式不磨损。
+  工具那一格先写回、产物后给厨师（副手里的刀是直接写引擎的，动作作废时撤不回，所以最后才写），板上剩下的留着；发 chopped 多带 count / done。创造模式不磨损。
 """
 import time
 
@@ -77,20 +77,25 @@ def chop(logic, playerId, data):
 
 
 def _cutTheStack(logic, playerId, item, recipe, where, tool, look):
-    """最后一刀（506-522）：整叠最多 16 件一起切开；产物按现查的配方算。"""
+    """最后一刀（506-522）：整叠最多 16 件一起切开；产物按现查的配方算。
+    直接写进引擎的（副手里的刀、刀碎的声音）排在最后一步：动作里前面哪一步抛了异常，站点和背包窗口由前置包放回原样，副手的刀却撤不回来，
+    先写了就是刀磨损了（或没了）、产物没出。"""
     wears = not IsCreative(playerId) and BoardTools.maxDurability(tool) > 0
     batch, spent = Rules.wearFor(item["count"], BoardTools.usesLeft(tool) if wears else None, Rules.unbreakingOf(tool))
     if batch <= 0:
         logic.restart()                  # 工具已经没有耐久（或板上没有可切的）：刀口落满了不重布的话，以后每一刀都被拒
         return refuse(logic)
     pieces = Rules.resultsFor(recipe, batch, fortune=Rules.fortuneOf(tool))
+    worn = broke = None
     if wears:
         worn, broke = BoardTools.worn(tool, spent)
-        BoardGive.writeTool(logic, playerId, where, worn, broke)
+        BoardGive.putTool(logic, where, worn)                  # 窗口里的那一格先写（HoD 的次序），副手的留到最后
     for name, aux, count in pieces:
         BoardGive.give(logic, {"newItemName": name, "newAuxValue": aux, "count": count})
     rest = dict(item, count=item["count"] - batch)
     logic.setBoard(rest if rest["count"] > 0 else None)
     logic.restart()
     emit(logic, "chopped", dict(look, count=batch, done=True))
+    if wears:
+        BoardGive.settleTool(logic, playerId, where, worn, broke)
     return True
