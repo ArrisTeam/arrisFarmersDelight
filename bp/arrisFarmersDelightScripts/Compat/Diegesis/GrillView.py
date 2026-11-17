@@ -19,7 +19,7 @@
 炉灶朝哪都对得上。
 开站时场景交给本人的有两样：从屏幕下沿飞来的起点、"我开着站点"（自己翻的不重复演）。
 """
-from . import BookSources, GrillHold, StoveScenes, TouchFeel
+from . import BookSources, FlatSprites, GrillHold, StoveScenes, TouchFeel
 from .GrillSpace import Space
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
@@ -163,7 +163,7 @@ def register(api):
     太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None；配置里关了炉灶站点（stove）也一样，和服务端的 GrillLogic.register 同一个条件。"""
     if not Options.stove() or getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
         return None
-    behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
+    behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation,
                          facing=facingOf)

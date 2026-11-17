@@ -17,7 +17,7 @@
 """
 import math
 
-from . import BookSources, PanHold, PanScenes, TouchFeel
+from . import BookSources, FlatSprites, PanHold, PanScenes, TouchFeel
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanModelMath as Math
@@ -219,7 +219,7 @@ def register(api):
     配置里关了煎锅站点（skillet）什么也不登记、返回 None，和服务端的 PanLogic.register 同一个条件。"""
     if not Options.skillet() or getattr(api, "API_VERSION", 0) < MIN_API_VERSION:
         return None
-    behaviorClass = type("SkilletBehavior", (PanViewMixin, api.StationBehavior), {"api": api})
+    behaviorClass = type("SkilletBehavior", (PanViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.PAN_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass

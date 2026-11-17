@@ -20,7 +20,7 @@
 徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
-from . import BookSources, PotHold, PotPick, PotScenes, TouchFeel
+from . import BookSources, FlatSprites, PotHold, PotPick, PotScenes, TouchFeel
 from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
@@ -241,7 +241,7 @@ def register(api):
     配置里关了厨锅站点（cooking_pot）什么也不登记、返回 None，和服务端的 PotLogic.register 同一个条件。"""
     if not Options.cookingPot():
         return None
-    behaviorClass = type("CookingPotBehavior", (PotViewMixin, api.StationBehavior), {"api": api})
+    behaviorClass = type("CookingPotBehavior", (PotViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.POT_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit),
                          canOpen=PotScenes.opensStation)

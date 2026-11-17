@@ -11,7 +11,7 @@
 - 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）；触屏没有右键 / Shift，按住不动的菜单在 BoardHold.py（onHold）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
-from . import Arrival, BookSources, TouchFeel
+from . import Arrival, BookSources, FlatSprites, TouchFeel
 from . import BoardEffects, BoardFx, BoardHold
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
@@ -233,7 +233,7 @@ def register(api):
     太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None；配置里关了砧板站点（cutting_board）也一样，和服务端的 BoardLogic.register 同一个条件。"""
     if not Options.cuttingBoard() or getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
         return None
-    behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), {"api": api})
+    behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.BOARD_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass
