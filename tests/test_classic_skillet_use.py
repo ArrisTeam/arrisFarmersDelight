@@ -172,5 +172,17 @@ def testTakingTheFoodBackPlaysNothing():
     assert data["cookingDict"] is None and _hand()["count"] == 2 and world.soundArgs == [], "JE 取回没有 playSound"
 
 
+# ---------------------------------------------------------------- 空手取回
+
+def testAnEmptyHandTakesTheWholeStackBackAndCreativeDoesNotGetIt():
+    data = _setUp(pan=_item("minecraft:beef", 5))
+    _use()
+    assert data["cookingDict"] is None and _hand()["newItemName"] == "minecraft:beef" and _hand()["count"] == 5
+    data = _setUp(pan=_item("minecraft:beef", 5), creative=True)
+    _use()
+    assert data["cookingDict"] is None and _hand() is None, "JE SkilletBlock.java:73：创造模式取下来的东西不给玩家，就这么没了"
+    assert _published()[-1] == {}, "锅里清空了，客户端的展示也清掉"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

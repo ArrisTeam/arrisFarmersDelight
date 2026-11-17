@@ -3,14 +3,14 @@
 
 站点的盛出（Compat/Diegesis/PotScoop.py）、从产出格取走（PotLogic.onTaken；经典界面里取走是 takenFromMenu）和右键盛（经典玩法是 Server/CookingPotHost.py；
 前置包在场时是站点拒绝开站那一下，PotLogic.onOpen）共用这里。对应 FD 的 useHeldItemOnMeal / CookingPotBlock.use 与 HoD 的
-PotServing：手里拿着这道菜的容器（只比物品名）、锅里有煮好的菜：容器 -1，菜 -1 份，一份菜进背包（放不下掉在脚下），
-算"做过一份"（开第 2、3 颗星用），不给经验（FD 的右键盛也不给）。站点的盛出和从产出格取走才给经验（HoD 的 served）。
+PotServing：手里拿着这道菜的容器（只比物品名）、锅里有煮好的菜：容器 -1（创造模式也扣：useHeldItemOnMeal 的 container.shrink(1) 不看创造），
+菜 -1 份，一份菜进背包（放不下掉在脚下），算"做过一份"（开第 2、3 颗星用），不给经验（FD 的右键盛也不给）。站点的盛出和从产出格取走才给经验（HoD 的 served）。
 """
 from . import HandCooking
 from .Helpers import PotContainer
-from .Helpers.Engine import GetBlockEntityData, GetCarriedItem, compFactory
+from .Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem, compFactory
 from .Helpers.Fx import ToAllPlayerPlaySound
-from .Helpers.Player import GiveOrDropItem, SetNotCreateItem, SetPlayerUsedCD
+from .Helpers.Player import GiveOrDropItem, SetPlayerUsedCD
 from ..Shared.Rules import CookingPot as CookingPotRules
 
 TAKE_SOUND = "armor.equip_generic"    # 右键盛菜的声音：FD 的 block.food.take_portion 就是原版的 item.armor.equip_generic（站点里的盛出由客户端按 scooped 事件自己放）
@@ -60,7 +60,8 @@ def serveByHand(playerId, dimensionId, blockPos):
     if SetPlayerUsedCD(playerId):
         return True
     dish = takeServing(data)
-    SetNotCreateItem(playerId, held)
+    held["count"] -= 1                       # 创造模式也扣（CookingPotBlockEntity.java:474-481）
+    SetCarriedItem(playerId, held)
     GiveOrDropItem(playerId, dish, dimensionId)
     HandCooking.addMade(playerId, dish["newItemName"], 1)
     ToAllPlayerPlaySound(dimensionId, blockPos, TAKE_SOUND)

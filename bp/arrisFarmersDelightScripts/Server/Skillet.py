@@ -72,7 +72,8 @@ def OnServerSkilletBlockUse(args):
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
         HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
-        SetCarriedItem(playerId, cookingDict)                       # 取回没有声音（SkilletBlock.java:71-77）
+        if not IsCreative(playerId):                                # 取回没有声音；创造模式取下来的东西不给玩家，就这么没了（SkilletBlock.java:71-77）
+            SetCarriedItem(playerId, cookingDict)
         blockEntityData["cookingDict"] = None
         PublishSkillet(dimensionId, blockPos, None)
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
