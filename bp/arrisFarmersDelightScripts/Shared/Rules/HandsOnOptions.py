@@ -3,13 +3,18 @@
 
 对应 Hands-On Delight 的 HandsOnConfig.java（read / readTime / 各个取值函数 / scaled）。表是 Shared/Data/HandsOnConfig.py 的 CONFIG，
 每次取值现读：表里改了（整合包作者改文件，测试里直接改）下一次取就变。JE 启动时把文件读进静态字段，"只读一次"在这里是调用方的事——
-站点登记（Compat/Diegesis 的两个 Boot）只在启动时问一次。
+站点登记（Compat/Diegesis 步骤表里各站点的 register）只在启动时问一次。
 
 表里的值不对时的兜底照 JE：缺键、类型不对、读不成当缺省值（DEFAULTS，就是 JE 的缺省）；布尔认 true / yes / on / 1 和 false / no / off / 0
 （HandsOnConfig.read，字符串不分大小写、两头空白不算；Python 的 True / False 直接用，整数 1 / 0 当 "1" / "0"）；倍率是数或数字串（逗号当小数点），
 夹进 0.1 ~ 10，不是有限的数当缺省（HandsOnConfig.readTime）。
+
+没联动（HandsOnMode.linked() 为假：前置包没装、版本太旧、还没判定）时 Hands-On Delight 不在，这里的每个开关都是假：四个站点都关着、工作台合成照旧、不要搅拌、
+没有食谱书，三个倍率按"站点关了算 1.0"的派生规则也是 1.0——锅、煎锅、炉灶走的就是农夫乐事原样的时间和玩法，不看 HandsOnConfig 的表。
+联动的步骤自己登记站点时（Compat/Diegesis 的 Presence 先把模式拨到 LINKED 再跑步骤）才照表读。
 """
 from ..Data import HandsOnConfig as Table
+from . import HandsOnMode
 from .HandsOn.Mth import clamp, roundInt
 
 try:
@@ -75,7 +80,8 @@ def readTime(value, fallback):
 
 
 def _flag(key):
-    return readFlag(Table.CONFIG.get(key), DEFAULTS[key])
+    """配置里的一个开关；Hands-On Delight 不在（没联动）时一律是假。"""
+    return HandsOnMode.linked() and readFlag(Table.CONFIG.get(key), DEFAULTS[key])
 
 
 def _time(key):

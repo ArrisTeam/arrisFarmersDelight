@@ -17,7 +17,9 @@ import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它�
 import dgstation
 import dgtest
 import fdtest
+import linkkit
 
+linkkit.link()        # 站点按装了前置包算：HandsOnOptions 没联动时说 HoD 不在（Shared/Rules/HandsOnMode）
 world = dgstation.install()
 _engine = sys.modules[dgtest.SCRIPTS + ".Client.Engine"]
 

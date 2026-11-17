@@ -17,6 +17,7 @@ import types
 import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
+import linkkit
 
 PACKAGE = fdtest.SCRIPTS
 POT_POS = (10, 64, 10)
@@ -226,6 +227,7 @@ def install():
     """装假引擎并返回共享的 Fake（只装一次；之后每个用例先 fake.reset()）。"""
     if "fake" in _installed:
         return _installed["fake"]
+    linkkit.link()        # 站点按装了前置包算：HandsOnOptions 没联动时说 HoD 不在（Shared/Rules/HandsOnMode）
     fake = _installed["fake"] = Fake()
     System.fake = fake
     helpers = PACKAGE + ".Server.Helpers"

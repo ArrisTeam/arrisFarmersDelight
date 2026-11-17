@@ -11,7 +11,9 @@ from __future__ import print_function
 import math
 
 import fdtest
+import linkkit
 
+linkkit.link()        # 缺省的 stirringRequired 读配置：联动了才生效（没联动时 HandsOnOptions 说 HoD 不在，不要搅）
 PotBonus = fdtest.load("Shared.Rules.HandsOn.PotBonus")
 Pot = fdtest.load("Shared.Rules.HandsOn.PotCooking")
 _Mth = fdtest.load("Shared.Rules.HandsOn.Mth")

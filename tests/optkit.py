@@ -6,7 +6,9 @@ Config 是个 with 块：进去时改表里的值，出来时整张表放回原�
 from __future__ import print_function
 
 import fdtest
+import linkkit
 
+linkkit.link()        # 配置表的读法在联动了才生效（没联动时 HandsOnOptions 说 HoD 不在）：这里的用例都当装了前置包
 Table = fdtest.load("Shared.Data.HandsOnConfig")
 Options = fdtest.load("Shared.Rules.HandsOnOptions")
 MISSING = object()

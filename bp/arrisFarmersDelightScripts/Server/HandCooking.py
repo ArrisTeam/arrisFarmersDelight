@@ -13,7 +13,7 @@
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory
 from ..Shared.Rules import CookingPot as CookingPotRules
-from ..Shared.Rules import PotStation
+from ..Shared.Rules import HandsOnMode, PotStation
 from ..Shared.Rules.HandsOn import PotCooking
 from ..Shared.Rules.HandsOn.PotBonus import openStars
 from ..Shared.Rules.HandsOn.Spoon import Spoon
@@ -177,6 +177,9 @@ def madeMap(playerId):
 
 
 def addMade(playerId, dishName, count):
+    """记 playerId 又盛出了 count 份 dishName，返回记完的总份数（HoD 的星星读它）。没联动时没有星星可开：什么也不记、不往玩家数据里写（FD 本来就不记这个），返回 0。"""
+    if not HandsOnMode.linked():
+        return 0
     total = madeOf(playerId, dishName) + count
     _made[playerId][PotContainer.plain(dishName)] = total
     compFactory.CreateExtraData(playerId).SetExtraData(MADE_KEY, dict(_made[playerId]))

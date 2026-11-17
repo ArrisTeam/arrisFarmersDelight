@@ -15,6 +15,7 @@ import types
 import prereq  # noqa: F401 - 前置包不在这个仓库里：旁边没有它就跳过（tests/prereq.py）
 import dgtest
 import fdtest
+import linkkit
 
 PACKAGE = fdtest.SCRIPTS
 STATION_POS = (10, 64, 10)
@@ -156,6 +157,7 @@ def _install():
     sys.modules[PACKAGE + ".QuModLibs"], sys.modules[PACKAGE + ".QuModLibs.Client"] = quPackage, quClient
 
 
+linkkit.link()        # 站点按装了前置包算：HandsOnOptions 没联动时说 HoD 不在（Shared/Rules/HandsOnMode）
 _install()
 BoardView = fdtest.load("Compat.Diegesis.BoardView")
 BoardDraw = fdtest.load("Compat.Diegesis.BoardDraw")
