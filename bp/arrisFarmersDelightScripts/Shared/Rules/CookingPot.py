@@ -153,6 +153,11 @@ def matchIndex(itemDicts):
     return _recipeOfKey.get(key) if key else None
 
 
+def resultNameOf(index):
+    """配方表里第 index 条的成品名（锅记着的上一条配方的成品，见 PotRecipeMemory）。"""
+    return CookingPotRecipeList[index]["CookResult"][0]
+
+
 def findRecipeByResult(resultItemName):
     """按成品名找第一条配方（与旧实现"首个匹配获胜"一致）；没有返回 None。"""
     for recipeDict in CookingPotRecipeList:

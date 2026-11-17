@@ -6,7 +6,8 @@
 和奖励零头 handsOnBonus、料是不是手放的 handsOnByHand、煮了几份 potUsed。没人碰过的锅、漏斗等自动化放进来的料、
 厨师走开 AWAY 秒之后，都按 FD 原样自己煮（每份按配方表的 CookTime x 配置倍率 cooking_pot_time，缺省 10 秒，和 JE 一致）；
 站点开着时（Compat/Diegesis/PotLogic.py 每刻 attend）厨师放的料要搅才煮（stirring_required），整批按 1.5 / sqrt(份数)
-的速度一起煮好，搅出的星星多送份数。不煮的时候（没热源、没有配方、成品放不下）进度每刻掉 2 刻（FD 的 cookingTick）。
+的速度一起煮好，搅出的星星多送份数。不煮的时候（没热源、没有配方、成品放不下）进度每刻掉 2 刻（FD 的 cookingTick）；
+锅里的料换成了另一道菜（和上次煮的不是同一条配方）进度从头来（FD 的 getMatchingRecipe，规则在 Shared/Rules/PotRecipeMemory.py）。
 """
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory
@@ -16,6 +17,7 @@ from ..Shared.Rules.HandsOn import PotCooking
 from ..Shared.Rules.HandsOn.PotBonus import openStars
 from ..Shared.Rules.HandsOn.Spoon import Spoon
 from ..Shared.Rules.HandsOn.StirSkill import clampSpoon
+from ..Shared.Rules.PotRecipeMemory import RecipeMemory
 
 COOK_SECONDS = PotStation.COOK_SECONDS
 MADE_KEY = "arrisFD_potMade"     # 玩家 ExtraData：{成品名: 盛出过几份}，开第 2、3 颗星用
@@ -32,6 +34,7 @@ class PotHand(object):
         self.spoon = Spoon()
         self.spoonAt = (0.0, 0.0)        # 勺尖最后的位置（世界朝向，-1..1），给旁观的人看
         self.dish = None                 # 锅里的料现在能做的菜（物品字典）或 None
+        self.memory = RecipeMemory()     # 记着上一条配方：换了菜进度从头来（FD 的 lastRecipeID，不存档）
         self.heated = False
         self.batch = 0                   # 这批能一起煮几份（0：不能煮）
         self.total = COOK_SECONDS        # 这道菜一份煮多久（秒，配方表的 CookTime x 配置倍率）
@@ -69,6 +72,17 @@ def _keepByHand(clock, blockEntityData):
         blockEntityData[BY_HAND_KEY] = clock.byHand
 
 
+def _stepRecipe(hand, slots, ready):
+    """FD 的 getMatchingRecipe（加热着、有料的步才问）：这一步有没有配方；锅里的料换成了另一道菜（和上次煮的不是同一条）就把进度清零。
+    ready 是盛出格里等着盛的菜（FD 的 getMeal）。规则在 PotRecipeMemory。"""
+    memory = hand.memory
+    lastIsMeal = bool(ready) and memory.last is not None and CookingPotRules.resultNameOf(memory.last) == ready["newItemName"]
+    index, restart = memory.look(CookingPotRules.matchIndex(slots), lastIsMeal)
+    if restart:
+        hand.clock.cookTime = 0.0
+    return index is not None
+
+
 def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
     """锅的一步（Server/CookingPot.py 的 tick 调用）：推进 dt 秒，煮好就出锅。slots 是 6 个食材格。"""
     clock = hand.clock
@@ -81,6 +95,8 @@ def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
     hand.heated = blockEntityData["heatEnable"] is True
     hand.total = PotCooking.timeFor(CookingPotRules.cookSecondsOf(meal["newItemName"])) if meal else COOK_SECONDS
     ready = PotContainer.preview(blockEntityData)
+    if hand.heated and any(slots) and not _stepRecipe(hand, slots, ready):
+        meal = None                                      # 这一步没有配方（FD 的 getMatchingRecipe）：不煮，进度往回掉
     same = not (meal and ready) or ready["newItemName"] == meal["newItemName"]
     mealCount = ready.get("count", 0) if same else 0
     perServing = (meal.get("count") or 1) if meal else 1
