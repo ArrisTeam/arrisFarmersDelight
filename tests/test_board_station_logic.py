@@ -228,6 +228,76 @@ def testHamTakesTwoChopsOneAtATimeInOrderAndNeverTwoInOneInstant():
     assert K.count("minecraft:porkchop") == 4 and K.count("minecraft:bone") == 2, "产物和骨头都给厨师"
 
 
+def testTwoRawChickensFallIntoTwoMarksFourCutsAndTwoBoneMeal():
+    """JE rawChickenFallsIntoItsCuts（站点层）：两只生鸡躺在板上（两块鸡肉加一块骨粉：两刀），一刀切不开，最后一刀把两只都切开：
+    4 块鸡肉、2 个骨粉给厨师（FD 的鸡一件切成 2 块 + 骨粉）。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, "minecraft:chicken", 2)
+    assert K.board(data) == ("minecraft:chicken", 2), "生鸡躺着等切"
+    assert _state(manager).getData()["plan"] == 2, "两块鸡肉加一块骨粉：两刀，不是一刀也不是三刀"
+    _knife(7, 250)
+    assert _chop(manager, 0)
+    assert K.board(data) == ("minecraft:chicken", 2) and K.count("arris:chicken_cuts") == 0, "一刀切不开"
+    K.advance(0.2)
+    assert _chop(manager, 1)
+    assert K.board(data) is None, "最后一刀把两只都切开"
+    assert K.count("arris:chicken_cuts") == 4, "两只鸡的鸡肉给厨师"
+    assert K.count("minecraft:bone_meal") == 2, "和它们的骨粉"
+    assert _inv(7)["durability"] == 248, "每只鸡磨一次刀"
+
+
+def _tool(slot, name, durability=250):
+    fake.give("a", slot, name, 1)
+    fake.world.players["a"]["inv"][slot]["durability"] = durability
+
+
+def _cutAll(manager):
+    """板上这件东西的每一刀依次落下（站点数据 plan 说几刀，两刀间隔 >= 0.15 秒）。"""
+    for mark in range(_state(manager).getData()["plan"]):
+        K.advance(0.2)
+        assert _chop(manager, mark), mark
+
+
+def testAnAxeStripsTwoLogsAndShearsCutLeatherArmourAtTheStation():
+    """JE everyCutIsTheStations（站点层）：FD 的每一种切法都走站点，不只是做菜的：两根橡木用铁斧削成两根去皮橡木、给厨师树皮；
+    一件皮胸甲用剪刀剪成皮革。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, "minecraft:oak_log", 2)
+    assert K.board(data) == ("minecraft:oak_log", 2), "原木躺下等着削"
+    assert _state(manager).getData()["stroke"] == "strip", "斧削皮"
+    _tool(6, "minecraft:iron_axe")
+    _cutAll(manager)
+    assert K.board(data) is None
+    assert K.count("minecraft:stripped_oak_log") == 2 and K.count("arris:tree_bark") >= 2, "削好的两根去皮原木，加树皮给厨师"
+    assert _inv(6)["durability"] == 248, "每根磨一次斧"
+    K.advance(0.2)
+    assert _place(manager, "minecraft:leather_chestplate", 1, slot=4)
+    assert K.board(data) == ("minecraft:leather_chestplate", 1), "皮甲躺下等着剪"
+    assert _state(manager).getData()["stroke"] == "snip", "剪刀剪"
+    _tool(8, "minecraft:shears")
+    _cutAll(manager)
+    assert K.board(data) is None and K.count("minecraft:leather") >= 1, "剪成了皮革"
+
+
+def testAxeAndShearsDoNotCutWhatTheyDoNotCutAtTheStation():
+    """板上是原木、手里是剪刀，或者板上是皮甲、手里是斧：刀口拒绝，板上的东西原样。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, "minecraft:oak_log", 2)
+    _tool(8, "minecraft:shears")
+    K.effects()
+    assert _chop(manager, 0) and _names(K.effects()) == ["refused"] and K.board(data) == ("minecraft:oak_log", 2), "剪刀削不了原木"
+    K.do(manager, "a", K.custom("take"))
+    K.advance(0.2)
+    assert _place(manager, "minecraft:leather_chestplate", 1, slot=4)
+    _tool(6, "minecraft:iron_axe")
+    fake.world.players["a"]["inv"][8] = None
+    K.effects()
+    assert _chop(manager, 0) and _names(K.effects()) == ["refused"] and K.board(data) == ("minecraft:leather_chestplate", 1), "斧剪不了皮甲"
+
+
 def testAKnifeThatBreaksStopsTheBatchAndLeavesItsSlotEmpty():
     manager, data = K.setup()
     K.opened(manager)

@@ -56,6 +56,55 @@ def testAFeastIsLaidFromTheBookInOneGo():
     assert events["assembled"]["block"] is True and len(events["assembled"]["layers"]) == 9, "九层一起融掉，成品是整块的"
 
 
+def testDoughFromWaterKeepsItsBucketOfWaterAndTheCookGetsItBack():
+    """JE doughKeepsItsWater（站点层）：五个小麦、一桶水做成五个面团（一桶水揉完整叠小麦），水桶原样回到背包（和工作台一样，不换成空桶）。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, "minecraft:wheat", 5)
+    assert K.layers(data) == [("minecraft:wheat", 5)] and K.board(data) is None
+    assert _place(manager, "minecraft:water_bucket", 1, slot=4)
+    assert K.board(data) == ("arris:wheat_dough", 5) and K.layers(data) == [], "五个小麦出五个面团"
+    assert K.count("minecraft:water_bucket") == 1 and K.count("minecraft:bucket") == 0, "水桶还是满的，回到了背包"
+    assert K.count("minecraft:wheat") == 0
+
+
+def testAStuffedPotatoGivesTheMilkBucketBackEmptyAndOnlyOneIsMadeBecauseABucketGoesDownOneAtATime():
+    """JE milkGivesItsBucketBack（站点层）：三个烤土豆、三份馅（熟牛肉）、一桶奶：一桶奶只放得下一个，所以做一个酿馅土豆，空桶回到背包，剩下的土豆和馅也还回来。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert _place(manager, "minecraft:baked_potato", 3)
+    assert _place(manager, "minecraft:cooked_beef", 3, slot=4)
+    assert K.layers(data) == [("minecraft:baked_potato", 3), ("minecraft:cooked_beef", 3)]
+    assert _place(manager, "minecraft:milk_bucket", 1, slot=5)
+    assert K.layers(data) == [] and K.board(data) == ("arris:stuffed_potato", 1), "一个酿馅土豆"
+    assert K.count("minecraft:bucket") == 1 and K.count("minecraft:milk_bucket") == 0, "空桶回来了"
+    assert K.count("minecraft:baked_potato") == 2 and K.count("minecraft:cooked_beef") == 2, "剩下的也还回来"
+
+
+def _cuttableBaseDish():
+    """一道从"板上等着切的食物"打底的菜（FD 自己没有，下游有）：卷心菜打底、再放一根胡萝卜。"""
+    return [{"ingredients": [("arris:cabbage", 0), ("minecraft:carrot", 0)], "result": ("x:cabbage_dish", 0)}]
+
+
+def testABookPickLeavesTheFoodToBeCutUntilTheRestIsThereThenTheFoodBecomesTheDishesFirstLayer():
+    """JE aBookPickLeavesTheFoodUntilTheRestIsThere：板上等着切的食物是这道菜的底座、背包里还凑不齐其余的料——食物留着等切（什么也不放）；
+    料凑齐了，再点一下，食物成了这道菜的第一层，放完就做成（后半）。"""
+    Dishes.rebuildIndex(_cuttableBaseDish())
+    try:
+        manager, data = K.setup()
+        K.opened(manager)
+        assert _place(manager, "arris:cabbage", 3)
+        assert K.board(data) == ("arris:cabbage", 3) and K.layers(data) == [], "卷心菜躺着等切"
+        assert not K.do(manager, "a", K.custom("bookFill", key="d:x:cabbage_dish", sets=1)), "背包里没有胡萝卜：什么也没放"
+        assert K.board(data) == ("arris:cabbage", 3) and K.layers(data) == [] and K.count("minecraft:carrot") == 0, "食物留着，等着切"
+        fake.give("a", 6, "minecraft:carrot", 5)
+        assert K.do(manager, "a", K.custom("bookFill", key="d:x:cabbage_dish", sets=1))
+        assert K.layers(data) == [] and K.board(data) == ("x:cabbage_dish", 3), "食物成了第一层，料齐了就做成：三份"
+        assert K.count("arris:cabbage") == 0 and K.count("minecraft:carrot") == 2, "三个卷心菜、三根胡萝卜用掉了"
+    finally:
+        Dishes.rebuildIndex()
+
+
 def _layersOf(dish):
     """JE BoardTests.layersOf：底座先放，其余的按配方顺序，和底座同名的排最后。"""
     first = dish["ingredients"][dish["base"]]

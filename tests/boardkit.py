@@ -10,7 +10,8 @@ import potfake
 
 fake = potfake.install()
 TYPES = {"arris:iron_knife": "sword", "arris:flint_knife": "sword", "minecraft:iron_axe": "axe", "minecraft:iron_pickaxe": "pickaxe",
-         "minecraft:iron_sword": "sword", "minecraft:cobblestone": "block", "minecraft:oak_log": "block"}
+         "minecraft:iron_sword": "sword", "minecraft:cobblestone": "block", "minecraft:oak_log": "block", "minecraft:shears": "shears",
+         "minecraft:trident": "trident"}
 MAX_DURABILITY = {"arris:iron_knife": 250, "arris:flint_knife": 59, "minecraft:iron_axe": 250, "minecraft:iron_sword": 250}
 
 
