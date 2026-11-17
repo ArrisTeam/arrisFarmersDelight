@@ -6,7 +6,8 @@
 getAverageWaterColor 是原版的"群系混合"（ClientLevel.calculateBlockTint）：取 pos 同一高度、以它为中心 (2r+1) x (2r+1) 列各自群系的水色，
 逐通道整数平均（向下取整）；r 是视频设置里的"生物群系混合"，缺省 2（5 x 5）。
 基岩版的水色表是 Shared/Data/BiomeWater.py（tools/gen_biome_water.py 按原版资源包生成，引擎画世界里的水用的就是它）：
-锅里的水和旁边池塘的水同色，平原是 #44AFF5、不是 JE 的 #3F76E4；表里没有的群系（别的模组加的）用 DEFAULT_BIOME_WATER。
+锅里的水和旁边池塘的水同色，平原是 #44AFF5、不是 JE 的 #3F76E4；表里没有的群系（别的模组加的）用 DEFAULT_BIOME_WATER
+（引擎对没写水色的群系用的缺省色，也是 #44AFF5）。
 
 本模块不碰引擎：群系名由调用方给（biomeAt(x, y, z) -> 群系名或 None；客户端是 CreateBiome(levelId).GetBiomeName，在 Compat/Diegesis/PotBiome.py）。
 只取锅所在区块里的列：客户端对没加载的区块回的是 ocean 而不是 None，锅在区块边上、邻居区块还没来时，那几列会把水色往海的颜色拽。

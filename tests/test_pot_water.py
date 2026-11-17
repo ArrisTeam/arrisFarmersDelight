@@ -20,7 +20,7 @@ LiquidColor = C.load("Shared.Rules.HandsOn.PotLiquidColor")
 Tint = C.load("Shared.Rules.PotTint")
 POS = C.POS
 DT = 1.0 / 60.0
-DEFAULT = 0xA03F76E4                    # 查不到群系时的老样子：WATER_ALPHA + 平原的 #3F76E4
+DEFAULT = 0xA044AFF5                    # 查不到群系时：WATER_ALPHA + 基岩版的缺省水色 #44AFF5（平原也是它）
 
 
 def build(biome=None, at=POS, biomes=None):
@@ -59,7 +59,7 @@ def testABiomeNameIsLookedUpWithOrWithoutTheNamespace():
 
 
 def testABiomeTheTableDoesNotKnowIsTheDefaultWater():
-    assert Water.DEFAULT_BIOME_WATER == 0x3F76E4 == DEFAULT & 0xFFFFFF
+    assert Water.DEFAULT_BIOME_WATER == 0x44AFF5 == DEFAULT & 0xFFFFFF == Table["plains"], "引擎对没写水色的群系用的缺省色，和平原一样"
     assert Water.waterOf("mymod:lava_lands") == Water.DEFAULT_BIOME_WATER, "别的模组加的群系"
     assert Water.waterOf("mymod:plains") == Water.DEFAULT_BIOME_WATER, "只有 minecraft: 的命名空间会被去掉：别人的 plains 不是平原"
 
@@ -104,10 +104,10 @@ def testWhatTheEngineDoesNotAnswerIsLeftOutAndNoAnswerAtAllIsNone():
 
 def testAColumnOfAnUnknownBiomeBlendsInAsTheDefaultWater():
     def biomeAt(x, _y, _z):
-        return "mymod:lava_lands" if x < 10 else "plains"
+        return "mymod:lava_lands" if x < 10 else "swampland"
 
-    assert Water.waterAt(biomeAt, (10, 64, 10)) == averageOf([(0x3F76E4, 10), (Table["plains"], 15)])
-    assert Water.waterAt(lambda x, y, z: "mymod:lava_lands", (10, 64, 10)) == 0x3F76E4
+    assert Water.waterAt(biomeAt, (10, 64, 10)) == averageOf([(0x44AFF5, 10), (Table["swampland"], 15)])
+    assert Water.waterAt(lambda x, y, z: "mymod:lava_lands", (10, 64, 10)) == 0x44AFF5
 
 
 # ---------------------------------------------------------------- 场景（PotScenes.ensure -> PotBiome.bind -> PotScene.setWater）
@@ -127,7 +127,7 @@ def testTheModelAndTheShaderGetThatWaterNotTheOldConstant():
     run(scene, 0.5)
     pushed = world.uniforms[(POS, 1)]
     assert all(abs(a - b) < 1e-6 for a, b in zip(pushed, LiquidColor.toUnit(0xA0000000 | Table["swampland"]))), pushed
-    assert abs(pushed[0] - 0x3F / 255.0) > 0.05, "不是平原的蓝 #3F76E4"
+    assert abs(pushed[0] - 0x44 / 255.0) > 0.05, "不是缺省的 #44AFF5"
     assert scene.liquid.brothColor == Table["swampland"], "粒子（气泡、水花）染的也是这个颜色"
 
 

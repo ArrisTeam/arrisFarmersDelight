@@ -18,7 +18,7 @@ OOZE_TAKES = 0.35            # 怪物锅的黏液最多取食物颜色的这么�
 RAW_TINT = 0.3               # 还没煮，水已经带了这么多食物的颜色（PotBehavior.java:143）
 POURED_SHARE = 0.6           # 倒进去的液体（牛奶等）夺走水色的比例（PotBehavior.java:314）
 FALLBACK = 0xB0A070          # 没有食物时 FoodColors.mix 的兜底色（FoodColors.java:23）
-DEFAULT_BIOME_WATER = 0x3F76E4   # JE 平原的 BiomeColors.getAverageWaterColor：基岩版查不到所在群系的水色（接口没回、别的模组的群系）时的缺省，见 Rules/PotWater.py
+DEFAULT_BIOME_WATER = 0x44AFF5   # 查不到所在群系的水色（接口没回、别的模组的群系）时的缺省：基岩版引擎自己的缺省水色，平原也是它（JE 平原是 0x3F76E4），见 Rules/PotWater.py
 BUBBLE_ALPHA = 0xE0          # 气泡颜色的 alpha（PotBehavior.java:1101）
 BUBBLE_WHITEN = 0.6          # 气泡颜色 = 汤色往白色走这么多（PotBehavior.java:1101）
 STEAM_COLOR = 0x6CFFFFFF     # 锅的蒸汽比库里的更白（PotBehavior.java:118）

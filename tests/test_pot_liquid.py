@@ -92,7 +92,7 @@ def testMixColorsIsTheIntegerMeanPerChannel():
 def testWaterColors():
     # PB:1048-1049：生物群系水色配 0xA0；怪物锅的黏液配 0xE0
     assert C.waterColor(0x3F76E4) == 0xA03F76E4
-    assert C.waterColor() == 0xA03F76E4 == C.argb(C.WATER_ALPHA, C.DEFAULT_BIOME_WATER)
+    assert C.waterColor() == 0xA044AFF5 == C.argb(C.WATER_ALPHA, C.DEFAULT_BIOME_WATER), "没给群系水色：基岩版的缺省水色"
     assert C.waterColor(0x3F76E4, 0x47A44F) == 0xE047A44F
 
 
@@ -217,15 +217,15 @@ def testShownColourFollowsTheTargetInTwoStages():
     # PB:1094 blend(shown, target, min(1, 4 dt))，再 LS:549-552 每个通道半衰期 0.18 s
     liquid = L.PotLiquid()
     liquid.step(0.1, 100)
-    start = 0xA03F76E4
+    start = 0xA044AFF5
     assert liquid.shown == start and liquid.color == start
     liquid.setTarget(0xF0C8A040, 0.0)
     liquid.step(0.1, 100)
-    first = argbOf(channel(0xA0, 0xF0, 0.4), channel(0x3F, 0xC8, 0.4), channel(0x76, 0xA0, 0.4), channel(0xE4, 0x40, 0.4))
+    first = argbOf(channel(0xA0, 0xF0, 0.4), channel(0x44, 0xC8, 0.4), channel(0xAF, 0xA0, 0.4), channel(0xF5, 0x40, 0.4))
     assert liquid.shown == first
     keep = 0.5 ** (0.1 / 0.18)
     want = [int(math.floor(t + (s - t) * keep + 0.5)) for s, t in
-            ((0xA0, (first >> 24) & 0xFF), (0x3F, (first >> 16) & 0xFF), (0x76, (first >> 8) & 0xFF), (0xE4, first & 0xFF))]
+            ((0xA0, (first >> 24) & 0xFF), (0x44, (first >> 16) & 0xFF), (0xAF, (first >> 8) & 0xFF), (0xF5, first & 0xFF))]
     assert liquid.color == argbOf(*want)
     assert liquid.brothColor == first & 0xFFFFFF
     assert liquid.bubbleColor == C.bubbleTint(first)
