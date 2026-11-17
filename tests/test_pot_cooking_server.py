@@ -8,6 +8,7 @@ import random as realRandom
 
 import dgtest
 import potkit as K
+from optkit import Config
 from potkit import BOWL, POT, SAUCE, TOMATO, fake
 
 HandCooking = K.HandCooking
@@ -221,13 +222,36 @@ def testTheCookingTimeConfigScalesEveryWayOfCooking():
 
 def testStirringCanBeSwitchedOffAndTheFoodTheCookPutInCooksByItself():
     manager, data = K.setup()
-    before = _setConfig(STIRRING_REQUIRED=False)
-    try:
+    with Config(stirring_required=False):
         K.feed(manager, TOMATO, 8)
         K.run(manager, 11.0)
         assert K.preview()["count"] == 2 and _hand().mode == PotCooking.FD_WAY, "不用搅也煮（FD 原样每 5 秒一份）"
-    finally:
-        _restore(before)
+        assert data["handsOnByHand"] is True, "料还是记着是手放的（搅起来照样按批量、评星）"
+    manager, data = K.setup()
+    K.feed(manager, TOMATO, 8)
+    K.run(manager, 11.0)
+    assert K.preview() == {} and _hand().mode == PotCooking.WAITING, "缺省：等勺子"
+
+
+def testStirringStillBringsTheWholeBatchAndTheStarsWhenItIsNotRequired():
+    # HoD 配置的说明文字：关了不搅也煮，"stirring still cooks the whole pot at once and earns stars"
+    with Config(stirring_required=False):
+        manager, data = K.setup()
+        HandCooking.addMade("a", SAUCE, 40)
+        K.feed(manager, TOMATO, 16)
+        K.run(manager, 20.0, stir=True)
+        assert K.preview()["count"] == 12, "整批 8 份一起出锅，3 星多送 4 份"
+        assert K.effects() == [("served", {"grade": 3, "bonus": 4})]
+
+
+def testWithoutThePotStationThereIsNoSpoonSoNothingWaitsForIt():
+    # HandsOnConfig.stirringRequired() 是 stirringRequired && cookingPot：站点关了不等勺子（站点是 K.setup 在配置还缺省时登记的，
+    # 之后才把配置改成关：模拟重启之前手放的料，锅这一步按关了的配置煮）
+    manager, data = K.setup()
+    with Config(cooking_pot=False):
+        K.feed(manager, TOMATO, 8)
+        K.run(manager, 11.0)
+        assert K.preview()["count"] == 2 and _hand().mode == PotCooking.FD_WAY
 
 
 def testNamesThatGoIntoTheBlockEntityDataOrTheExtraDataAreAlwaysPlainStrings():

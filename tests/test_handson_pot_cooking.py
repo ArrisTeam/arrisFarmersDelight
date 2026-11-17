@@ -10,6 +10,7 @@ from __future__ import print_function
 
 
 import fdtest
+from optkit import Config
 
 Pot = fdtest.load("Shared.Rules.HandsOn.PotCooking")
 _Mth = fdtest.load("Shared.Rules.HandsOn.Mth")
@@ -147,10 +148,10 @@ def testProgressIsZeroWithoutABatch():
     assert clock.progress(10.0, 3) == 1.0
 
 
-def testTheConfigIsClampedAndFollowedByTheTimesTheBookAndTheStirringGate():
-    before = (Pot.COOKING_POT_TIME, Pot.STIRRING_REQUIRED)
+def testTheCookingTimeConfigIsClampedAndFollowedByTheTimesAndTheBook():
+    before = Pot.COOKING_POT_TIME
     try:
-        assert Pot.COOKING_POT_TIME == 1.0 and Pot.STIRRING_REQUIRED is True, "HandsOnConfig 的缺省"
+        assert Pot.COOKING_POT_TIME == 1.0, "HandsOnConfig 的缺省"
         Pot.COOKING_POT_TIME = 2.0
         assert Pot.timeFor(5.0) == 10.0 and abs(Pot.bookSeconds(10.0) - 20.0 / 1.5) < 1e-9
         Pot.COOKING_POT_TIME = 100.0
@@ -159,13 +160,46 @@ def testTheConfigIsClampedAndFollowedByTheTimesTheBookAndTheStirringGate():
         assert Pot.potTime() == 0.1 and Pot.timeFor(5.0) == 0.5, "下限 0.1"
         Pot.COOKING_POT_TIME = 1.0
         assert abs(Pot.bookSeconds(10.0) - 10.0 / 1.5) < 1e-9, "一份在站点里 10 / 1.5 = 6.7 秒"
-        clock = newClock()
-        clock.attend(0.0)
-        assert clock.advance(0.0, TICK, 10.0, 3) == Pot.WAITING, "厨师在场、手放的料、不搅：等勺子"
-        Pot.STIRRING_REQUIRED = False
-        assert clock.advance(TICK, TICK, 10.0, 3) == Pot.FD_WAY, "stirring_required 关了：不搅也照 FD 原样自己煮"
     finally:
-        Pot.COOKING_POT_TIME, Pot.STIRRING_REQUIRED = before
+        Pot.COOKING_POT_TIME = before
+
+
+def _waitingOrCooking(*args, **kwargs):
+    """厨师在场、料是他手放的、锅没被搅：这一步锅怎么煮（WAITING 等勺子 / FD_WAY 自己煮）。"""
+    clock = newClock()
+    clock.attend(0.0)
+    return clock.advance(0.0, TICK, 10.0, 3, *args, **kwargs)
+
+
+def testTheStirringGateFollowsTheConfig():
+    # PotCooking.beforeCooking 的 farmersDelightsWay：不在被搅 && (料不是手放的 || 厨师走开了 || 不要求搅 || 在锅自己的菜单里)
+    assert _waitingOrCooking() == Pot.WAITING, "缺省（stirring_required 真）：厨师在场、手放的料、不搅，等勺子"
+    with Config(stirring_required=False):
+        assert _waitingOrCooking() == Pot.FD_WAY, "stirring_required 关了：不搅也照 FD 原样自己煮"
+        assert _waitingOrCooking(stirringRequired=True) == Pot.WAITING, "调用方明说的比配置大"
+    with Config(cooking_pot=False):
+        assert _waitingOrCooking() == Pot.FD_WAY, "没有厨锅站点就没有勺子：HandsOnConfig.stirringRequired() 是 stirringRequired && cookingPot"
+    with Config(cooking_pot=False, stirring_required=False):
+        assert _waitingOrCooking() == Pot.FD_WAY
+    with Config(skillet=False, stove=False, cutting_board=False, cooking_pot_time=3.0):
+        assert _waitingOrCooking() == Pot.WAITING, "别的站点和别的倍率不相干"
+    assert _waitingOrCooking() == Pot.WAITING, "with 块出来放回原样"
+
+
+def testStirringStillCooksTheWholeBatchAtOnceWhenItIsNotRequired():
+    # HoD 配置的说明文字：关了不搅也煮（FD 的煮法），"stirring still cooks the whole pot at once and earns stars"
+    with Config(stirring_required=False):
+        clock = newClock()
+        mode = None
+        for index in range(int(round(2.0 / TICK))):
+            now = index * TICK
+            clock.attend(now)
+            clock.stir(now)
+            mode = clock.advance(now, TICK, 10.0, 4)
+        assert mode == Pot.STIRRED and clock.pace == Pot.batchSpeed(4), "搅着的照样按批量速度整批煮"
+        unstirred = newClock()
+        unstirred.attend(0.0)
+        assert unstirred.advance(0.0, TICK, 10.0, 4) == Pot.FD_WAY and unstirred.batch == 0, "没人搅：一份一份煮，不按批量"
 
 
 if __name__ == "__main__":

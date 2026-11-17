@@ -11,18 +11,18 @@
 
 时间一律是秒。原版逐刻累加 cookTime 并用 saved 攒小数；这里直接按 dt 连续累加，效果相同。
 
-配置（HoD 的 config/handson_delight.properties，这里是模块级的值，改了就两端都变，因为两端是同一份脚本）：
-COOKING_POT_TIME 是 cooking_pot_time（一份煮多久是配方时长的几倍，0.1..10，缺省 1.0；FD 原样、整批、书上的时间都跟着它），
-STIRRING_REQUIRED 是 stirring_required（缺省 True：厨师在工位放的料等勺子；关掉时不搅也按 FD 原样自己煮）。
+配置（HoD 的 config/handson_delight.properties，这里是 Shared/Data/HandsOnConfig.py 的一张表，读法在 Shared/Rules/HandsOnOptions.py，两端同一份）：
+cooking_pot_time（一份煮多久是配方时长的几倍，0.1..10，缺省 1.0；FD 原样、整批、书上的时间都跟着它），
+stirring_required（缺省真：厨师在工位放的料等勺子；关掉时不搅也按 FD 原样自己煮；没有厨锅站点就没有勺子，也算关）。
 """
 import math
 
+from .. import HandsOnOptions as Options
 from .Mth import EPS, NEVER, TICK, clamp, isFinite, roundToTick, truncDiv
 from .PotBonus import CARRY_CAP, servePlan
 from .StirSkill import StirSkill
 
 COOKING_POT_TIME = 1.0   # cooking_pot_time：HandsOnConfig 缺省 1.0
-STIRRING_REQUIRED = True # stirring_required：HandsOnConfig 缺省 true
 SHORTEST_TIME = 0.1      # 配置里时长倍率的下限 / 上限（HandsOnConfig.readTime 夹进这个范围）
 LONGEST_TIME = 10.0
 PACE = 1.5               # 一份的烹饪速度是 FD 原版的 1.5 倍
@@ -165,9 +165,10 @@ class PotClock(object):
 
     def advance(self, now, dt, total, batch, stirringRequired=None, inMenu=False):
         """锅在煮的这一步（加热着、配方有效）推进 dt 秒。返回 WAITING / FD_WAY / STIRRED。
-        stirringRequired 缺省取配置里的 STIRRING_REQUIRED。"""
+        stirringRequired 缺省取配置（HandsOnConfig.stirringRequired：stirring_required 且有厨锅站点）；
+        PotCooking.beforeCooking 的条件：不在被搅 && (料不是手放的 || 厨师已走开 || 不要求搅 || 在锅自己的菜单里)。"""
         if stirringRequired is None:
-            stirringRequired = STIRRING_REQUIRED
+            stirringRequired = Options.stirringRequired()
         if self.farmersDelightsWay(now, stirringRequired, inMenu):
             self.keepTimeAt(1.0, total)
             self.batch = 0
