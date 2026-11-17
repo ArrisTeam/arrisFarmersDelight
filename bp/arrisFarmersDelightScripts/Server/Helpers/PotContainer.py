@@ -73,15 +73,25 @@ class ContainerSlots(object):
     def size(self):
         return self.count
 
+    def _raw(self, index):
+        return compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId, True)
+
     def get(self, index):
         """也带 userData（站点里拿起来、放回去、并进同一叠，数据都不丢）；放不进站点载荷的（Shared/Rules/ItemUserData）照旧不带，
         内核把格子里的物品原样编进状态，编不了会让这口锅的站点同步出错。"""
-        item = compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId, True)
+        item = self._raw(index)
         if not item or not item.get("newItemName") or item.get("count", 0) <= 0:
             return None
         if not ItemUserData.fitsWire(item.get("userData")):
             item = dict((key, value) for key, value in item.items() if key != "userData")
         return item
+
+    def keepsData(self, index):
+        """这一格里站点读到的就是格子里的那件（数据放得进载荷，或者本来就没有；空格也算）。放不进的 get 读出来是去了数据的样子，
+        站点里拿起、挪走、并进去、拖着平分时写回格子的都是那个样子，格子里的数据就没了：站点对这样的格子说不（PotLogic 的 mayTake /
+        mayPlace），那叠留在锅里原样不动，经典界面（引擎容器）和漏斗还能取。"""
+        item = self._raw(index)
+        return not item or ItemUserData.fitsWire(item.get("userData"))
 
     def set(self, index, item):
         stored = _storable(item) if item and item.get("count", 0) > 0 else {}

@@ -5,6 +5,7 @@
 站点的槽组 ingredients（容器格 0-5）和 served（容器格 7）经 ContainerSlots 直接绑在上面，点击、Shift 点击、拖过多格、双击聚拢
 都由前置包的动作处理（光标栈在服务端，见 Shared/Actions），这里只管规则：
     mayPlace   凑得成菜的料和别的东西都收，只有盛菜的容器不收（PotStation.mayPlace）；served 什么也放不进
+    mayTake    数据放不进站点载荷的一叠站点碰不得（拿起、挪走、并进去都会把数据丢了），它留在锅里，经典界面和漏斗还能取（mayPlace 同）
     onSlotChanged  食材格变了：下一刻按它做的那道菜把料摆开（shareOut），并记"料是手放的"（feedByHand）
     onTaken    从 served 取走的算盛出：记做过几份、给经验
 计时、评星、勺子在 Server/HandCooking.py 的 PotHand 里：站点关了它们还在，厨师走开 2 秒后锅按 FD 原样自己煮。
@@ -52,8 +53,10 @@ class PotLogicMixin(object):
         self._sincePublish = 0.0
         self._dishName = None
         dimensionId, pos = station.dimensionId, station.pos
-        station.state.bindSlots(Rules.GROUP_INGREDIENTS, PotContainer.ContainerSlots(dimensionId, pos, 0, Rules.INPUT_SLOTS))
-        station.state.bindSlots(Rules.GROUP_SERVED, PotContainer.ContainerSlots(dimensionId, pos, PotContainer.RESULT_SLOT, 1))
+        self._slots = {Rules.GROUP_INGREDIENTS: PotContainer.ContainerSlots(dimensionId, pos, 0, Rules.INPUT_SLOTS),
+                       Rules.GROUP_SERVED: PotContainer.ContainerSlots(dimensionId, pos, PotContainer.RESULT_SLOT, 1)}
+        for group, slots in self._slots.items():
+            station.state.bindSlots(group, slots)
 
     # ---------------------------------------------------------------- 钩子
 
@@ -76,7 +79,10 @@ class PotLogicMixin(object):
         PotLook.attend(self.station.dimensionId, self.station.pos, [])
 
     def mayPlace(self, ref, item):
-        return ref[0] == Rules.GROUP_INGREDIENTS and Rules.mayPlace(item)
+        return ref[0] == Rules.GROUP_INGREDIENTS and Rules.mayPlace(item) and self._slots[ref[0]].keepsData(ref[1])
+
+    def mayTake(self, ref):
+        return self._slots[ref[0]].keepsData(ref[1])          # 数据放不进载荷的一叠站点碰不得（ContainerSlots.keepsData）
 
     def onSlotChanged(self, ref):
         self._sincePublish = PUBLISH_SECONDS          # 锅里的东西变了：下一刻就重算站点数据（它能做哪道菜、沉着哪几格）

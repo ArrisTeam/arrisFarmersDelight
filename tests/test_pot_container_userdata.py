@@ -141,6 +141,80 @@ def testUserDataThatCannotGoInTheStationPayloadIsLeftOutSoTheStationStillOpens()
     assert items["1"]["userData"] == LORE, "放得进的带着发给客户端"
 
 
+BAD = {"mixed": [1, "x"], "after": 1}                       # 内核编不进载荷的 userData（和上一个用例同一份）
+
+
+def _barredPot():
+    """锅的 0 号格里是 3 个带着"站点载荷放不下的 userData"的胡萝卜（站点读它是没数据的样子），站点开着。"""
+    manager, data = K.setup()
+    fake.setContainer(POT, 0, CARROT, 3, userData=BAD)
+    K.opened(manager)
+    return manager
+
+
+def _untouched(manager, hand=None, inventory=None):
+    """0 号格还是原来那叠、数据一点没少；光标栈和背包也没多出东西。"""
+    assert fake.container(POT, 0) == {"newItemName": CARROT, "newAuxValue": 0, "count": 3, "userData": BAD}, fake.container(POT, 0)
+    assert K.PotContainer.inputs(0, POT)[0]["userData"] == BAD, "经典界面（引擎容器）读到的还是完整的"
+    assert manager.sessions["a"].hand == hand
+    if inventory is not None:
+        assert fake.count("a", CARROT) == inventory
+
+
+def testTheStationLeavesAStackWhoseDataCannotGoInThePayloadWhereItIs():
+    # 站点读这一格时把放不进载荷的 userData 去掉（上一个用例）；拿起来、挪走再把没数据的写回去，格子里的数据就没了（B7 残留）。
+    # 站点对这样的格子说不：它留在锅里原样不动，经典界面（引擎容器）和漏斗还能取
+    manager = _barredPot()
+    assert not K.do(manager, "a", K.click(K.slot(0))), "左键拿起：不行"
+    assert not K.do(manager, "a", K.click(K.slot(0), button=1)), "右键拿一半：不行"
+    assert not K.do(manager, "a", K.click(K.slot(0), kind="QUICK_MOVE")), "Shift 点：不行"
+    _untouched(manager, inventory=0)
+
+
+def testNothingIsMergedOrSwappedIntoSuchAStackEither():
+    manager = _barredPot()
+    fake.give("a", 4, CARROT, 2)
+    fake.give("a", 5, ONION, 2)
+    assert K.do(manager, "a", K.click(K.inv(4)))                         # 手上拿着 2 个没数据的胡萝卜
+    carried = manager.sessions["a"].hand
+    assert not K.do(manager, "a", K.click(K.slot(0))), "同一种要并进去：并完写回去的是没数据的，不行"
+    assert not K.do(manager, "a", K.click(K.slot(0), button=1))
+    assert K.do(manager, "a", K.click(K.inv(4)))                         # 放回去，换拿洋葱
+    assert K.do(manager, "a", K.click(K.inv(5)))
+    assert not K.do(manager, "a", K.click(K.slot(0))), "手上是别的东西：换手也不行（那叠会没数据地到手上）"
+    _untouched(manager, hand=manager.sessions["a"].hand)
+    assert carried["newItemName"] == CARROT and manager.sessions["a"].hand["newItemName"] == ONION
+
+
+def testShiftClickingMoreOfTheSameFromTheInventoryGoesToAnotherSlot():
+    manager = _barredPot()
+    fake.give("a", 4, CARROT, 2)
+    assert K.do(manager, "a", K.click(K.inv(4), kind="QUICK_MOVE"))
+    assert fake.container(POT, 0)["count"] == 3 and fake.container(POT, 0)["userData"] == BAD, "那一格没并"
+    assert fake.container(POT, 1)["count"] == 2 and fake.world.players["a"]["inv"][4] is None, "放进了下一个空格"
+
+
+def testDoubleClickingAndDraggingLeaveSuchAStackAlone():
+    manager = _barredPot()
+    fake.give("a", 4, CARROT, 4)
+    assert K.do(manager, "a", K.click(K.inv(4)))
+    assert not K.do(manager, "a", K.click(K.slot(1), kind="PICKUP_ALL")), "双击聚拢：没有别的同种可收，那一格不收"
+    assert manager.sessions["a"].hand["count"] == 4
+    spread = {"type": "spread", "targets": [K.slot(0), K.slot(1)], "button": 0}
+    assert K.do(manager, "a", spread), "拖着平分：不收的格子悄悄跳过，余下的格子照收"
+    assert fake.container(POT, 0)["count"] == 3 and fake.container(POT, 0)["userData"] == BAD
+    assert fake.container(POT, 1)["count"] == 4 and manager.sessions["a"].hand is None, "4 个全落在 1 号格"
+
+
+def testAStackWhoseDataFitsIsStillPickedUpWithItsData():
+    manager, data = K.setup()
+    fake.setContainer(POT, 0, CARROT, 3, userData=NAMED)
+    fake.setContainer(POT, 1, CARROT, 3, userData=BAD)
+    K.opened(manager)
+    assert K.do(manager, "a", K.click(K.slot(0)))
+    assert manager.sessions["a"].hand["userData"] == NAMED and fake.container(POT, 0) is None, "放得进载荷的照旧：数据跟着走"
+
+
 def testWhichUserDataFitsTheWire():
     assert Fits.fitsWire(None) and Fits.fitsWire({}) and Fits.fitsWire(NAMED) and Fits.fitsWire(LORE)
     assert Fits.fitsWire({"ench": [{"id": 9, "lvl": 2}, {"id": 1, "lvl": 1}], "x": 1.5, "t": True, "n": None, "mixedNumbers": [1, 2.5]})
