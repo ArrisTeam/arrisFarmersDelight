@@ -104,6 +104,36 @@ def testShiftClickOnTheTrayLaysTheWholeStackIn():
     assert HandFrying.peek(0, P.PAN).frying.byHand
 
 
+def testPlacingFromAnInventorySlotLaysThatStackIn():
+    """JE 的 onInventoryShiftClick 发 place {"from": 背包格号}：那一格的一叠（最多一批）直接放进锅，不经光标栈。"""
+    manager, _ = P.setup()
+    P.opened(manager)
+    P.hold("a", 12, "minecraft:chicken", 20)
+    assert P.do(manager, "a", P.custom("place", **{"from": 12}))
+    assert P.inPan() == ("minecraft:chicken", 16) and fake.world.players["a"]["inv"][12]["count"] == 4, "放满一批，余下的留在那一格"
+    assert manager.sessions["a"].hand is None, "没经过光标栈"
+    assert HandFrying.peek(0, P.PAN).frying.byHand and len(P.events("placed")) == 1
+    assert P.do(manager, "a", P.custom("place", **{"from": 12}))
+    assert P.inPan() == ("minecraft:chicken", 16) and fake.world.players["a"]["inv"][12]["count"] == 4 and len(P.events("refused")) == 1, "满了：弹回"
+    P.hold("a", 13, "minecraft:chicken", 3)
+    assert P.do(manager, "a", P.custom("place", one=True, **{"from": 13}))
+    assert P.inPan() == ("minecraft:chicken", 16) and fake.world.players["a"]["inv"][13]["count"] == 3
+
+
+def testPlacingFromASlotThePanWillNotTakeIsRefusedAndABadSlotDoesNothing():
+    manager, _ = P.setup()
+    P.opened(manager)
+    P.hold("a", 12, STICK, 3)
+    assert P.do(manager, "a", P.custom("place", **{"from": 12}))
+    assert P.inPan() is None and fake.world.players["a"]["inv"][12]["count"] == 3, "木棍不是食物：留在那一格"
+    assert P.events("refused")[-1][1]["stack"] == {"newItemName": STICK, "newAuxValue": 0, "count": 1}, "弹开的那一件大家都看得见"
+    refused = len(P.events("refused"))
+    for bad in (-1, 36, 99, True, "12", 1.5, None):
+        assert P.do(manager, "a", P.custom("place", **{"from": bad}))
+    assert P.inPan() is None and len(P.events("refused")) == refused, "格号不对（越界、负数、布尔、字符串、小数）：什么也不做"
+    assert P.do(manager, "a", P.custom("place", **{"from": 20})) and P.inPan() is None and len(P.events("refused")) == refused, "空格：什么也不做"
+
+
 def testTheLibraryCannotTakeTheFoodOut():
     manager, _ = P.setup()
     P.opened(manager)

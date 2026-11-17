@@ -4,8 +4,9 @@
 对应 Hands-On Delight：station/SkilletLogic.java + SkilletStation.java。锅里的东西照旧在方块实体数据 cookingDict，站点的 pan 槽组
 经 PanSlots 绑在上面（FD 原样的右键放料、煎锅自己的 tick、手工煎制、没人开站点时路过的人，读写的都是同一份）；两面进度在
 Server/HandFrying.py 的 PanHand 里（站点关了它还在：接着煎、等着翻；存进方块实体，重启也在）。潜行右键是 FD 原来的玩法。
-- 放：JE 的 place {"one"}：光标栈的一叠放进锅（one 为真放一个，左键整叠、右键一个），煎得了的、同一种、最多一批 16 件、锅里没泡水才放得进
-  （SkilletCooking.takes / place），放不进的回 refused 给大家看弹开。库的点击只管托盘里 Shift 点（QUICK_MOVE，JE 的 onInventoryShiftClick），
+- 放：JE 的 place {"one", "from"}：光标栈的一叠放进锅（one 为真放一个，左键整叠、右键一个；from 是背包格号时放的是背包那一格的一叠，
+  托盘里空手 Shift 点就是这样，JE 的 onInventoryShiftClick），煎得了的、同一种、最多一批 16 件、锅里没泡水才放得进
+  （SkilletCooking.takes / place），放不进的回 refused 给大家看弹开。库自己的 QUICK_MOVE（前置包没有 onInventoryShiftClick 钩子的老版本走它）
   规则同一份（mayPlace + 槽组的 accepts / 上限）；放进来的从此两面分开煎（_placed）。库的 PICKUP 碰不到锅里的东西（mayTake 恒为假：
   内核对非空槽先问 mayTake，所以光标栈放进有东西的锅也只能走 place）。开站那一下主手拿着煎得了的东西：整叠直接放进去（JE 的 onOpen：右键放料不比不开站点慢）。
 - 取：take {}，锅里的东西（生的、半熟的、煎好的）全进背包，放不下掉脚下。
@@ -23,6 +24,13 @@ from ...Shared.Rules import PanStation as Rules
 from ...Shared.Rules.HandsOn import Frying
 
 REACH = 6.0
+WINDOW = 36                      # 背包窗口的格数（0-8 快捷栏）
+INTS = (int, type(2 ** 64))      # py2 的 int / long（客户端发来的整数可能是 long）
+
+
+def _index(value, size):
+    """客户端发来的序号：0 <= 整数 < size 才算，别的（负数、小数、字符串、布尔）都当没有。"""
+    return int(value) if isinstance(value, INTS) and not isinstance(value, bool) and 0 <= value < size else None
 
 
 def _count(item):
@@ -88,7 +96,7 @@ class PanLogicMixin(object):
         if self.hand is None:
             return False
         if name == "place":
-            self._place(playerId, data.get("one") is True)
+            self._place(playerId, data.get("one") is True, data.get("from"))
         elif name == "toss":
             self._toss(playerId, data.get("strength"))
         elif name == "take":
@@ -108,22 +116,31 @@ class PanLogicMixin(object):
         HandFrying.save(self.hand, data)
         PanLook.event(station.dimensionId, station.pos, "placed", {})
 
-    def _place(self, playerId, one):
-        """光标栈上的一叠放进锅：一个或整叠，放满一批为止；放不进去的（锅里是别的、煎好的、满了、泡着水）回 refused（SkilletCooking.place）。"""
-        station, hand = self.station, self.ctx.getHand()
+    def _place(self, playerId, one, fromRaw=None):
+        """光标栈上的一叠（或背包第 from 格的一叠）放进锅：一个或整叠，放满一批为止；放不进去的（锅里是别的、煎好的、满了、泡着水）回 refused
+        （SkilletCooking.place）。from 不是背包里的格号：什么也不做。"""
+        station, ctx = self.station, self.ctx
+        fromSlot = _index(fromRaw, WINDOW)
+        if fromRaw is not None and fromSlot is None:
+            return
+        hand = ctx.inventory[fromSlot] if fromSlot is not None else ctx.getHand()
         if not hand:
             return
         inPan = PanContents.itemOf(station.dimensionId, station.pos)
         moved = 0
         if Rules.mayPlace(inPan, hand) and not PanContents.isWaterlogged(station.dimensionId, station.pos):
-            moved = Frying.placeCount(hand["count"], _count(inPan), self.ctx.maxStackOf(hand), one)
+            moved = Frying.placeCount(hand["count"], _count(inPan), ctx.maxStackOf(hand), one)
         if moved <= 0:
             PanLook.event(station.dimensionId, station.pos, "refused", {"stack": _wire(dict(hand, count=1))})
             return
         merged = copy.deepcopy(inPan or hand)
         merged["count"] = _count(inPan) + moved
         PanContents.PanSlots(station.dimensionId, station.pos).set(0, merged)
-        self.ctx.setHand(self.kit.Items.shrink(hand, moved))
+        rest = self.kit.Items.shrink(hand, moved)
+        if fromSlot is not None:
+            ctx.inventory[fromSlot] = rest
+        else:
+            ctx.setHand(rest)
         self._count = merged["count"]
         self._placed(playerId, GetBlockEntityData(station.dimensionId, station.pos))
 

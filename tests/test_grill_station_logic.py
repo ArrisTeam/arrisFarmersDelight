@@ -100,6 +100,25 @@ def testOnlyFoodThatStaysOnTheBarsGoesOn():
     assert fake.world.players["a"]["inv"][1]["count"] == 3
 
 
+def testAnEggOrAFullGrillShiftClickedFromTheTrayBouncesBackAndFoodGoesOnAndIsAnnounced():
+    """前置包的 onInventoryShiftClick 钩子让表现发 place {from: 背包格号}（JE 的写法）：蛋（有营火配方但烤架不收）、满了都回 refused，
+    放得上去的回 placed，那一叠留在背包里剩下的。"""
+    manager, data = K.setup()
+    fake.give("a", 1, EGG, 3)
+    fake.give("a", 2, BEEF, 9)
+    K.opened(manager)
+    K.effects()
+    assert K.do(manager, "a", K.custom("place", **{"from": 1}))
+    assert K.names(data) == [None] * 6 and fake.world.players["a"]["inv"][1]["count"] == 3, "蛋留在那一格"
+    assert K.effects() == [("refused", {"stack": {"newItemName": EGG, "newAuxValue": 0, "count": 1}})]
+    assert K.do(manager, "a", K.custom("place", **{"from": 2}))
+    assert K.items(data) == [(BEEF, 1)] * 6 and fake.world.players["a"]["inv"][2]["count"] == 3, "每个空位一件，剩下的留在背包"
+    assert K.effects() == [("placed", {"places": [0, 1, 2, 3, 4, 5]})]
+    assert K.do(manager, "a", K.custom("place", **{"from": 2}))
+    assert K.effects() == [("refused", {"stack": {"newItemName": BEEF, "newAuxValue": 0, "count": 1}})], "满了：弹回"
+    assert fake.world.players["a"]["inv"][2]["count"] == 3
+
+
 def testNothingGoesOntoAStoveWithAPotOnTop():
     """开站时就盖着锅的炉灶服务端不让开（test_grill_station_open）；这里是站点开着的时候，有人在上面摆了口锅：槽规则照样挡。"""
     manager, data = K.setup()
