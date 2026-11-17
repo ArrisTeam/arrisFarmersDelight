@@ -283,6 +283,8 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
 1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉。方块状态的名字和值（`cauldron_liquid` = lava、`fill_level` 6）是 Strata 知识库的方块表给的，
    没在游戏里读过；如果游戏里熔岩炼药锅是别的名字（比如还有 `minecraft:lava_cauldron`），`Heat._holdsLava` / `IsHeatSource` 一处改。
 2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
+   一格一格读的自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_probe(x, y, z)`（方块名、状态、`IsHeatSource`、`IsHeated`；锅 / 煎锅那一格再给存着的 `heatEnable` / `shelfEnable`，
+   和 `Heat.IsHeated` 现算的对照），用法在文件开头的说明里。
 
 ## 合成与合成剩余物（对照 JE）
 
