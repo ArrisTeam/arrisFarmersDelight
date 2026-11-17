@@ -14,7 +14,7 @@ from ...Shared.Rules.HandsOn import BoardDashes as Dashes
 
 MARK = "arris:board_mark"
 PIXEL = 1.0 / 16.0
-MARK_LIFT = 0.25       # 虚线画在食物顶面上方这么高（像素）：实机上平躺的掉落物顶面比算出来的高 0.15 左右，贴着面的零厚度四边形会陷进食物里（JE 是 +0.03，见 drawMarks 1177）
+MARK_LIFT = 0.45       # 虚线画在食物顶面上方这么高（像素）：实机上板上 10 像素的平躺食物（掉落物缩放 1.25），顶面比按厚度算的高 0.25 ~ 0.35 之间（2026-11-17 实测：+0.25 整条陷在食物里看不见，+0.35 起看得见），零厚度的四边形贴得太近就被盖住；JE 是 +0.03（drawMarks 1177）
 
 
 class MarkLine(object):
