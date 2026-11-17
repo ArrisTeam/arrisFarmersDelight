@@ -40,7 +40,6 @@ BURN_CAUSE = "magma"
 
 def InitStoveData(blockEntityData):
     """炉灶 6 个烤位的默认数据；/setblock、结构放出的炉灶没走放置事件，用到时补上。"""
-    blockEntityData["cookingIndex"] = 0
     for index in range(STOVE_SLOTS):
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
 
@@ -61,10 +60,8 @@ def OnServerStoveCreate(args):
 
 
 def _freeSlot(blockEntityData):
-    """从 cookingIndex 开始找第一个空烤位；都满了返回 None。"""
-    start = blockEntityData["cookingIndex"] or 0
-    for offset in range(STOVE_SLOTS):
-        index = (start + offset) % STOVE_SLOTS
+    """序号最小的空烤位（FD 的 getNextEmptySlot）；都满了返回 None。"""
+    for index in range(STOVE_SLOTS):
         slotData = blockEntityData[str(index)]
         if not (slotData and slotData.get("itemDict")):
             return index
@@ -88,7 +85,6 @@ def OnServerStoveItemUse(args):
     if StoveCover.covers(GetBlockName((x, y + 1, z), dimensionId)):
         ShowTip(playerId, "炉灶上方被挡住了……")
         return
-    # 旧实现只看 cookingIndex 那一格，那格占着就放不进去
     freeIndex = _freeSlot(blockEntityData)
     if freeIndex is None:
         return
@@ -102,7 +98,6 @@ def OnServerStoveItemUse(args):
             hand.grill.farmersDelightsWay(freeIndex)
         SetNotCreateItem(playerId, itemDict)
         PublishStove(dimensionId, (x, y, z), blockEntityData)
-        blockEntityData["cookingIndex"] = (freeIndex + 1) % STOVE_SLOTS
         if StoveLook.enabled():
             StoveLook.event(dimensionId, (x, y, z), "placed", {"places": [freeIndex]})
             StoveLook.tick(dimensionId, (x, y, z), blockEntityData, hand, time.time())
@@ -191,8 +186,6 @@ def OnStoveTick(args):
         PublishStove(dimensionId, blockPos, blockEntityData)
     if settling:
         StoveLook.forget(dimensionId, blockPos)           # 刚换过方块的这一秒里每一步都重发：客户端的方块实体和场景在换方块时重建，先到的广播可能被盖掉
-    if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
-        blockEntityData["cookingIndex"] = 0
     if StoveLook.enabled():
         _announceGrilled(dimensionId, blockPos, blockEntityData, hand)
         StoveLook.tick(dimensionId, blockPos, blockEntityData, hand, now)

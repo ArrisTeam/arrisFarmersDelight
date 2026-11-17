@@ -22,7 +22,7 @@ def _place(blockName, count=3, **kwargs):
     K.BlockItems.startRecording()
     args, handled = F.use()
     published = K.BlockItems.stopRecording()
-    return {"items": K.items(data), "hand": F.held()["count"], "index": data["cookingIndex"], "timer": data["0"]["cookTimer"],
+    return {"items": K.items(data), "hand": F.held()["count"], "timer": data["0"]["cookTimer"],
             "shown": [payload["items"]["0"] for payload in published], "kind": [payload["kind"] for payload in published],
             "sounds": F.sounds(), "tips": list(fake.tips), "ret": args["ret"], "handled": handled, "calls": [c[1] for c in fake.calls]}
 
@@ -33,7 +33,7 @@ def testFoodGoesOnAnUnlitStoveJustLikeOnALitOne():
     """同样的格子、同样的展示、同样的声音和提示：熄着的炉灶和点着的没有区别（JE 的 use 放食物不看 LIT）。"""
     lit, unlit = _place(LIT, look=False), _place(UNLIT, look=False)
     assert unlit == lit, (lit, unlit)
-    assert unlit["items"] == [(BEEF, 1)] + [None] * 5 and unlit["hand"] == 2 and unlit["index"] == 1 and unlit["timer"] == 30
+    assert unlit["items"] == [(BEEF, 1)] + [None] * 5 and unlit["hand"] == 2 and unlit["timer"] == 30
     assert unlit["shown"] == [{"newItemName": BEEF, "newAuxValue": 0, "count": 1}] and unlit["kind"] == ["stove"], "世界里的展示照样发给客户端"
     assert unlit["sounds"] == ["armor.equip_leather"], "没装前置包：放上去那一声"
 
@@ -133,7 +133,7 @@ def testOnlyWhatWasCookedCoolsAndNothingIsWrittenForTheRest():
     manager, data = F.setup(look=False)
     F.lay(data, 1, timer=12.5)
     F.setBlock(UNLIT)
-    before = dict((key, data[key]) for key in ("0", "2", "3", "4", "5", "cookingIndex"))
+    before = dict((key, data[key]) for key in ("0", "2", "3", "4", "5"))
     K.step(2.0)
     assert abs(data["1"]["cookTimer"] - 16.5) < 0.55, "2 秒凉掉 4 秒的进度：12.5 -> 16.5"
     assert dict((key, data[key]) for key in before) == before, "空位、没烤过的原封不动"

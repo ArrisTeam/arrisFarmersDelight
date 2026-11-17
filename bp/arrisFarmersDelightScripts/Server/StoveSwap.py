@@ -3,7 +3,7 @@
 
 JE 的 ignite / extinguish 只改方块状态 LIT，方块实体不动（AbstractStoveBlock.java:144-164：setBlock 同一个方块），东西、烤到哪都在。
 基岩版点着的是 arris:stove、熄着的是 arris:stove_extinguish（Shared/Rules/GrillBlocks），换方块名等于换方块实体，数据不会跟着走，所以这里：
-1. 换之前把炉灶自己的键（六个烤位、cookingIndex、手放的进度 handGrill）拍一份快照，朝向（direction 状态）也读出来（已经有等着写的快照就接着用它）；
+1. 换之前把炉灶自己的键（六个烤位、手放的进度 handGrill）拍一份快照，朝向（direction 状态）也读出来（已经有等着写的快照就接着用它）；
 2. SetBlockNew 换名字，朝向写回去（RopeFences 的门开关是同一个做法）；
 3. 快照写进新的方块实体：方块实体已经在了就当场写，还没有就等 ServerPlaceBlockEntityEvent（Stove.OnServerStoveCreate）或炉灶的下一步（Stove.OnStoveTick），
    谁先到谁写（SkilletItem.attachPending 同一个思路）；PENDING_SECONDS 秒还写不上（新方块实体一直没建出来）就把快照里的东西丢在炉灶位置，不让东西凭空没了。
@@ -19,7 +19,7 @@ from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, Ge
 from ..Shared.Rules import GrillStation
 from ..Shared.Rules.Placement import directionOfAux
 
-KEYS = tuple(str(place) for place in range(GrillStation.PLACES)) + ("cookingIndex", HandGrill.SAVE_KEY)
+KEYS = tuple(str(place) for place in range(GrillStation.PLACES)) + (HandGrill.SAVE_KEY,)
 GUARD_SECONDS = 0.5        # 换方块引发的移除事件，这么久以内算换方块自己的
 SETTLE_SECONDS = 1.0       # 换完之后重发世界外观多久
 PENDING_SECONDS = 5.0      # 快照等新方块实体多久，再等不到就丢在地上

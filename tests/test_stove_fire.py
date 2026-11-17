@@ -20,11 +20,10 @@ SCENARIOS = (("sync", "now"), ("late", "now"), ("sync", "later"), ("late", "late
 
 
 def _seed(data, handLaid=True):
-    """一座有东西的炉灶：0 号 FD 原样烤了 17.5 秒、2 号手放的（贴灶面烤了一小半）、5 号烤好的成品，cookingIndex 3。返回炉灶自己的键的快照。"""
+    """一座有东西的炉灶：0 号 FD 原样烤了 17.5 秒、2 号手放的（贴灶面烤了一小半）、5 号烤好的成品。返回炉灶自己的键的快照。"""
     F.lay(data, 0, BEEF, timer=12.5)
     F.lay(data, 2, CHICKEN, timer=30)
     F.lay(data, 5, COOKED, timer=30)
-    data["cookingIndex"] = 3
     if handLaid:
         hand = K.hand_of()
         hand.grill.layByHand(2)
@@ -41,7 +40,7 @@ def _light(creative=None, durability=65, item=F.FLINT):
 def _sameFood(blockEntityData, before):
     """快照里的东西都在原来的烤位上（点着 / 熄着之后炉灶接着走了几步，计时和手放的进度已经变了一点，所以不逐个键比）。"""
     now = F.kept(blockEntityData)
-    assert sorted(now) == sorted(before) and now["cookingIndex"] == before["cookingIndex"]
+    assert sorted(now) == sorted(before)
     for place in range(6):
         was, is_ = before.get(str(place)), now.get(str(place))
         assert (was["itemDict"] if was else None) == (is_["itemDict"] if is_ else None), place
@@ -59,7 +58,7 @@ def testFlintAndSteelLightsAnUnlitStoveAndNothingOnItIsTouched():
     args, handled = _light()
     published = K.BlockItems.stopRecording()
     assert F.blockName() == LIT and handled is True and args["ret"] is True, "点着了；认领这次点击；引擎自己那一下（放火）不要"
-    assert F.kept(F.data()) == before, "六个烤位、cookingIndex、手放的进度一样不少地带了过来"
+    assert F.kept(F.data()) == before, "六个烤位、手放的进度一样不少地带了过来"
     assert fake.blockAux[F.KEY] == 3 and fake.states[F.KEY]["direction"] == 3, "朝向原样写回去"
     assert F.groundItems() == [] and K.HandGrill.peek(0, K.STOVE) is hand, "没有掉东西，手放的进度对象还是原来那个"
     assert F.held()["durability"] == 64 and F.held()["count"] == 1, "打火石磨损 1 点（hurtAndBreak）"

@@ -183,7 +183,7 @@ def data():
 
 
 def kept(blockEntityData):
-    """炉灶自己的键（六个烤位、cookingIndex、手放的进度）原样的一份，比较用。"""
+    """炉灶自己的键（六个烤位、手放的进度）原样的一份，比较用。"""
     return dict((key, blockEntityData[key]) for key in StoveSwap.KEYS if blockEntityData[key] is not None)
 
 
