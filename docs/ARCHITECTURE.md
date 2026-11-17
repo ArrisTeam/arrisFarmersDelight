@@ -49,6 +49,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
                         StoveFlame（点着的炉灶自己的火：火口的火星 / 烟 / 噼啪声、灶上每件东西冒烟的概率和位置，JE 的 animateTick / particleTick）
                         TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
+                        SoundMix（JE 的音量 / 音调换成交给引擎的数：定义里自带音量 / 音调的声音要把那份除掉）
+                        ItemDrops（东西从方块里掉出来 / 弹出去的位置和初速，照 JE 的 Containers.dropItemStack / ItemUtils.spawnItemEntity）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
                         厨锅的表现也在这里（纯计算，Pot 开头的那些）：汤面（水位、汤色、沸腾）、勺子的手感、漂着的料、碎料、
                         出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作
@@ -59,6 +61,7 @@ Server/                 服务端
   ModServer.py          导入全部玩法模块；33 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
+                        Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
@@ -71,7 +74,7 @@ Server/                 服务端
   PotServe              盛菜：取一份、记"做过几份"、给经验；主手拿着容器右键直接盛
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
   HandGrill             炉灶手放的每一件（HoD Grill）：逐件两面分开烤、等翻面、烤好留在灶台上；右键放的照 FD 原样
-  StoveSwap StoveFire   炉灶点火 / 灭火：点着的是 `arris:stove`、熄着的是 `arris:stove_extinguish`，换方块名等于换方块实体，StoveSwap 换之前拍炉灶自己的键（六个烤位、cookingIndex、
+  StoveSwap StoveFire   炉灶点火 / 灭火：点着的是 `arris:stove`、熄着的是 `arris:stove_extinguish`，换方块名等于换方块实体，StoveSwap 换之前拍炉灶自己的键（六个烤位、
                         handGrill）和朝向的快照、换完写回（事件先后两种都兜；5 秒还写不上把东西丢在地上；旧方块的移除事件用 claims 挡住；换完一秒里重发世界外观），
                         StoveFire 是 `ServerItemUseOnEvent` 优先级 11 的处理：打火石、火焰弹点着，铲子、水桶熄灭（JE 的 AbstractStoveBlock.use），用上了就认领，不再放食物
   PanLook StoveLook     煎锅 / 炉灶的世界外观广播：东西、两面烤到哪、翻面 / 取走 / 放不进 / 烤好的一次性事件，发给 32 格内的人（站点开不开着都一样），
@@ -90,7 +93,7 @@ Server/                 服务端
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
-  Endpoints.py          服务端调用的 4 个客户端端点
+  Endpoints.py          服务端调用的 5 个客户端端点：放声音（可带音量 / 音调）、砧板切一件的碎屑、粒子、方块实体 molang、挥手
   TableSync.py          客户端端点 OnTableSync：把服务端发来的"下游追加的表内容"并进本端自己的表，重算依赖它的缓存
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
   Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
