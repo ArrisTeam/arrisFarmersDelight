@@ -263,7 +263,7 @@ def testTheSteamParticleIsFarmersDelightsSteamAtItsSpeedLifetimeSizeAndFade():
     alpha = parts["minecraft:particle_appearance_tinting"]["color"][3]
     for age, want in ((0.0, 0.6), (1.0, 0.6), (3.45, 0.6), (4.2, 0.3), (4.95, 0.0)):                     # 寿命 4.95：最后 1.5 秒（3.45 起）从 0.6 线性减到 0
         assert abs(_evaluate(alpha, particle_age=age, particle_lifetime=4.95) - want) < 1e-9, age
-    assert parts["minecraft:particle_motion_dynamic"]["linear_acceleration"] == [0, 0, 0], "gravity 3e-6 实际不动"
+    assert parts["minecraft:particle_motion_dynamic"]["linear_acceleration"] == [0, -0.0012, 0], "gravity 3e-6 格每二次方刻 = 0.0012 格每二次方秒（实际几乎不动）"
 
 
 def testTheSparkParticleIsTheEnchantedHitOfJava():
@@ -285,7 +285,7 @@ def testTheSparkParticleIsTheEnchantedHitOfJava():
 
 def testTheTwoParticleFilesAreInTheRightPlaceAndTheSteamTextureExists():
     steam = _json(RP, "particles", "arris_skillet_steam.json")["particle_effect"]["description"]["basic_render_parameters"]
-    assert steam["texture"] == "textures/particle/steam_0" and os.path.isfile(os.path.join(RP, "textures", "particle", "steam_0.png"))
+    assert steam["texture"] == "textures/particle/arris_steam" and os.path.isfile(os.path.join(RP, "textures", "particle", "arris_steam.png")), "12 张图叠成一张，每颗随机挑一张（tests/test_pot_steam.py）"
 
 
 if __name__ == "__main__":

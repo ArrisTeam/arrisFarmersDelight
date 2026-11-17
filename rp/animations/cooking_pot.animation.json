@@ -24,10 +24,10 @@
 		},
 		"animation.cooking_pot.smoke": {
 			"loop": true,
-			"animation_length": 2,
+			"animation_length": 1,
 			"particle_effects": {
 				"0.0": {
-					"effect": "steam_0",
+					"effect": "steam",
 					"locator": "steam"
 				}
 			}

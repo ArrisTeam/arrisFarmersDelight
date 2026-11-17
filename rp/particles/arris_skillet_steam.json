@@ -5,7 +5,7 @@
       "identifier": "arris:skillet_steam",
       "basic_render_parameters": {
         "material": "particles_blend",
-        "texture": "textures/particle/steam_0"
+        "texture": "textures/particle/arris_steam"
       }
     },
     "components": {
@@ -34,7 +34,7 @@
       "minecraft:particle_motion_dynamic": {
         "linear_acceleration": [
           0,
-          0,
+          -0.0012,
           0
         ]
       },
@@ -46,10 +46,10 @@
         "facing_camera_mode": "lookat_xyz",
         "uv": {
           "texture_width": 16,
-          "texture_height": 16,
+          "texture_height": 192,
           "uv": [
             0,
-            0
+            "math.floor(variable.particle_random_2 * 12) * 16"
           ],
           "uv_size": [
             16,

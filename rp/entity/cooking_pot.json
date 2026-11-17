@@ -30,7 +30,7 @@
         "controller.render.arris_cooking_pot_glow"
       ],
       "particle_effects": {
-        "steam_0":  "arris:steam_0",
+        "steam":  "arris:steam",
         "bubble":  "arris:bubble"
       },
       "sound_effects": {
