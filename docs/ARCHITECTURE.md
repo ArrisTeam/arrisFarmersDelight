@@ -513,6 +513,13 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   JE 在 `steam.json` 的 12 张图里每颗随机挑一张（`pickSprite`）：十二张图叠成一张 `rp/textures/particle/arris_steam.png`（16 x 192，和 JE 的 `steam_0` 到 `steam_11` 逐像素一样），
   UV 的纵向写 `math.floor(variable.particle_random_2 * 12) * 16`（原版营火烟也这么挑图；大小用随机数 1，两个量各掷各的，和 JE 一样）。没做的：JE 的蒸汽碰到方块停住（`Particle.move` 的碰撞，这里只有
   「离开锅和空气就消失」的粗略做法，原来就有）、横向每刻的随机游走（走完一生约 0.07 格）。粒子、实体、动画、模型都改了，没进过游戏，要完整重启后看。
+- 经典厨锅（没有站点）的气泡：同一个 `animationTick`（`CookingPotBlockEntity.java:244-251`）只看加热着，每刻 20% 的概率在方块中心 x、z 各 ±0.3、`pos.y + 0.7` 放一颗原版的 `ParticleTypes.BUBBLE_POP`、初速 0。
+  实体动画 `animation.cooking_pot.bubble` 每 0.25 秒（每秒 4 颗 = 每秒 20 刻 x 20%）在定位点 `blister`（11.2 像素 = `y + 0.7`）放一颗 `arris:bubble_pop`（`rp/particles/arris_bubble_pop.json`），
+  x、z 的 ±0.3 在粒子里每颗各掷。基岩版的粒子没有按刻掷骰的办法，所以和 JE 差在节奏：平均一样，这里间隔是匀的；条件同蒸汽（`mod_heat` 加盖着、没有站点场景接管，站点里的气泡是它自己的）。
+  粒子是原版 `BubblePopParticle` 的样子（1.20.1 的字节码核对过）：活 4 刻、看得见 5 刻，五张图各一刻（原版 `bubble_pop_0` 到 `4`，叠成 `rp/textures/particle/arris_bubble_pop.png` 16 x 80，
+  `tests/test_pot_bubble.py` 在有 JE 客户端 jar 时逐像素对），每刻先加重力 0.008 再动、没有摩擦（连续写法：初速 0.08 向下、加速度 3.2，每一刻的位置和 JE 对上），
+  半边长 0.1~0.2（`SingleQuadParticle` 的构造）、不透明（`PARTICLE_SHEET_OPAQUE`，所以材质是 `particles_alpha`）、跟着方块所在的光照。原来的 `arris:bubble`（老贴图集里的水泡，飘 2~3 秒、
+  每两秒放一秒、一秒 5 颗）和它独占的贴图集删了。没做的：气泡碰到方块停住（`Particle.move` 的碰撞；它从锅沿上方 0.075 格放、只落 0.08 格，看不出）。粒子、实体动画、模型、贴图都改了，没进过游戏，要完整重启后看。
 - 手持烹饪（`SkilletHand`）：JE 的 `SkilletItem.use` 两只手都认（煎锅在哪只手，原料就在另一只手）。**基岩版的副手只收引擎允许的那几种物品，生肉放不进去**（实测 `SetEntityItem(OFFHAND, 生牛肉)` 返回 False），所以这边常用的是反过来拿：煎锅放副手（物品 JSON 开了 `netease:allow_offhand`）、原料拿主手，这时在热源旁按住右键是煎不是吃——客户端在 `ClientItemTryUseEvent` 里取消"吃"（`SkilletHandRules.cooksInsteadOfEating`：副手煎锅、主手有营火配方、身边 3x3x3 有热源；JE 里饿着的时候主手的食物会先被吃掉，这里改成有热源就煎，不然基岩版饿着就没法手持煎东西了）。下面说的"副手食物"换成这种拿法就是主手的那件。
   基岩版没有"按住使用"的服务端事件，由客户端在主手或副手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
   每 0.2 秒报一次，`RightClickReleaseClientEvent` 报松开（`Client/Input.py` + `SkilletHandRules.HoldReporter`，RPC `SkilletUseHeld`）；服务端按最后一次"按着"的时间判断还按不按着
