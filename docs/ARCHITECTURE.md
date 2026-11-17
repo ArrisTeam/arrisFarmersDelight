@@ -720,8 +720,11 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 - dolorContainer：`test_dolor_vendor.py`（库文件与编译产物的哈希、界面文件登记、导入闭包；随库装入，不手改）、`test_rpc_caller_id.py`
   （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅的食谱书规则与
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
-- 场景交互前置包（`diegesisBp/arrisDiegesisScripts/`）的测试也在这里：`dgtest.py`（导入 + 假的引擎端口 FakeWorld）、
-  `dgkit.py` / `dgfixtures.py`（内核测试的断言与站点夹具），`test_diegesis_*.py`。`test_architecture.py` 同时守两个包。
+- 场景交互前置包不在这个仓库里（它是单独的作品）。亲手做菜的站点要拿它的源码一起测：开发机上把它的两个包放在仓库根下的
+  `diegesisBp/`、`diegesisRp/`，它自己的测试和测试小工具（`tests/test_diegesis_*.py`、`tests/dg*.py`）也放在 `tests/` 里，都不入库
+  （`.git/info/exclude` 里忽略）。用到它的用例先 `import prereq`（`tests/prereq.py`）：旁边没有前置包时以 77 退出，跑器记成跳过。
+  只有本仓库时 `py -3 tools/run_tests.py` 的最后一行是「N 项，失败 0，跳过 M」；`test_architecture.py` 只守本包，
+  「没装前置包时什么都不联动」由 `test_presence_*.py`、`test_handson_mode.py`、`test_handson_options_gate.py` 守着，它们不需要前置包。
 - 合成：`test_recipe_rules.py`（配方 JSON 的静态检查、生成的 `CraftReturns` 表是否最新）、`test_recipe_parity.py`（对照 JE 的做法 / 摆法 / 剩余物）、
   `test_crafting_rules.py`（`Shared/Rules/Crafting.py` 和 `Server/CraftReturns.py`，`fakeengine.py` 的假合成格驱动）；背刺：`test_backstabbing.py`。
 - 下游追加的表同步到客户端：`tablekit.py`（把行为包脚本根换个顶层包名再导入一遍，得到"另一个进程"里各自的 `Shared/Data`；`downstream()` 照 Ends Delight 的写法经联动契约追加；
