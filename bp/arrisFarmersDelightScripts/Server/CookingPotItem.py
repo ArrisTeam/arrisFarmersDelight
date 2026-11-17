@@ -47,9 +47,14 @@ def OnTryBreakPot(args):
         _creativeBreaks.put((args["dimensionId"], args["x"], args["y"], args["z"]), time.time())
 
 
+def beingMoved(blockPos, dimensionId):
+    """这口锅是被活塞推走的（那一格这时是移动中的方块），不是拆掉了。"""
+    return GetBlockName(blockPos, dimensionId) in _MOVING
+
+
 def dropPot(blockEntityData, dimensionId, blockPos):
     """厨锅没了：掉一口厨锅物品，锅里那叠菜跟着它走（JE 的 copy_meal）；创造模式拆的不掉；被活塞推走的不算。"""
-    if GetBlockName(blockPos, dimensionId) in _MOVING:
+    if beingMoved(blockPos, dimensionId):
         return
     meal = PotContainer.preview(blockEntityData) if blockEntityData else {}
     if meal:

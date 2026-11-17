@@ -233,6 +233,7 @@ def install():
     quPackage.__path__ = []
     quServer = types.ModuleType(qu + ".Server")
     quServer.MultiClientsCall = lambda players, key, *args: fake.multi.append((list(players), key, args))
+    quServer.AllowCall = quServer.InjectHttpPlayerId = lambda func: func        # Server/CookingPot.py 的端点装饰器
     sys.modules[qu], sys.modules[qu + ".Server"] = quPackage, quServer
     return fake
 

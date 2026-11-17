@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅（服务端）
+"""CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅并弹出没领的经验（服务端）
 
 容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py；
 每步煮完把锅的样子广播给附近的玩家在 PotLook.py（前置包在场时才开）。
@@ -137,10 +137,15 @@ def _addFood(playerId, blockPos, dimensionId, indexList):
 
 @registerHandler("BlockRemoveServerEvent", match=COOKING_POT)
 def OnCookingPotRemove(args):
-    # 厨锅没了：掉一口厨锅物品，预览槽里煮好还没装碗的那叠菜跟着它走（JE 的 copy_meal）；别的格子里的东西引擎照常掉
+    # 厨锅没了：掉一口厨锅物品，预览槽里煮好还没装碗的那叠菜跟着它走（JE 的 copy_meal）；别的格子里的东西引擎照常掉。
+    # 煮过几份还没领的经验在锅心弹出来（FD 的 CookingPotBlock.onRemove：getUsedRecipesAndPopExperience(Vec3.atCenterOf(pos))，
+    # 不看是谁拆的、创造模式拆也弹）；方块实体数据这一刻还读得到，下面各读一次
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
     _pacer.forget((dimensionId, blockPos))
     HandCooking.forget(dimensionId, blockPos)
     PotLook.forget(dimensionId, blockPos)
-    CookingPotItem.dropPot(GetBlockEntityData(dimensionId, blockPos), dimensionId, blockPos)
+    blockEntityData = GetBlockEntityData(dimensionId, blockPos)
+    if blockEntityData and not CookingPotItem.beingMoved(blockPos, dimensionId):
+        PotContainer.awardExperience(blockEntityData, (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5), dimensionId)
+    CookingPotItem.dropPot(blockEntityData, dimensionId, blockPos)
