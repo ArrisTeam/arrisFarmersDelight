@@ -13,6 +13,7 @@ from .EventRegistry import registerHandler
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory, levelId, ItemPosType, GetBlockEntityData, GetBlockName
 from .Helpers.Heat import RefreshHeat
+from .Helpers.Items import CanStack, GetMaxStack
 from ..Shared.Rules.Ticks import Pacer
 
 COOKING_POT = "arris:cooking_pot"
@@ -86,6 +87,8 @@ def CookingPotAddFood(playerId, args):
     indexList = args.get("indexList")
     if not isinstance(blockPos, (list, tuple)) or len(blockPos) != 3 or not isinstance(indexList, (list, tuple)):
         return
+    if not all(isinstance(value, (int, float)) and not isinstance(value, bool) and value == value and abs(value) < 3.0e7 for value in blockPos):
+        return                                # 客户端发来的坐标：不是数、NaN、无穷大都不要（int() 会抛）
     blockPos = (int(blockPos[0]), int(blockPos[1]), int(blockPos[2]))
     dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
     if GetBlockName(blockPos, dimensionId) != COOKING_POT:
@@ -101,7 +104,7 @@ def CookingPotAddFood(playerId, args):
 
 def _addFood(playerId, blockPos, dimensionId, indexList):
     itemComp = compFactory.CreateItem(levelId)
-    inputItemSlot = [itemComp.GetContainerItem(blockPos, index, dimensionId) or {} for index in range(INPUT_SLOTS)]
+    inputItemSlot = PotContainer.inputs(dimensionId, blockPos)       # 连 userData 一起读：下面整格写回去，改过的名字 / 自定义数据不能丢
     inventoryType = ItemPosType.INVENTORY
     playerAllItemList = compFactory.CreateItem(playerId).GetPlayerAllItems(inventoryType, True)
     changedInventory = {}
@@ -116,10 +119,8 @@ def _addFood(playerId, blockPos, dimensionId, indexList):
         if not slotItem:
             slotItem = copy.deepcopy(inventoryDict)
             slotItem["count"] = 1
-        elif (slotItem["newItemName"] == inventoryDict["newItemName"]
-              and slotItem.get("newAuxValue", 0) == inventoryDict.get("newAuxValue", 0)):
-            maxStackSize = itemComp.GetItemBasicInfo(slotItem["newItemName"], slotItem.get("newAuxValue", 0))["maxStackSize"]
-            if slotItem["count"] >= maxStackSize:
+        elif CanStack(slotItem, inventoryDict):               # 名字、aux、数据都一样才并（改过名的和普通的不叠在一起）
+            if slotItem["count"] >= GetMaxStack(slotItem):
                 break
             slotItem["count"] += 1
         else:
