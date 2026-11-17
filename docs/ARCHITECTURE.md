@@ -25,7 +25,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotWater（厨锅里清水的颜色：锅所在区块里 5x5 列的群系水色取平均，群系名由客户端 Compat/Diegesis/PotBiome 问来）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
                         GrillStation（炉灶站点：能放什么、一面多久、这一下右键开不开）  StoveCover（炉灶上面盖没盖东西：锅、煎锅、砧板、别的方块）
-                        GrillBlocks（灶方块 = 点着的 `StoveList` + 熄着的孪生方块 `arris:stove_extinguish`：isLit / isGrill / twinOf、前置包登记站点用的活容器 `GRILL_BLOCKS`、
+                        GrillBlocks（灶方块 = 点着的 `StoveList` + 熄着的孪生方块 `arris:stove_extinguish`：isLit / isGrill / twinOf、前置包登记站点用的活容器 `GRILL_BLOCKS`（只读，`in`、长度、下标、遍历都行：原来的 `STOVE_BLOCKS` 就是 `StoveList` 这个列表）、
                         熄着时 FD 的件怎么冷却 `cooledTimer`、什么点得着 / 灭得了炉灶 `useOf`）
                         StoveFacing（炉灶的朝向：方块的 aux -> 站点朝向，炉灶自己的坐标 / 姿态 -> 世界，六件跟着炉灶转）
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
