@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """McdkGrillTest - 炉灶手工烧烤的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
-不会自动运行，没有 RPC 端点。在第一个玩家脚下往 +x 15 / +z 9 格放一个点着的炉灶：0 号烤位手放一块生牛肉
+不会自动运行，没有 RPC 端点；没装场景交互前置包（没联动，Shared/Rules/HandsOnMode）时亲手做菜不启用，这一项跳过。在第一个玩家脚下往 +x 15 / +z 9 格放一个点着的炉灶：0 号烤位手放一块生牛肉
 （计时器替站点等贴灶台那面熟了就翻一次），1 号烤位按 FD 原样放一块（30 秒后自己弹出去，JE 的营火时间）。
 一面 30 / 1.5 / 2 = 10 秒：约 20 秒后 0 号是熟牛肉、留在灶台上；31 秒后 1 号已经空了。
     from arrisFarmersDelightScripts.Server.Debug import McdkGrillTest as T
@@ -24,6 +24,7 @@ from .. import HandGrill
 from ..Helpers.Engine import GetBlockAux, compFactory, levelId, serverApi
 from ..Stove import InitStoveData
 from ...Shared.Rules.Placement import directionOfAux
+from ...Shared.Rules import HandsOnMode
 
 WATCH_STEP = 0.1
 BEEF = {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 1}
@@ -45,6 +46,8 @@ def _watch():
 
 def mcdk_test_grill_start():
     """测试函数：放炉灶、摆两块牛肉（一块手放、一块 FD 原样），开始替厨师看着翻面。"""
+    if not HandsOnMode.linked():               # 没装前置包：亲手做菜不启用，这一项没有东西可测
+        return {"case": "grill_by_hand", "ok": True, "skipped": "hands-on delight is off: the prerequisite pack is not installed (or too old)"}
     players = serverApi.GetPlayerList()
     if not players or _run.get("grill"):
         return {"ok": False, "error": "no player" if not players else "already running"}
@@ -66,6 +69,8 @@ def mcdk_test_grill_start():
 def mcdk_test_grill_collect():
     """测试函数：停表，检查手放的那块两面烤好留在灶台上、FD 原样那块已经弹走，然后清理。"""
     run = _run.pop("grill", None)
+    if not run and not HandsOnMode.linked():
+        return {"case": "grill_by_hand", "ok": True, "skipped": "hands-on delight is off: the prerequisite pack is not installed (or too old)"}
     if not run:
         return {"ok": False, "error": "not started"}
     compFactory.CreateGame(levelId).CancelTimer(run["timer"])

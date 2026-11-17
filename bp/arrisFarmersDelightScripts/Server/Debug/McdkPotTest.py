@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """McdkPotTest - 厨锅手工烹饪的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
-不会自动运行，没有 RPC 端点。在第一个玩家脚下往 +x 9 / +z 9 格（避开 McdkSelfTest 的方块）放一口烧着的厨锅、两格各 2 个番茄（番茄酱，一批 2 份），
+不会自动运行，没有 RPC 端点；没装场景交互前置包（没联动，Shared/Rules/HandsOnMode）时亲手做菜不启用，这一项跳过。在第一个玩家脚下往 +x 9 / +z 9 格（避开 McdkSelfTest 的方块）放一口烧着的厨锅、两格各 2 个番茄（番茄酱，一批 2 份），
 假装这位玩家做过 40 份番茄酱（开满 3 颗星），用计时器替站点每 0.05 秒 attend 并按宽圈稳速搅一下（一秒一圈）。
 2 份的一批要 10 / (1.5 / sqrt(2)) ≈ 9.4 秒，星星 4 秒涨满：出锅时 3 星，2 套料出 3 份（多送 1 份）。
     from arrisFarmersDelightScripts.Server.Debug import McdkPotTest as T
@@ -14,6 +14,7 @@ import time
 from .. import HandCooking
 from ..Helpers import PotContainer
 from ..Helpers.Engine import compFactory, levelId, serverApi
+from ...Shared.Rules import HandsOnMode
 from ...Shared.Rules.HandsOn import PotCooking
 
 DISH = "arris:tomato_sauce"
@@ -41,6 +42,8 @@ def _stirOnce():
 
 def mcdk_test_pot_start():
     """测试函数：放锅、放料、开始替站点搅拌。"""
+    if not HandsOnMode.linked():               # 没装前置包：亲手做菜不启用，这一项没有东西可测
+        return {"case": "pot_cooked_by_hand", "ok": True, "skipped": "hands-on delight is off: the prerequisite pack is not installed (or too old)"}
     players = serverApi.GetPlayerList()
     if not players or _run.get("pot"):
         return {"ok": False, "error": "no player" if not players else "already running"}
@@ -66,6 +69,8 @@ def mcdk_test_pot_start():
 def mcdk_test_pot_collect():
     """测试函数：停止搅拌，检查这一批出了几份、几星，然后清理。"""
     run = _run.pop("pot", None)
+    if not run and not HandsOnMode.linked():
+        return {"case": "pot_cooked_by_hand", "ok": True, "skipped": "hands-on delight is off: the prerequisite pack is not installed (or too old)"}
     if not run:
         return {"ok": False, "error": "not started"}
     compFactory.CreateGame(levelId).CancelTimer(run["timer"])
