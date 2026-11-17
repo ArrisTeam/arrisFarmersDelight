@@ -38,7 +38,8 @@ class FakeClientEngine(object):
         self.molang = {}                                  # 方块实体的 molang 变量（砧板的描边）
         self.block = ("arris:cutting_board", 2)          # direction 2 = 朝北
         self.dimension = 0
-        self.particles = []                              # 主包自己放的粒子：{"id": 标识, "pos": 位置, "vars": {变量: 值}}
+        self.particles = []                              # 主包自己放的粒子：{"id": 标识, "pos": 位置, "rot": SetRot 的角, "vars": {变量: 值}, "alive": 还在不在}
+        self.particlesReady = True                       # False：进世界头几秒粒子系统还没好，Create 回 0
 
     # ---- 组件（工厂按需返回自己：下面这些方法就是组件的接口）
     def GetItemBasicInfo(self, name, aux=0):
@@ -70,13 +71,33 @@ class FakeClientEngine(object):
         self.molang[name] = value
         return True
 
-    def Create(self, identifier, pos):
-        self.particles.append({"id": identifier, "pos": tuple(pos), "vars": {}})
+    def Create(self, identifier, pos, rot=(0.0, 0.0, 0.0)):
+        if not self.particlesReady:
+            return 0
+        self.particles.append({"id": identifier, "pos": tuple(pos), "rot": tuple(rot), "vars": {}, "alive": True, "calls": 0})
         return len(self.particles)
 
     def SetVariable(self, particleId, name, value):
         self.particles[particleId - 1]["vars"][name] = value
+        self.particles[particleId - 1]["calls"] += 1
         return True
+
+    def SetPos(self, particleId, pos):
+        self.particles[particleId - 1]["pos"] = tuple(pos)
+        self.particles[particleId - 1]["calls"] += 1
+        return True
+
+    def SetRot(self, particleId, rot):
+        self.particles[particleId - 1]["rot"] = tuple(rot)
+        self.particles[particleId - 1]["calls"] += 1
+        return True
+
+    def Remove(self, particleId):
+        self.particles[particleId - 1]["alive"] = False
+        return True
+
+    def liveParticles(self, identifier=None):
+        return [particle for particle in self.particles if particle["alive"] and (identifier is None or particle["id"] == identifier)]
 
     def AddTimer(self, seconds, func, *args):
         self.timers.append((seconds, func, args))
@@ -135,6 +156,7 @@ _install()
 BoardView = fdtest.load("Compat.Diegesis.BoardView")
 BoardDraw = fdtest.load("Compat.Diegesis.BoardDraw")
 BoardFx = fdtest.load("Compat.Diegesis.BoardFx")
+BoardMarkLine = fdtest.load("Compat.Diegesis.BoardMarkLine")
 BoardWatch = fdtest.load("Compat.Diegesis.BoardWatch")
 BlockItems = fdtest.load("Client.BlockItems")
 Geometry = dgtest.load("Shared.Geometry")

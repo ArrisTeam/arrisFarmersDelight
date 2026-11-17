@@ -3,7 +3,8 @@
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 moveKnife / moveTool / drawMarks / chop / startStroke / impact（834-1060、1142-1194、1257-1279）。
 数和状态机都在 Shared/Rules/HandsOn（BoardMarks 刀口线、BoardKnife 刀的走法和点下去等回话、BoardStroke 别的工具的动作），这里只把它们接到道具上：
-- 虚线：下一刀的那一条，平躺在食物顶面上，只画在图标的实心像素上（0.18 秒从无长到全长）；有工具可用（光标栈上切得了的，或手空着背包里有刀）才显示；
+- 虚线：下一刀的那一条，平躺在食物顶面上，只画在图标的实心像素上（半透明的白，一段一颗粒子，0.18 秒从无渐显，BoardMarkLine）；
+  有工具可用（光标栈上切得了的，或手空着背包里有刀）才显示；
 - 刀：光标栈上拿着的、或手空着借背包里的，光标在食物上时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、
   点一下下去 0.05 秒上来 0.14 秒；画着的时候 drawn 为真，BoardView 据此把内核画在光标上的那一份缩到看不见（JE 的 setCarriedHidden）；
 - 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）。
@@ -12,13 +13,12 @@
 import math
 
 from . import BoardFx
+from .BoardMarkLine import MarkLine
 from ...Shared.Rules.HandsOn import BoardKnife as Knife
 from ...Shared.Rules.HandsOn import BoardMarks as Marks
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import BoardStroke as Stroke
 from ...Shared.Rules.HandsOn import Cutting
-
-MARK_LIFT = 0.25       # 虚线画在食物顶面上方这么高（像素）：实机上掉落物的顶面比算出来的高 0.15 左右，一段虚线又只有 0.04 厚，贴着面会陷进食物里
 
 
 class Cutter(object):
@@ -29,7 +29,7 @@ class Cutter(object):
         self.run = None                             # 正在进行的别的工具的动作（BoardStroke.Run）
         self.drawn = False                          # 本端正把刀 / 工具画在食物上（光标栈上的那份该收起来）
         self.props = {"knife": None, "tool": None}
-        self.line = None                            # [道具, 键, 已显出来的比例]
+        self.line = None                            # MarkLine：现在画着的那一条虚线
         self.clock = 0.0
         self.place = [0.0, Knife.REST_Z, 0.0]       # 别的工具悬在哪：x、z、朝向（弧度）
         self.snap = -1                              # 别的工具吸附着的那一刀（方块类在方块上任何地方都算）
@@ -92,23 +92,20 @@ class Cutter(object):
     # ---------------------------------------------------------------- 虚线
 
     def _marks(self, dt, geo):
-        """下一刀的虚线：换了一条就重画（从无长到全长）。"""
+        """下一刀的虚线：换了一条就重画（新的一条从透明渐显）。key 里有食物顶面的高度（JE 的 itemHeight：叠数变了线要跟着升降）。"""
         index, cut, ends = self.next
-        view, draw = self.owner.view, self.owner.draw
-        key = (index, round(cut.x, 3), round(cut.z, 3), round(cut.angle, 3), self.owner.board()["newItemName"]) if ends is not None else None
-        if self.line is not None and self.line[1] != key:
-            view.props.remove(self.line[0])
+        draw = self.owner.draw
+        key = (index, round(cut.x, 3), round(cut.z, 3), round(cut.angle, 3), self.owner.board()["newItemName"], round(draw.surface(), 3)) if ends is not None else None
+        if self.line is not None and self.line.key != key:
+            self.line.remove()
             self.line = None
         if key is None:
             return
-        height = draw.surface() + MARK_LIFT
-        a, b = (draw.cx + ends[0][0], height, draw.cz + ends[0][1]), (draw.cx + ends[1][0], height, draw.cz + ends[1][1])
         if self.line is None:
-            self.line = [view.props.line(a, b, hot=False), key, 0.0]
-        grown = min(1.0, self.line[2] + dt / Knife.MARK_FADE)
-        if grown != self.line[2]:
-            self.line[2] = grown
-            self.line[0].move(scale=max(1.0e-3, math.hypot(b[0] - a[0], b[2] - a[2])) * grown / self.owner.api.ITEM_SPAN)
+            a, b = ((draw.cx + end[0], draw.cz + end[1]) for end in ends)
+            self.line = MarkLine(self.owner.view, key, a, b, draw.surface())
+        else:
+            self.line.frame(dt)
 
     # ---------------------------------------------------------------- 画道具
 
@@ -216,7 +213,9 @@ class Cutter(object):
     def close(self):
         for name in self.props:
             self._drop(name)
-        self.line = None
+        if self.line is not None:
+            self.line.remove()
+            self.line = None
         self.run = None
         self.drawn = False
         self.pending.reset()

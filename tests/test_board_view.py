@@ -12,6 +12,7 @@ import boardclient as C
 import fdtest
 
 Marks = fdtest.load("Shared.Rules.HandsOn.BoardMarks")
+Dashes = fdtest.load("Shared.Rules.HandsOn.BoardDashes")
 Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
 
@@ -431,19 +432,19 @@ def testTheDashedLineIsOnlyTheNextCutAndOnlyShownWhileThereIsAToolToCutWith():
     board, data = _across()
     behavior, view = _open(board, data=data)
     _frames(behavior, 30)
-    assert not [prop for prop in view.props.live() if prop.line], "没有工具：不显示线"
+    assert not C.engine.liveParticles("arris:board_mark"), "没有工具：不显示线"
     C.engine.inventory[2] = C.item(KNIFE)
     _frames(behavior, 30)
-    lines = [prop for prop in view.props.live() if prop.line]
-    assert len(lines) == 1 and lines[0].scale > 0.1, "有刀：下一刀的线（一次一条）"
     cut, icon = _lineOf()
     ends = Marks.dashOf(cut, icon)
     length = math.hypot(ends[1][0] - ends[0][0], ends[1][1] - ends[0][1])
-    assert abs(lines[0].scale * 8.0 - length) < 0.2, "长度照图标的实心像素"
+    dashes = C.engine.liveParticles("arris:board_mark")
+    assert len(dashes) == len(Dashes.dashes(length)) > 1, "有刀：下一刀的线（一次一条，长度照图标的实心像素，每段一颗粒子）"
+    assert not [prop for prop in view.props.live() if prop.line], "粒子建得出来：不用掉落物的虚线"
     view.data = dict(data, marks=1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: False})())
     _frames(behavior, 30)
-    assert not [prop for prop in view.props.live() if prop.line], "只有一刀：切完了就没有线"
+    assert not C.engine.liveParticles("arris:board_mark"), "只有一刀：切完了就没有线"
 
 
 def testOnlyAKnifeThatCutsWhatIsOnTheBoardIsOffered():
@@ -451,7 +452,7 @@ def testOnlyAKnifeThatCutsWhatIsOnTheBoardIsOffered():
     behavior, view = _open(board, data=data)
     C.engine.inventory[3] = C.item("minecraft:iron_axe")
     _frames(behavior, 30)
-    assert not _live(view, "minecraft:iron_axe") and not [prop for prop in view.props.live() if prop.line], "斧头切不了卷心菜"
+    assert not _live(view, "minecraft:iron_axe") and not C.engine.liveParticles(), "斧头切不了卷心菜：没有借来的工具，也没有虚线"
     assert behavior.toolOf() == (None, False)
     C.engine.inventory[3] = None
     C.engine.offhand = C.item(KNIFE)

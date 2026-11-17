@@ -21,7 +21,6 @@ REST_HEIGHT = 4.0        # :74 没在食物上时刀的高度（食物顶面之�
 REST_Z = -6.0            # :75 没在食物上时停在板的近边
 FOLLOW = 22.0            # :890 刀追光标的速度：每帧挪 1 - exp(-FOLLOW * dt) 的距离
 PENDING_WAIT = 1.0       # :201 画了切开却等不到服务端的话，这么久之后撤回
-MARK_FADE = 0.18         # :203 新的一条虚线用这么久显出来
 
 KNOCK = "knock"
 CHOP = "chop"
