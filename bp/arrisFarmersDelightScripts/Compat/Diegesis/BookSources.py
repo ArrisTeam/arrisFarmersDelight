@@ -4,8 +4,11 @@
 书页在 Shared/Rules/StationBooks.py；这里按站点同步来的数据回答前置包 Client/Book.py 的问话（接口见那里）。
 锅、砧板摆盘的菜能从背包放料（书上再点一下选中的那道菜）：发 bookFill {"key", "sets"}，服务端 PotLogic 交给 BookFill.py、BoardLogic 交给 BoardAssemble.py；
 切的、煎锅、炉灶的书只看（HoD 一样）。前置包太旧、视图没有 book 接口时什么都不做。
+配置里关了食谱书（recipe_book，HandsOnConfig.recipeBook()：RecipeBook.opened / frame 里关着就不开、书的节点收起）：四个站点都经 attach 挂书，
+这里一处不挂，站点旁就没有书；书是客户端的东西，服务端的放料动作（bookFill）照旧校验，不看这个开关。
 """
 from ...Shared.Rules import BoardStation, GrillStation, PanStation, PotStation
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.HandsOn import PotBonus
 
@@ -110,14 +113,14 @@ SOURCES = {"pot": PotSource, "board": BoardSource, "pan": PanSource, "grill": Gr
 
 
 def attach(view, kind):
-    """开站时把这个站点的书交给前置包。"""
+    """开站时把这个站点的书交给前置包；配置里关了食谱书就不挂。"""
     book = getattr(view, "book", None)
-    if book is not None:
+    if book is not None and Options.recipeBook():
         book(SOURCES[kind](view))
 
 
 def refresh(view):
-    """站点里的东西变了：书马上重算一次。"""
+    """站点里的东西变了：书马上重算一次（没挂书就没有可算的）。"""
     refreshBook = getattr(view, "refreshBook", None)
-    if refreshBook is not None:
+    if refreshBook is not None and Options.recipeBook():
         refreshBook()
