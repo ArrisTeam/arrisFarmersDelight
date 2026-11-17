@@ -8,13 +8,14 @@ Server/CookingPot.py 照旧推进；本模块让库的方块宿主接管对厨�
 右键盛菜：手里拿着这道菜的容器（只比物品名）、预览槽里有煮好的菜时，拿走一个容器、给一份菜（Server/PotServe.py，算做过一份、不给经验）；
 前置包在场、厨锅站点登记着时普通右键被客户端取消、到不了这里，站点开站那一下（Compat/Diegesis/PotLogic.py 的 onOpen）做同一件事；
 HoD 配置（Shared/Data/HandsOnConfig.py）里关了 cooking_pot，站点就不登记，普通右键不再被取消，到这里开经典界面。
+有人开着这口锅的经典界面时（宿主的 onViewers），锅里厨师放的料也按 FD 原样自己煮，不等勺子（HoD 的 isInMenu）。
 宿主登记时由库在运行期让引擎报厨锅的移除（ListenOnBlockRemoveEvent），所以方块 JSON 里不再写 netease:listen_block_remove
 （两处同时开会让方块和物品图标都不画）；OnCookingPotRemove 照常经 BlockRemoveServerEvent 收到事件。
 """
 from ..dolorContainer.Server import Api
 from ..dolorContainer.Std.Block import Server as Block
 from ..Shared.Menus import CookingPot as PotMenu
-from . import PotServe
+from . import HandCooking, PotServe
 from .CookingPot import COOKING_POT, COOK_SECONDS
 from .Helpers.Engine import GetBlockEntityData
 
@@ -33,6 +34,12 @@ class CookingPotHost(Block.Host):
         if place is not None and PotServe.serveByHand(playerId, place[0], place[1]):
             return Block.BLOCK
         return Block.OPEN if DOLOR_SCREEN else Block.PASS
+
+    def onViewers(self, key, viewers):
+        """看着这口锅的经典界面的人变了（库在有人开、有人关、下线时告诉宿主）：锅的烹饪要知道，有人开着时厨师放的料不等勺子（HandCooking）。"""
+        place = Block.parseKey(key)
+        if place is not None:
+            HandCooking.setMenuViewers(place[0], place[1], viewers)
 
 
 def taken(playerId, key, stack):

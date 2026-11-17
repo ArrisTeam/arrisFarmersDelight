@@ -8,6 +8,7 @@
 站点开着时（Compat/Diegesis/PotLogic.py 每刻 attend）厨师放的料要搅才煮（stirring_required），整批按 1.5 / sqrt(份数)
 的速度一起煮好，搅出的星星多送份数。不煮的时候（没热源、没有配方、成品放不下）进度每刻掉 2 刻（FD 的 cookingTick）；
 锅里的料换成了另一道菜（和上次煮的不是同一条配方）进度从头来（FD 的 getMatchingRecipe，规则在 Shared/Rules/PotRecipeMemory.py）。
+有人开着这口锅的经典界面时，厨师放的料也按 FD 原样自己煮，不等勺子（HoD 的 isInMenu，谁开着由 Server/CookingPotHost 告诉 setMenuViewers）。
 """
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory
@@ -45,6 +46,7 @@ class PotHand(object):
 
 _hands = {}
 _made = {}
+_menus = set()                   # 现在有人开着经典界面（dolorContainer 的那个）的锅：(维度, 坐标)
 
 
 def handOf(dimensionId, blockPos, blockEntityData=None):
@@ -64,6 +66,16 @@ def handOf(dimensionId, blockPos, blockEntityData=None):
 
 def forget(dimensionId, blockPos):
     _hands.pop((dimensionId, tuple(blockPos)), None)
+
+
+def setMenuViewers(dimensionId, blockPos, viewers):
+    """现在有这些玩家开着这口锅的经典界面（Server/CookingPotHost.onViewers 告诉这里；没人开着时 viewers 是空的）。
+    有人开着时厨师放的料也按 FD 原样自己煮（HoD 的 handson$isInMenu：任何玩家的 containerMenu 是这口锅的 CookingPotMenu）。"""
+    key = (dimensionId, tuple(blockPos))
+    if viewers:
+        _menus.add(key)
+    else:
+        _menus.discard(key)
 
 
 def _keepByHand(clock, blockEntityData):
@@ -108,7 +120,7 @@ def cook(hand, dimensionId, blockPos, blockEntityData, slots, now, dt):
         _writeTimer(blockEntityData, max(0.0, hand.total - clock.cookTime), hand.total)
         return
     hand.batch = PotCooking.batchOf(PotStation.servingsLeft(slots), mealCount, perServing, maxStack, same)
-    hand.mode = clock.advance(now, dt, hand.total, hand.batch)
+    hand.mode = clock.advance(now, dt, hand.total, hand.batch, inMenu=(dimensionId, tuple(blockPos)) in _menus)
     if hand.mode != PotCooking.WAITING and clock.finished(hand.total):
         keep = lambda item: clock.keepLeftover(item, now)     # noqa: E731 - 余料：厨师在场就留给他
         PotContainer.cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItems, sink=keep)
