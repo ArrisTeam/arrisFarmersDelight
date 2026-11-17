@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""砧板站点里刀口虚线怎么画（Compat/Diegesis/BoardCutter + BoardMarkLine，假引擎和假视图见 boardclient.py）：
+"""砧板站点里刀口虚线和借来的工具怎么画（Compat/Diegesis/BoardCutter + BoardMarkLine + BoardStand，假引擎和假视图见 boardclient.py）：
 - 虚线（HoD drawMarks / fade）：一段一颗粒子 arris:board_mark，白混凝土、半透明（0xA0）、半宽 0.16、每段 0.6 隔 0.45，新的一条 0.18 秒渐显；
-- 粒子建不出来（进世界头几秒 Create 回 0）：这一帧用前置包的掉落物虚线（props.line），下一帧再试粒子，建出来就换掉。
-朝向的数（SetRot 的偏航）照 Shared/Rules/ParticleQuad，这里用引擎知识库的朝向公式独立核一遍。
+- 借来的工具（手空着、背包里的，HoD 868 / 932）：半透明（0x8CFFFFFF）的竖立图标粒子 arris:board_tool，落下去那一下变实；拿在手里的仍是实心的掉落物；
+- 粒子建不出来（进世界头几秒 Create 回 0）、图标问不到（GetIconInfo 回 None）：这一帧用掉落物（虚线用前置包的 props.line），下一帧再试，建出来就换掉。
+朝向的数（SetRot 的偏航、转角的符号）照 Shared/Rules/ParticleQuad，这里用引擎知识库的朝向公式独立核一遍。
 """
 from __future__ import print_function
 
@@ -18,10 +19,12 @@ import boardclient as C
 import fdtest
 
 Marks = fdtest.load("Shared.Rules.HandsOn.BoardMarks")
+Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 Dashes = fdtest.load("Shared.Rules.HandsOn.BoardDashes")
 
-KNIFE = "arris:iron_knife"
-MARK = "arris:board_mark"
+KNIFE, OTHER_KNIFE, AXE = "arris:iron_knife", "arris:flint_knife", "minecraft:iron_axe"
+MARK, TOOL = "arris:board_mark", "arris:board_tool"
+OFFERED = 0x8C / 255.0
 
 
 def _open(board=None, data=None, hand=None, yaw=0):
@@ -47,8 +50,19 @@ def _lineOf(index=0, spots=(0.5,), count=1, name="arris:cabbage"):
     return Marks.markOf(Marks.axisOf(icon), "across", list(spots), [0.0] * len(spots), index, count), icon
 
 
+def _cursorOn(behavior, offset):
+    draw = behavior.draw
+    ray = C.rayTo((draw.cx + offset[0], draw.surface(), draw.cz + offset[1]))
+    behavior.onPointer(C.Event("move", "surface", ray))
+    return ray
+
+
 def _changed(behavior, view, board=False):
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: board})())
+
+
+def _live(view, name):
+    return [prop for prop in view.props.live() if prop.item["newItemName"] == name]
 
 
 def _lines(view):
@@ -59,6 +73,10 @@ def _basis(yaw):
     """没绑定的发射器 SetRot((0, yaw, 0)) 得到 E = Ry(yaw)：E.x、E.y、E.z（引擎知识库 §5.3）。"""
     c, s = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
     return (c, 0.0, -s), (0.0, 1.0, 0.0), (s, 0.0, c)
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
 
 
 def _close(a, b, eps=1.0e-6):
@@ -202,6 +220,141 @@ def testALineThatCannotBeMadeWholeIsNotLeftHalfMade():
     assert len(C.engine.liveParticles(MARK)) > 3 and not _lines(view)
 
 
+# ---------------------------------------------------------------- 借来的工具
+
+def _offered(yaw=0, item=KNIFE):
+    """手空着、背包里有刀，光标站在下一刀的线上，落定。返回 (表现, 视图, 射线, 这一刀的线)。"""
+    behavior, view = _open(C.item("arris:cabbage", 2), _data(), yaw=yaw)
+    C.engine.inventory[8] = C.item(item)
+    cut, icon = _lineOf()
+    ray = _cursorOn(behavior, (cut.x, cut.z))
+    _frames(behavior, 60)
+    return behavior, view, ray, cut
+
+
+def testAKnifeFromTheBagHangsOverTheFoodAsAHalfSeeThroughUprightIcon():
+    for yaw in (0, 90, 180, 270):
+        behavior, view, ray, cut = _offered(yaw)
+        tool, = C.engine.liveParticles(TOOL)
+        values, knife, draw = tool["vars"], behavior.cutter.knife, behavior.draw
+        assert not _live(view, KNIFE), "借来的不是掉落物"
+        assert _close(values["variable.alpha"], OFFERED, 1e-5) and abs(OFFERED - 0.549) < 1e-3, "OFFERED 0x8CFFFFFF"
+        assert tuple(values["variable." + name] for name in "uvwh") == tuple(round(value, 6) for value in C.engine.icons[KNIFE]), "图标在图集里的那一块"
+        assert _close(values["variable.half"], 0.225) and _close(C.BoardStand.HALF, 0.225, 1e-12), "画 0.45 个图标大 = 7.2 像素 = 半边长 0.225 格"
+        assert values["variable.turn"] == -Scene.KNIFE_ROLL, "刀尖朝下：顺时针 135 度"
+        center = (draw.cx + knife.x, Scene.TOP + knife.y + Scene.KNIFE_TIP, draw.cz + knife.z)
+        assert all(_close(a, b) for a, b in zip(tool["pos"], view.toWorld(*center))), "图标中心就在刀该在的地方"
+        facing = (math.sin(knife.angle), -math.cos(knife.angle))
+        want = _unit(*_worldDirection(view, center, facing))
+        right, up, front = _basis(tool["rot"][1])
+        assert _close(front[0], want[0], 2e-3) and _close(front[2], want[1], 2e-3), (yaw, "正面朝线的法线、朝镜头这一侧", front, want)
+        toCamera = _unit(*_worldDirection(view, center, (0.0, -1.0)))
+        assert front[0] * toCamera[0] + front[2] * toCamera[1] > 0.0, "镜头这一侧"
+        assert up == (0.0, 1.0, 0.0) and all(_close(a, b, 1e-9) for a, b in zip(right, _cross((-front[0], 0.0, -front[2]), up))), "从正面看（镜头一侧）图标不镜像"
+        behavior.onClose()
+
+
+def testABorrowedKnifeIsDrawnSolidWhileItStrikesAndHalfSeeThroughAgainAfterwards():
+    behavior, view, ray, cut = _offered()
+    tool, = C.engine.liveParticles(TOOL)
+    assert _close(tool["vars"]["variable.alpha"], OFFERED, 1e-5)
+    assert behavior.onPointer(C.Event("down", "surface", ray, button=0)) and view.sent[0][0] == "chop"
+    for _ in range(3):
+        behavior.frame(0.05)
+        assert tool["vars"]["variable.alpha"] == 1.0, "落下去：0.05 秒下 + 0.14 秒上，这期间是实的"
+    behavior.frame(0.05)
+    assert _close(tool["vars"]["variable.alpha"], OFFERED, 1e-5), "0.19 秒过了：又是半透明"
+    assert len(C.engine.liveParticles(TOOL)) == 1, "始终是同一个发射器，不重建"
+
+
+def testAKnifeKnockedOffTheLineIsSolidWhileItKnocksToo():
+    """JE：chopAge 在敲一声（没吸附上）时也设 0，所以一样变实。"""
+    behavior, view, ray, cut = _offered()
+    off = _cursorOn(behavior, (cut.x + 3.5 * -cut.normalX(), cut.z + 3.5 * -cut.normalZ()))
+    _frames(behavior, 30)
+    tool, = C.engine.liveParticles(TOOL)
+    assert behavior.onPointer(C.Event("down", "surface", off, button=0)) and view.sent == []
+    behavior.frame(0.05)
+    assert tool["vars"]["variable.alpha"] == 1.0
+    _frames(behavior, 6, 0.05)
+    assert _close(tool["vars"]["variable.alpha"], OFFERED, 1e-5)
+
+
+def testAKnifeInTheHandIsASolidDroppedItemNotAParticleAndSwitchingHandsSwitchesHowItIsDrawn():
+    behavior, view = _open(C.item("arris:cabbage", 2), _data(), hand=C.item(KNIFE))
+    cut, icon = _lineOf()
+    _cursorOn(behavior, (cut.x, cut.z))
+    _frames(behavior, 10)
+    assert len(_live(view, KNIFE)) == 1 and not C.engine.liveParticles(TOOL), "光标栈上拿着的一直是实的：掉落物"
+    view.hand = None
+    C.engine.inventory[8] = C.item(KNIFE)
+    _frames(behavior, 3)
+    assert len(C.engine.liveParticles(TOOL)) == 1 and not _live(view, KNIFE), "放回背包：变成借来的，半透明的粒子"
+    view.hand = C.item(KNIFE)
+    C.engine.inventory[8] = None
+    _frames(behavior, 3)
+    assert not C.engine.liveParticles(TOOL) and len(_live(view, KNIFE)) == 1, "又拿起来：实的掉落物"
+
+
+def testAnotherToolFromTheBagIsHalfSeeThroughAndSolidWhileItsStrokeRuns():
+    data = _data(stroke="chop")
+    behavior, view = _open(C.item("minecraft:oak_log", 3), data)
+    C.engine.inventory[4] = C.item(AXE)
+    ray = _cursorOn(behavior, (0.0, 0.0))
+    _frames(behavior, 20)
+    tool, = C.engine.liveParticles(TOOL)
+    assert not _live(view, AXE) and _close(tool["vars"]["variable.alpha"], OFFERED, 1e-5)
+    assert behavior.onPointer(C.Event("down", "surface", ray, button=0)) and behavior.cutter.run is not None
+    behavior.frame(0.05)
+    assert tool["vars"]["variable.alpha"] == 1.0, "动作在走：实的"
+    for _ in range(12):
+        behavior.frame(0.05)
+    assert behavior.cutter.run is None and _close(tool["vars"]["variable.alpha"], OFFERED, 1e-5), "动作完了（斧劈 0.42 秒）：又是半透明"
+    behavior.onClose()
+    assert not C.engine.liveParticles()
+
+
+def testAToolInHandStaysADroppedItemWhileItStrikes():
+    data = _data(stroke="chop")
+    behavior, view = _open(C.item("minecraft:oak_log", 3), data, hand=C.item(AXE))
+    ray = _cursorOn(behavior, (0.0, 0.0))
+    _frames(behavior, 10)
+    assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)) and behavior.cutter.run is not None
+    _frames(behavior, 5, 0.05)
+    assert len(_live(view, AXE)) == 1 and not C.engine.liveParticles(TOOL)
+
+
+def testTheBorrowedToolFallsBackToTheSolidDroppedItemUntilTheIconAndTheParticleCanBeHad():
+    behavior, view = _open(C.item("arris:cabbage", 2), _data())
+    C.engine.inventory[8] = C.item(KNIFE)
+    icons, C.engine.icons = C.engine.icons, {}
+    cut, icon = _lineOf()
+    _cursorOn(behavior, (cut.x, cut.z))
+    _frames(behavior, 5)
+    assert len(_live(view, KNIFE)) == 1 and not C.engine.liveParticles(TOOL), "进世界头几秒问不到图标（GetIconInfo 回 None）：先画实心的掉落物"
+    C.engine.icons = icons
+    C.engine.particlesReady = False
+    _frames(behavior, 2)
+    assert len(_live(view, KNIFE)) == 1 and not C.engine.liveParticles(TOOL), "图标有了、粒子系统还没好（Create 回 0）：还是掉落物"
+    C.engine.particlesReady = True
+    _frames(behavior, 2)
+    assert len(C.engine.liveParticles(TOOL)) == 1 and not _live(view, KNIFE), "都好了：粒子接手，掉落物收掉"
+    behavior.onClose()
+    assert not C.engine.liveParticles() and not view.props.live()
+
+
+def testOnlyWhatChangesIsSentToTheEngineWhileTheBorrowedToolHangsStill():
+    behavior, view, ray, cut = _offered()
+    tool, = C.engine.liveParticles(TOOL)
+    before, rot = tool["calls"], tool["rot"]
+    behavior.frame(1.0 / 60.0)
+    assert tool["calls"] == before + 1 and tool["rot"] == rot, "只挪位置（SetPos），变量和朝向不重发"
+    C.engine.inventory[8] = C.item(OTHER_KNIFE)
+    behavior.frame(1.0 / 60.0)
+    assert len(C.engine.liveParticles(TOOL)) == 1 and len([p for p in C.engine.particles if p["id"] == TOOL]) == 1, "换一把刀：还是这个发射器"
+    assert tuple(tool["vars"]["variable." + name] for name in "uvwh") == tuple(round(value, 6) for value in C.engine.icons[OTHER_KNIFE]), "只换图标的那一块"
+
+
 # ---------------------------------------------------------------- 脚本发的变量和粒子定义对得上
 
 def _definition(name):
@@ -213,14 +366,19 @@ def _definition(name):
 
 
 def testEveryVariableTheScriptSendsIsDeclaredByTheParticleDefinition():
+    behavior, view, ray, cut = _offered()
+    behavior.onClose()
     behavior, view = _open(C.item("arris:cabbage", 2), _data())
     C.engine.inventory[2] = C.item(KNIFE)
+    cut, icon = _lineOf()
+    _cursorOn(behavior, (cut.x, cut.z))
     _frames(behavior, 30)
-    name, declared = _definition("arris_board_mark.json")
-    found = C.engine.liveParticles(MARK)
-    assert name == MARK and found
-    for particle in found:
-        assert set(key.split(".", 1)[1] for key in particle["vars"]) == declared, sorted(particle["vars"])
+    for identifier in (MARK, TOOL):
+        name, declared = _definition("arris_" + identifier.split(":")[1] + ".json")
+        found = C.engine.liveParticles(identifier)
+        assert name == identifier and found, identifier
+        for particle in found:
+            assert set(key.split(".", 1)[1] for key in particle["vars"]) == declared, (identifier, sorted(particle["vars"]))
 
 
 if __name__ == "__main__":

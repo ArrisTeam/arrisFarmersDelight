@@ -40,6 +40,8 @@ class FakeClientEngine(object):
         self.dimension = 0
         self.particles = []                              # 主包自己放的粒子：{"id": 标识, "pos": 位置, "rot": SetRot 的角, "vars": {变量: 值}, "alive": 还在不在}
         self.particlesReady = True                       # False：进世界头几秒粒子系统还没好，Create 回 0
+        self.icons = dict((name, (0.01 * (index + 1), 0.02 * (index + 1), 0.015625, 0.015625)) for index, name in enumerate(sorted(TYPES)))
+        # 物品名 -> 图标在图集里的 (u0, v0, 宽, 高)；问不到（图集还没好）就是空的
 
     # ---- 组件（工厂按需返回自己：下面这些方法就是组件的接口）
     def GetItemBasicInfo(self, name, aux=0):
@@ -157,6 +159,7 @@ BoardView = fdtest.load("Compat.Diegesis.BoardView")
 BoardDraw = fdtest.load("Compat.Diegesis.BoardDraw")
 BoardFx = fdtest.load("Compat.Diegesis.BoardFx")
 BoardMarkLine = fdtest.load("Compat.Diegesis.BoardMarkLine")
+BoardStand = fdtest.load("Compat.Diegesis.BoardStand")
 BoardWatch = fdtest.load("Compat.Diegesis.BoardWatch")
 BlockItems = fdtest.load("Client.BlockItems")
 Geometry = dgtest.load("Shared.Geometry")
@@ -223,6 +226,10 @@ class FakePorts(object):
 
     def maxStack(self, item):
         return 64
+
+    def iconUV(self, item):
+        """前置包 Ports.iconUV：图标在图集里的位置，图集还没好问不到 None。"""
+        return engine.icons.get(item["newItemName"])
 
 
 class FakeView(object):

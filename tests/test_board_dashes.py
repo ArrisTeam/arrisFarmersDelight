@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""砧板刀口虚线的样子（Shared/Rules/HandsOn/BoardDashes.py、Shared/Rules/ParticleQuad.py、rp/particles/arris_board_mark.json 和那张贴图）：
-每一段多长、多宽、多不透明、渐显多久照 HoD 的 BoardBehavior（81-85、203、1181-1182、1206-1208）；
+"""砧板刀口虚线和借来的工具的样子（Shared/Rules/HandsOn/BoardDashes.py、Shared/Rules/ParticleQuad.py、rp/particles 里的两个粒子定义和那张贴图）：
+每一段多长、多宽、多不透明、渐显多久照 HoD 的 BoardBehavior（81-85、178、203、1181-1182、1206-1208）；
 粒子四边形怎么转照引擎知识库的朝向公式（PARTICLE_ENGINE §5.3 / §5.4），平躺那一支 2026-11-17 实机核对过：不转时上边朝 -z、右边朝 +x，
 SetRot((0, ψ, 0)) 把上边转到 (-sin ψ, -cos ψ)、右边转到 (cos ψ, -sin ψ)。
 """
@@ -52,11 +52,16 @@ def _flat(yaw):
     return ex, tuple(-value for value in ez)
 
 
+def _upright(yaw):
+    """emitter_transform_xy：右 = E.x、上 = E.y、正面（法线）= E.z。"""
+    return _basis(yaw)
+
+
 # ---------------------------------------------------------------- 虚线：每一段、渐显
 
 def testTheConstantsAreTheJavaOnes():
     assert (Dashes.MARK_WIDTH, Dashes.DASH, Dashes.DASH_GAP) == (0.16, 0.6, 0.45), "BoardBehavior:81-83：半宽 0.16（整宽 0.32）、段 0.6、隔 0.45"
-    assert Dashes.MARK_ALPHA == 0xA0 and Dashes.MARK_FADE == 0.18, "MARK_COLOR 0xA0FFFFFF、MARK_FADE 0.18"
+    assert Dashes.MARK_ALPHA == 0xA0 and Dashes.MARK_FADE == 0.18 and Dashes.OFFERED_ALPHA == 0x8C, "MARK_COLOR 0xA0FFFFFF、MARK_FADE 0.18、OFFERED 0x8CFFFFFF"
 
 
 def testADashedLineIsEveryDashPlusGapAndTheLastDashIsCutAtTheEndWhateverItsLength():
@@ -85,6 +90,11 @@ def testANewLineFadesInLinearlyToTheJavaAlphaByteInOneEighteenthOfASecond():
     assert [Dashes.markAlpha(age) for age in ages] == sorted(Dashes.markAlpha(age) for age in ages)
 
 
+def testAToolOfferedFromTheBagIsHalfSeeThroughUntilItStrikes():
+    assert Dashes.offeredAlpha(False) == 0x8C / 255.0 and abs(Dashes.offeredAlpha(False) - 0.549) < 1e-3
+    assert Dashes.offeredAlpha(True) == 1.0, "落下去那一下变实"
+
+
 # ---------------------------------------------------------------- 粒子四边形怎么转
 
 def testAFlatQuadIsTurnedSoItsTopRunsAlongTheWantedDirection():
@@ -99,6 +109,24 @@ def testAFlatQuadIsTurnedSoItsTopRunsAlongTheWantedDirection():
     assert _same(top, (-math.sin(math.radians(yaw)), 0.0, -math.cos(math.radians(yaw)))), "实机：转 ψ 后上边朝 (-sin ψ, -cos ψ)"
     assert _same(right, (math.cos(math.radians(yaw)), 0.0, -math.sin(math.radians(yaw)))), "右边朝 (cos ψ, -sin ψ)"
     assert _close(Quad.flatYaw(0.0, -1.0), 0.0) and _close(abs(Quad.flatYaw(0.0, 1.0)), 180.0), "朝 -z 不用转、朝 +z 转半圈"
+
+
+def testAnUprightQuadFacesTheWantedWayAndShowsItsIconTheRightWayRoundToWhoeverLooksAtIt():
+    """正面朝 (dx, dz) 的竖立图标，从正面看（看的人在正面一侧、朝 -正面 方向看、头朝上）：右边就是看的人的右手边，图标不镜像。"""
+    for dx, dz in ((0.0, -1.0), (0.0, 1.0), (1.0, 0.0), (-1.0, 0.0), (0.4, -0.9), (-0.7, -0.2), (1.1, 0.9)):
+        yaw = Quad.uprightYaw(dx, dz)
+        right, up, front = _upright(yaw)
+        assert _same(front, _unit(dx, dz), 1e-9), (dx, dz, yaw, front)
+        assert _same(up, (0.0, 1.0, 0.0))
+        viewersRight = _cross(tuple(-value for value in front), up)
+        assert _same(right, viewersRight, 1e-9), (dx, dz, right, viewersRight)
+    assert _close(abs(Quad.uprightYaw(0.0, -1.0)), 180.0), "站点里镜头在 -z 一侧：正面朝 -z（朝镜头）的卡片要转半圈（不转时正面朝 +z）"
+    assert _close(Quad.uprightYaw(0.0, 1.0), 0.0)
+
+
+def testTheInPlaneTurnOfAnUprightIconIsTheDropItemsRollWithTheSenseFlipped():
+    """掉落物的 roll 是从正面看顺时针转几度；粒子的 rotation 从正面看逆时针为正（知识库 §5.5）。"""
+    assert Quad.uprightRotation(135.0) == -135.0 and Quad.uprightRotation(-20.0) == 20.0 and Quad.uprightRotation(0.0) == 0.0
 
 
 # ---------------------------------------------------------------- 粒子定义
@@ -116,6 +144,7 @@ def _declared(effect):
 
 def _used(effect):
     text = json.dumps(effect["components"]["minecraft:particle_appearance_billboard"]) + json.dumps(effect["components"]["minecraft:particle_appearance_tinting"])
+    text += json.dumps(effect["components"].get("minecraft:particle_motion_parametric", {}))
     return set(re.findall(r"variable\.(\w+)", text))
 
 
@@ -129,7 +158,6 @@ def testTheDashParticleIsAFlatBlendedQuadOfTheWhiteConcreteTextureWithOneAlphaVa
     assert components["minecraft:particle_appearance_tinting"]["color"] == [1, 1, 1, "variable.alpha"], "白、不透明度一个变量：白混凝土的颜色靠贴图"
     assert "minecraft:particle_appearance_lighting" not in components, "没有 lighting 组件 = 满亮度（HoD 的 setShape(..., glowing = true)）"
     assert _used(effect) <= _declared(effect) == {"half_wide", "half_len", "alpha"}
-    assert components["minecraft:emitter_rate_instant"]["num_particles"] == 1 and components["minecraft:particle_lifetime_expression"]["max_lifetime"] >= 1000000, "一个发射器一颗、活到被删"
 
 
 def testTheDashTextureIsJavasWhiteConcreteBlock():
@@ -140,6 +168,24 @@ def testTheDashTextureIsJavasWhiteConcreteBlock():
         "BoardBehavior.WHITE = block/white_concrete：(207, 213, 214)，不透明（HoD 满亮度画，所以虚线是微微发灰的白、不是纯白）"
     uv = _definition("arris_board_mark.json")["components"]["minecraft:particle_appearance_billboard"]["uv"]
     assert uv["texture_width"] == 1 and uv["uv"] == [0.25, 0.25] and uv["uv_size"] == [0.5, 0.5], "取贴图正中一块，不管贴图多大"
+
+
+def testTheToolParticleIsAnUprightBlendedIconQuadFromTheItemAtlasTurnedByOneVariable():
+    effect = _definition("arris_board_tool.json")
+    components = effect["components"]
+    assert effect["description"]["identifier"] == "arris:board_tool"
+    assert effect["description"]["basic_render_parameters"] == {"material": "particles_blend", "texture": "atlas.items"}
+    billboard = components["minecraft:particle_appearance_billboard"]
+    assert billboard["facing_camera_mode"] == "emitter_transform_xy", "竖立"
+    assert billboard["uv"]["uv"] == ["variable.u", "variable.v"] and billboard["uv"]["uv_size"] == ["variable.w", "variable.h"] and billboard["uv"]["texture_width"] == 1
+    assert billboard["size"] == ["variable.half", "variable.half"]
+    assert components["minecraft:particle_motion_parametric"] == {"rotation": "variable.turn"}, "图标在平面里转多少度：逐帧由脚本给"
+    assert components["minecraft:particle_appearance_tinting"]["color"] == [1, 1, 1, "variable.alpha"]
+    assert "minecraft:particle_appearance_lighting" not in components
+    assert _used(effect) <= _declared(effect) == {"u", "v", "w", "h", "half", "turn", "alpha"}
+    for name in ("arris_board_mark.json", "arris_board_tool.json"):
+        life = _definition(name)["components"]
+        assert life["minecraft:emitter_rate_instant"]["num_particles"] == 1 and life["minecraft:particle_lifetime_expression"]["max_lifetime"] >= 1000000, "一个发射器一颗、活到被删"
 
 
 if __name__ == "__main__":

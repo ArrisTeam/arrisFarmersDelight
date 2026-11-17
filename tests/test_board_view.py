@@ -416,8 +416,9 @@ def testWithAnEmptyHandTheKnifeInTheBagIsOfferedAndLeftClickCutsRightClickTakesB
     cut, icon = _lineOf()
     ray = _cursorOn(behavior, (cut.x, cut.z))
     _frames(behavior)
-    knife = _live(view, KNIFE)
-    assert len(knife) == 1 and not knife[0].flat and knife[0].roll == 135.0, "借来的刀立着、刀尖朝下"
+    tools = C.engine.liveParticles("arris:board_tool")
+    assert len(tools) == 1 and not _live(view, KNIFE), "借来的刀是半透明的粒子（BoardStand），不是掉落物"
+    assert tools[0]["vars"]["variable.turn"] == -135.0, "立着、刀尖朝下：图标在平面里顺时针转 135 度（掉落物的 roll 135，粒子的 rotation 逆时针为正）"
     assert behavior.onPointer(C.Event("down", "surface", ray, button=0)) and view.sent[0][0] == "chop"
     view.sent[:] = []
     assert behavior.onPointer(C.Event("down", "surface", ray, button=1)) and view.sent == [("take", {})]
@@ -425,7 +426,7 @@ def testWithAnEmptyHandTheKnifeInTheBagIsOfferedAndLeftClickCutsRightClickTakesB
     view.sent[:] = []
     _frames(behavior, 10)
     assert behavior.onPointer(C.Event("down", "surface", ray, button=0)) and view.sent == [("take", {})], "没有刀的左键：取回"
-    assert not _live(view, KNIFE), "没有刀了：刀也收起来"
+    assert not C.engine.liveParticles("arris:board_tool"), "没有刀了：刀也收起来"
 
 
 def testTheDashedLineIsOnlyTheNextCutAndOnlyShownWhileThereIsAToolToCutWith():

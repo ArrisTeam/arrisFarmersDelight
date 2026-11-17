@@ -7,13 +7,15 @@
   有工具可用（光标栈上切得了的，或手空着背包里有刀）才显示；
 - 刀：光标栈上拿着的、或手空着借背包里的，光标在食物上时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、
   点一下下去 0.05 秒上来 0.14 秒；画着的时候 drawn 为真，BoardView 据此把内核画在光标上的那一份缩到看不见（JE 的 setCarriedHidden）；
+  借来的（手空着）半透明，落下去那一下变实，拿在手里的一直是实的（BoardStand）；
 - 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）。
-基岩版的掉落物不能半透明，借来的刀画成实的（HoD 是半透明，落下去才变实）。
 """
 import math
 
 from . import BoardFx
 from .BoardMarkLine import MarkLine
+from .BoardStand import Stand
+from ...Shared.Rules.HandsOn import BoardDashes as Dashes
 from ...Shared.Rules.HandsOn import BoardKnife as Knife
 from ...Shared.Rules.HandsOn import BoardMarks as Marks
 from ...Shared.Rules.HandsOn import BoardScene as Scene
@@ -28,7 +30,7 @@ class Cutter(object):
         self.pending = Knife.Pending()
         self.run = None                             # 正在进行的别的工具的动作（BoardStroke.Run）
         self.drawn = False                          # 本端正把刀 / 工具画在食物上（光标栈上的那份该收起来）
-        self.props = {"knife": None, "tool": None}
+        self.stands = {"knife": Stand(owner.view), "tool": Stand(owner.view)}
         self.line = None                            # MarkLine：现在画着的那一条虚线
         self.clock = 0.0
         self.place = [0.0, Knife.REST_Z, 0.0]       # 别的工具悬在哪：x、z、朝向（弧度）
@@ -110,19 +112,12 @@ class Cutter(object):
     # ---------------------------------------------------------------- 画道具
 
     def _drop(self, name):
-        if self.props[name] is not None:
-            self.owner.view.props.remove(self.props[name])
-            self.props[name] = None
+        self.stands[name].remove()
 
-    def _stand(self, name, tool, center, facing, roll):
-        """立着的一把工具（刀或别的）：没有就建，物品换了重建，有就挪。"""
-        one = {"newItemName": tool["newItemName"], "newAuxValue": tool.get("newAuxValue") or 0, "count": 1}
-        if self.props[name] is not None and self.props[name].item != one:
-            self._drop(name)
-        if self.props[name] is None:
-            self.props[name] = self.owner.view.props.item(one, center, flat=False, facing=facing, roll=roll, scale=Scene.KNIFE_SCALE)
-        else:
-            self.props[name].move(center=center, facing=facing, roll=roll)
+    def _stand(self, name, tool, center, facing, roll, striking):
+        """立着的一把工具（刀或别的）：手空着悬着的是背包里借来的，半透明，落下去那一下（striking）变实；光标栈上拿着的是实的（BoardBehavior 868、932）。"""
+        alpha = None if self.owner.view.hand is not None else Dashes.offeredAlpha(striking)
+        self.stands[name].show(tool, center, facing, roll, alpha)
 
     def _knife(self, tool, pose):
         """悬在食物上的刀：刀尖朝下，顺着这一刀的线。"""
@@ -131,7 +126,8 @@ class Cutter(object):
             return
         x, y, z, angle = pose
         draw = self.owner.draw
-        self._stand("knife", tool, (draw.cx + x, Scene.TOP + y + Scene.KNIFE_TIP, draw.cz + z), (math.sin(angle), -math.cos(angle)), Scene.KNIFE_ROLL)
+        self._stand("knife", tool, (draw.cx + x, Scene.TOP + y + Scene.KNIFE_TIP, draw.cz + z), (math.sin(angle), -math.cos(angle)), Scene.KNIFE_ROLL,
+                    self.knife.chopping)
 
     # ---------------------------------------------------------------- 别的工具
 
@@ -152,7 +148,7 @@ class Cutter(object):
             return False
         posed = Stroke.pose(kind, self.run.age if self.run is not None else None, (0.0, Stroke.workHeight(kind, top)), top, *self.snipRange)
         yaw = self.place[2]
-        self._stand("tool", tool, self._at(posed["center"][0], posed["center"][1], yaw), (math.sin(yaw), -math.cos(yaw)), posed["roll"])
+        self._stand("tool", tool, self._at(posed["center"][0], posed["center"][1], yaw), (math.sin(yaw), -math.cos(yaw)), posed["roll"], self.run is not None)
         return True
 
     def _at(self, u, y, yaw=0.0):
@@ -211,7 +207,7 @@ class Cutter(object):
         owner.sendChop(self.knife.x, result[2], result[1])
 
     def close(self):
-        for name in self.props:
+        for name in self.stands:
             self._drop(name)
         if self.line is not None:
             self.line.remove()

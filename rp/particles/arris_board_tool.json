@@ -1,0 +1,57 @@
+{
+  "format_version": "1.10.0",
+  "particle_effect": {
+    "description": {
+      "identifier": "arris:board_tool",
+      "basic_render_parameters": {
+        "material": "particles_blend",
+        "texture": "atlas.items"
+      }
+    },
+    "components": {
+      "minecraft:emitter_initialization": {
+        "creation_expression": "variable.u = 0; variable.v = 0; variable.w = 0; variable.h = 0; variable.half = 0; variable.turn = 0; variable.alpha = 0;"
+      },
+      "minecraft:emitter_rate_instant": {
+        "num_particles": 1
+      },
+      "minecraft:emitter_lifetime_once": {
+        "active_time": 1000000
+      },
+      "minecraft:emitter_shape_point": {},
+      "minecraft:particle_lifetime_expression": {
+        "max_lifetime": 1000000
+      },
+      "minecraft:particle_motion_parametric": {
+        "rotation": "variable.turn"
+      },
+      "minecraft:particle_appearance_billboard": {
+        "size": [
+          "variable.half",
+          "variable.half"
+        ],
+        "facing_camera_mode": "emitter_transform_xy",
+        "uv": {
+          "texture_width": 1,
+          "texture_height": 1,
+          "uv": [
+            "variable.u",
+            "variable.v"
+          ],
+          "uv_size": [
+            "variable.w",
+            "variable.h"
+          ]
+        }
+      },
+      "minecraft:particle_appearance_tinting": {
+        "color": [
+          1,
+          1,
+          1,
+          "variable.alpha"
+        ]
+      }
+    }
+  }
+}
