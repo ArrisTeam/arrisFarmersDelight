@@ -4,7 +4,7 @@
 场景按"炉灶朝北"写（stove.json）；FD 自己画烤架上的东西（DefaultStoveRenderer）、冒烟（StoveBlockEntity.addSmokeParticles）也按 FACING 转。
 基岩版的炉灶是 netease:face_directional 的 direction 状态（方块的 aux）：0 南 1 西 2 北 3 东，写在 north 的贴图（点着的火口）出现在世界的
 那一面（Strata 引擎知识库 BLOCK_LEGACY_ENGINE §10.2）。这里核对：aux 到朝向、六件的位置朝哪都和 FD 的 Java 一样（把 Java 的两段公式照抄成代码）、
-和前置包的几何一样、世界里的展示和场景里的画面是同一套。"""
+和前置包的几何一样、世界里的展示是 FD 的渲染器（位置和场景里一样，每件 6 像素宽、朝向都一样）。"""
 from __future__ import print_function
 
 import math
@@ -131,19 +131,22 @@ def testAxesAreTheStoveFramesAxesInTheWorldAndFrameAPoseLikeThePointsTurn():
     assert StoveFacing.axes(0) == ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
 
 
-def testADisplayPoseAndASceneDrawPoseOfAPieceAreTheSameWhateverTheFacing():
-    """没开站点 / 没装前置包时世界里的展示（BlockDisplay.stoveLayout 的位置和平躺方向）和场景里的画面（站点空间里的位置和 poseRows 姿态，
-    经 axes 换到世界）是同一套：位置一样，姿态矩阵一样。"""
+def testTheWorldDisplayIsFarmersDelightsRendererAtTheScenePositionsWhateverTheFacing():
+    """没开站点 / 没装前置包时世界里的展示（BlockDisplay.stoveLayout）是 FD 的 DefaultStoveRenderer：位置和场景里一样（getStoveItemOffset 就是 piece_0 ~ 5，
+    经 StoveFacing 转到世界），每件 0.375 格 = 6 像素宽（SIZE）、朝向都一样，那个朝向就是场景里不多转的那一件（poseRows 的转角 0）经 axes 换到世界的姿态；
+    HoD 场景里每件各转一点、5 像素宽，是装了前置包时场景接管之后的样子（那时这里的展示收起来，Client/BlockItems.hide）。"""
+    assert BD.STOVE_SIZE == 0.375 and BD.STOVE_SCALE == 0.75, "FD 的 SIZE 0.375 格 = 6 像素；贴图缩放 1 是 8 像素"
     for yaw in Protocol.YAWS:
         slots = dict((str(place), {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 1}) for place in range(6))
         placements = BD.layout(BD.KIND_STOVE, slots, lambda item: "", (0, 0, 0), yaw=yaw)
         assert len(placements) == 6
+        straight = Pose.framed(StoveFacing.axes(yaw), Motion.poseRows(0.0, 0.0, 0.0))
         for place, placement in enumerate(placements):
             x, _, z = StoveFacing.worldPoint(yaw, (0, 0, 0), Layout.PIECE_AT[place][0], 0.0, Layout.PIECE_AT[place][1])
             assert abs(placement.center[0] - x) < 1.0e-9 and abs(placement.center[2] - z) < 1.0e-9, (yaw, place)
             shown = Pose.flatMatrix(placement.direction[0], placement.direction[1])
-            drawn = Pose.framed(StoveFacing.axes(yaw), Motion.poseRows(0.0, Layout.yawOf(place), 0.0))
-            assert all(abs(shown[i][j] - drawn[i][j]) < 1.0e-9 for i in range(3) for j in range(3)), (yaw, place)
+            assert all(abs(shown[i][j] - straight[i][j]) < 1.0e-9 for i in range(3) for j in range(3)), (yaw, place)
+            assert placement.scale == BD.STOVE_SCALE and placement.direction == placements[0].direction, (yaw, place)
 
 
 def testAnAngleThatIsNotOneOfTheFourTurnsAsNorth():

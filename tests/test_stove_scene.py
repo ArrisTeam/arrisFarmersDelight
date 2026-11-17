@@ -610,8 +610,8 @@ def testTurningTheSceneInPlaceKeepsTheLookAndIsANoOpForTheSameFacing():
 
 
 def testTheDisplayWithoutTheSceneIsDrawnWhereTheScenesPiecesWouldBe():
-    """没开站点、也没装前置包时世界里的展示（Client/BlockItems 按 Shared/Rules/BlockDisplay 摆）和场景里的画面是同一套：炉灶朝哪，
-    六件的水平位置和每件的朝向都一样（高度差一点点：展示是 FD 的 1.015 格，场景是实机标定的 16.3 像素）。"""
+    """没开站点、也没装前置包时世界里的展示（Client/BlockItems 按 Shared/Rules/BlockDisplay 摆，FD 的 DefaultStoveRenderer）摆在场景里六件会在的位置：炉灶朝哪，
+    六件的水平位置都一样（高度差一点点：展示是 FD 的 1.015 格，场景是实机标定的 16.3 像素）；朝向不用一样：FD 每件朝向一样，HoD 场景里每件各转一点。"""
     for aux in range(4):
         world.reset()
         world.blocks[POS] = ("arris:stove", aux)
@@ -620,15 +620,15 @@ def testTheDisplayWithoutTheSceneIsDrawnWhereTheScenesPiecesWouldBe():
         BlockItems._last.clear()
         BlockItems._shown.clear()
         BlockItems.show(0, POS, "stove", dict((str(place), item(BEEF)) for place in range(6)))
-        displayed = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4), tuple(round(v, 3) for v in d["euler"])) for d in drops(BEEF))
-        assert len(displayed) == 6
+        displayed = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4)) for d in drops(BEEF))
+        assert len(displayed) == 6 and len(set(tuple(round(v, 3) for v in d["euler"]) for d in drops(BEEF))) == 1, "FD 的渲染器：每件朝向一样"
         BlockItems.clear(0, POS)
         assert drops() == []
         Scenes.enable()
         scene = Scenes.ensure(0, POS)
         Scenes.OnStoveLook(payload(dict((place, slot(BEEF)) for place in range(6))))
         run(scene, DT)
-        drawn = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4), tuple(round(v, 3) for v in d["euler"])) for d in drops(BEEF))
+        drawn = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4)) for d in drops(BEEF))
         assert drawn == displayed, aux
 
 

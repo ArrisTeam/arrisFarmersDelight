@@ -7,8 +7,9 @@
   再垫一张；方块类立在板上；插着的工具（BoardStation.Env.isCarving）画在方块正中心、贴图平行于板的正面、按类型转角度（镐 / 锄 225 度、三叉戟 135、
   别的 180，同 FD 的 renderItemCarved）。大小、层的偏转偏移都和砧板站点里本人看到的一样（HandsOn/BoardScene），开站、关站时板上的东西不跳。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
-- 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物；位置和每件的转角跟着炉灶朝向转（StoveFacing：FD 的
-  DefaultStoveRenderer 按 FACING 转、HoD 的炉灶站点是 Orientation.BLOCK），开着站点、谁都看得见的场景、这里的展示是同一套。
+- 炉灶：FD 的 DefaultStoveRenderer：六个烤位（3 x 2，位置就是 FD 的 getStoveItemOffset，也是 HoD 炉灶场景里的位置），每格一件 6 像素宽（SIZE 0.375）的平躺食物，
+  每件朝向一样；位置和朝向跟着炉灶朝向转（StoveFacing：FD 按 FACING 转、HoD 的炉灶站点是 Orientation.BLOCK）。装了前置包又开着炉灶站点时，场景接管烤架上的东西
+  （HoD 画 5 像素宽、每件各转一点），这里的展示在场景画出来之后就收起来了（Client/BlockItems.hide），所以这一份只有没装前置包、炉灶站点关了、场景还没画出来时看得到。
 - 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。液体层（奶桶、蜂蜜瓶……）不画、蛋层画成打开的蛋：和站点里手倒完、磕完以后的样子
   一个样（HandsOn/BoardHands.lookOf），关站、开站时那几层不跳。
 """
@@ -26,7 +27,7 @@ BOARD_TOP = 1.0 / 16.0
 SKILLET_FLOOR = 1.5 / 16.0
 STOVE_TOP = 1.0
 LAYER_STEP = 0.037
-STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六个烤位的位置（炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
+STOVE_SLOTS = StoveLayout.blockFractions()        # FD 的 getStoveItemOffset 的六个位置（HoD 炉灶场景里也是它们，炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
 
 FOOD_SCALE = 1.2
 BLOCK_SCALE = BoardScene.itemScale(True)     # 方块类在板上是棱长 5.2 像素的立方体（HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西）
@@ -34,7 +35,8 @@ BOARD_FOOD_SCALE = BoardScene.itemScale()    # 板上等着切的东西 10 像�
 CARVED_SCALE = BoardScene.scaleOf(BoardScene.CARVED_SCALE * 16.0)
 PILE_TURN = 17.0                              # 一叠的底下那张转的角度（scene 里 pile 节点的 rotation）
 SKILLET_SCALE = 1.0
-STOVE_SCALE = StoveLayout.SIZE / 8.0         # 一件 5 像素宽（贴图缩放 1 时边长 8 像素）
+STOVE_SIZE = 0.375                           # FD 的 DefaultStoveRenderer.SIZE：一件 0.375 格 = 6 像素宽
+STOVE_SCALE = STOVE_SIZE * 16.0 / 8.0        # 贴图缩放 1 时边长 8 像素
 
 
 class Placement(object):
@@ -145,16 +147,14 @@ def skilletLayout(item, seed):
 
 
 def stoveLayout(slots, yaw=0):
-    """slots：{"0": 物品或 None/{}, ...}。每件各转一点（StoveLayout.yawOf，HoD 场景里"手放的、没有两件同向"）。
-    yaw 是炉灶朝向（度，北 0 / 东 90 / 南 180 / 西 270，StoveFacing.yawOfAux）：六个烤位的位置和每件的转角都绕方块中心跟着转，
-    所以开着站点的人、场景里的东西、这里的展示，炉灶朝哪都对得上。"""
+    """slots：{"0": 物品或 None/{}, ...}。FD 的 DefaultStoveRenderer：每件一样大、朝向一样（不像 HoD 场景里每件各转一点）。
+    yaw 是炉灶朝向（度，北 0 / 东 90 / 南 180 / 西 270，StoveFacing.yawOfAux）：六个烤位的位置和朝向都绕方块中心跟着转，炉灶朝哪都对得上场景里的位置。"""
+    direction = StoveFacing.turnOffset(yaw, 1.0, 0.0)
     placements = []
     for index, (x, z) in enumerate(STOVE_SLOTS):
         item = slots.get(str(index))
         if isItem(item):
-            turn = math.radians(StoveLayout.yawOf(index))
             cx, cz = StoveFacing.turnFraction(yaw, x, z)
-            direction = StoveFacing.turnOffset(yaw, math.cos(turn), -math.sin(turn))
             placements.append(Placement(_single(item), (cx, STOVE_TOP + 0.015, cz), True, direction, 0.0, STOVE_SCALE))
     return placements
 
