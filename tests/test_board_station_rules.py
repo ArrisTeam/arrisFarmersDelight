@@ -110,5 +110,25 @@ def testAnAddonCanTeachTheBoardANewToolAndTheCacheFollows():
     assert not ENV.isToolItem(_item("x:rolling_pin"))
 
 
+def testTheToolTableAlsoFollowsTheKnifeAndAxeListsAndCanBeToldToStartOver():
+    """配方的 tool 引用的是 knifeList / axeList：下游往列表里追加名字（配方表没变大）时工具表也要重算；
+    配方表和列表的长度都没变（换了一条配方的 tool）时，客户端并表之后靠 invalidate 重算（Shared/Rules/SyncTables.recompute）。"""
+    axes, key = Data.axeList, ("minecraft:beef", 0)
+    savedAxes, savedRecipe = list(axes), Data.CuttingBoardDict[key]
+    try:
+        assert not ENV.isToolItem(_item("x:jade_cleaver"))
+        axes.append("x:jade_cleaver")                      # 名字里没有 axe，物品类型也不是斧：只能靠 axeList 认
+        assert ENV.isToolItem(_item("x:jade_cleaver")) and ENV.usable(_item("x:jade_cleaver"))
+        Data.CuttingBoardDict[key] = {"itemList": [{"itemName": "arris:minced_beef", "count": 2}], "tool": ["x:other_tool"]}
+        assert not ENV.isToolItem(_item("x:other_tool")), "两张表的长度都没变：缓存还是旧的"
+        Rules.invalidate()
+        assert ENV.isToolItem(_item("x:other_tool"))
+    finally:
+        axes[:] = savedAxes
+        Data.CuttingBoardDict[key] = savedRecipe
+        Rules.invalidate()
+    assert not ENV.isToolItem(_item("x:jade_cleaver")) and not ENV.isToolItem(_item("x:other_tool"))
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

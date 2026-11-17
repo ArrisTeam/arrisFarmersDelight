@@ -8,7 +8,7 @@ client/BoardBehavior.usable（1502-1505）。放上板的判定树在 HandsOn/Bo
 自定义动作 place，免得内核按自己的猜法把整叠挪进去（和 JE 一样，HoD 还有个接住放下的叠的 hand 槽，我们的内核没有 drop_zone，用不上）。
 物品是 (物品名, aux)；这里的物品字典是引擎的 {"newItemName", "newAuxValue", "count", ...}。
 """
-from ..Data.Cutting import CuttingBoardDict
+from ..Data.Cutting import CuttingBoardDict, axeList, knifeList
 from . import DishStation
 from .CuttingStation import BOARD_BLOCKS, STATION_ID, fitsTool  # noqa: F401 - 站点和测试从这里取
 from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最多 9 层
@@ -21,13 +21,19 @@ GROUP_BOARD = "board"
 GROUP_LAYERS = "layers"
 STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))   # FD 潜行使用会把这些插进空板
 
-_cache = {"size": -1, "tools": frozenset(), "types": frozenset()}
+_cache = {"stamp": None, "tools": frozenset(), "types": frozenset()}
+
+
+def invalidate():
+    """工具表下次用时重算（客户端把服务端发来的表并进去之后调，Shared/Rules/SyncTables.recompute）。"""
+    _cache["stamp"] = None
 
 
 def _tools():
-    """所有配方的工具名和要求的物品类型；下游往配方表里加了配方（表变大）时重算。"""
-    if _cache["size"] != len(CuttingBoardDict):
-        _cache["size"] = len(CuttingBoardDict)
+    """所有配方的工具名和要求的物品类型；下游往配方表里加了配方、往刀 / 斧列表里追加了名字（配方的 tool 引用的就是这两个列表）时重算。"""
+    stamp = (len(CuttingBoardDict), len(knifeList), len(axeList))
+    if _cache["stamp"] != stamp:
+        _cache["stamp"] = stamp
         _cache["tools"] = frozenset(name for recipe in CuttingBoardDict.values() for name in recipe.get("tool") or ())
         _cache["types"] = frozenset(recipe["item_type"] for recipe in CuttingBoardDict.values() if recipe.get("item_type"))
     return _cache["tools"], _cache["types"]
