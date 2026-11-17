@@ -137,6 +137,20 @@ def testPlacingAPotWithAMealPutsItBack():
     assert other["previewItemSlot"] == [{}], "只给刚放下的那一口"
 
 
+def testAPlainPotPlacedWhereAMealPotsPlacementWasCancelledGetsNoMeal():
+    """带菜的锅试放被取消（别的处理函数、领地保护）：那口锅还在背包里。几秒内在同一格放一口空锅，它不能拿到那份菜——
+    原来放置前的记录留着，空锅建好时把菜领走了，一份菜变两份（最多一组）。"""
+    held = Rules.itemOf(SAUCE, "番茄酱")
+    _reset(hand=held)
+    args = {"entityId": "p1", "dimensionId": 0, "x": POS[0], "y": POS[1], "z": POS[2], "fullName": "arris:cooking_pot"}
+    Registry.dispatch("ServerEntityTryPlaceBlockEvent", args, "arris:cooking_pot")          # 这一次被取消了：没有方块实体来领
+    world.players["p1"]["hand"] = {"newItemName": "arris:cooking_pot", "newAuxValue": 0, "count": 1}
+    Registry.dispatch("ServerEntityTryPlaceBlockEvent", args, "arris:cooking_pot")          # 换了一口空锅放在同一格
+    data = _pot()
+    PotItem.attachPending(data, 0, POS)
+    assert data["previewItemSlot"] == [{}], "空锅就是空的"
+
+
 def testPlacingAPlainPotOrSomethingElseLeavesThePotEmpty():
     for hand in ({"newItemName": "arris:cooking_pot", "newAuxValue": 0, "count": 1},
                  {"newItemName": "arris:cooking_pot", "newAuxValue": 0, "count": 1, "extraId": "not ours"},

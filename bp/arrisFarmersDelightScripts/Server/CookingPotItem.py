@@ -24,13 +24,16 @@ _creativeBreaks = BreakMarks()
 
 @registerHandler("ServerEntityTryPlaceBlockEvent", match=PotItem.POT)
 def OnTryPlacePot(args):
-    # 手里这口锅带着菜：记下来，方块实体建好时写进去（放置被别的处理函数取消的话，这笔记录过几秒自己作废）
+    # 手里这口锅带着菜：记下来，方块实体建好时写进去（放置被别的处理函数取消的话，这笔记录过几秒自己作废）。
+    # 每次试放都先把这一格上一次的记录清掉：带菜的锅放置被取消、几秒内又在同一格放了一口空锅，空锅不能拿到那份菜（带菜的那口还在背包里，等于复制）
+    key = (args["dimensionId"], args["x"], args["y"], args["z"])
+    _pending.take(key, time.time())
     held = GetCarriedItem(args["entityId"], True)
     if not held or held.get("newItemName") != PotItem.POT:
         return
     meal = PotItem.mealOf(held.get("extraId") or "")
     if meal:
-        _pending.put((args["dimensionId"], args["x"], args["y"], args["z"]), meal, time.time())
+        _pending.put(key, meal, time.time())
 
 
 def attachPending(blockEntityData, dimensionId, blockPos):
