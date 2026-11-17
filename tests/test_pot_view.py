@@ -205,6 +205,31 @@ def testWithAnEmptyHandNothingChangedAndTheSpoonStillStirs():
     assert behavior.onPointer(Event(LEFT, Hit("ladle"))) is True and behavior.scene.hand and view.actions == []
 
 
+def testWithAnEmptyHandTheSoupAndSunkBoxesAreThereOnlyWhileTheirOfferHangs():
+    # cooking_pot.json 的 soup（悬着碗时才接点击）和 sunk（能取回沉底的东西时）：手空着才开，soup 先于 sunk（offerBowl / offerTakeBack）
+    behavior, view = _withMeal(hand=None)
+    serve, level = behavior.serve, behavior.scene.liquid.surfaceY()
+    boxes = lambda: dict((box.key, box) for box in behavior.pickables())
+    sunk = ((PotPick.SOUP[0][0], level - PotPick.SUNK_HALF, PotPick.SOUP[0][2]), (PotPick.SOUP[1][0], level + PotPick.SUNK_HALF, PotPick.SOUP[1][2]))
+    assert "soup" not in boxes() and "sunk" not in boxes(), "什么也没悬着：没有这两个盒子"
+    serve.offer, serve.offered = {"block": False}, ("minecraft:bowl", {"pos": (8.0, 9.0, 8.0), "size": 2.0}, None)
+    found = boxes()
+    assert (found["soup"].lo, found["soup"].hi) == PotPick.SOUP and "sunk" not in found, "悬着碗：soup 盒，盖着整个汤面"
+    serve.takesBack = True
+    found = boxes()
+    assert "soup" in found and "sunk" not in found, "两样都有时 soup 先（elif）：不再开 sunk"
+    serve.offer, serve.offered = None, None
+    found = boxes()
+    assert "soup" not in found and (found["sunk"].lo, found["sunk"].hi) == sunk, "没悬着碗、能取回：sunk 是贴着汤面上下各 0.3 的一层"
+    serve.offer = {"block": False}                           # 有位置但没有要悬的东西：soup 不开，轮到 sunk
+    found = boxes()
+    assert "soup" not in found and "sunk" in found
+    serve.offer, serve.offered = {"block": False}, ("minecraft:bowl", {"pos": (8.0, 9.0, 8.0), "size": 2.0}, None)
+    for hand in (BOWL, {"newItemName": "minecraft:carrot", "newAuxValue": 0, "count": 1}):
+        view.hand = hand
+        assert not [key for key, _ in _keys(behavior) if key in ("soup", "sunk")], "手上拿着东西：这两个盒子点不到（%r）" % hand
+
+
 def testTheSoupRingsWhereTheCursorMeetsTheSurfaceNotWhereItHitTheBox():
     # PotBehavior.java:529-531：view.cursorOn(surface)，点哪个节点都一样；点勺柄时盒子上的点在锅外面
     behavior, view = _withMeal()
