@@ -54,6 +54,22 @@ def testTheCraftingGridSwitchOnlyTakesTheTableInterceptionAway():
     assert server.dishCrafts is True
 
 
+def testTheTableReallyStopsTheBoardDishCraftOnlyWithTheBoardStationAndTheCraftingSwitchOn():
+    # 工作台上拿蛋三明治（面包 + 两个煎蛋，正好是它在砧板上的配方）：登记了 DishCrafts 就取消并提示，没登记什么也不发生
+    DishCrafts = fdtest.load("Compat.Diegesis.DishCrafts")
+    DishCrafts.readGrid = lambda playerId: {0: ("arris:fried_egg", 1), 1: ("arris:fried_egg", 1), 2: ("minecraft:bread", 1)}
+
+    def craft():
+        args = {"playerId": "a", "itemDict": {"newItemName": "arris:egg_sandwich", "newAuxValue": 0, "count": 1}, "cancel": False}
+        return B.EventRegistry.dispatch("CraftItemOutputChangeServerEvent", args), args["cancel"]
+    cases = ((dict(), True), (dict(remove_crafting_recipes=False), False), (dict(cutting_board=False), False),
+             (dict(cutting_board=False, remove_crafting_recipes=False), False), (dict(cooking_pot=False, skillet=False, stove=False), True))
+    for values, blocked in cases:
+        with Config(**values):
+            B.bootServer()
+            assert craft() == (blocked, blocked), (values, blocked)
+
+
 def testServerAndClientAgreeOnEveryCombinationOfTheSwitches():
     for flags in itertools.product((True, False), repeat=len(KEYS) + 1):
         values = dict(zip(KEYS + ("remove_crafting_recipes",), flags))
