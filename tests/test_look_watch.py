@@ -60,9 +60,42 @@ def testThoseWhoLeftAreForgottenAndComeBackAsNewcomersWhateverTheClock():
     assert audience.arrivals(["a", "b"], 102.0) == ["b"], "回来的算新来的，不用等 5 秒"
 
 
+def testWithAMostTheGapDoublesAfterEachRefreshUpToIt():
+    """丢是进世界那一阵的事：几秒内补上就行，站久了的人不用一直每 5 秒收一份。间隔 5、10、20、40、60、60……"""
+    audience = LookWatch.Audience(5.0, 60.0)
+    audience.sent(["a"], 0.0)
+    sentAt = [now for now in range(1, 400) if audience.arrivals(["a"], float(now)) == ["a"]]
+    assert sentAt == [5, 15, 35, 75, 135, 195, 255, 315, 375], sentAt
+
+
+def testAChangedLookAndAPlayerWhoCameBackStartTheGapOver():
+    audience = LookWatch.Audience(5.0, 60.0)
+    audience.sent(["a"], 0.0)
+    assert audience.arrivals(["a"], 5.0) == ["a"] and audience.arrivals(["a"], 14.0) == [], "补过一次：下一份隔 10 秒"
+    audience.sent(["a"], 14.0)                                      # 样子变了，发给了所有人
+    assert audience.arrivals(["a"], 18.9) == [] and audience.arrivals(["a"], 19.0) == ["a"], "从头算：5 秒"
+    assert audience.arrivals([], 20.0) == [] and audience.arrivals(["a"], 21.0) == ["a"], "走出去再回来：算新来的"
+    assert audience.arrivals(["a"], 25.9) == [] and audience.arrivals(["a"], 26.0) == ["a"], "新来的也从 5 秒起"
+
+
+def testAMostShorterThanTheRefreshNeverShortensTheGap():
+    audience = LookWatch.Audience(5.0, 1.0)
+    audience.sent(["a"], 0.0)
+    assert [now for now in range(1, 21) if audience.arrivals(["a"], float(now)) == ["a"]] == [5, 10, 15, 20]
+
+
+def testAFirstTimedSendAfterAnUntimedOneDoesNotDoubleYet():
+    audience = LookWatch.Audience(5.0, 60.0)
+    audience.sent(["a"])
+    assert audience.arrivals(["a"], 100.0) == ["a"]
+    assert audience.arrivals(["a"], 104.9) == [] and audience.arrivals(["a"], 105.0) == ["a"], "这才是第一份带时刻的：下一份还是隔 5 秒"
+    assert audience.arrivals(["a"], 114.9) == [] and audience.arrivals(["a"], 115.0) == ["a"], "再往后才加倍"
+
+
 def testTheProductionDefaultIsAFewSeconds():
     """丢了的最多这么久补上；一份几百字节，附近每人每隔这么久一份。炉灶 / 煎锅的广播用它（test_stove_look / test_pan_station_logic 里测）。"""
     assert 1.0 <= LookWatch.REFRESH_SECONDS <= 30.0
+    assert LookWatch.REFRESH_SECONDS < LookWatch.REFRESH_MOST <= 120.0
 
 
 if __name__ == "__main__":
