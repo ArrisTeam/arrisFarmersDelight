@@ -133,7 +133,7 @@ class DrawEvents(object):
         def done():
             self.melting = 0.0
             for thing in self.layers:
-                thing.hide()
+                thing.reset()                                 # 缩小了的层下一回再摆东西不能还是那么小（JE 的 tick：scaleTo(1, 0) + setVisible(false)）
             late, self.late = self.late, None
             if late is not None:
                 self._board(late[0])

@@ -218,6 +218,20 @@ def testLayersClearedLongAgoAreNotTakenForTheOnesThatLay():
         "老早清空的层不算原来摆着的：全从玩家那边飞来"
 
 
+def testALayerLaidAfterADishHasMeltedIsNotLeftShrunk():
+    """JE 的 tick 在层沉完时 scaleTo(1, 0) 再收起来：这一格下一回再摆东西是原来的大小（原来只收起来，缩着的 0.1 一直留着：下一道菜的第一层是个小点）。"""
+    behavior, view = _open(layers=[C.item(BREAD), C.item(EGG)])
+    _frames(behavior, 1.0)
+    _made(behavior, view)
+    _frames(behavior, 2.0)
+    assert behavior.draw.melting == 0.0 and [_layer(behavior, index).mover.scale for index in range(2)] == [1.0, 1.0], "沉完收起来的层缩放还原了"
+    view.state.board, view.state.layers = None, [C.item(CABBAGE)]
+    behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+    _frames(behavior, 1.0)
+    cabbage = [prop for prop in view.props.live() if prop.item["newItemName"] == CABBAGE]
+    assert len(cabbage) == 1 and abs(cabbage[0].scale - 1.25) < 1.0e-9, "第 0 层画 10 像素（缩放 1.25），不是缩着的 0.125"
+
+
 def testWithoutAnythingNewToLandTheDishMeltsAtOnceAndMakesItsSoundsAtOnce():
     behavior, view = _open(layers=[C.item(BREAD), C.item(EGG)])
     _frames(behavior, 1.0)

@@ -69,6 +69,11 @@ class Thing(object):
         self.mover.visible = False
         self.dirty = True
 
+    def reset(self):
+        """收起来，缩放也还原（JE 的 tick 里层沉完：scaleTo(1, 0) + setVisible(false)）：下一回这一格再摆东西不会还是缩着的。"""
+        self.mover.scaleTo(1.0)
+        self.hide()
+
     def drop(self):
         if self.prop is not None:
             self.draw.view.props.remove(self.prop)
