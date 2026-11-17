@@ -27,6 +27,7 @@ TOOL_COLORS = {Cutting.TOOL_CHOP: 0x9C7F4E, Cutting.TOOL_STRIP: 0x6B5034, Cuttin
                Cutting.TOOL_PRY: 0x9C7F4E, Cutting.TOOL_SNIP: 0x8B5A2B}
 FLOUR = 0xEDE3CC
 FROST = 0xE8F4FF
+GLINT_COLOR, GLINT_COUNT = 0xFFE9A0, 5           # 做成一道菜那一点闪光（pop，1649）：每一道都有
 DEFAULT_COLOR = 0xE0D0A0
 
 
@@ -76,9 +77,24 @@ def dropletsAt(geometry, yaw, blockPos, point, velocity, color, count):
     return PotFx.particle(PotFx.DROPLET, world, color=color, count=count, velocity=tuple(16.0 * part for part in along))
 
 
-def flourAt(view, point):
-    """做成一道菜时那一点闪光（pop，1642-1651；面粉在 puffAt 里）。"""
-    view.particles(GLINT, point, 0xFFE9A0, 5)
+def finishPuff(geometry, yaw, blockPos, x, z, finish, view=None):
+    """做成一道菜时从板面中心（站点像素 x, z）飞出的面粉 / 霜（pop，1640-1648）：飞什么由收尾定（BoardDust.crumbsOf：冰棒是霜，拌 / 摆 / 一起切开的不飞，别的是面粉）。
+    站点里的人（BoardEffects）和旁观的人（BoardWatch）都从这里放。"""
+    kind = Dust.crumbsOf(finish)
+    if kind is None:
+        return None
+    frost = kind == Dust.FROST_KIND
+    return puffAt(geometry, yaw, blockPos, Dust.flourPuff(x, z, frost), FROST if frost else FLOUR, view)
+
+
+def glintAt(view, point):
+    """站点里的人看到的做成一道菜时那一点闪光（pop，1649；前置包的 view.particles）。"""
+    view.particles(GLINT, point, GLINT_COLOR, GLINT_COUNT)
+
+
+def glintInWorld(world):
+    """旁观的人看到的那一点闪光：没有站点视图，直接按世界坐标放同一个前置包粒子（厨锅场景里的闪光也是这样放的）。"""
+    PotFx.particle(GLINT, world, color=GLINT_COLOR, count=GLINT_COUNT)
 
 
 def centerOf(blockPos):

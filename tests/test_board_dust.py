@@ -15,6 +15,7 @@ import boardclient as C
 import fdtest
 
 Dust = fdtest.load("Shared.Rules.BoardDust")
+Assembly = fdtest.load("Shared.Rules.HandsOn.Assembly")
 Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
 Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 KNIFE = "arris:iron_knife"
@@ -141,6 +142,79 @@ def testAnOnlookerSeesFlourWhenADishIsAssembledAndFrostForAnIceLolly():
     C.BoardWatch.OnBoardLook(dict(_look(finish="freeze", block=False), event="assembled"))
     frost = C.engine.particles[0]["vars"]
     assert frost["variable.vy"] == 2.0 / 16.0 and abs(frost["variable.tint_b"] - 1.0) < 1e-9, "霜：更白更轻"
+
+
+FLOURY = (Assembly.FINISH_PRESS, Assembly.FINISH_ROLL, Assembly.FINISH_SKEWER, Assembly.FINISH_KNEAD, Assembly.FINISH_SANDWICH, Assembly.FINISH_SHAPE)
+CRUMBLESS = (Assembly.FINISH_TOSS, Assembly.FINISH_ARRANGE, Assembly.FINISH_CHOP)
+
+
+def testOnlyTheFinishesThatPressRollOrKneadFlyFlourAndTheIceLollyFrost():
+    """BoardBehavior.pop（1640-1648）：冰棒是霜；拌的沙拉、摆的套餐 / 盛宴、一起切开的菜什么也不飞（食物自己颜色的碎屑飞出来是绿的）；
+    别的（压、卷、串、揉、夹、成形）是面粉。认不出的收尾名按压算（finish() 的缺省）。"""
+    assert sorted(FLOURY + CRUMBLESS + (Assembly.FINISH_FREEZE,)) == sorted([getattr(Assembly, name) for name in dir(Assembly) if name.startswith("FINISH_")]), "十种收尾都分到了"
+    assert [Dust.crumbsOf(finish) for finish in FLOURY] == [Dust.FLOUR_KIND] * 6
+    assert Dust.crumbsOf(Assembly.FINISH_FREEZE) == Dust.FROST_KIND
+    assert [Dust.crumbsOf(finish) for finish in CRUMBLESS] == [None] * 3
+    for unknown in (None, "", "nonsense", 5, ["toss"], {"toss": 1}):
+        assert Dust.crumbsOf(unknown) == Dust.FLOUR_KIND, unknown
+
+
+def _glints(particles):
+    return [p for p in particles if p["id"] == "arris_diegesis:glint"]
+
+
+def _crumbs(particles):
+    return [p for p in particles if p["id"] == "arris:board_dust"]
+
+
+def _madeAs(finish):
+    """站点里的人：板上摆着面包和蛋、做成了一道菜，收到 finish 这样收尾的 assembled。返回 (本包的碎屑, 前置包的粒子 view.dust)。"""
+    behavior, view, api = C.station()
+    layers = [C.item("minecraft:bread", 1), C.item("arris:egg", 1)]
+    view.state.board, view.state.layers = None, list(layers)
+    view.data = {}
+    behavior.onOpen()
+    C.engine.particles[:] = []
+    view.state.layers, view.state.board = [], C.item("arris:egg_sandwich", 1)
+    behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+    behavior.onEffect("assembled", {"layers": layers, "finish": finish, "block": False})
+    for _ in range(5):
+        behavior.frame(1.0 / 60.0)
+    return _crumbs(C.engine.particles), view.dust
+
+
+def testTheCookSeesFlourOrFrostOrNothingBySignOfTheFinishAndAlwaysTheGlint():
+    for finish in FLOURY:
+        crumbs, dust = _madeAs(finish)
+        assert len(crumbs) == 1 and crumbs[0]["vars"]["variable.count"] == 12.0 and crumbs[0]["vars"]["variable.vy"] == 3.0 / 16.0, finish
+        assert abs(crumbs[0]["vars"]["variable.tint_r"] - 0xED / 255.0) < 1e-9, finish
+        assert [entry[0] for entry in dust] == ["arris_diegesis:glint"] and dust[0][2:] == (0xFFE9A0, 5), "闪光：每一道菜都有"
+    crumbs, dust = _madeAs(Assembly.FINISH_FREEZE)
+    assert len(crumbs) == 1 and crumbs[0]["vars"]["variable.vy"] == 2.0 / 16.0 and abs(crumbs[0]["vars"]["variable.tint_b"] - 1.0) < 1e-9, "冰棒：霜"
+    assert [entry[0] for entry in dust] == ["arris_diegesis:glint"]
+    for finish in CRUMBLESS:
+        crumbs, dust = _madeAs(finish)
+        assert crumbs == [], "沙拉 / 套餐 / 盛宴 / 一起切开的：不喷面粉（%s）" % finish
+        assert [entry[0] for entry in dust] == ["arris_diegesis:glint"] and dust[0][2:] == (0xFFE9A0, 5), "只有一点闪光"
+
+
+def testAnOnlookerSeesTheSameCrumbsAsTheCookAndTheGlintToo():
+    C.BoardWatch.enable(C.Geometry)
+    for finish in FLOURY + (Assembly.FINISH_FREEZE,) + CRUMBLESS:
+        C.engine.reset()
+        C.BoardWatch.OnBoardLook(dict(_look(finish=finish, block=False), event="assembled"))
+        cook, _dust = _madeAs(finish)
+        C.engine.reset()
+        C.BoardWatch.OnBoardLook(dict(_look(finish=finish, block=False), event="assembled"))
+        crumbs, glints = _crumbs(C.engine.particles), _glints(C.engine.particles)
+        assert [p["vars"] for p in crumbs] == [p["vars"] for p in cook], finish
+        assert len(glints) == 1 and glints[0]["vars"]["variable.count"] == 5.0 and abs(glints[0]["vars"]["variable.tint_g"] - 0xE9 / 255.0) < 1e-9, finish
+        cx, _, cz = C.BoardFx.centerOf(POS)
+        assert abs(glints[0]["pos"][0] - cx) < 1e-6 and abs(glints[0]["pos"][2] - cz) < 1e-6 and glints[0]["pos"][1] > POS[1], "板面中心上方"
+    for bad in (None, 5, ["toss"], {"x": 1}):
+        C.engine.reset()
+        C.BoardWatch.OnBoardLook(dict(_look(block=False), event="assembled", finish=bad))
+        assert len(_crumbs(C.engine.particles)) == 1 and len(_glints(C.engine.particles)) == 1, "坏数据的收尾名：按压算、不抛"
 
 
 def testWithoutTheGeometryAnOnlookerHearsButSeesNothingAndTheSwitchFallsBackToTheKernelsDust():

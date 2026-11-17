@@ -5,9 +5,7 @@
 （旁观的人在 BoardWatch 里按同一张表放，所以两边听到的一样）；动画在 BoardDraw，碎屑在 BoardFx。
 """
 from . import BoardFx
-from ...Shared.Rules import BoardDust as Dust
 from ...Shared.Rules import BoardSounds as Sounds
-from ...Shared.Rules.HandsOn import Assembly
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
@@ -38,15 +36,14 @@ def onEffect(owner, name, data):
 
 
 def _popped(owner, data):
-    """层都落完、开始沉进去、菜弹出来的那一刻：做成的两声、面粉（冰棒是霜）和一点闪光。"""
+    """层都落完、开始沉进去、菜弹出来的那一刻：做成的两声、面粉（冰棒是霜；拌 / 摆 / 一起切开的菜不飞）和一点闪光。"""
     draw, view = owner.draw, owner.view
     if draw is None:
         return
     for sound in Sounds.soundsOf("assembled", data):
         BoardFx.play(sound, view.toWorld(draw.cx, Scene.TOP, draw.cz))
-    frost = data.get("finish") == Assembly.FINISH_FREEZE
-    BoardFx.puffAt(owner.api.Geometry, int(view.yaw), view.pos, Dust.flourPuff(draw.cx, draw.cz, frost), BoardFx.FROST if frost else BoardFx.FLOUR, view)
-    BoardFx.flourAt(view, (draw.cx, Scene.TOP + 1.0, draw.cz))
+    BoardFx.finishPuff(owner.api.Geometry, int(view.yaw), view.pos, draw.cx, draw.cz, data.get("finish"), view)
+    BoardFx.glintAt(view, (draw.cx, Scene.TOP + 1.0, draw.cz))
 
 
 def _chopped(owner, data):

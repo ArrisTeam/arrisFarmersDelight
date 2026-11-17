@@ -10,9 +10,8 @@
 from . import BoardFx
 from ...Client.Engine import compFactory, levelId
 from ...QuModLibs.Client import AllowCall
-from ...Shared.Rules import BoardDust as Dust
 from ...Shared.Rules import BoardSounds as Sounds
-from ...Shared.Rules.HandsOn import Assembly
+from ...Shared.Rules.HandsOn import BoardScene as Scene
 
 OBSERVED = frozenset(("chopped", "placed", "taken", "carved", "assembled"))     # 和服务端 Server/BoardLook.OBSERVED 同一份
 _state = {"on": False, "geometry": None}
@@ -65,5 +64,5 @@ def OnBoardLook(payload):
         BoardFx.chopPuffs(geometry, block, payload)
     elif name == "assembled":
         mx, _, mz = geometry.worldPointToStation(0, *(tuple(BoardFx.centerOf(block)) + tuple(block)))
-        frost = payload.get("finish") == Assembly.FINISH_FREEZE
-        BoardFx.puffAt(geometry, 0, block, Dust.flourPuff(mx, mz, frost), BoardFx.FROST if frost else BoardFx.FLOUR)
+        BoardFx.finishPuff(geometry, 0, block, mx, mz, payload.get("finish"))
+        BoardFx.glintInWorld(geometry.stationPointToWorld(0, mx, Scene.TOP + 1.0, mz, *block))
