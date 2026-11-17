@@ -154,17 +154,20 @@ class PotViewMixin(object):
         if self.gesture.stroking:             # 按着勺子拖的时候另一个键又按下：什么也不做（FocusInput.press 的 gesture != null）
             return True
         picked, self.picked = self.picked, None
-        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < DOUBLE_CLICK:
-            # 双击：锅里和背包里同一种的都收到手上（FocusInput.clickItem 的 PICKUP_ALL）；手上的东西服务端可能还没发回来，以"刚拿起过"为准
+        target = self._slotOf(key, payload)
+        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < DOUBLE_CLICK                 and target == picked[0] and not getattr(self.view, "dropping", False):
+            # 双击：同一格、左键、不按 Shift（FocusInput.clickItem 的 PICKUP_ALL）——锅里和背包里同一种的都收到手上；手上的东西服务端
+            # 可能还没发回来，以"刚拿起过"为准。拖着放补的那一下点击（view.dropping）不算
             self.view.click(picked[0], 0, self.api.PICKUP_ALL)
             return True
         if self.view.hand is not None:
             return PotPick.withStack(self, event, key)
-        if key in ("item", "served"):
-            target = (self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload)) if key == "item"
-                      else self.api.stationTarget(Rules.GROUP_SERVED, 0))
+        if target is not None:
             self.view.click(target, event.button, self.api.QUICK_MOVE if event.quick else self.api.PICKUP)
             self.view.foley()                 # 拿起的那一声（FocusInput.java:496 Shift 点槽、:507 从槽拿起）：厨锅的 onItemClick 不接这两种，内核出声
+            lift = getattr(self.view, "carryFrom", None)          # 老版本的前置包没有（Protocol.CARRY_FROM）
+            if not event.quick and lift is not None and event.point is not None:
+                lift(event.point, SLOT_SIZE)  # 拿起的一叠从锅里那一件的位置起飞、先是槽里的大小（FocusInput.snapCarryTo）
             if event.button == 0 and not event.quick:
                 self.picked = (target, self.clock)
             return True
@@ -191,6 +194,12 @@ class PotViewMixin(object):
         """触屏：一下点完、手指抬起，没有悬着的光标——悬停才有的东西收起；刚盛过 / 取回过的留着，下一只还悬在老地方。"""
         if self.scene is not None and self.serve.dip is None:
             self.hover, self.ray, self.scene.aim = (None, None), None, None
+
+    def _slotOf(self, key, payload):
+        """点中的东西是站点的哪一格：漂着的料是料格、盛好的那格是成品格，别的 None。"""
+        if key == "item":
+            return self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload))
+        return self.api.stationTarget(Rules.GROUP_SERVED, 0) if key == "served" else None
 
     def _aim(self, ray):
         """光标落在液面上的哪一点（锅自己的坐标，相对锅心）：握着勺子时勺尖往那去。"""

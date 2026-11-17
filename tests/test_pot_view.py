@@ -70,6 +70,11 @@ class FakeView(object):
         self.fitIndex = 0                          # fits() 的回答：手上的东西落在哪一格，放不进是 None
         self.behavior = None
         self.spread = SpreadState(self, None)
+        self.lifts = []                            # carryFrom(点, 大小)：拿起的一叠从哪起飞
+        self.dropping = False                      # 内核正在送拖着放补的那一下点击
+
+    def carryFrom(self, point, size=None):
+        self.lifts.append((tuple(point), size))
 
     def fits(self, group):
         return self.fitIndex if self.hand is not None else None
@@ -499,6 +504,32 @@ def testTakingAFloatingItemOrTheServedSlotMakesTheKernelsPickUpSound():
         assert behavior.onPointer(Event(button, Hit(key, payload), quick)) is True
         assert len(view.clicks) == 1 and view.sounds == ["pick"], (key, button, quick, view.sounds)
         assert view.clicks[0][2] == ("QUICK_MOVE" if quick else "PICKUP")
+
+
+def testAStackPickedFromThePotFliesUpFromWhereItLayAtTheSlotsSize():
+    """Diegesis 的 FocusInput.snapCarryTo：从站点的槽里拿起的一叠，从那一件的位置起飞、先是槽里的大小（厨锅 3.2），不是直接出现在光标上。
+    Shift 移走不到手上：不起飞。"""
+    for key, payload, button in (("item", 0, LEFT), ("item", 0, RIGHT), ("served", None, LEFT)):
+        behavior, view = _withMeal((("minecraft:carrot", 2),), hand=None)
+        behavior.onPointer(Event(button, Hit(key, payload)))
+        assert view.lifts == [((8.0, 9.0, 8.0), 3.2)], (key, button, view.lifts)
+    behavior, view = _withMeal((("minecraft:carrot", 2),), hand=None)
+    behavior.onPointer(Event(LEFT, Hit("item", 0), quick=True))
+    assert view.lifts == [] and view.clicks[0][2] == "QUICK_MOVE"
+
+
+def testOnlyASecondLeftClickOnTheSameSlotGathersAndNotTheClickADragDropMakes():
+    """双击聚拢照 JE（FocusInput.clickItem）：同一格、左键、不按 Shift。点了别的格子不聚拢；拖着放的时候内核补的那一下点击（view.dropping）
+    也不算——原来 0.25 秒内点哪都变成 PICKUP_ALL，拖着放到锅口的那一下被转成聚拢、什么都没放下。"""
+    behavior, view = _withMeal((("minecraft:carrot", 1), ("minecraft:potato", 1)), hand=None)
+    behavior.onPointer(Event(LEFT, Hit("item", 0)))
+    behavior.onPointer(Event(LEFT, Hit("item", 1)))
+    assert [click[2] for click in view.clicks] == ["PICKUP", "PICKUP"], view.clicks
+    behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+    behavior.onPointer(Event(LEFT, Hit("item", 0)))
+    view.dropping = True
+    behavior.onPointer(Event(LEFT, Hit("item", 0)))
+    assert [click[2] for click in view.clicks] == ["PICKUP", "PICKUP"], view.clicks
 
 
 def testTheDoubleClickThatGathersTheRestMakesNoSecondSound():
