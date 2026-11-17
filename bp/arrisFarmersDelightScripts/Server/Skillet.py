@@ -6,6 +6,8 @@
 煎锅站点（场景交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
 一件煎多久照 JE（SkilletBlock.getSkilletCookingTime：6 秒，方块里那件煎锅带火焰附加 I 是 4 秒、II 起 3 秒）；
 含水的煎锅（液体层有水）不能煎：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE SkilletBlockEntity.cookingTick）。
+右键放食物照 JE 的 addItemToCook：锅空着、或锅里是同一种（数据也一样）就放进去，叠到一叠的最大数量为止、剩下的留在手里，每放进去一次这一件的计时从头算；
+别的放不进去，什么也不发生。
 """
 import time
 
@@ -16,6 +18,7 @@ from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, Ge
     ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
+from .Helpers.Items import CanStack, GetMaxStack
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
 from ..Shared.Rules import SkilletRules as Rules
@@ -50,7 +53,6 @@ def OnServerSkilletBlockUse(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimensionId"]
     playerId = args["playerId"]
-    x, y, z = blockPos
     if SetPlayerUsedCD(playerId) is True:
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
@@ -60,20 +62,7 @@ def OnServerSkilletBlockUse(args):
     carriedDict = GetCarriedItem(playerId, True)
     if carriedDict:
         if carriedDict["newItemName"] in CanCookedFoodDict:
-            if blockEntityData["cookingDict"]:
-                return
-            if _isWaterlogged(dimensionId, blockPos):
-                ShowTip(playerId, Rules.TIP_UNDERWATER_BLOCK)
-                return
-            HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
-            blockEntityData["cookingDict"] = carriedDict
-            PublishSkillet(dimensionId, blockPos, carriedDict)
-            if not IsCreative(playerId):
-                SetCarriedItem(playerId, None)
-            blockEntityData["cookTimer"] = _timerStart(blockEntityData)
-            downBlockName = GetBlockName((x, y - 1, z), dimensionId)
-            sound = "ambient.skillet.addfood" if downBlockName in CanProvideHeatBlockList else "armor.equip_leather"
-            ToAllPlayerPlaySound(dimensionId, blockPos, sound)
+            _addFood(dimensionId, blockPos, blockEntityData, carriedDict, playerId)
         elif carriedDict["newItemName"] in _BLOCKED_ITEMS:
             # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
             args["cancel"] = True
@@ -88,6 +77,33 @@ def OnServerSkilletBlockUse(args):
         blockEntityData["cookingDict"] = None
         PublishSkillet(dimensionId, blockPos, None)
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
+
+
+def _addFood(dimensionId, blockPos, blockEntityData, carriedDict, playerId):
+    """JE SkilletBlockEntity.addItemToCook：含水的提示；锅空着、或锅里是同一种（数据也一样）就放进去，叠到一叠的最大数量为止，剩下的留在手里。"""
+    if _isWaterlogged(dimensionId, blockPos):
+        ShowTip(playerId, Rules.TIP_UNDERWATER_BLOCK)
+        return
+    pan = blockEntityData["cookingDict"]
+    have = pan["count"] if pan else 0
+    if pan and not CanStack(pan, carriedDict):
+        return
+    moved = min(carriedDict["count"], GetMaxStack(carriedDict) - have)
+    if moved <= 0:
+        return
+    HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
+    stack = dict(pan) if pan else dict(carriedDict)
+    stack["count"] = have + moved
+    blockEntityData["cookingDict"] = stack
+    PublishSkillet(dimensionId, blockPos, stack)
+    if not IsCreative(playerId):
+        left = dict(carriedDict)
+        left["count"] -= moved
+        SetCarriedItem(playerId, left if left["count"] > 0 else None)
+    blockEntityData["cookTimer"] = _timerStart(blockEntityData)
+    downBlockName = GetBlockName((blockPos[0], blockPos[1] - 1, blockPos[2]), dimensionId)
+    sound = "ambient.skillet.addfood" if downBlockName in CanProvideHeatBlockList else "armor.equip_leather"
+    ToAllPlayerPlaySound(dimensionId, blockPos, sound)
 
 
 def _refreshSkilletHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName):
