@@ -78,6 +78,7 @@ class GrillLogicMixin(object):
             return False
         EnsureStoveData(data)            # /setblock、结构放出的炉灶没走放置事件
         self.hand = HandGrill.handOf(self.station.dimensionId, self.station.pos, data)
+        StoveLook.resend(self.station.dimensionId, self.station.pos, data, self.hand, playerId)     # 他的客户端要用当前的样子摆命中盒，先单发一份
         self._layHeld(playerId)
         self._flush()
         return True

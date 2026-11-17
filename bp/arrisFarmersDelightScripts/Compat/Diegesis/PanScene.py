@@ -34,6 +34,7 @@ class PanScene(object):
         self.model = PanModel(self.pos)
         self.fx = PanFx(self.pos, facing)
         self.look = None
+        self.onDrawn = None                   # 第一次真画出样子时调一次（PanScenes 让世界里原来的展示这时才收起：场景没画之前不能把它盖掉）
         self.clock = 0.0
         self.awake = 0.0
         self.sinceCheck = 0.0
@@ -112,6 +113,9 @@ class PanScene(object):
             self.show.strokeMove(y)
         self._pose()
         self.fx.play(self.show.drain(), near)
+        if self.onDrawn is not None:
+            drawn, self.onDrawn = self.onDrawn, None
+            drawn()
         return True
 
     def _pose(self):

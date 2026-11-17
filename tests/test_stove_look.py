@@ -41,8 +41,8 @@ def testTheLookIsBroadcastAsSoonAsAnActionChangesIt():
 
 
 def testItIsOnlySentWhenWhatTheEyeSeesChanges():
-    """贴灶那面一点点烤熟（每 1/32 变一档）不用发：画面只看熟没熟；熟了（等翻）才发一次。"""
-    manager, data = K.setup(look=True)
+    """贴灶那面一点点烤熟（每 1/32 变一档）不用发：画面只看熟没熟；熟了（等翻）才发一次。（定期补发另算，在下面单独测，这里关掉。）"""
+    manager, data = K.setup(look=True, refresh=None)
     lay(manager, 1)
     manager.close("a")
     sent = len(K.looks())
@@ -116,7 +116,7 @@ def testAPieceStaysAfterTheStationClosesAndKeepsBeingToldAbout():
 
 
 def testOnlyPlayersWithin32BlocksGetItAndANewcomerGetsTheCurrentLookOnce():
-    manager, data = K.setup(look=True)
+    manager, data = K.setup(look=True, refresh=None)
     fake.addPlayer("far", (10.5, 64.0, 80.5))
     lay(manager, 1)
     for payload, players in K.looks() + [(p, q) for p, q in K._grouped() if p.get("event")]:
@@ -171,6 +171,62 @@ def testTheForgottenStoveIsNotRemembered():
     assert (0, K.STOVE) in K.StoveLook._sent
     K.StoveLook.forget(0, K.STOVE)
     assert (0, K.STOVE) not in K.StoveLook._sent
+
+
+# ---------------------------------------------------------------- 丢了的补上
+
+def testALookTheClientNeverGotIsSentAgainEveryRefreshSecondsEvenThoughNothingChanged():
+    """进世界时服务端发的第一份，客户端脚本还没就绪、区块还没加载好，整份丢了；服务端当他收到了，样子又不变，原来就永远补不上
+    （实机：灶上本来就有 6 个肉饼，走到灶边客户端的场景一直不知道样子）。现在样子没变时每隔 REFRESH_SECONDS 秒再单发一份。"""
+    manager, data = K.setup(look=True)
+    data["3"] = {"itemDict": beef(), "cookTimer": 30}
+    K.step(0.5)
+    first = K.looks()
+    assert len(first) == 1 and sorted(first[0][1]) == ["a", "b"]
+    del fake.calls[:]                                           # 客户端没收到：服务端不知道
+    K.step(4.0)
+    assert K.looks() == [], "还没到 5 秒"
+    K.step(2.0)
+    again = K.looks()
+    assert len(again) == 1 and sorted(again[0][1]) == ["a", "b"] and again[0][0]["slots"] == first[0][0]["slots"], "隔了 5 秒又发了一份同样的"
+    del fake.calls[:]
+    K.step(5.5)
+    assert len(K.looks()) == 1, "之后每 5 秒一份"
+
+
+def testTheRefreshIsOnlyForThosePlayersInRange():
+    manager, data = K.setup(look=True)
+    fake.addPlayer("far", (10.5, 64.0, 80.5))
+    data["3"] = {"itemDict": beef(), "cookTimer": 30}
+    K.step(12.0)
+    assert all("far" not in players for _, players in K.looks()), "32 格外的人什么也收不到，补发也不给"
+
+
+def testAnEmptyLitStoveIsRefreshedToo():
+    """空烤架也有样子（热浪每秒 1.6 个，场景知道了才冒）：补发不看有没有东西。"""
+    manager, data = K.setup(look=True)
+    K.step(0.5)
+    del fake.calls[:]
+    K.step(6.0)
+    assert len(K.looks()) == 1 and K.looks()[0][0]["slots"] == [{}] * 6
+
+
+def testOpeningTheStationSendsTheOpenerTheCurrentLookAtOnce():
+    """开站要用当前的样子摆命中盒、认哪几个烤位有东西：开站那一刻单发给开站的人一份（他的客户端先前可能丢了），别人不重复收。"""
+    manager, data = K.setup(look=True, refresh=None)
+    data["3"] = {"itemDict": beef(), "cookTimer": 30}
+    K.step(0.5)                                                 # a 和 b 都已经收到了
+    del fake.calls[:]
+    K.opened(manager)                                           # a 开站
+    looks = K.looks()
+    assert len(looks) == 1 and looks[0][1] == ["a"] and looks[0][0]["slots"][3]["item"]["newItemName"] == BEEF, "只单发给开站的人"
+
+
+def testNothingIsResentOnOpenWithoutThePrerequisiteSwitch():
+    manager, data = K.setup(look=False)
+    K.opened(manager)
+    K.step(8.0)
+    assert not [call for call in fake.calls if call[1] == K.StoveLook.ENDPOINT]
 
 
 if __name__ == "__main__":

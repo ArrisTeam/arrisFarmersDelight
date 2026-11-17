@@ -28,6 +28,7 @@ class StoveScene(object):
         self.pieces = Pieces(self.view, self.space)
         self.known = False                    # 收到过一份状态了（之前不推进：刚建好第一份状态来之前不能把"刚加载不演落下"用掉）
         self.focused = False                  # 本人开着这座炉灶的站点
+        self.onDrawn = None                   # 第一次真画出样子时调一次（StoveScenes 让世界里原来的展示这时才收起：场景没画之前不能把它盖掉）
 
     # ---------------------------------------------------------------- 状态
 
@@ -78,10 +79,15 @@ class StoveScene(object):
     # ---------------------------------------------------------------- 每帧
 
     def frame(self, dt, near=True):
-        """推进一帧。near：离本人够近，粒子和声音才放。第一份状态来之前什么都不画，返回 False。"""
+        """推进一帧。near：离本人够近，粒子和声音才放。第一份状态来之前件和热气都不画，返回 False；被拒 / 取走的虚影不看状态，照样走完收掉
+        （不然它会一直停在烤架正中）。"""
         if not self.known:
+            self.pieces.ghosts.frame(dt)
             return False
         self.pieces.frame(dt, near or self.focused)
+        if self.onDrawn is not None:
+            drawn, self.onDrawn = self.onDrawn, None
+            drawn()
         return True
 
     # ---------------------------------------------------------------- 收场

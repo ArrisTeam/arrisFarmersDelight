@@ -5,7 +5,8 @@
 - 方块实体在本端加载：建场景，按方块实体数据里存的（六个烤位 "0".."5"、手放的进度 handGrill）先摆出来；重复加载（区块重载）当作重建；
 - 服务端 Server/StoveLook.py 广播给 32 格内的人：OnStoveLook(payload)，带 event 的是一次性的表现（放上、被拒、翻、没翻成、取走、烤好）；
 - 每个渲染帧：近的每帧算、放粒子声音，远的隔几帧算一次、不放粒子声音，太远的不算；每隔一会儿核对一下方块还在不在（炉灶被灭掉 / 拆了没收到移除事件时）。
-场景接管烤架上食物的画法：Client/BlockItems 那份对炉灶不再画（hide）；场景没了、方块还在时还原。
+场景接管烤架上食物的画法：Client/BlockItems 那份对炉灶不再画（hide），但要等场景真画出样子的那一帧（StoveScene.onDrawn）——场景刚建出来的时候
+（被拒的虚影、开站点这类先到）还不知道烤架上有什么，这时把原来的展示收掉，烤架上就什么都没有了；场景没了、方块还在时还原。
 """
 import time
 
@@ -54,7 +55,7 @@ def ensure(dimensionId, pos):
         if not block or block[0] not in StoveList:
             return None
         scene = _scenes[key] = StoveScene(dimensionId, key[1], StoveFacing.yawOfAux(block[1]))
-        BlockItems.hide(dimensionId, key[1], True)       # 烤架上的东西从此由场景画
+        scene.onDrawn = lambda: BlockItems.hide(dimensionId, key[1], True)       # 场景画出样子之后，烤架上的东西从此由场景画
     return scene
 
 

@@ -49,12 +49,24 @@ def mol(name):
     return world.molang.get((POS, name))
 
 
-def testASceneIsOnlyBuiltForASkilletAndHidesTheOldFoodDisplay():
+def testASceneIsOnlyBuiltForASkillet():
     scene = setup()
     assert scene is not None and Scenes.sceneAt(0, POS) is scene
-    assert (0, POS) in BlockItems._hidden, "锅里的东西从此由场景画，Client/BlockItems 那份不再画"
     world.blocks[(1, 2, 3)] = ("minecraft:stone", 0)
     assert Scenes.ensure(0, (1, 2, 3)) is None and Scenes.ensure(0, (7, 7, 7)) is None
+
+
+def testTheOldFoodDisplayIsOnlyCoveredOnceTheSceneHasDrawnItsLook():
+    """场景刚建出来（开站点这类先到）还不知道锅里有什么：这时把 Client/BlockItems 那份展示收掉，锅里就什么都没有了（和炉灶同一个道理，
+    它们的广播走同一套 LookWatch）。要等场景真画出样子的那一帧才接手。"""
+    scene = setup()
+    assert (0, POS) not in BlockItems._hidden, "场景建出来了，还没有样子：展示留着"
+    run(scene, 0.5)
+    assert scene.look is None and (0, POS) not in BlockItems._hidden, "一直没有样子：展示一直留着"
+    Scenes.OnPanLook(payload())
+    assert (0, POS) not in BlockItems._hidden, "样子来了，下一帧才画"
+    run(scene, DT)
+    assert (0, POS) in BlockItems._hidden, "场景画出样子了：锅里的东西从此由场景画，Client/BlockItems 那份不再画"
 
 
 def testTheBroadcastDrawsTheFoodAsLyingDropItemsOnThePan():

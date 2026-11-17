@@ -3,8 +3,9 @@
 
 HoD 的煎锅场景是 idle_visible：32 格内每个客户端都按同步来的状态自己演全部动作（SkilletLogic 在客户端也跑，只读）。基岩版的客户端拿不到
 站点状态，靠这条广播：服务端把锅的样子发给同维度 32 格内的玩家（客户端 Compat/Diegesis/PanScenes 的 OnPanLook 去演）。默认关着，
-前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。新走进 32 格的人单发一份当前的样子（Helpers/LookWatch：
-等翻面、煎好留在锅里这些不再变的状态，不补的话走近的人永远看到旧的）。负载（Call 到 OnPanLook）：
+前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。新走进 32 格的人单发一份当前的样子、样子没变时每隔
+REFRESH_SECONDS 秒再单发一份（Helpers/LookWatch：等翻面、煎好留在锅里这些不再变的状态，广播丢了——客户端还没就绪、区块还没加载好——不补的话
+走近的人永远看到旧的）；开站点的人开站那一刻单发一份（resend）。负载（Call 到 OnPanLook）：
     {"dimensionId", "pos": [x, y, z], "item": 锅里的东西（物品线格式，空是 {}）, "batch": 算多少件煎, "byHand": 手放的（两面分开煎）,
      "heated": 有没有热源, "down" / "up": 贴锅面 / 朝上面熟到哪（0..1）, "rate": 每秒往前走多少（0 = 停着）, "both": 两面一起走（蛋）}
 状态变了（东西、批量、手放、热源、开始 / 停止走、颠了一下）马上发；在走的时候每 KEYFRAME_SECONDS 秒补一次，客户端按 rate 往前推。
@@ -82,16 +83,23 @@ def tick(dimensionId, blockPos, blockEntityData, hand, now):
     没变的时候，刚走进 32 格的人单发一份当前的样子（他们错过了上一次广播）。"""
     if not _enabled[0] or blockEntityData is None:
         return
-    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "at": -1.0e12, "audience": LookWatch.Audience()})
+    entry = _sent.setdefault((dimensionId, tuple(blockPos)),
+                             {"sig": None, "at": -1.0e12, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS)})
     payload = build(dimensionId, blockPos, blockEntityData, hand)
     signature = _signature(payload, hand)
     near = nearby(dimensionId, blockPos, now)
     if signature != entry["sig"] or (payload["rate"] > 0.0 and now - entry["at"] >= KEYFRAME_SECONDS):
         entry["sig"], entry["at"] = signature, now
-        entry["audience"].sent(near)
+        entry["audience"].sent(near, now)
         _send(near, payload)
     else:
-        _send(entry["audience"].arrivals(near), payload)
+        _send(entry["audience"].arrivals(near, now), payload)
+
+
+def resend(dimensionId, blockPos, blockEntityData, hand, playerId):
+    """这个人要开这口锅的站点：当前的样子单发给他一份（他的客户端可能还没收到过）。"""
+    if _enabled[0] and blockEntityData is not None:
+        _send([playerId], build(dimensionId, blockPos, blockEntityData, hand))
 
 
 def _send(players, payload):

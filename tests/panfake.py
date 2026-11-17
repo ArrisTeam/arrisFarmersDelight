@@ -64,14 +64,19 @@ def exposeManager(manager):
     engine.serverApi.ImportModule = lambda name: runtime if name.endswith("Server.Runtime") else None
 
 
-def setup(heated=True, fireAspect=0, creative=False):
-    """干净的假世界：一口煎锅（可烧着）、玩家 a（锅北边）和 b（锅东边）；返回 (Manager, 锅的方块实体数据)。"""
+DEFAULT_REFRESH = LookWatch.REFRESH_SECONDS      # 生产里的缺省：样子没变时每隔这么久再单发给附近的人一份
+
+
+def setup(heated=True, fireAspect=0, creative=False, refresh=DEFAULT_REFRESH):
+    """干净的假世界：一口煎锅（可烧着）、玩家 a（锅北边）和 b（锅东边）；返回 (Manager, 锅的方块实体数据)。
+    refresh 是样子没变时再单发给附近的人一份的间隔（秒，缺省是生产里的；None 不重发）。"""
     fake.reset()
     fake.liquid = {}
     Registry.clearAll()
     HandFrying._hands.clear()
     PanLook._sent.clear()
     LookWatch.reset()
+    LookWatch.REFRESH_SECONDS = refresh
     PanLook.enable(True)
     PanLogic.time = potfake.Clock(fake.world)
     PanLogic.register(Api)

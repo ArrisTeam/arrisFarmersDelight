@@ -68,6 +68,7 @@ class PanLogicMixin(object):
         if data is None:
             return False
         self.hand = HandFrying.handOf(station.dimensionId, station.pos, data)
+        PanLook.resend(station.dimensionId, station.pos, data, self.hand, playerId)       # 他的客户端要用当前的样子，先单发一份
         self._count = _count(PanContents.itemOf(station.dimensionId, station.pos))
         self._fromHand(playerId, data)
         return True

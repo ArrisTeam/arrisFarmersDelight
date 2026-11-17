@@ -103,12 +103,43 @@ def sounds(name):
 
 # ---------------------------------------------------------------- 登记
 
-def testASceneIsOnlyBuiltForAStoveAndHidesTheOldFoodDisplay():
+def testASceneIsOnlyBuiltForAStove():
     scene = setup()
     assert scene is not None and Scenes.sceneAt(0, POS) is scene and Scenes.ensure(0, POS) is scene
-    assert (0, POS) in BlockItems._hidden, "烤架上的东西从此由场景画，Client/BlockItems 那份不再画"
     world.blocks[(1, 2, 3)] = ("minecraft:stone", 0)
     assert Scenes.ensure(0, (1, 2, 3)) is None and Scenes.ensure(0, (7, 7, 7)) is None
+
+
+def testTheOldFoodDisplayIsOnlyCoveredOnceTheSceneHasDrawnItsLook():
+    """场景刚建出来（被拒的虚影、开站点这类先到）还不知道烤架上有什么：这时把 Client/BlockItems 那份展示收掉，烤架上就什么都没有了
+    （实机：灶上本来就有 6 个肉饼，场景一直不知道样子，肉饼全不见）。要等场景真画出样子的那一帧才接手。"""
+    setup()
+    world.blocks[POS] = ("arris:stove", 2)
+    BlockItems.show(0, POS, "stove", dict((str(place), item(BEEF)) for place in range(6)))
+    assert len(drops(BEEF)) == 6, "世界里原来的展示"
+    scene = Scenes.ensure(0, POS)
+    assert (0, POS) not in BlockItems._hidden and len(drops(BEEF)) == 6, "场景建出来了，还没有样子：展示留着"
+    run(scene, 0.5)
+    assert not scene.known and (0, POS) not in BlockItems._hidden and len(drops(BEEF)) == 6, "一直没有样子：展示一直留着"
+    Scenes.OnStoveLook(payload(dict((place, slot(BEEF)) for place in range(6))))
+    assert (0, POS) not in BlockItems._hidden, "样子来了，下一帧才画"
+    run(scene, DT)
+    assert (0, POS) in BlockItems._hidden and len(drops(BEEF)) == 6, "场景画出来了：展示收掉，烤架上还是六件（场景的）"
+    assert all(d in world.drops.values() for d in drops(BEEF)) and len(world.deleted) == 6, "原来那六件已经删了，画着的是场景的"
+
+
+def testARefusedGhostOfASceneThatNeverGotALookStillBouncesAndGoesAway():
+    """场景还不知道样子时来了被拒的事件：虚影不看样子，照样弹开收掉（原来整个场景不走，它一直停在烤架正中）。"""
+    setup()
+    Scenes.enable()
+    Scenes.OnStoveLook(event("refused", stack=item(BEEF)))
+    scene = Scenes.sceneAt(0, POS)
+    assert scene is not None and not scene.known and len(drops()) == 1
+    run(scene, 0.15)
+    assert len(drops()) == 1 and centerOf(drops()[0])[1] < POS[1] + 1.0 + 8.0 / 16.0, "在弹"
+    run(scene, 0.5)
+    assert drops() == [] and not scene.known, "弹完收掉；整个场景照旧没有样子：件和热气都不画"
+    assert not particles() or all(p["id"] != "arris_diegesis:steam" for p in particles()), "没有样子就没有蒸汽"
 
 
 def testAnyBlockInTheStoveListGetsAScene():

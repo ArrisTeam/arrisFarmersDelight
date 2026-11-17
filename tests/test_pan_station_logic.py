@@ -487,5 +487,45 @@ def testTheSelfTestSkipsWithoutThePrerequisite():
     assert selftest.mcdk_test_pan_station() == {"case": "pan_station", "ok": True, "skipped": "diegesis not installed or no player"}
 
 
+def testALookTheClientNeverGotIsSentAgainEveryRefreshSecondsEvenWhenNothingChanges():
+    """广播发出去就不管有没有收到（客户端脚本还没就绪、区块还没加载好时整份丢掉），等翻面 / 煎好留在锅里 / 没热源这些状态又不再变：
+    原来丢了就永远补不上。现在样子没变时每隔 REFRESH_SECONDS 秒再单发一份（熟度在走时本来就每秒补一次关键帧，这里用没热源的锅）。"""
+    manager, _ = P.setup(heated=False)
+    P.opened(manager)
+    carry(manager, "a", 35, BEEF, 2)
+    P.do(manager, "a", P.custom("place"))
+    base = fake.world.time
+    P.step(0.25, now=base + 1.0)
+    del fake.calls[:]                                               # 客户端没收到：服务端不知道
+    P.step(0.25, now=base + 3.0)
+    assert P.looks() == [], "还没到 5 秒"
+    P.step(0.25, now=base + 7.0)
+    again = [(payload, players) for payload, players in P._grouped() if not payload.get("event")]
+    assert len(again) == 1 and sorted(again[0][1]) == ["a", "b"], "隔了 5 秒又发了一份"
+    assert again[0][0]["item"] == {"newItemName": BEEF, "newAuxValue": 0, "count": 2} and again[0][0]["byHand"], "是锅现在的样子"
+    del fake.calls[:]
+    P.step(0.25, now=base + 13.0)
+    assert len(P.looks()) == 1, "之后每 5 秒一份"
+
+
+def testOpeningTheStationSendsTheOpenerTheCurrentLookAtOnce():
+    """开站的人的客户端可能先前丢了锅的样子：开站那一刻单发给他一份，别人不重复收。"""
+    manager, data = P.setup(heated=False, refresh=None)
+    data["cookingDict"] = {"newItemName": BEEF, "newAuxValue": 0, "count": 2}
+    P.step(0.25)                                                    # a 和 b 都已经收到了
+    del fake.calls[:]
+    P.opened(manager)
+    groups = [(payload, players) for payload, players in P._grouped() if not payload.get("event")]
+    assert len(groups) == 1 and groups[0][1] == ["a"] and groups[0][0]["item"]["newItemName"] == BEEF, "只单发给开站的人"
+
+
+def testNothingIsResentOnOpenWithoutThePrerequisiteSwitch():
+    manager, data = P.setup(heated=False)
+    P.PanLook.enable(False)
+    P.opened(manager)
+    P.step(0.25, now=fake.world.time + 20.0)
+    assert not [call for call in fake.calls if call[1] == P.PanLook.ENDPOINT]
+
+
 if __name__ == "__main__":
     raise SystemExit(P.dgtest.run(globals()))

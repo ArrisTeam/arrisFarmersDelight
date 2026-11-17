@@ -5,7 +5,8 @@
 - 方块实体在本端加载：建场景，按方块实体数据里存的（cookingDict、heatEnable、panFrying）先摆出来；重复加载（区块重载）当作重建；
 - 服务端 Server/PanLook.py 广播给 32 格内的人：OnPanLook(payload)，带 event 的是一次性的表现（放进来、被拒、颠、取走、煎好）；
 - 每个渲染帧：近的每帧算，远的隔几帧算一次、不放粒子声音，太远的不算。
-场景接管锅里食物的画法：Client/BlockItems 那份对煎锅不再画（hide）；场景没了、方块还在时还原。
+场景接管锅里食物的画法：Client/BlockItems 那份对煎锅不再画（hide），但要等场景真画出样子的那一帧（PanScene.onDrawn）——场景刚建出来的时候
+（开站点这类先到）还不知道锅里有什么，这时把原来的展示收掉，锅里就什么都没有了；场景没了、方块还在时还原。
 """
 import time
 
@@ -49,7 +50,7 @@ def ensure(dimensionId, pos):
         if not block or block[0] != SKILLET_BLOCK:
             return None
         scene = _scenes[key] = PanScene(dimensionId, key[1], PanModelMath.facingOf(block[1]))
-        BlockItems.hide(dimensionId, key[1], True)       # 锅里的东西从此由场景画
+        scene.onDrawn = lambda: BlockItems.hide(dimensionId, key[1], True)       # 场景画出样子之后，锅里的东西从此由场景画
     return scene
 
 

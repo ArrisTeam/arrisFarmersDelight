@@ -3,7 +3,9 @@
 
 HoD 的炉灶场景是 idle_visible：32 格内每个客户端都按同步来的状态自己演全部动作（StoveLogic 在客户端也跑，只读），厨师关了站点、
 没人开着站点，"该翻了"的烟和嗞嗞声照样在。基岩版的客户端拿不到站点状态，靠这条广播（和煎锅的 PanLook 同一个做法）：服务端把灶的样子发给
-同维度 32 格内的玩家，新走进 32 格的人单发一份当前的样子（Helpers/LookWatch）；客户端 Compat/Diegesis/StoveScenes 的 OnStoveLook 去演。
+同维度 32 格内的玩家，新走进 32 格的人单发一份当前的样子、样子没变时每隔 REFRESH_SECONDS 秒再单发一份（Helpers/LookWatch：广播丢了——客户端还没
+就绪、区块还没加载好——服务端当他收到了，等翻 / 烤好留在灶上这些状态又不再变，不补就永远看不到）；开站点的人开站那一刻单发一份（resend）；
+客户端 Compat/Diegesis/StoveScenes 的 OnStoveLook 去演。
 默认关着，前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。负载（Call 到 OnStoveLook）：
     {"dimensionId", "pos": [x, y, z], "slots": 六个烤位，每个 {}（空）或 {"item": 物品线格式, "hand": 手放的（两面分开烤）,
      "down" / "up": 贴灶面 / 朝上面烤到哪（0..1，1/32 一档）}}
@@ -66,19 +68,25 @@ def tick(dimensionId, blockPos, blockEntityData, hand, now):
     """灶每个步（和每次动作）之后：样子变了就发给附近所有人；没变的时候，刚走进 32 格的人单发一份当前的样子。"""
     if not _enabled[0] or blockEntityData is None:
         return
-    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "audience": LookWatch.Audience()})
+    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS)})
     near = LookWatch.nearby(dimensionId, blockPos, now)
     if not near:
-        entry["audience"].sent(near)                  # 范围里没人：样子不用算，名单清空（谁回来都算新来的）
+        entry["audience"].sent(near, now)             # 范围里没人：样子不用算，名单清空（谁回来都算新来的）
         return
     payload = build(dimensionId, blockPos, blockEntityData, hand)
     signature = _signature(payload)
     if signature != entry["sig"]:
         entry["sig"] = signature
-        entry["audience"].sent(near)
+        entry["audience"].sent(near, now)
         _send(near, payload)
     else:
-        _send(entry["audience"].arrivals(near), payload)
+        _send(entry["audience"].arrivals(near, now), payload)
+
+
+def resend(dimensionId, blockPos, blockEntityData, hand, playerId):
+    """这个人要开这座灶的站点：当前的样子单发给他一份（开站要用它摆命中盒、认哪几个烤位有东西，他的客户端可能还没收到过）。"""
+    if _enabled[0] and blockEntityData is not None:
+        _send([playerId], build(dimensionId, blockPos, blockEntityData, hand))
 
 
 def _send(players, payload):

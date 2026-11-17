@@ -124,9 +124,9 @@ YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}                                   # �
 SIDES = {0: (10.5, 64.0, 5.0), 90: (15.0, 64.0, 10.5), 180: (10.5, 64.0, 15.0), 270: (5.0, 64.0, 10.5)}     # 玩家站在炉灶的北 / 东 / 南 / 西
 
 
-def make(aux=2, pieces=None, data=None):
+def make(aux=2, pieces=None, data=None, look=True):
     """打开着的炉灶站点：aux 是炉灶方块的朝向状态（0 南 1 西 2 北 3 东，缺省朝北）；站点的北面是炉灶的正面，开站的人站在哪一侧不影响。
-    pieces 是 {位置: 物品}，data 是两面烤到哪。场景已经画好（走了一帧）。"""
+    pieces 是 {位置: 物品}，data 是两面烤到哪。场景已经画好（走了一帧）；look=False：服务端的样子还没到（开站早于它），场景不知道样子。"""
     yaw = YAW_OF_AUX[aux]
     world.reset()
     del _hidden[:]
@@ -147,8 +147,9 @@ def make(aux=2, pieces=None, data=None):
     for place, stack in (pieces or {}).items():
         view.state.rawSetItem(("grill", place), stack)
     view.behavior.onOpen()
-    view.behavior.scene.applyLook(lookOf(pieces, data))
-    run(view, DT)
+    if look:
+        view.behavior.scene.applyLook(lookOf(pieces, data))
+        run(view, DT)
     return view
 
 
@@ -281,6 +282,18 @@ def testAnOlderFrontDoorWithoutTheFacingHookGetsNoBehaviorAndTheStoveStaysClassi
 
     Registry.clearAll()
     assert GrillView.register(OldApi) is None and asked == [] and Registry.getBehavior("arris:stove") is None
+
+
+def testOpeningBeforeTheLookArrivesKeepsTheOldDisplayAndTheBoxesComeWithTheLook():
+    """服务端的样子丢了 / 还没到时开站点：场景建出来了但不知道烤架上有什么，这时不能把世界里原来的展示收掉（不然烤架上什么都没有），也没有命中盒；
+    样子一到，场景画出来、原来的展示收掉、命中盒有了（开站那一刻服务端还会单发一份当前的样子，GrillLogic.onOpen）。"""
+    view = make(look=False)
+    scene = view.behavior.scene
+    assert not scene.known and _hidden == [] and view.behavior.pickables() == []
+    scene.apply({"dimensionId": 0, "pos": list(STOVE), "slots": [{"item": item(BEEF), "hand": True, "down": 0.0, "up": 0.0}] + [{}] * 5})
+    assert _hidden == [], "样子来了，下一帧才画"
+    run(view, DT)
+    assert _hidden == [(0, STOVE, True)] and [node.payload for node in view.behavior.pickables()] == [0]
 
 
 def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():

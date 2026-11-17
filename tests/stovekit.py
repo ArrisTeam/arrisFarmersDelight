@@ -32,16 +32,19 @@ Api = dgtest.load("Api.Server")
 STOVE = (10, 64, 10)
 BEEF, EGG, STICK = "minecraft:beef", "minecraft:egg", "minecraft:stick"
 ARGS = {"dimension": 0, "posX": STOVE[0], "posY": STOVE[1], "posZ": STOVE[2]}
+DEFAULT_REFRESH = LookWatch.REFRESH_SECONDS      # 生产里的缺省：样子没变时每隔这么久再单发给附近的人一份
 
 
-def setup(creative=False, covered=None, look=True):
+def setup(creative=False, covered=None, look=True, refresh=DEFAULT_REFRESH):
     """干净的假世界：一个点着的炉灶（方块实体数据初始化好）、玩家 a（炉灶北边，生存或创造）和 b（东边）；返回 (Manager, 炉灶的方块实体数据)。
-    look 打开世界外观广播（StoveLook，装了前置包时 ServerBoot 就是打开的），之后 effects() / looks() / broadcasts() 看发出去的东西。"""
+    look 打开世界外观广播（StoveLook，装了前置包时 ServerBoot 就是打开的），之后 effects() / looks() / broadcasts() 看发出去的东西。
+    refresh 是样子没变时再单发给附近的人一份的间隔（秒，缺省是生产里的；None 不重发：只看"样子变了才发"的用例用它）。"""
     fake.reset()
     Registry.clearAll()
     HandGrill._hands.clear()
     StoveLook._sent.clear()
     LookWatch.reset()
+    LookWatch.REFRESH_SECONDS = refresh
     StoveLook.enable(look)
     Stove._pacer = Stove.Pacer(Stove.TICK_STEP)
     GrillLogic.time = Stove.time = potfake.Clock(fake.world)
