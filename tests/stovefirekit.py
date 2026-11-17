@@ -64,6 +64,9 @@ def _setBlockNew(self, pos, blockDict, handling=0, dimensionId=-1, isLegacy=Fals
     old = fake.world.blocks.get(key, "minecraft:air")
     if old == name or fake.failSet:
         return False
+    fake.sets += 1
+    if fake.sets == 2 and fake.swapMode is not None:
+        fake.mode = fake.swapMode              # 第一次 SetBlockNew 是自检自己摆炉灶，从第二次（换方块）起才是要试的那种先后
     x, y, z = pos
     _emit("BlockRemoveServerEvent", {"x": x, "y": y, "z": z, "fullName": old, "auxValue": fake.blockAux.get(key, 0), "dimension": dimensionId}, old)
     fake.world.blocks[key] = name
@@ -107,11 +110,13 @@ def _install():
 _install()
 
 
-def setup(events="sync", entity="now", **kwargs):
-    """stovekit.setup（点着的炉灶在 STOVE，玩家 a 在北边、b 在东边）之后补上换方块要的东西；返回 (Manager, 方块实体数据)。"""
+def setup(events="sync", entity="now", swapMode=None, **kwargs):
+    """stovekit.setup（点着的炉灶在 STOVE，玩家 a 在北边、b 在东边）之后补上换方块要的东西；返回 (Manager, 方块实体数据)。
+    swapMode 给了（{"events": ..., "entity": ...}）：第一次 SetBlockNew 照 events / entity 参数，从第二次起换成它（游戏内自检先自己摆炉灶、再换方块）。"""
     manager, data = K.setup(**kwargs)
     fake.states, fake.queue, fake.sneaking, fake.tips, fake.failSet, fake.holiday = {}, [], set(), [], False, False
     fake.mode = {"events": events, "entity": entity}
+    fake.swapMode, fake.sets = swapMode, 0
     fake.itemTypes = {SHOVEL: "shovel", PICK: "pickaxe", FLINT: "", CHARGE: "", WATER: "bucket", BUCKET: "bucket"}
     fake.durable = {FLINT: 65, SHOVEL: 250, PICK: 250}
     fake.blockAux[KEY] = 0
