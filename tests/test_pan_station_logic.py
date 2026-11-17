@@ -505,7 +505,9 @@ def testALookTheClientNeverGotIsSentAgainEveryRefreshSecondsEvenWhenNothingChang
     assert again[0][0]["item"] == {"newItemName": BEEF, "newAuxValue": 0, "count": 2} and again[0][0]["byHand"], "是锅现在的样子"
     del fake.calls[:]
     P.step(0.25, now=base + 13.0)
-    assert len(P.looks()) == 1, "之后每 5 秒一份"
+    assert P.looks() == [], "补过一次：下一份要隔 10 秒（间隔逐次加倍）"
+    P.step(0.25, now=base + 17.5)
+    assert len(P.looks()) == 1, "隔够 10 秒：第二份"
 
 
 def testOpeningTheStationSendsTheOpenerTheCurrentLookAtOnce():

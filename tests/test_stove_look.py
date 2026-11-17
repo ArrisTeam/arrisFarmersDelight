@@ -191,7 +191,17 @@ def testALookTheClientNeverGotIsSentAgainEveryRefreshSecondsEvenThoughNothingCha
     assert len(again) == 1 and sorted(again[0][1]) == ["a", "b"] and again[0][0]["slots"] == first[0][0]["slots"], "隔了 5 秒又发了一份同样的"
     del fake.calls[:]
     K.step(5.5)
-    assert len(K.looks()) == 1, "之后每 5 秒一份"
+    assert K.looks() == [], "补过一次：下一份要隔 10 秒（间隔逐次加倍，站久了的人不用一直每 5 秒收一份）"
+    K.step(5.0)
+    assert len(K.looks()) == 1, "隔够 10 秒：第二份"
+
+
+def testStandingByAStoveForTwoMinutesCostsAHandfulOfLooksNotOneEveryFiveSeconds():
+    """补发不能没有上限：灶多人多的时候每座灶每人每 5 秒一份会一直发下去。间隔加倍之后两分钟里是开头那一份加 5、15、35、75 秒的四份。"""
+    manager, data = K.setup(look=True)                              # 空烤架：样子两分钟都不变
+    K.step(120.0)
+    looks = K.looks()
+    assert len(looks) == 5 and all(sorted(players) == ["a", "b"] for _payload, players in looks), [players for _payload, players in looks]
 
 
 def testTheRefreshIsOnlyForThosePlayersInRange():

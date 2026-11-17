@@ -68,7 +68,10 @@ def tick(dimensionId, blockPos, blockEntityData, hand, now):
     """灶每个步（和每次动作）之后：样子变了就发给附近所有人；没变的时候，刚走进 32 格的人单发一份当前的样子。"""
     if not _enabled[0] or blockEntityData is None:
         return
-    entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS)})
+    entry = _sent.get((dimensionId, tuple(blockPos)))
+    if entry is None:                                 # 补发的间隔逐次加倍（5、10、20……到 REFRESH_MOST）：站久了的人不用一直每 5 秒收一份
+        entry = _sent[(dimensionId, tuple(blockPos))] = {
+            "sig": None, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS, LookWatch.REFRESH_MOST)}
     near = LookWatch.nearby(dimensionId, blockPos, now)
     if not near:
         entry["audience"].sent(near, now)             # 范围里没人：样子不用算，名单清空（谁回来都算新来的）

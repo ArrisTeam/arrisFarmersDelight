@@ -83,11 +83,15 @@ def tick(dimensionId, blockPos, blockEntityData, hand, now):
     没变的时候，刚走进 32 格的人单发一份当前的样子（他们错过了上一次广播）。"""
     if not _enabled[0] or blockEntityData is None:
         return
-    entry = _sent.setdefault((dimensionId, tuple(blockPos)),
-                             {"sig": None, "at": -1.0e12, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS)})
+    entry = _sent.get((dimensionId, tuple(blockPos)))
+    if entry is None:                                 # 补发的间隔逐次加倍（5、10、20……到 REFRESH_MOST）：站久了的人不用一直每 5 秒收一份
+        entry = _sent[(dimensionId, tuple(blockPos))] = {
+            "sig": None, "at": -1.0e12, "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS, LookWatch.REFRESH_MOST)}
+    near = nearby(dimensionId, blockPos, now)
+    if not near and entry["sig"] is not None and not entry["audience"].known:
+        return                                        # 范围里一直没人、样子也发过了：不用每步把样子算一遍
     payload = build(dimensionId, blockPos, blockEntityData, hand)
     signature = _signature(payload, hand)
-    near = nearby(dimensionId, blockPos, now)
     if signature != entry["sig"] or (payload["rate"] > 0.0 and now - entry["at"] >= KEYFRAME_SECONDS):
         entry["sig"], entry["at"] = signature, now
         entry["audience"].sent(near, now)
