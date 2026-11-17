@@ -3,7 +3,8 @@
 """炉灶在本客户端的场景（Compat/Diegesis 的 StoveScene / StoveScenes / StoveWorld / GrillPieces / GrillGhosts / GrillFx，假引擎）：
 服务端广播来了摆出烤架上的东西（客户端掉落物，平躺、每件朝向不同）、落下 / 翻面 / 取走 / 弹回的动作、热浪蒸汽和该翻了的烟，
 全程不需要有人开着站点（HoD 的炉灶场景是 idle_visible）；区块晚加载按方块实体数据补、重复加载当重建、方块没了收拾干净、
-远处只算画面不放粒子声音、别的维度和别的方块的广播丢掉。对应 HoD 的 StoveBehavior.refresh / draw / turned / taken / onEffect / heat。"""
+远处只算画面不放粒子声音、别的维度和别的方块的广播丢掉。六件的位置、动作、粒子声音的位置跟着炉灶方块的朝向转（站点的北面是炉灶的正面，
+JE 的 Orientation.BLOCK；FD 自己的渲染器也按 FACING 转），谁站在哪边看都一样。对应 HoD 的 StoveBehavior.refresh / draw / turned / taken / onEffect / heat。"""
 from __future__ import print_function
 
 import math
@@ -57,10 +58,11 @@ def event(name, place=None, **data):
     return body
 
 
-def setup(slots=None):
-    """干净的假世界、一座炉灶的场景；给了 slots 就先广播一份并走一帧（第一份状态按"刚加载"画，不演落下）。"""
+def setup(slots=None, aux=2):
+    """干净的假世界、一座炉灶的场景（aux 是方块的朝向状态：0 南 1 西 2 北 3 东，缺省朝北）；给了 slots 就先广播一份并走一帧
+    （第一份状态按"刚加载"画，不演落下）。"""
     world.reset()
-    world.blocks[POS] = ("arris:stove", 0)
+    world.blocks[POS] = ("arris:stove", aux)
     Scenes._scenes.clear()
     Scenes._state.update(on=False, last=None, tick=0, check=0.0)
     BlockItems._hidden.clear()
@@ -136,10 +138,10 @@ def testTheBroadcastDrawsEachPieceWhereTheWorldHasItAndNobodyNeedsToOpenTheStati
     assert not scene.focused and all(world.shadows[key] is False for key in world.drops), "没人开站点；掉落物的影子关着"
 
 
-def testTheLayoutDoesNotTurnWithWhoeverLooks():
+def testTheLayoutDoesNotTurnWithWhoeverLooksOrOpensTheStation():
     scene = setup({0: slot(BEEF), 4: slot(BEEF)})
     before = sorted((d["pivot"], d["euler"]) for d in drops())
-    scene.focus(None, lambda dx, dz: (-dz, dx))                 # 站在别的一侧开站点：件还是躺在原来的地方
+    scene.focus(lambda index, count: None)                      # 有人开了站点（不管他站在哪一侧）：件还是躺在原来的地方
     run(scene, 0.5)
     assert sorted((d["pivot"], d["euler"]) for d in drops()) == before
 
@@ -170,7 +172,7 @@ def testSeveralNewPiecesLandOneAfterTheOtherFromAboveForSomeoneWatchingFromOutsi
 
 def testSeveralNewPiecesFlyInFromTheScreensBottomForTheCookWhoHasTheStationOpen():
     scene = setup({})
-    scene.focus(lambda index, count: (10.0 * index, -20.0), None)
+    scene.focus(lambda index, count: (10.0 * index, -20.0))
     Scenes.OnStoveLook(payload(dict((place, slot(BEEF)) for place in (0, 1, 2))))
     run(scene, DT)
     pieces = scene.pieces
@@ -214,7 +216,7 @@ def testAnotherCooksTurnIsShownFromTheStartWhicheverArrivesFirst():
 
 def testTheCooksOwnTurnIsNotPlayedAgainWhenTheServerSaysSoButAnOnlookersIs():
     scene = setup(waiting())
-    scene.focus(None, None)
+    scene.focus(None)
     pieces = scene.pieces
     pieces.turned(1)                                         # 开着站点的人点了一下（GrillView）
     stamp = pieces.turnedAt[1]
@@ -470,7 +472,7 @@ def testNearbyScenesRunEveryFrameFarOnesEveryFourthWithoutSoundsAndTheFarthestNo
     for _ in range(8):
         tick()
     assert scene.pieces.clock == before, "再远不算"
-    scene.focus(None, None)
+    scene.focus(None)
     for _ in range(4):
         tick()
     assert scene.pieces.clock > before, "开着站点的永远每帧算"
@@ -481,6 +483,122 @@ def testASceneThatNeverGotAStateStaysBlank():
     for _ in range(10):
         tick()
     assert scene.frame(DT, True) is False and drops() == [] and world.particles == [], "第一份状态来之前不画、不冒热浪"
+
+
+# ---------------------------------------------------------------- 炉灶朝哪，六件跟着转
+
+AUX_YAW = {0: 180, 1: 270, 2: 0, 3: 90}                         # 方块的朝向状态 0 南 1 西 2 北 3 东 -> 站点朝向（度）
+FRONT = {0: (0.0, 1.0), 1: (-1.0, 0.0), 2: (0.0, -1.0), 3: (1.0, 0.0)}      # 炉灶的正面朝哪（世界的 (dx, dz)）
+Pose = C.load("Shared.Rules.ItemPose")
+
+
+def turnedFraction(yaw, x, z):
+    """方块里的一点（比例，炉灶朝北那一份）绕方块中心转到炉灶朝 yaw 时的位置：朝东 (1 - z, x)、朝南 (1 - x, 1 - z)、朝西 (z, 1 - x)。"""
+    return {0: (x, z), 90: (1.0 - z, x), 180: (1.0 - x, 1.0 - z), 270: (z, 1.0 - x)}[yaw]
+
+
+def uAxis(drop):
+    """掉落物贴图横向（u 轴）在世界里指向哪：引擎的欧拉角还原成 R = Rz·Rx·Ry，第一列。"""
+    x, y, z = drop["euler"]
+    r = Pose._mul(Pose._rz(z), Pose._mul(Pose._rx(x), Pose._ry(y)))
+    return (r[0][0], r[1][0], r[2][0])
+
+
+def testTheSixPiecesLieWhereTheStovesFacingPutsThemAndNobodyNeedsToOpenTheStation():
+    for aux, yaw in sorted(AUX_YAW.items()):
+        scene = setup(dict((place, slot(BEEF)) for place in range(6)), aux=aux)
+        assert scene.yaw == yaw and not scene.focused
+        centers = sorted((round(centerOf(d)[0] - POS[0], 3), round(centerOf(d)[2] - POS[2], 3)) for d in drops(BEEF))
+        assert centers == sorted((round(a, 3), round(b, 3)) for a, b in (turnedFraction(yaw, x, z) for x, z in FRACTIONS)), aux
+        assert all(abs(centerOf(d)[1] - (POS[1] + 16.3 / 16.0)) < 1.0e-6 for d in drops(BEEF)), "高度和朝向无关：躺在烤架面上"
+
+
+def testEachPieceKeepsItsOwnAngleToTheStovesFrontWhateverWayItFaces():
+    """每件摆得各转一点（HoD 的 yaw）：件的 u 轴和炉灶正面的夹角是它自己的，炉灶朝哪都不变（整座一起转）。"""
+    for aux, yaw in sorted(AUX_YAW.items()):
+        scene = setup(dict((place, slot(BEEF)) for place in range(6)), aux=aux)
+        pieces = dict((place, scene.pieces.props[place][1].entityId) for place in range(6))
+        for place, entityId in pieces.items():
+            u = uAxis(world.drops[entityId])
+            front, turn = FRONT[aux], math.radians(Layout.yawOf(place))
+            assert abs(u[1]) < 1.0e-9, "平躺"
+            assert abs(u[0] * front[0] + u[2] * front[1] - math.sin(turn)) < 1.0e-6, (aux, place, u)
+
+
+def testSmokeAndSteamComeFromThePieceWhereverTheStoveFaces():
+    for aux, yaw in sorted(AUX_YAW.items()):
+        scene = setup({0: slot(BEEF, True, 1.0, 0.0)}, aux=aux)
+        del world.particles[:]
+        run(scene, 5.0)
+        big = [p for p in particles("arris_diegesis:steam") if p["vars"].get("variable.scale", 0.0) > 2.0]
+        assert big, aux
+        x, z = turnedFraction(yaw, FRACTIONS[0][0], FRACTIONS[0][1])
+        assert all(abs(p["pos"][0] - (POS[0] + x)) < 0.2 and abs(p["pos"][2] - (POS[2] + z)) < 0.2 for p in big), (aux, "烟只从那一件的边上冒")
+
+
+def testTheGrillCentreDoesNotMoveWhenTheStoveTurns():
+    for aux in range(4):
+        scene = setup({}, aux=aux)
+        del world.sounds[:]
+        Scenes.OnStoveLook(event("placed", places=[0]))
+        heard, = sounds("block.lantern.place")
+        assert abs(heard["pos"][0] - (POS[0] + 0.5)) < 1.0e-6 and abs(heard["pos"][2] - (POS[2] + 0.5)) < 1.0e-6, aux
+
+
+def testTheSceneReadsTheStovesFacingWhenItIsBuilt():
+    scene = setup(aux=3)
+    assert scene.yaw == 90 and scene.space.yaw == 90 and scene.view.yaw == 90 and scene.view.props.yaw == 90
+    world.blocks[(3, 64, 3)] = ("arris:stove", 1)
+    assert Scenes.ensure(0, (3, 64, 3)).yaw == 270
+
+
+def testAReloadedBlockEntityThatFacesAnotherWayRedrawsEverythingTurnedAndWithoutFalling():
+    """区块重新加载时方块的朝向和建场景时不一样（换了个方向的炉灶放在同一处没收到移除事件）：件按新朝向重摆，样子还在，不演落下。"""
+    scene = setup({0: slot(BEEF)}, aux=2)
+    first = centerOf(drops()[0])
+    world.blocks[POS] = ("arris:stove", 3)
+    del world.sounds[:]
+    scene = load(saved(**{"0": {"itemDict": item(BEEF), "cookTimer": 30}}))
+    run(scene, DT)
+    assert scene.yaw == 90 and len(drops(BEEF)) == 1
+    x, z = turnedFraction(90, FRACTIONS[0][0], FRACTIONS[0][1])
+    assert abs(centerOf(drops()[0])[0] - (POS[0] + x)) < 1.0e-6 and abs(centerOf(drops()[0])[2] - (POS[2] + z)) < 1.0e-6
+    assert (centerOf(drops()[0])[0], centerOf(drops()[0])[2]) != (first[0], first[2])
+    assert scene.pieces.motion[0].pose()[0][1] == 0.0 and not sounds("ambient.skillet.addfood"), "重建不演落下"
+
+
+def testTurningTheSceneInPlaceKeepsTheLookAndIsANoOpForTheSameFacing():
+    scene = setup({0: slot(BEEF), 4: slot(BEEF)})
+    before = sorted((d["pivot"], d["euler"]) for d in drops())
+    scene.turn(0)
+    assert sorted((d["pivot"], d["euler"]) for d in drops()) == before and scene.known
+    scene.turn(180)
+    run(scene, DT)
+    assert len(drops(BEEF)) == 2 and scene.known and sorted((d["pivot"], d["euler"]) for d in drops()) != before
+    assert scene.yaw == scene.space.yaw == scene.view.yaw == 180
+
+
+def testTheDisplayWithoutTheSceneIsDrawnWhereTheScenesPiecesWouldBe():
+    """没开站点、也没装前置包时世界里的展示（Client/BlockItems 按 Shared/Rules/BlockDisplay 摆）和场景里的画面是同一套：炉灶朝哪，
+    六件的水平位置和每件的朝向都一样（高度差一点点：展示是 FD 的 1.015 格，场景是实机标定的 16.3 像素）。"""
+    for aux in range(4):
+        world.reset()
+        world.blocks[POS] = ("arris:stove", aux)
+        Scenes._scenes.clear()
+        BlockItems._hidden.clear()
+        BlockItems._last.clear()
+        BlockItems._shown.clear()
+        BlockItems.show(0, POS, "stove", dict((str(place), item(BEEF)) for place in range(6)))
+        displayed = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4), tuple(round(v, 3) for v in d["euler"])) for d in drops(BEEF))
+        assert len(displayed) == 6
+        BlockItems.clear(0, POS)
+        assert drops() == []
+        Scenes.enable()
+        scene = Scenes.ensure(0, POS)
+        Scenes.OnStoveLook(payload(dict((place, slot(BEEF)) for place in range(6))))
+        run(scene, DT)
+        drawn = sorted((round(centerOf(d)[0], 4), round(centerOf(d)[2], 4), tuple(round(v, 3) for v in d["euler"])) for d in drops(BEEF))
+        assert drawn == displayed, aux
 
 
 if __name__ == "__main__":

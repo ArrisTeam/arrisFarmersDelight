@@ -76,7 +76,8 @@ def _style(spawn):
 
 
 def play(effects, where):
-    """放一串 StoveFx 的粒子和声音。where(place, offset) 把"哪一件 + 偏移"换成世界坐标（place 为 None 是烤架中心）。"""
+    """放一串 StoveFx 的粒子和声音。where(place, offset) 把"哪一件 + 偏移"换成世界坐标（place 为 None 是烤架中心）：位置跟着炉灶的朝向转
+    （WorldSpace.world，炉灶坐标 -> 世界）。速度（像素每秒）只有竖直的和对 90 度转动对称的随机抖动，不用跟着转。"""
     for effect in effects:
         if isinstance(effect, StoveFx.Sound):
             sound(effect.name, where(None, (0.0, 0.0, 0.0)), effect.volume, effect.pitch)

@@ -5,8 +5,9 @@
 placeOf（315-317）、yaw（220-222）、nearestFree（427-443）、onEvent（353-362）、onItemClick（417-423）。
 坐标是 JE 场景的像素（16 = 1 格），原点在方块西北下角，按"炉灶朝北、玩家站在北面"书写：+x 在画面左边，+z 朝远处，
 烤架面在 y = 16，件的中心 y = 16.02。两排各三件，0 1 2 在远处一排（从左到右），3 4 5 在近处一排；一件的边长 5 像素。
-本移植里件的位置固定在方块里（不随炉灶朝向转，世界里的展示 Shared/Rules/BlockDisplay.STOVE_SLOTS 用同一份），所以客户端
-要把这里的点按玩家所在的一侧换到站点空间（Compat/Diegesis/GrillView.py）；这个模块只管"炉灶朝北"那一份。
+这个模块只管"炉灶朝北"那一份，也就是站点空间：HoD 的炉灶站点是 Orientation.BLOCK（站点的北面是炉灶的正面），本移植也一样（前置包的朝向钩子，
+Compat/Diegesis/GrillView.py），所以这里的坐标直接用；炉灶朝别处时，场景里的画面和世界里的展示（Shared/Rules/BlockDisplay.STOVE_SLOTS 是同一份换成
+方块内的比例）按 Shared/Rules/StoveFacing 绕方块中心转到世界。
 """
 PLACES = 6                   # Grill.PLACES
 TOP = 16.02                  # 件的中心离方块底的高度，px（StoveBehavior.java:44）
@@ -32,7 +33,7 @@ def placeOf(place):
 
 
 def blockFractions():
-    """六件在方块里的位置（占方块宽的比例 x, z）：世界里展示用（BlockDisplay.STOVE_SLOTS），和开着站点时的画面对得上。"""
+    """六件在方块里的位置（占方块宽的比例 x, z，炉灶朝北的那一份）：世界里展示用（BlockDisplay.STOVE_SLOTS），炉灶朝别处时 StoveFacing 转过去。"""
     return tuple((x / 16.0, z / 16.0) for x, z in PIECE_AT)
 
 

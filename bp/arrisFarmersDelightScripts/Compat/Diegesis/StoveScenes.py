@@ -14,7 +14,7 @@ from ...Client import BlockItems
 from ...Client.Engine import compFactory, levelId, playerId, unwrapDeep, blockEntityExData
 from ...QuModLibs.Client import AllowCall, Listen
 from ...Shared.Data.Cooking import StoveList
-from ...Shared.Rules import StoveLookState
+from ...Shared.Rules import StoveFacing, StoveLookState
 
 NEAR, FAR = 24.0, 48.0          # 格：近处每帧、带粒子声音；到 FAR 为止隔帧算；再远不算（同煎锅）
 FAR_EVERY = 4
@@ -46,14 +46,14 @@ def _currentDimension():
 
 
 def ensure(dimensionId, pos):
-    """这个位置的炉灶场景，没有就建（那里不是炉灶返回 None）。"""
+    """这个位置的炉灶场景，没有就建（那里不是炉灶返回 None）；场景记着炉灶的朝向（方块的 aux），件和动作都按它转。"""
     key = _key(dimensionId, pos)
     scene = _scenes.get(key)
     if scene is None:
         block = compFactory.CreateBlockInfo(levelId).GetBlock(key[1])
         if not block or block[0] not in StoveList:
             return None
-        scene = _scenes[key] = StoveScene(dimensionId, key[1])
+        scene = _scenes[key] = StoveScene(dimensionId, key[1], StoveFacing.yawOfAux(block[1]))
         BlockItems.hide(dimensionId, key[1], True)       # 烤架上的东西从此由场景画
     return scene
 
@@ -78,6 +78,8 @@ def OnBlockEntityLoaded(args):
     if scene is None:
         return
     if known is not None:
+        block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
+        scene.turn(StoveFacing.yawOfAux(block[1] if block else 0))       # 重建时方块的朝向可能不是建场景时那个
         scene.rebuilt()
     exData = blockEntityExData(pos)
     saved = dict((name, unwrapDeep(exData.get(name))) for name in [str(place) for place in range(StoveLookState.PLACES)] + [StoveLookState.SAVE_KEY])

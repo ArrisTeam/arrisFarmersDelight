@@ -32,7 +32,7 @@ def testWhatOpensTheGrill():
 
 
 def testSixPlacesAndTheSameTableAsTheSkillet():
-    assert Rules.PLACES == 6 and Rules.slotCenter(0) == (0.8, 0.7), "HoD 场景的 piece_0：(12.8, 11.2) / 16"
+    assert Rules.PLACES == 6 and not hasattr(Rules, "slotCenter"), "烤位的位置在 StoveLayout（HoD 场景的像素）和 StoveFacing，不在站点规则里"
     assert Rules.canGrill("minecraft:beef") and Rules.grilledOf("minecraft:beef") == "minecraft:cooked_beef"
     assert Rules.STOVE_BLOCKS is Cooking.StoveList, "附属包追加的炉灶也开站：用同一个列表对象"
 

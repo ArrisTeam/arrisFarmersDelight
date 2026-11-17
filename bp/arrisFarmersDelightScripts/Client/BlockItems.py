@@ -10,7 +10,7 @@
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import addDropItem, compFactory, levelId, unwrapDeep, blockEntityExData
 from ..Shared.Data.Cooking import StoveList
-from ..Shared.Rules import BlockDisplay, ItemPose, PotModelMath
+from ..Shared.Rules import BlockDisplay, ItemPose, PotModelMath, StoveFacing
 from ..Shared.Rules.HandsOn import BoardScene
 
 BOARD_BLOCKS = ("arris:cutting_board",)
@@ -48,6 +48,12 @@ def _boardOffset(pos):
     block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
     dx, dz = PotModelMath.localToWorld(PotModelMath.facingOf(block[1] if block else 0), BoardScene.BASE_X - 8.0, BoardScene.BASE_Z - 8.0)
     return (dx / 16.0, dz / 16.0)
+
+
+def _stoveYaw(pos):
+    """炉灶的朝向（度）：烤位的位置和每件的转角跟着炉灶转（FD 的 DefaultStoveRenderer 按 FACING 转）；方块读不到按 aux 0。"""
+    block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
+    return StoveFacing.yawOfAux(block[1] if block else 0)
 
 
 def clear(dimensionId, pos):
@@ -92,7 +98,8 @@ def show(dimensionId, pos, kind, items):
     itemComp = compFactory.CreateItem(levelId)
     shown = []
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
-    for placement in BlockDisplay.layout(kind, items, _itemType, pos, offset):
+    yaw = _stoveYaw(pos) if kind == BlockDisplay.KIND_STOVE else 0
+    for placement in BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw):
         center = (pos[0] + placement.center[0], pos[1] + placement.center[1], pos[2] + placement.center[2])
         if placement.flat:
             matrix = ItemPose.flatMatrix(placement.direction[0], placement.direction[1])

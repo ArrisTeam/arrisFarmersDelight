@@ -13,9 +13,10 @@
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
   既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
 站点朝哪：炉灶是 JE 的 Orientation.BLOCK，登记时给前置包 facing 钩子（facingOf）：站点的北面永远是炉灶方块的正面，镜头永远在正面，
-从背面、侧面右键也一样（服务端的 GrillOpen.facingOf 说同一个答案）。件的位置固定在方块里（炉灶朝北的那一份），换到站点空间（GrillSpace.Space）；
-命中盒、世界里的展示和这里画的对得上。
-开站时场景交给本人的有三样：从屏幕下沿飞来的起点、站点方向换成场景方向的法子（被拒的虚影往自己这边弹）、"我开着站点"（自己翻的不重复演）。
+从背面、侧面右键也一样（服务端的 GrillOpen.facingOf 说同一个答案）。所以站点空间就是炉灶朝向的空间，HoD 场景（stove.json）里的像素坐标
+（六件的位置、命中盒）直接用，不用换；场景里的画面、世界里的展示（Shared/Rules/BlockDisplay）按同一个朝向转到世界（Shared/Rules/StoveFacing），
+炉灶朝哪都对得上。
+开站时场景交给本人的有两样：从屏幕下沿飞来的起点、"我开着站点"（自己翻的不重复演）。
 """
 from . import BookSources, StoveScenes
 from .GrillSpace import Space
@@ -39,7 +40,7 @@ class GrillViewMixin(object):
 
     def __init__(self, view):
         super(GrillViewMixin, self).__init__(view)
-        self.space = None                      # onOpen 里建：服务端的 Opened 可能改了朝向（view.yaw），之后才算坐标
+        self.space = None                      # onOpen 里建
         self.scene = None                      # 这座炉灶的场景：画面、动作、声音都在它那里（没装场景时是 None，只剩点击和托盘）
 
     # ---------------------------------------------------------------- 钩子
@@ -51,10 +52,13 @@ class GrillViewMixin(object):
         return group == Rules.GROUP_GRILL and Rules.mayPlace(item)
 
     def onOpen(self):
+        wanted = facingOf(self.view.pos, self.view.dimensionId)
+        if self.view.yaw != wanted:      # 站点的坐标按炉灶朝向写：前置包没按朝向钩子开站（服务端给了别的朝向）就不能用，关站比摆错位置强
+            raise RuntimeError("炉灶站点的朝向 %s 和炉灶方块的 %s 对不上（前置包的朝向钩子没生效？）" % (self.view.yaw, wanted))
         self.space = Space(self.view)
         self.scene = StoveScenes.ensure(self.view.dimensionId, self.view.pos)
         if self.scene is not None:
-            self.scene.focus(self.space.fromPlayerInWorld, self.space.turn)
+            self.scene.focus(self.space.fromPlayer)
         BookSources.attach(self.view, "grill")
 
     def onClose(self):
@@ -80,12 +84,12 @@ class GrillViewMixin(object):
         if self.scene is None:
             return []
         if self.view.hand is not None:
-            return [self.space.box(self.api, "mouth", *StoveLayout.MOUTH_BOX)]
+            return [self.api.box("mouth", *StoveLayout.MOUTH_BOX)]
         boxes = []
         for place in range(StoveLayout.PLACES):
             if self.scene.pieces.shown[place] is not None:
                 lo, hi = StoveLayout.pieceBox(place)
-                boxes.append(self.space.box(self.api, "piece", lo, hi, place))
+                boxes.append(self.api.box("piece", lo, hi, payload=place))
         return boxes
 
     # ---------------------------------------------------------------- 指针
@@ -149,12 +153,12 @@ def facingOf(pos, dimensionId):
 
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
-    炉灶站点要前置包 API 2（托盘、手上的物品栈）：太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。
-    朝向钩子（FACING_HOOK）是新版前置包才有的可选参数：老版本的 registerBehavior 不认 facing，这时不传，站点朝着玩家所在的一侧。"""
-    if getattr(api, "API_VERSION", 0) < 2:
+    炉灶站点要前置包 API 2（托盘、手上的物品栈）和朝向钩子（FACING_HOOK，站点的北面是炉灶的正面：场景、命中盒、世界里的展示都按这个空间写）：
+    太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。"""
+    if getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
         return None
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
-    hooks = {"facing": facingOf} if getattr(api, "FACING_HOOK", False) else {}
-    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation, **hooks)
+    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation,
+                         facing=facingOf)
     return behaviorClass

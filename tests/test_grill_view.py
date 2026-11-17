@@ -3,7 +3,8 @@
 """炉灶站点开着的人的那一层（Compat/Diegesis/GrillView.py + GrillSpace.py）：用前置包客户端的假引擎（dgstation）驱动真的 StationView，
 从指针点击一路看到发出的动作、场景里摆下的客户端掉落物。烤架上的画面（落下 / 翻面 / 取走的动作、热气、声音）是谁都看得见的场景，
 在 test_stove_scene.py 里测；这里测站点这一层和场景的接口：命中盒和场景画的对得上、开站把飞入的起点和方向交给场景、
-自己翻的不重复演、被拒的虚影往开站点的人这边弹。对应 Hands-On Delight 的 StoveBehavior（onEvent / onItemClick）。"""
+自己翻的不重复演、被拒的虚影往炉灶的正面弹；站点的北面是炉灶的正面（前置包的朝向钩子），所以站点空间就是炉灶朝向的空间，场景文件里的像素坐标直接用。
+对应 Hands-On Delight 的 StoveBehavior（onEvent / onItemClick）和 StoveStation（Orientation.BLOCK）。"""
 from __future__ import print_function
 
 import importlib
@@ -118,8 +119,15 @@ def lookOf(pieces, data):
     return State.decode({"slots": slots})
 
 
-def make(yaw=0, pieces=None, data=None):
-    """打开着的炉灶站点：yaw 是玩家所在的一侧（0 北、90 东……），pieces 是 {位置: 物品}，data 是两面烤到哪。场景已经画好（走了一帧）。"""
+FRONT = {0: (0.0, 1.0), 1: (-1.0, 0.0), 2: (0.0, -1.0), 3: (1.0, 0.0)}     # direction 状态 -> 炉灶的正面朝哪（世界 (dx, dz)）
+YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}                                   # 站点的北面转到炉灶的正面那一侧（度）
+SIDES = {0: (10.5, 64.0, 5.0), 90: (15.0, 64.0, 10.5), 180: (10.5, 64.0, 15.0), 270: (5.0, 64.0, 10.5)}     # 玩家站在炉灶的北 / 东 / 南 / 西
+
+
+def make(aux=2, pieces=None, data=None):
+    """打开着的炉灶站点：aux 是炉灶方块的朝向状态（0 南 1 西 2 北 3 东，缺省朝北）；站点的北面是炉灶的正面，开站的人站在哪一侧不影响。
+    pieces 是 {位置: 物品}，data 是两面烤到哪。场景已经画好（走了一帧）。"""
+    yaw = YAW_OF_AUX[aux]
     world.reset()
     del _hidden[:]
     Scenes._scenes.clear()
@@ -127,6 +135,7 @@ def make(yaw=0, pieces=None, data=None):
     factory.recorder = Recorder()
     random.seed(3)
     world.blocks[STOVE] = "arris:stove"
+    world.blockAux[STOVE] = aux
     behaviorClass = GrillView.register(Api)
     entry = Registry.getBehavior("arris:stove")
     view = View.StationView(entry, STOVE, 0, yaw, Ports.Ports(lambda: shot(yaw)))
@@ -223,18 +232,13 @@ def testTheStationHandsItsHandToTheSceneAndTakesItBackWhenItCloses():
     view = make(pieces={0: item(BEEF)})
     scene = Scenes.sceneAt(0, STOVE)
     assert view.behavior.scene is scene and scene.focused, "本人开着站点"
-    assert scene.space.starts == view.behavior.space.fromPlayerInWorld and scene.space.turner == view.behavior.space.turn
+    assert scene.space.starts == view.behavior.space.fromPlayer
     view.behavior.onClose()
-    assert not scene.focused and scene.space.starts is None and scene.space.turner is None
+    assert not scene.focused and scene.space.starts is None
     assert len(drops()) == 1, "站点关了，烤架上的东西还在场景里"
 
 
 # ---------------------------------------------------------------- 站点朝哪（JE 的 Orientation.BLOCK）
-
-FRONT = {0: (0.0, 1.0), 1: (-1.0, 0.0), 2: (0.0, -1.0), 3: (1.0, 0.0)}     # direction 状态 -> 炉灶的正面朝哪（世界 (dx, dz)）
-YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}
-SIDES = {0: (10.5, 64.0, 5.0), 90: (15.0, 64.0, 10.5), 180: (10.5, 64.0, 15.0), 270: (5.0, 64.0, 10.5)}     # 玩家站在炉灶的北 / 东 / 南 / 西
-
 
 def testTheStationIsRegisteredWithTheBlockFacingHookThatSaysWhereTheStovesFrontIs():
     make()
@@ -262,19 +266,21 @@ def testTheCameraIsAtTheStovesFrontWhicheverSideThePlayerOpensFrom():
         assert abs(cam[0] - front[0] * 29.0 / 16.0) < 1.0e-6 and abs(cam[1] - front[1] * 29.0 / 16.0) < 1.0e-6, (aux, cam)
 
 
-def testAnOlderFrontDoorWithoutTheFacingHookStillRegistersAndFacesThePlayerAsBefore():
-    """FACING_HOOK 是新版前置包才有的名字；老版本的 registerBehavior 不认 facing 参数，传了会 TypeError：这时不传。"""
+def testAnOlderFrontDoorWithoutTheFacingHookGetsNoBehaviorAndTheStoveStaysClassic():
+    """FACING_HOOK 是新版前置包才有的名字（老版本的 registerBehavior 也不认 facing 参数，传了会 TypeError）。炉灶的场景、命中盒、世界里的展示
+    都按"站点的北面是炉灶的正面"写，站点朝着玩家站的那一侧就对不上：老版本上什么也不登记，炉灶照旧走经典玩法（和 API 太旧时一样）。"""
+    asked = []
+
     def oldRegister(stationId, blocks, factory=None, schema=None, sneakFallback=True, canOpen=None):
+        asked.append(stationId)
         return Registry.registerBehavior(stationId, blocks, factory, schema, sneakFallback, canOpen)
 
     class OldApi(object):
-        StationBehavior, box, API_VERSION, Schema = Registry.StationBehavior, staticmethod(View.box), 2, Schema
+        StationBehavior, box, API_VERSION, Schema = Registry.StationBehavior, staticmethod(View.box), 3, Schema
         registerBehavior = staticmethod(oldRegister)
 
     Registry.clearAll()
-    assert GrillView.register(OldApi) is not None
-    entry = Registry.getBehavior("arris:stove")
-    assert entry.facing is None and entry.canOpen is GrillView.opensStation, "朝着玩家所在的一侧，别的照旧"
+    assert GrillView.register(OldApi) is None and asked == [] and Registry.getBehavior("arris:stove") is None
 
 
 def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():
@@ -282,7 +288,7 @@ def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():
     del _hidden[:]
     Scenes._scenes.clear()
     behaviorClass = GrillView.register(Api)
-    view = View.StationView(Registry.getBehavior("arris:stove"), STOVE, 0, 0, Ports.Ports(lambda: shot(0)))
+    view = View.StationView(Registry.getBehavior("arris:stove"), STOVE, 0, 180, Ports.Ports(lambda: shot(180)))      # 空气的 aux 是 0：引擎的缺省朝南
     view.behavior = behaviorClass(view)
     view.behavior.onOpen()                                      # world.blocks 里那里是空气
     assert view.behavior.scene is None and view.behavior.pickables() == []
@@ -290,41 +296,54 @@ def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():
 
 # ---------------------------------------------------------------- 命中盒和场景对得上
 
-def testThePickBoxesSitWhereTheSceneDrawsThePiecesWhicheverSideThePlayerOpensFrom():
-    for yaw in (0, 90, 180, 270):
-        view = make(yaw=yaw, pieces=dict((place, item(BEEF)) for place in range(6)))
+def testThePickBoxesSitWhereTheSceneDrawsThePiecesWhicheverWayTheStoveFaces():
+    """站点空间和场景各用各的换算到世界（站点：前置包的 view.toWorld，朝向是钩子给的；场景：StoveFacing 按炉灶的朝向转），炉灶朝哪都落在同一点。"""
+    for aux in range(4):
+        view = make(aux=aux, pieces=dict((place, item(BEEF)) for place in range(6)))
         scene = view.behavior.scene
+        assert view.yaw == YAW_OF_AUX[aux] == scene.yaw == scene.space.yaw
         for place in range(6):
             station = view.toWorld(*view.behavior.space.centers()[place])
             there = scene.space.toWorld(*scene.space.centers()[place])
-            assert max(abs(a - b) for a, b in zip(station, there)) < 1.0e-6, (yaw, place, station, there)
+            assert max(abs(a - b) for a, b in zip(station, there)) < 1.0e-6, (aux, place, station, there)
         assert sorted(node.payload for node in view.behavior.pickables()) == list(range(6)), "六件各有一个盒子"
         for place in range(6):
             world.actions()
-            assert click(view, place), (yaw, place)
-            assert actions()[-1] == ("turn", {"place": place}), (yaw, place)
+            assert click(view, place), (aux, place)
+            assert actions()[-1] == ("turn", {"place": place}), (aux, place)
             view.behavior.scene.pieces.turnedAt[place] = -10.0          # 不管 0.3 秒的冷却，下一件接着点
             del world.calls[:]
 
 
-def testTheYawTheServerSendsAtOpenIsUsedNotTheClientsGuess():
-    """Controller 先按客户端猜的一侧建表现，服务端的 Opened 可能改 view.yaw，再调 onOpen：坐标要按改后的算。"""
-    reference = make(yaw=90, pieces={0: item(BEEF)})
-    want = reference.behavior.space.centers()
-    world.reset()
-    del _hidden[:]
-    Scenes._scenes.clear()
-    world.blocks[STOVE] = "arris:stove"
-    behaviorClass = GrillView.register(Api)
-    entry = Registry.getBehavior("arris:stove")
-    view = View.StationView(entry, STOVE, 0, 0, Ports.Ports(lambda: shot(90)))
-    view.behavior = behaviorClass(view)
-    view.opened = True
-    view.yaw = 90                                         # Opened 里服务端给的朝向
-    world.camera["pose"], world.camera["fov"] = shot(90)[0], 30.0
-    view.state.rawSetItem(("grill", 0), item(BEEF))
-    view.behavior.onOpen()
-    assert view.behavior.space.centers() == want
+def testThePickBoxesAreTheSceneFilesPixelsAsTheyAreSinceTheStationSpaceIsTheStovesOwn():
+    """站点空间就是炉灶朝向的空间：命中盒、六件的落点用 HoD 场景里的像素坐标，不用按玩家这一侧换（件的中心高度是实机标定的 16.3）。"""
+    view = make(aux=1, pieces=dict((place, item(BEEF)) for place in range(6)))
+    assert view.behavior.space.centers() == [(x, 16.3, z) for x, z in Layout.PIECE_AT]
+    boxes = dict((node.payload, node) for node in view.behavior.pickables())
+    for place in range(6):
+        lo, hi = Layout.pieceBox(place)
+        assert tuple(boxes[place].box) == tuple(lo) + tuple(hi), place
+    view.setHand(item(BEEF, 5))
+    mouth, = view.behavior.pickables()
+    assert mouth.key == "mouth" and tuple(mouth.box) == tuple(Layout.MOUTH_BOX[0]) + tuple(Layout.MOUTH_BOX[1])
+
+
+def testAStationThatDoesNotFaceTheStovesFrontIsRefusedAtOpenInsteadOfLayingThePiecesWrong():
+    """站点的坐标按炉灶朝向写：Opened 里服务端给的朝向（view.yaw）要是和炉灶方块的不一样（前置包没按朝向钩子开站），onOpen 抛错，
+    Controller 的 _guard 记下并关站——关站比把命中盒摆错了强。朝向对得上就照常。"""
+    view = make(aux=2)                                    # 炉灶朝北：站点朝向 0
+    behaviorClass = type(view.behavior)
+    for wrong in (90, 180, 270):
+        stray = View.StationView(view.entry, STOVE, 0, wrong, Ports.Ports(lambda: shot(wrong)))
+        stray.behavior = behaviorClass(stray)
+        try:
+            stray.behavior.onOpen()
+        except RuntimeError as error:
+            assert str(wrong) in str(error) and "0" in str(error)
+        else:
+            raise AssertionError("朝向 %s 和炉灶的 0 对不上，应该拒绝" % wrong)
+        assert stray.behavior.scene is None, "没来得及接场景，也没把手交给它"
+    assert view.behavior.scene is not None and view.behavior.space is not None
 
 
 # ---------------------------------------------------------------- 手
@@ -432,44 +451,46 @@ def testRightClickingElsewhereWithAStackInHandIsLeftToTheKernelToPutAway():
 # ---------------------------------------------------------------- 开着站点才有的演法
 
 def testSeveralPiecesTheCookLaysFlyInFromTheScreensBottomOneAfterTheOther():
-    view = make()
-    scene = view.behavior.scene
-    scene.apply({"dimensionId": 0, "pos": list(STOVE), "slots": [{"item": item(BEEF), "hand": True, "down": 0.0, "up": 0.0}] * 3 + [{}] * 3})
-    run(view, DT)
-    pieces = scene.pieces
-    assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, False, False], "后面的先等着"
-    offset = pieces.motion[0].pose()[0]
-    assert offset[2] < -5.0, "从屏幕下沿那边（离相机近的一侧）飞来"
-    run(view, 1.0)
-    assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, True, True] and len(drops()) == 3
-
-
-def testARefusedStackBouncesTowardTheCookWhicheverSideHeStandsOn():
-    for yaw in (0, 90, 180, 270):
-        view = make(yaw=yaw)
-        serverEvent("refused", stack=item(BEEF))
+    """从屏幕下沿飞来：站点空间就是炉灶朝向的空间，镜头永远在炉灶的正面（-z），所以炉灶朝哪，起点都在件的 -z 一侧。"""
+    for aux in range(4):
+        view = make(aux=aux)
         scene = view.behavior.scene
-        middle = scene.space.toWorld(*scene.space.middle())
-        run(view, 0.3)
-        assert len(drops()) == 1
-        here = centerOf(drops()[0])
-        back = (view.toWorld(0.0, 0.0, -6.0)[0] - view.toWorld(0.0, 0.0, 0.0)[0], view.toWorld(0.0, 0.0, -6.0)[2] - view.toWorld(0.0, 0.0, 0.0)[2])
-        moved = (here[0] - middle[0], here[2] - middle[2])
-        assert abs(moved[0] - back[0] * 0.95) < 0.03 and abs(moved[1] - back[1] * 0.95) < 0.03, (yaw, moved, back)
-        run(view, 0.4)
-        assert drops() == []
+        scene.apply({"dimensionId": 0, "pos": list(STOVE), "slots": [{"item": item(BEEF), "hand": True, "down": 0.0, "up": 0.0}] * 3 + [{}] * 3})
+        run(view, DT)
+        pieces = scene.pieces
+        assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, False, False], "后面的先等着"
+        offset = pieces.motion[0].pose()[0]
+        assert offset[2] < -5.0, (aux, "从屏幕下沿那边（离相机近的一侧）飞来")
+        run(view, 1.0)
+        assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, True, True] and len(drops()) == 3
 
 
-def testAnOnlookerWithoutTheStationSeesTheRefusedStackBounceNorth():
-    view = make()
-    view.behavior.onClose()
+def _bounce(view):
+    """被拒的一件虚影弹开 0.3 秒后离烤架中心多远（世界的 (dx, dz)），和"炉灶的正面方向走 6 像素"（站点 -z 方向）的世界位移。"""
     serverEvent("refused", stack=item(BEEF))
     scene = Scenes.sceneAt(0, STOVE)
     middle = scene.space.toWorld(*scene.space.middle())
-    for _ in range(18):
+    for _ in range(int(round(0.3 / DT))):
         scene.frame(DT, True)
+    assert len(drops()) == 1
     here = centerOf(drops()[0])
-    assert abs(here[0] - middle[0]) < 0.03 and here[2] - middle[2] < -0.3, "没有开站点的人没有自己这边可言：往 -z（北）弹"
+    return (here[0] - middle[0], here[2] - middle[2])
+
+
+def testARefusedStackBouncesTowardTheStovesFrontWhicheverWayItFacesAndWhoeverLooks():
+    """HoD 的 REFUSED：虚影往 -z（站点的北面，炉灶的正面）弹 6 像素。站点空间就是炉灶朝向的空间，所以谁看都往炉灶的正面弹：
+    开着站点的人和旁观的人（没开站点）看到的一样，不再是"自己这边 / 北"两样。"""
+    for aux, front in sorted(FRONT.items()):
+        for watching in (True, False):
+            view = make(aux=aux)
+            if not watching:
+                view.behavior.onClose()
+            moved = _bounce(view)
+            assert abs(moved[0] - front[0] * 6.0 / 16.0 * 0.95) < 0.03 and abs(moved[1] - front[1] * 6.0 / 16.0 * 0.95) < 0.03, (aux, watching, moved)
+            scene = Scenes.sceneAt(0, STOVE)
+            for _ in range(int(round(0.4 / DT))):
+                scene.frame(DT, True)
+            assert drops() == [], "弹完收掉"
 
 
 def testHoveringAPieceGivesNoFeedbackAsInJava():

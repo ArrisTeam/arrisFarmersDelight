@@ -143,7 +143,8 @@ def testTheServerHookReadsTheBlocksAuxFromTheEngineAndGivesTheSameAnswerAsTheCli
 
 
 def testAnOlderKernelWhoseStationTypeKnowsNoCanOpenStillGetsTheStove():
-    """前置包是老版本（StationType 没有 canOpen 参数、也不读它）：登记照常成功，炉灶照旧只靠客户端预判。"""
+    """前置包的 StationType 没有 canOpen、facing 这两个构造参数（也不读 canOpen）、但认朝向钩子（FACING_HOOK）：登记照常成功，
+    两个钩子都是事后设的属性；炉灶照旧只靠客户端预判开不开。"""
     registered = []
 
     class OldStationType(object):
@@ -152,6 +153,7 @@ def testAnOlderKernelWhoseStationTypeKnowsNoCanOpenStillGetsTheStove():
 
     class OldApi(object):
         API_VERSION = 3
+        FACING_HOOK = True
         StationLogic = Api.StationLogic
         SlotRules = Api.SlotRules
         StationSchema = Api.StationSchema
@@ -160,6 +162,26 @@ def testAnOlderKernelWhoseStationTypeKnowsNoCanOpenStillGetsTheStove():
 
     logicClass = K.GrillLogic.register(OldApi)
     assert logicClass is not None and len(registered) == 1 and registered[0].stationId == Rules.STATION_ID
+    assert registered[0].canOpen is GrillOpen.opensStation and registered[0].facing is GrillOpen.facingOf
+
+
+def testAKernelWithoutTheFacingHookGetsNoStoveSoTheStoveStaysClassicOnBothEnds():
+    """站点的几何都按"站点的北面是炉灶的正面"写：前置包没有朝向钩子（FACING_HOOK，老版本）时服务端也不登记，和客户端的 GrillView.register
+    同一个条件，两端一起没有，炉灶照旧走经典玩法（Server/Stove.py）。"""
+    registered = []
+
+    class OldApi(object):
+        API_VERSION = 3
+        StationLogic = Api.StationLogic
+        SlotRules = Api.SlotRules
+        StationSchema = Api.StationSchema
+        StationType = Api.StationType
+        registerStation = staticmethod(registered.append)
+
+    assert K.GrillLogic.register(OldApi) is None and registered == []
+    OldApi.API_VERSION = 1
+    OldApi.FACING_HOOK = True
+    assert K.GrillLogic.register(OldApi) is None and registered == [], "API 太旧也不登记（原来就是这样）"
 
 
 if __name__ == "__main__":

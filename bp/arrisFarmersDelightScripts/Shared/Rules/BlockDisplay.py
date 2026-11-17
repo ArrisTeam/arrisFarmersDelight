@@ -7,11 +7,13 @@
   再垫一张；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。大小、层的偏转偏移都和砧板站点里本人看到的一样（HandsOn/BoardScene），
   开站、关站时板上的东西不跳。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
-- 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物。
+- 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物；位置和每件的转角跟着炉灶朝向转（StoveFacing：FD 的
+  DefaultStoveRenderer 按 FACING 转、HoD 的炉灶站点是 Orientation.BLOCK），开着站点、谁都看得见的场景、这里的展示是同一套。
 - 砧板摆盘（场景交互 · 前置在场时）：一层层叠起来；做好的菜平躺在中间。
 """
 import math
 
+from . import StoveFacing
 from .HandsOn import BoardScene, StoveLayout
 from .Ticks import posHash
 
@@ -23,7 +25,7 @@ BOARD_TOP = 1.0 / 16.0
 SKILLET_FLOOR = 1.5 / 16.0
 STOVE_TOP = 1.0
 LAYER_STEP = 0.037
-STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六个烤位的位置（炉灶朝北的那一份），开着站点时画面对得上
+STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六个烤位的位置（炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
 TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 FOOD_SCALE = 1.2
@@ -133,22 +135,24 @@ def skilletLayout(item, seed):
     return placements
 
 
-def stoveLayout(slots):
-    """slots：{"0": 物品或 None/{}, ...}。每件各转一点（StoveLayout.yawOf，HoD 场景里"手放的、没有两件同向"），
-    转的是世界里的方向，所以开着站点的人从哪一侧看，画面都和这里对得上。"""
+def stoveLayout(slots, yaw=0):
+    """slots：{"0": 物品或 None/{}, ...}。每件各转一点（StoveLayout.yawOf，HoD 场景里"手放的、没有两件同向"）。
+    yaw 是炉灶朝向（度，北 0 / 东 90 / 南 180 / 西 270，StoveFacing.yawOfAux）：六个烤位的位置和每件的转角都绕方块中心跟着转，
+    所以开着站点的人、场景里的东西、这里的展示，炉灶朝哪都对得上。"""
     placements = []
     for index, (x, z) in enumerate(STOVE_SLOTS):
         item = slots.get(str(index))
         if isItem(item):
             turn = math.radians(StoveLayout.yawOf(index))
-            placements.append(Placement(_single(item), (x, STOVE_TOP + 0.015, z), True, (math.cos(turn), -math.sin(turn)), 0.0,
-                                        STOVE_SCALE))
+            cx, cz = StoveFacing.turnFraction(yaw, x, z)
+            direction = StoveFacing.turnOffset(yaw, math.cos(turn), -math.sin(turn))
+            placements.append(Placement(_single(item), (cx, STOVE_TOP + 0.015, cz), True, direction, 0.0, STOVE_SCALE))
     return placements
 
 
-def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0)):
+def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0), yaw=0):
     """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标；
-    offset 只有砧板用：板底座中间离方块中心的量（方块分数）。"""
+    offset 只有砧板用：板底座中间离方块中心的量（方块分数）；yaw 只有炉灶用：炉灶朝向（度，StoveFacing.yawOfAux）。"""
     if kind == KIND_BOARD:
         layers = [items.get(layerKey(index)) for index in range(DISH_LAYERS)]
         if isItem(items.get(DISH_KEY)) or any(isItem(layer) for layer in layers):
@@ -158,5 +162,5 @@ def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0)):
     if kind == KIND_SKILLET:
         return skilletLayout(items.get("0"), posHash(pos))
     if kind == KIND_STOVE:
-        return stoveLayout(items)
+        return stoveLayout(items, yaw)
     return []

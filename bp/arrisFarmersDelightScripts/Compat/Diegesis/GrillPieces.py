@@ -4,7 +4,8 @@
 对应 Hands-On Delight：client/StoveBehavior.java 的 refresh / draw / turned / taken / onEffect / heat。状态是"每个烤位里是什么，
 每件两面烤到哪了、是不是手放的"（view.state / view.data），动作的数学在 Shared/Rules/HandsOn/StoveMotion.py，热气的日程在 StoveFx.py，
 这里只把它们接到客户端道具（view.props，客户端掉落物）和粒子声音（GrillFx.py）上。谁都看得见的场景（StoveScene.py）拥有它，
-view 是 StoveWorld.WorldView，space 是 GrillSpace.WorldSpace：
+view 是 StoveWorld.WorldView，space 是 GrillSpace.WorldSpace，都在炉灶朝向的站点空间里（站点的北面是炉灶的正面，HoD 场景里的像素坐标直接用，
+炉灶朝哪由 WorldSpace / WorldView 转到世界，这里不管）：
 - 每件一个道具，平躺在烤位上，每件朝向不同；朝上那面熟了画熟的图，否则画生的（掉落物不能染色，JE 的焦色染不了）；
 - 一件新放上来：从上面落下带一跳，落地冒汽、嗞一声；一次放好几件（Shift 点托盘、拿着一叠点烤架）：开着站点的人从屏幕下沿飞来，
   旁观的人从正上方落下，一件接一件；
@@ -49,7 +50,7 @@ class Pieces(object):
         self.turnedAt = [-10.0] * PLACES
         self.newUp = [0.0] * PLACES                          # 这一翻翻过来之后朝上那面的进度
         self.settleAt = [0.0] * PLACES                       # 朝上那面的样子变了、等到这时还没有翻面的效果就重画（0 = 没在等）
-        self.yaws = [StoveLayout.yawOf(place) + view.yaw for place in range(PLACES)]        # 世界里的朝向换到站点空间（站点按玩家所在的一侧转）
+        self.yaws = [StoveLayout.yawOf(place) for place in range(PLACES)]        # 每件摆的偏航（HoD 的 yaw，炉灶坐标里）
         self.motion = [StoveMotion.Piece(yaw) for yaw in self.yaws]
         self.props = [None] * PLACES                         # (物品名 key, 道具)
         self.last = [None] * PLACES
@@ -209,8 +210,8 @@ class Pieces(object):
             self._play(StoveFx.taken())
 
     def refused(self, stack):
-        """放不上去的一件：虚影从烤架中心上方落下，往后弹开（往开着站点的人这边弹，旁观的人看它往北弹）。"""
-        self.ghosts.refused(stack, self.space.middle(), self.space.turn)
+        """放不上去的一件：虚影从烤架中心上方落下，往后（-z，炉灶的正面、镜头那一侧）弹开：谁看都往炉灶的正面弹（JE 的 REFUSED）。"""
+        self.ghosts.refused(stack, self.space.middle())
         self._play(StoveFx.refused())
 
     def grilled(self, place):

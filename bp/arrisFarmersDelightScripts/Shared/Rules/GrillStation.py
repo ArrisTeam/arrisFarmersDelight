@@ -5,7 +5,8 @@
 每个烤位的两面进度在 HandsOn/Grill.py，烤位的位置和画法在 HandsOn/StoveLayout.py 等。
 炉灶一件 30 秒（和 JE 一样按营火配方的 600 刻，Server/Stove.py），手放的一件按 Grill.sideSeconds 算一面：30 / 1.5 / 2 = 10 秒；不看批量。
 能烤什么和煎锅同一张表（PanStation），但炉灶不收蛋（HoD 的 NOT_ON_GRILL：蛋会从烤架的缝里漏下去，煎锅才收；农夫乐事自己的右键仍然能放）。
-烤位坐标与 Shared/Rules/BlockDisplay.STOVE_SLOTS 一致（方块内的比例）。
+烤位的位置不在这里：HoD 场景里的像素坐标（HandsOn/StoveLayout，炉灶朝北那一份）就是站点空间，站点朝炉灶的正面（StoveFacing）；
+世界里的展示用同一份换成方块内的比例（BlockDisplay.STOVE_SLOTS）。
 """
 from ..Data.Cooking import StoveList
 from ..Data.Cutting import knifeList
@@ -26,11 +27,6 @@ CUTTING_TYPES = ("axe", "pickaxe", "hoe")                                # 砧�
 
 def sideSeconds():
     return Grill.sideSeconds(RECIPE_SECONDS)
-
-
-def slotCenter(place):
-    """第 place 个烤位在方块里的位置（方块内的比例 x, z）。"""
-    return STOVE_SLOTS[place]
 
 
 def canGrill(itemName):

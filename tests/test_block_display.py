@@ -62,6 +62,21 @@ def testTheStoveFillsItsSixPlaces():
     assert all(p.flat and p.center[1] > BD.STOVE_TOP for p in placed)
 
 
+def testTheStoveLayoutTurnsAboutTheBlockCentreWithTheStovesFacing():
+    """六个烤位和每件的转角跟着炉灶朝向转（FD 的 DefaultStoveRenderer 按 FACING 转）：朝向 yaw（度）= 站点的北面转到的那一侧；
+    第 0 件在朝北的炉灶上在方块的 (0.8, 0.7)，朝东 (0.3, 0.8)、朝南 (0.2, 0.3)、朝西 (0.7, 0.2)；不给朝向就是朝北。"""
+    slots = {"0": _item("minecraft:beef")}
+    north = BD.layout(BD.KIND_STOVE, slots, _typeOf, (0, 64, 0))
+    assert [(p.center[0], p.center[2]) for p in north] == [BD.STOVE_SLOTS[0]]
+    assert [(p.center, p.direction) for p in BD.layout(BD.KIND_STOVE, slots, _typeOf, (0, 64, 0), yaw=0)] == [(north[0].center, north[0].direction)]
+    for yaw, at in ((90, (0.3, 0.8)), (180, (0.2, 0.3)), (270, (0.7, 0.2))):
+        turned, = BD.layout(BD.KIND_STOVE, slots, _typeOf, (0, 64, 0), yaw=yaw)
+        assert abs(turned.center[0] - at[0]) < 1.0e-9 and abs(turned.center[2] - at[1]) < 1.0e-9, yaw
+        assert turned.center[1] == north[0].center[1] and turned.scale == north[0].scale and turned.flat
+        assert turned.direction != north[0].direction, "每件的朝向也转了"
+        assert abs(math.hypot(*turned.direction) - 1.0) < 1.0e-9
+
+
 def testPlaceholderValuesFromTheClientDrawNothing():
     """客户端读到的空值可能是整数之类的占位（实机：空砧板的 cuttingDict 读出来是整数）。"""
     for junk in (0, 2, "", [], {}, {"count": 3}, {"newItemName": "minecraft:beef", "count": 0}):
