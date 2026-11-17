@@ -2,10 +2,11 @@
 """molangkit - 测试里算粒子 / 动画文件里的 molang 表达式（离线测试公共小工具，不是测试本身）
 
 只认粒子文件里实际写过的子集：数字、variable.名字（调用时用关键字参数给，不带前缀）、+ - * /、括号、一元负号和 !、比较、&& ||、
-三元 a ? b : c，以及 math.sin / cos（molang 的角度用度）、pow、sqrt、max、min、abs、floor、clamp、lerp。认不出的写法直接抛错：
-文件换了写法，这里就要跟着改，不要悄悄算错。
+三元 a ? b : c，以及 math.sin / cos（molang 的角度用度）、pow、sqrt、max、min、abs、floor、clamp、lerp，和 math.random(低, 高)（要给 _random：
+一个收 (低, 高) 返回数的函数，比如取最小 / 最大值看范围）。认不出的写法直接抛错：文件换了写法，这里就要跟着改，不要悄悄算错。
 
     value("(0.0047 + variable.particle_random_1 * 0.0047) * 2", particle_random_1=0.5)
+    value("math.random(2.5, 4.95)", _random=lambda low, high: high)
 """
 import math
 import re
@@ -54,8 +55,8 @@ def _tokens(text):
 
 
 class _Parser(object):
-    def __init__(self, text, variables):
-        self.tokens, self.at, self.variables, self.text = _tokens(text), 0, variables, text
+    def __init__(self, text, variables, rand):
+        self.tokens, self.at, self.variables, self.text, self.rand = _tokens(text), 0, variables, text, rand
 
     def _peek(self):
         return self.tokens[self.at] if self.at < len(self.tokens) else (None, None)
@@ -120,18 +121,22 @@ class _Parser(object):
             return inner
         if kind == "name" and token.startswith("variable."):
             return self.variables[token[len("variable."):]]
-        if kind == "name" and token in _FUNCTIONS:
+        if kind == "name" and (token in _FUNCTIONS or token == "math.random"):
             self._take("(")
             args = [self._ternary()]
             while self._accept(","):
                 args.append(self._ternary())
             self._take(")")
+            if token == "math.random":
+                if self.rand is None:
+                    raise ValueError("math.random 要给 _random：%r" % self.text)
+                return self.rand(*args)
             return _FUNCTIONS[token](*args)
         raise ValueError("认不出 %r（在 %r 里）" % (token, self.text))
 
 
-def value(text, **variables):
+def value(text, _random=None, **variables):
     """算一个 molang 表达式；variables 是 variable.<名字> 的值，名字不带前缀。表达式里用到而没给的变量抛 KeyError。"""
     if isinstance(text, (int, float)):
         return float(text)
-    return _Parser(text, variables).parse()
+    return _Parser(text, variables, _random).parse()

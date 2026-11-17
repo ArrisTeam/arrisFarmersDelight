@@ -12,7 +12,6 @@
                 "oil": "entity_alphablend"
             },
             "animations": {
-                "sizzle_sound": "animation.skillet.sizzle",
                 "shelf": "animation.skillet.shelf",
                 "scene": "animation.skillet.scene"
             },
@@ -21,9 +20,6 @@
                 "controller.render.arris_skillet_glow",
                 "controller.render.arris_skillet_oil"
             ],
-            "sound_effects": {
-                "sizzle": "ambient.skillet.sizzle"
-            },
             "textures": {
                 "default": "textures/entity/skillet_item",
                 "glow": "textures/entity/outline_solid",
@@ -54,9 +50,6 @@
                     "variable.mod_oil_s3 = 0.0;"
                 ],
                 "animate": [
-                    {
-                        "sizzle_sound": "variable.mod_heat == 1.0 && variable.mod_scene < 0.5"
-                    },
                     {
                         "shelf": "variable.mod_shelf == 0.0"
                     },

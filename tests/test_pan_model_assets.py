@@ -82,17 +82,18 @@ def testTheSceneAnimationDrivesThePanAndTheOilFromInitializedVariables():
     assert scene["bones"]["oil_2"] == {"position": ["variable.mod_oil_x2", 0, "variable.mod_oil_z2"], "scale": "variable.mod_oil_s2"}
     used = set(re.findall(r"variable\.[a-z_0-9]+", json.dumps(scene)))
     assert used <= initialized(), used - initialized()
-    for old in ("animation.skillet.shelf", "animation.skillet.sizzle"):
-        assert old in load("animations", "skillet.animation.json")["animations"], "原来的两条动画还在"
+    animations = load("animations", "skillet.animation.json")["animations"]
+    assert "animation.skillet.shelf" in animations, "支架的动画还在"
+    assert "animation.skillet.sizzle" not in animations, "只要在热源上就每 15 秒响一声的嗞嗞动画没了：嗞嗞声改成 JE 那样锅里有东西才响（Client/SkilletSteam）"
 
 
 def testTheEntityKeepsItsOldBehaviourAndAddsTheScene():
     description = entity()
     assert description["identifier"] == "arris:skillet" and description["geometry"] == {"default": "geometry.skillet"}
-    assert description["animations"]["scene"] == "animation.skillet.scene" and "shelf" in description["animations"] and "sizzle_sound" in description["animations"]
+    assert description["animations"]["scene"] == "animation.skillet.scene" and "shelf" in description["animations"] and "sizzle_sound" not in description["animations"]
     animate = description["scripts"]["animate"]
-    assert {"sizzle_sound": "variable.mod_heat == 1.0 && variable.mod_scene < 0.5"} in animate and {"shelf": "variable.mod_shelf == 0.0"} in animate and "scene" in animate
-    assert {"variable.mod_heat", "variable.mod_shelf", "variable.mod_scene"} <= initialized(), "原来的两个变量照旧初始化"
+    assert {"shelf": "variable.mod_shelf == 0.0"} in animate and "scene" in animate and len(animate) == 2, "嗞嗞动画没了（只在热源上就响、空锅也响）：见 Client/SkilletSteam"
+    assert {"variable.mod_heat", "variable.mod_shelf", "variable.mod_scene"} <= initialized(), "原来的两个变量照旧初始化（mod_heat 现在由客户端脚本读）"
 
 
 def testTheRenderControllersPointAtWhatTheEntityDeclares():

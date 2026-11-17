@@ -15,6 +15,7 @@ from . import BlockEntityRestore  # noqa: F401
 from . import BlockItems  # noqa: F401
 from . import BlockSparkle  # noqa: F401
 from . import StoveFlame  # noqa: F401
+from . import SkilletSteam  # noqa: F401
 from . import Input  # noqa: F401
 from . import CookingPotUi  # noqa: F401
 from .Ui import CookingPotScreen  # noqa: F401

@@ -1,0 +1,71 @@
+{
+  "format_version": "1.10.0",
+  "particle_effect": {
+    "description": {
+      "identifier": "arris:skillet_steam",
+      "basic_render_parameters": {
+        "material": "particles_blend",
+        "texture": "textures/particle/steam_0"
+      }
+    },
+    "components": {
+      "minecraft:emitter_rate_instant": {
+        "num_particles": 1
+      },
+      "minecraft:emitter_lifetime_once": {
+        "active_time": 0.05
+      },
+      "minecraft:emitter_shape_point": {
+        "offset": [
+          0,
+          0.3,
+          0
+        ],
+        "direction": [
+          0,
+          1,
+          0
+        ]
+      },
+      "minecraft:particle_initial_speed": "(math.random(0, 1) < 0.5 ? 0.1 : 0.3) + math.random(0, 0.04)",
+      "minecraft:particle_lifetime_expression": {
+        "max_lifetime": "math.random(2.5, 4.95)"
+      },
+      "minecraft:particle_motion_dynamic": {
+        "linear_acceleration": [
+          0,
+          0,
+          0
+        ]
+      },
+      "minecraft:particle_appearance_billboard": {
+        "size": [
+          "0.2 + variable.particle_random_1 * 0.2",
+          "0.2 + variable.particle_random_1 * 0.2"
+        ],
+        "facing_camera_mode": "lookat_xyz",
+        "uv": {
+          "texture_width": 16,
+          "texture_height": 16,
+          "uv": [
+            0,
+            0
+          ],
+          "uv_size": [
+            16,
+            16
+          ]
+        }
+      },
+      "minecraft:particle_appearance_tinting": {
+        "color": [
+          1,
+          1,
+          1,
+          "0.6 * (1 - math.clamp((variable.particle_age - (variable.particle_lifetime - 1.5)) / 1.5, 0, 1))"
+        ]
+      },
+      "minecraft:particle_appearance_lighting": {}
+    }
+  }
+}

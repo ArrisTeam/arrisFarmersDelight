@@ -10,15 +10,6 @@
 				}
 			}
 		},
-		"animation.skillet.sizzle": {
-			"loop": true,
-			"animation_length": 15,
-			"sound_effects": {
-				"0.0": {
-					"effect": "sizzle"
-				}
-			}
-		},
 		"animation.skillet.scene": {
 			"loop": true,
 			"bones": {

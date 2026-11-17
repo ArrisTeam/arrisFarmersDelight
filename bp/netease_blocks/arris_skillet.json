@@ -49,8 +49,12 @@
                     ]
                 }
             },
+            "netease:block_animate_random_tick": {
+                "send_event": true,
+                "trigger_rate": 1.0
+            },
             "netease:block_entity": {
-                "client_tick": false,
+                "client_tick": true,
                 "movable": false,
                 "tick": true
             },
