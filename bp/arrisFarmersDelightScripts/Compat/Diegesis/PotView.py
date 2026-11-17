@@ -10,7 +10,7 @@
 - 锅身描一圈同样的亮边（pot.setOutlined(offering)，判定在 PotOffer.offering）：手上的东西放得进、光标在锅口上；拿着盛这道菜的
   容器、光标在汤上；悬着碗；
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
-  （左键整叠、右键一个），拿着盛这道菜的容器点锅 = 盛一份（Shift 全盛）；
+  （左键整叠、右键一个），拿着盛这道菜的容器点锅口、勺柄、漂着的料、盛好的那格 = 盛一份（Shift 全盛，哪个键都行；能点的盒子在 PotPick.py）；
 - 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
   和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只半透明的容器，点一下盛一份；汤里有倒进去 / 打进去 / 化掉的
   东西（牛奶、鸡蛋、糖）时光标在汤面上悬出要取回的那样，点一下取回最后放的。拿在手上的东西点托盘的格子放回背包。
@@ -19,21 +19,17 @@
 徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
-from . import BookSources, PotScenes
+from . import BookSources, PotPick, PotScenes
 from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import PotStation as Rules
-from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotSpoonMotion
+from ...Shared.Rules.HandsOn import PotDrift, PotSpoonMotion
 
 CAMERA = {"pos": (8.0, 41.0, -21.0), "target": (8.0, 6.5, 8.0), "fov": 30.0, "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
-MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时整口锅都是它
-SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))          # 悬着碗的时候才接点击（offerBowl 里 soup.setEnabled）
-SUNK_HALF = 0.3                                     # 取回沉下去的料：贴着汤面上下各 0.3 的一层（sunk 节点），漂着的料比它高
-ITEM_HALF, ITEM_TALL = 1.6, 0.3                     # 漂着的料的命中盒：左右各 1.6，上下各 0.3
-SLOT_SIZE = 3.2                                     # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
+SLOT_SIZE = 3.2                                    # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）
 
@@ -107,34 +103,8 @@ class PotViewMixin(object):
         """锅自己的坐标 -> 站点像素。"""
         return self.view.toStation(*self.scene.world(x, y, z))
 
-    def _box(self, key, lo, hi, payload=None):
-        a, b = self.toStation(*lo), self.toStation(*hi)
-        return self.api.box(key, tuple(min(a[i], b[i]) for i in range(3)), tuple(max(a[i], b[i]) for i in range(3)), payload=payload)
-
     def pickables(self):
-        scene = self.scene
-        if scene is None or scene.look is None:
-            return []
-        if self.view.hand is not None:
-            return [self.api.box("mouth", MOUTH[0], MOUTH[1])]
-        lo, hi = scene.spoon.pickAabb()
-        boxes = [self._box("ladle", (8.0 + lo[0], lo[1], 8.0 + lo[2]), (8.0 + hi[0], hi[1], 8.0 + hi[2]))]
-        drift, look = scene.drift, scene.look
-        for slot in range(len(look.items)):
-            if look.items[slot] is not None and drift.visible[slot] and not drift.waiting[slot]:
-                x, y, z = drift.x[slot], drift.y[slot], drift.z[slot]
-                boxes.append(self._box("item", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
-                                       (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF), slot))
-        if look.served is not None:
-            x, y, z = PotDriftExtras.servedAt(scene.liquid.surfaceY())
-            boxes.append(self.api.box("served", (x - ITEM_HALF, y - ITEM_TALL, z - ITEM_HALF),
-                                      (x + ITEM_HALF, y + ITEM_TALL, z + ITEM_HALF)))
-        if self.serve.offer is not None and self.serve.offered is not None:
-            boxes.append(self.api.box("soup", SOUP[0], SOUP[1]))
-        elif self.serve.takesBack:
-            level = scene.liquid.surfaceY()
-            boxes.append(self.api.box("sunk", (SOUP[0][0], level - SUNK_HALF, SOUP[0][2]), (SOUP[1][0], level + SUNK_HALF, SOUP[1][2])))
-        return boxes
+        return PotPick.boxes(self)
 
     # ---------------------------------------------------------------- 指针
 
@@ -196,16 +166,14 @@ class PotViewMixin(object):
             self.hover, self.ray, self.scene.aim = (None, None), None, None
 
     def _withStack(self, event, key):
-        """手上拿着东西点锅：盛这道菜的容器 = 盛一份（Shift 全盛，哪个键都行：PotBehavior.onItemClick 不看 button）；
-        别的 = 放进第一格放得下的（左键整叠、右键一个）。"""
+        """手上拿着东西点锅：盛这道菜的容器 = 盛一份，点到锅口、勺柄、漂着的料、盛好的那格哪个都行（带碰撞盒的节点），Shift 全盛，
+        哪个键都行（PotBehavior.onItemClick 不看节点和 button）；别的 = 放进第一格放得下的（左键整叠、右键一个，只有锅口接）。"""
+        if PotPick.holdsVessel(self.view) and key in PotPick.SCOOPS:
+            self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
+            self.serve.bowlWentIn(PotPick.surfacePoint(self, event))
+            return True
         if key != "mouth":
             return False                      # 右键点在别处：内核把手上的放回背包
-        meal = self.view.data.get("meal")
-        vessel = self.view.data.get("vessel") or {}
-        if meal and vessel.get("newItemName") and self.view.hand.get("newItemName") == vessel["newItemName"]:
-            self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
-            self.serve.bowlWentIn(event.point)
-            return True
         return self.view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
 
     def _aim(self, ray):

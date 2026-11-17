@@ -14,7 +14,7 @@
 view.ghost（界面上一件半透明的物品，钉在那个点的投影上，锅挡不住它）；点下去之后浸进汤里的那只才是世界里的掉落物。
 光标旁写一行这一下做什么（"盛出 …" / "取回 …"，JE 没有这行字）。触屏没有悬停：第一下点在汤面上只是让它悬出来，再点一下才做。
 """
-from . import PotFx
+from . import PotFx, PotPick
 from .PotSceneFx import play
 from ...Client.Engine import addDropItem, clientApi, compFactory, levelId, playerId
 from ...Shared.Data import Remainders
@@ -120,8 +120,7 @@ class PotOffer(object):
         hand, touch = view.hand, view.input == owner.api.TOUCH
         if hand is None:
             return self.offered is not None and self.offered[2] is None
-        meal, vessel = view.data.get("meal"), view.data.get("vessel") or {}
-        if meal and vessel.get("newItemName") and hand.get("newItemName") == vessel["newItemName"]:
+        if PotPick.holdsVessel(view):
             return touch or self.overSoup()
         return (touch or owner.hover[0] == "mouth") and view.fits(Rules.GROUP_INGREDIENTS) is not None
 

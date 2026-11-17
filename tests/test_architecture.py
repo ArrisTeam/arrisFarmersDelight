@@ -69,6 +69,7 @@ PACKS = {
             "Compat/Diegesis/BoardWatch.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardInv.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotView.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/PotPick.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotHud.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotScene.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotSceneFx.py": {"forbid": {"Server"}, "engine": True},
