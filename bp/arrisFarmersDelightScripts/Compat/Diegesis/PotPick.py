@@ -12,8 +12,9 @@ cooking_pot.json 里带盒子的节点，对应这里的拾取盒：
 - soup、sunk  只在手空着时开（offerBowl / offerTakeBack 里手上有东西就关），拿着东西时点不到；
 - pot（锅身）、broth（液面）、scoop、melt_N、hand_N、spill_N、badge、dial 是 pickable: false，没有盒子，点它们等于点到后面的节点。
 所以拿着容器时有四种盒子（mouth、ladle、item、served），点哪个都盛；拿着别的东西（料）时 onItemClick 不管，点到的节点里只有锅口会接
-（drop_zone），料所在的格在锅口里面、被锅口挡在后面，所以手上拿着料时只留锅口。
+（drop_zone），料所在的格在锅口里面、被锅口挡在后面，所以手上拿着料时只留锅口。点下去怎么办（盛，还是放进锅口）在 withStack。
 """
+from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotDriftExtras
 
 MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时整口锅都是它
@@ -63,6 +64,33 @@ def boxes(owner):
         level = scene.liquid.surfaceY()
         found.append(api.box("sunk", (SOUP[0][0], level - SUNK_HALF, SOUP[0][2]), (SOUP[1][0], level + SUNK_HALF, SOUP[1][2])))
     return found
+
+
+def withStack(owner, event, key):
+    """手上拿着东西点下去（PotView.onPointer）：盛这道菜的容器 = 盛一份，点到锅口、勺柄、漂着的料、盛好的那格哪个都行（带碰撞盒的节点），
+    Shift 全盛，哪个键都行（PotBehavior.onItemClick 不看节点和 button）；别的 = 点锅口放进去（dropOnMouth），点在别处不接
+    （右键由内核把手上的放回背包）。返回真 = 这一下接了。"""
+    view = owner.view
+    if holdsVessel(view) and key in SCOOPS:
+        view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
+        owner.serve.bowlWentIn(surfacePoint(owner, event))
+        return True
+    return key == "mouth" and dropOnMouth(owner, event)
+
+
+def dropOnMouth(owner, event):
+    """手上的东西点锅口：落在第一格放得下的（同种没满的优先，否则第一个空格），左键整叠、右键一个。
+    按下时只记下是哪一格、哪个键，松手才发（Diegesis 的 FocusInput.clickItem 末尾和 release：锅口是放置区，onItemClick 不接它，所以走这条）：
+    松在哪里都算按下时那一格，拖过托盘的格子就是平分，放下的那一声也是内核在松手时放；从托盘直接拖到锅上，内核在松手处补的一按一松同样走这里。
+    没有格子放得下什么也不接。"""
+    view = owner.view
+    index = view.fits(Rules.GROUP_INGREDIENTS)
+    if index is None:
+        return False
+    spread = getattr(view, "spread", None)
+    if spread is None:                    # 老版本的前置包没有平分手势：照旧按下就放
+        return view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
+    return spread.begin(owner.api.stationTarget(Rules.GROUP_INGREDIENTS, index), event.button, event.screen)
 
 
 def surfacePoint(owner, event):

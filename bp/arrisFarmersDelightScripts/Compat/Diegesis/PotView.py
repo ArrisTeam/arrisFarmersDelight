@@ -10,7 +10,8 @@
 - 锅身描一圈同样的亮边（pot.setOutlined(offering)，判定在 PotOffer.offering）：手上的东西放得进、光标在锅口上；拿着盛这道菜的
   容器、光标在汤上；悬着碗；
 - 底部托盘（前置包按 usable 列出背包里用得上的料和盛菜的容器）点一叠就拿到手上；拿着料点锅 = 放进第一格放得下的
-  （左键整叠、右键一个），拿着盛这道菜的容器点锅口、勺柄、漂着的料、盛好的那格 = 盛一份（Shift 全盛，哪个键都行；能点的盒子在 PotPick.py）；
+  （左键整叠、右键一个；按下只记下是哪一格，松手才放，松在哪里都行、拖过托盘的格子就是平分，PotPick.dropOnMouth），
+  拿着盛这道菜的容器点锅口、勺柄、漂着的料、盛好的那格 = 盛一份（Shift 全盛，哪个键都行；能点的盒子在 PotPick.py）；
 - 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
   和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只半透明的容器，点一下盛一份；汤里有倒进去 / 打进去 / 化掉的
   东西（牛奶、鸡蛋、糖）时光标在汤面上悬出要取回的那样，点一下取回最后放的。拿在手上的东西点托盘的格子放回背包。
@@ -158,7 +159,7 @@ class PotViewMixin(object):
             self.view.click(picked[0], 0, self.api.PICKUP_ALL)
             return True
         if self.view.hand is not None:
-            return self._withStack(event, key)
+            return PotPick.withStack(self, event, key)
         if key in ("item", "served"):
             target = (self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload)) if key == "item"
                       else self.api.stationTarget(Rules.GROUP_SERVED, 0))
@@ -189,17 +190,6 @@ class PotViewMixin(object):
         """触屏：一下点完、手指抬起，没有悬着的光标——悬停才有的东西收起；刚盛过 / 取回过的留着，下一只还悬在老地方。"""
         if self.scene is not None and self.serve.dip is None:
             self.hover, self.ray, self.scene.aim = (None, None), None, None
-
-    def _withStack(self, event, key):
-        """手上拿着东西点锅：盛这道菜的容器 = 盛一份，点到锅口、勺柄、漂着的料、盛好的那格哪个都行（带碰撞盒的节点），Shift 全盛，
-        哪个键都行（PotBehavior.onItemClick 不看节点和 button）；别的 = 放进第一格放得下的（左键整叠、右键一个，只有锅口接）。"""
-        if PotPick.holdsVessel(self.view) and key in PotPick.SCOOPS:
-            self.view.sendAction("scoop", {"all": bool(event.quick), "from_inventory": False})
-            self.serve.bowlWentIn(PotPick.surfacePoint(self, event))
-            return True
-        if key != "mouth":
-            return False                      # 右键点在别处：内核把手上的放回背包
-        return self.view.dropInto(Rules.GROUP_INGREDIENTS, event.button) is not None
 
     def _aim(self, ray):
         """光标落在液面上的哪一点（锅自己的坐标，相对锅心）：握着勺子时勺尖往那去。"""

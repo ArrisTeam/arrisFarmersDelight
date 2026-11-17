@@ -13,6 +13,9 @@ BrothColors = C.load("Shared.Data.BrothColors")
 Rules = C.load("Shared.Rules.PotStation")
 Geometry = dgtest.load("Shared.Geometry")        # 前置包的几何：光标射线和液面的交点
 Txn = dgtest.load("Shared.ActionTxn")            # 前置包的动作目标 / 点击种类
+SpreadState = dgtest.load("Client.Spread").SpreadState      # 前置包真的平分手势：按下记着、松手才发
+Pointer = dgtest.load("Client.Pointer")          # 前置包真的指针路由（托盘拖到场景里松手补的那一按一松）
+TrayClient = dgtest.load("Client.Tray")
 POS = C.POS
 LEFT, RIGHT, MIDDLE = 0, 1, 2
 BOWL = {"newItemName": "minecraft:bowl", "newAuxValue": 0, "count": 1}
@@ -30,9 +33,9 @@ class Hit(object):
 
 
 class Event(object):
-    def __init__(self, button=LEFT, hit=None, quick=False, ray=None, kind="down"):
+    def __init__(self, button=LEFT, hit=None, quick=False, ray=None, kind="down", screen=(100.0, 50.0)):
         self.kind, self.button, self.hit, self.quick = kind, button, hit, quick
-        self.point, self.ray = (8.0, 9.0, 8.0), ray
+        self.point, self.ray, self.screen = (8.0, 9.0, 8.0), ray, screen
 
 
 class Box(object):
@@ -54,7 +57,7 @@ class Api(object):
 
 
 class FakeView(object):
-    """前置包给表现类的 view：只记下发出去的动作、内核点击和放料的调用。"""
+    """前置包给表现类的 view：只记下发出去的动作、内核点击、拿放的轻响和放料的调用；平分手势用前置包真的。"""
 
     def __init__(self):
         self.hand = None
@@ -62,8 +65,23 @@ class FakeView(object):
         self.input = "mouse"
         self.dimensionId = 0
         self.pos = POS
-        self.actions, self.drops, self.clicks = [], [], []
+        self.actions, self.drops, self.clicks, self.sounds = [], [], [], []
         self.plateHover = False
+        self.fitIndex = 0                          # fits() 的回答：手上的东西落在哪一格，放不进是 None
+        self.behavior = None
+        self.spread = SpreadState(self, None)
+
+    def fits(self, group):
+        return self.fitIndex if self.hand is not None else None
+
+    def foley(self, putDown=False):
+        self.sounds.append("put" if putDown else "pick")
+
+    def traySlot(self, pos):
+        return None
+
+    def overUi(self, pos):
+        return False
 
     def sendAction(self, name, payload):
         self.actions.append((name, payload))
@@ -81,8 +99,10 @@ class FakeView(object):
         return None                                # 没有相机：端走的终点回到缺省
 
     def dropInto(self, group, button):
-        self.drops.append((group, button))
-        return 0
+        index = self.fits(group)
+        if index is not None:
+            self.drops.append((group, button))
+        return index
 
     def toWorld(self, x, y, z):
         return (POS[0] + x / 16.0, POS[1] + y / 16.0, POS[2] + z / 16.0)
@@ -102,6 +122,7 @@ def behaviorOf():
     Scenes.enable(BrothColors.BrothColors.get)
     view = FakeView()
     behavior = type("TestBehavior", (PotView.PotViewMixin, Base), {"api": Api})(view)
+    view.behavior = behavior
     behavior.scene = Scenes.ensure(0, POS)
     behavior.scene.apply(C.look([("minecraft:carrot", 1)]))
     return behavior, view
@@ -327,12 +348,109 @@ def testTheMealsContainerInHandScoopsOnAnyMouseButton():
         assert behavior.serve.scoopedHere == behavior.clock, "碗落进去的地方敲过水波了"
 
 
-def testAnythingElseInHandStillGoesIntoThePotWithTheButtonGiven():
+CARROTS = {"newItemName": "minecraft:carrot", "newAuxValue": 0, "count": 4}
+
+
+def _slot(index):
+    return Txn.stationTarget(Rules.GROUP_INGREDIENTS, index)
+
+
+def testAnythingElseInHandGoesIntoThePotWithTheButtonGivenButOnlyOnRelease():
+    # FocusInput.clickItem 末尾（:514-519）+ release（:656-661）：锅口是放置区、onItemClick 不接它，按下只记下（哪一格、哪个键），松手才发
+    for button in (LEFT, RIGHT):
+        behavior, view = behaviorOf()
+        view.hand = dict(CARROTS)
+        view.data = dict(SOUP_DATA)                            # 锅里有菜，但手上不是它的容器
+        assert behavior.onPointer(Event(button, Hit("mouth"))) is True, button
+        assert view.actions == [] and view.clicks == [] and view.drops == [] and view.sounds == [], "按下什么都不发、不响"
+        assert view.spread.active and view.spread.button == button, "记下了这一下"
+        assert behavior.onPointer(Event(button, kind="up")) is False and view.clicks == [], "表现自己的抬起不发"
+        assert view.spread.release(button, (100.0, 50.0)) is True        # 指针路由在抬起时调
+        assert view.clicks == [(_slot(0), button, "PICKUP")], button
+        assert view.sounds == ["put"], "放下的轻响由内核在松手时放（FocusInput.java:659）"
+        assert not view.spread.active
+
+
+def testTheSlotIsTheOneChosenWhenPressedNoMatterWhereOrWhenItIsLetGo():
+    # JE 的 zoneSlot 在按下时选（同种没满的优先，否则第一个空格），松手发的就是那一格；松在哪都行
     behavior, view = behaviorOf()
-    view.hand = {"newItemName": "minecraft:carrot", "newAuxValue": 0, "count": 4}
-    view.data = {"meal": {"newItemName": "arris:pumpkin_soup", "count": 3}, "vessel": {"newItemName": "minecraft:bowl"}}
+    view.hand, view.fitIndex = dict(CARROTS), 2
+    behavior.onPointer(Event(LEFT, Hit("mouth")))
+    view.fitIndex = 4                                          # 按着的这会儿锅里别的格变了
+    view.spread.release(LEFT, (400.0, 300.0))                  # 松在场景另一头
+    assert view.clicks == [(_slot(2), LEFT, "PICKUP")]
+
+
+def testWhenNothingFitsTheMouthTakesNoClickAndAnythingBelongingToTheKernelStaysWithIt():
+    behavior, view = behaviorOf()
+    view.hand, view.fitIndex = dict(CARROTS), None
+    assert behavior.onPointer(Event(RIGHT, Hit("mouth"))) is False, "没有格子放得下：锅口不接（右键由内核放回背包）"
+    assert not view.spread.active and view.clicks == [] and view.sounds == []
+
+
+def testTheStackLeavesTheHandBeforeTheReleaseAndNothingIsSent():
+    behavior, view = behaviorOf()
+    view.hand = dict(CARROTS)
+    behavior.onPointer(Event(LEFT, Hit("mouth")))
+    view.hand = None                                           # 服务端先把它收走了（站点关了、被别的动作拿走）
+    assert view.spread.release(LEFT, (100.0, 50.0)) is False and view.clicks == [] and view.sounds == []
+
+
+def testAnOldPrerequisiteWithoutTheSpreadGestureStillDropsOnPress():
+    behavior, view = behaviorOf()
+    view.hand, view.spread = dict(CARROTS), None
     assert behavior.onPointer(Event(RIGHT, Hit("mouth"))) is True
-    assert view.actions == [] and view.drops == [(Rules.GROUP_INGREDIENTS, RIGHT)]
+    assert view.drops == [(Rules.GROUP_INGREDIENTS, RIGHT)] and view.clicks == []
+
+
+class RoutedView(FakeView):
+    """前置包的指针路由（真的 Pointer）要的口子：左边 40 个单位是托盘（按下拿起一叠，服务端立刻把它放到手上），右边是场景（点哪里都是锅口）。"""
+
+    def pointer(self, kind, pos, button=0, quick=False, dropping=False):
+        return bool(self.behavior.onPointer(Event(button, Hit("mouth"), quick, kind=kind, screen=tuple(pos))))
+
+    def trayPress(self, pos, button, quick):
+        if pos[0] >= 40.0:
+            return TrayClient.NONE
+        self.hand = dict(CARROTS)
+        return TrayClient.PICKED
+
+    def traySlot(self, pos):
+        return 3 if pos[0] < 40.0 else None
+
+    def overUi(self, pos):
+        return pos[0] < 40.0
+
+
+def _routed():
+    behavior, _ = behaviorOf()
+    view = RoutedView()
+    view.behavior, behavior.view = behavior, view
+    return behavior, view, Pointer.Pointer(lambda: view, lambda: 100.0)
+
+
+def testDraggingAStackFromTheTrayOntoThePotIsStillCompletedByTheKernelsReleaseClick():
+    # 前置包在场景里松手时补一次同一个键的按下 + 抬起（Pointer._settle），再结算平分：补的这一下按下只记下，抬起那一刻发
+    behavior, view, pointer = _routed()
+    pointer.push("down", (10.0, 10.0), LEFT)
+    pointer.frame(None)
+    assert view.hand is not None and view.clicks == [], "托盘拿起：这里还没有点锅"
+    pointer.push("up", (200.0, 100.0), LEFT)                   # 拖到锅上松手
+    pointer.frame(None)
+    assert view.clicks == [(_slot(0), LEFT, "PICKUP")] and view.sounds == ["put"], (view.clicks, view.sounds)
+    assert not view.spread.active
+
+
+def testPressingOnThePotWithAStackThenReleasingElsewhereInTheSceneStillPutsItInTheSlotChosenAtPress():
+    behavior, view, pointer = _routed()
+    view.hand, view.fitIndex = dict(CARROTS), 1
+    pointer.push("down", (200.0, 100.0), RIGHT)
+    pointer.frame(None)
+    assert view.clicks == [], "按下：还没发"
+    view.fitIndex = 3
+    pointer.push("up", (300.0, 200.0), RIGHT)
+    pointer.frame(None)
+    assert view.clicks == [(_slot(1), RIGHT, "PICKUP")], view.clicks
 
 
 def testOverTheMouthTheCarriedStackTakesTheSizeOfWhatLiesThereButTheMealsContainerDoesNot():
