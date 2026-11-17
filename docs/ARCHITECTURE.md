@@ -27,6 +27,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
                         StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数）
+                        SyncTables  TableWire  TableDiff  TableMerge（下游在服务端追加的表怎么发给客户端：登记哪些表 / 编码 / 算差异 / 并表，见"联动契约与客户端的表"）
                         FoodEffects（吃喝之后的追加结算：牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤；只返回动作，Server/FoodEffects 执行）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
                         MobLoot（刀杀死生物的额外掉落、洋葱掉落的概率结算） Slicing（刀切派 / 蛋糕 / 南瓜：剩几片、切片单） Eating（吃一份食物的饥饿 / 饱和度）
@@ -68,6 +69,7 @@ Server/                 服务端
   CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数
   CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
+  TableSync             下游在服务端追加的表发给客户端：玩家进服发一次累计的差异，之后每 5 秒看表变没变、补发（客户端的站点表现读的是客户端那一份表）
   Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
   ChestLoot             战利品箱第一次打开时追加 FD 的物品（JE 的 add_loot_table），原版战利品表一个字不动
@@ -78,6 +80,7 @@ Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
   Endpoints.py          服务端调用的 4 个客户端端点
+  TableSync.py          客户端端点 OnTableSync：把服务端发来的"下游追加的表内容"并进本端自己的表，重算依赖它的缓存
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
   Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
   BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
@@ -139,6 +142,56 @@ def OnServerSkilletBlockUse(args):
 - 同一次点击会同时触发 `ServerItemUseOnEvent` 与 `ServerBlockUseEvent`，按住右键时引擎每 tick 重发。
   所有交互处理共用 `Helpers.Player.SetPlayerUsedCD` 的 0.2 秒冷却：先处理的一方认领这次点击，其余在冷却内直接 return。
 
+## 联动契约与客户端的表（下游追加的内容怎么到站点客户端）
+
+联动契约（`Api/LegacyModAttr.py`，对外文档 linkage.md）是服务端的：`ArrisFarmersDelightInterface / Obtain / AddCookingPotRecipe` 按显式白名单把 `Shared/Data` 里的容器**按引用**交给下游，
+下游在 `LoadServerAddonScriptsAfter` 里往里追加厨锅配方、砧板配方（`tool` 就是 `obtain("knifeList")` 拿到的那个列表）、可烹饪物、炉灶和热源方块，也有直接改 `obtain` 拿到的对象的。
+**客户端是另一个进程，有自己的一份 `Shared/Data`，下游追加的它没有。** 经典玩法（右键）全在服务端判，不受影响；四个站点的客户端表现读的是客户端那一份，
+没同步时就是"服务端认、站点客户端不认"：托盘里不亮、借不到下游的刀、点板只敲一声、下游的炉灶不开站点、食谱书里没有那一页、书里放料发的键对不上服务端的下标……
+
+**联动契约本身一个字没动**（`tests/test_legacy_modattr_contract.py` 锁着；同步登记的容器必须就是契约交出去的那个对象，`tests/test_table_sync.py` 逐个核对）。
+同步是旁路：服务端在模块导入时记下各张表的样子，下游追加完之后把"现在 - 基线"发给客户端，客户端并进它自己的表。
+
+**同步哪些表**（表名即契约的变量名，`Shared/Rules/SyncTables.py` 登记；客户端真有地方读的才同步）：
+
+| 表 | 下游怎么改 | 客户端哪里读 |
+|---|---|---|
+| `CuttingBoardDict`（键 `(物品名, aux)`） | 追加键；`tool` 引用 `knifeList` / `axeList` | 砧板 `BoardStation.Env` 的 `recipeOf / cuttable / cutsWith / isToolItem / usable / shiftPlaces`（托盘亮不亮、借哪把刀、Shift 放不放、点板是落刀还是敲一声，`BoardView.py:68-101,125-130,179`）、`BoardDraw.kindOf`（`:58`，工具类的东西是不是插着的）、`StationBooks.boardPages / boardCurrent`（食谱书"切"的页） |
+| `knifeList`、`axeList` | 追加名字（`append`） | `BoardInv.isKnife`、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
+| `CanCookedFoodDict` | 追加键 | 煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、`StationBooks.panPages / grillPages`、手持煎锅"煎还是吃"（`Client/Input.py:42`） |
+| `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（**就是** `StoveList` 本身，`GrillView.py:148` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（`:54,73,117`，哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源） |
+| `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
+| `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
+
+没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的 + 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、
+`canClimbList`、`cabinetList`、`WildCropDict`、`cropsDict`、`negativeEffect`、`horseComponentsDict`、`wolfComponentsDict`（只有服务端读），`uiGuideBookPath / Screen`（字符串常量，契约没法往里追加）。
+联动契约之外的表（`Dishes` 摆盘菜谱、`BrothColors / FoodColors / ItemMasks`、`Remainders`……）下游本来就够不到，没有"追加"可同步：下游的菜用兜底汤色，没有刀口遮罩。
+
+**怎么同步**（纯规则在 `Shared/Rules/`，服务端和客户端各一个薄模块）：
+- **基线与差异**（`TableDiff.Syncer`，服务端）：`Server/TableSync.py` 导入时建一个，记下各表那一刻的编码——下游在 `LoadServerAddonScriptsAfter` 里才追加，晚于任何模块的导入，
+  客户端导入后的表也是这个样子。发的是**累计**的"现在 - 基线"，只含新增和改动：名字列表是基线里没有的名字；字典是键不在基线里、或值不一样的条目；
+  厨锅配方按下标，新增的行和被 `AddCookingPotRecipe` 加了写法的行（带基线的行数 `base`）。**不同步删除**（契约只有追加）。
+- **编码**（`TableWire.Codec`）：Call 载荷的规矩是键 `str`、列表元素类型一致、没有 `unicode`、元组到对端变列表（前置包 `Shared/Wire.py` 记着同一组，两个包互不导入，
+  测试用它的 `wireProblem` 核对每条消息），所以数据表里的值要换写法：`(物品名, aux)` 压成 `{"$pair": "名字|aux"}`，别的元组 `{"$tuple": …}`，类型混着的列表 `{"$mixed": {"0": …}}`；
+  **就是** `knifeList` / `axeList` 等登记过的那个列表对象的，写成 `{"$ref": "knifeList"}`，客户端换回它自己的那一个——砧板配方的 `tool` 和服务端一样是引用，之后追加的刀对所有配方一起生效。
+  py2 的 `unicode` 两端各换一次 `str`。传不了的值（自定义对象、集合、键不是 `str` 的嵌套字典、嵌套超过 16 层）：**那一条跳过并记日志**（`[arrisFarmersDelight] 表同步：…`），别的照发；
+  厨锅配方新增的那一行编不了时放一个空行占着下标（书页的键、书里放料发的键都是下标，后面几行不能错位）。deepcopy 不认的东西让"变没变"的快速检查退成每次重算，同步不会停。
+- **并表**（`TableMerge.apply`，客户端）：就地改、不换对象（前置包拿着 `StoveList` 这个列表对象）；幂等（本端已经有一样的东西就不动它：重复收、晚收都一样，
+  单机联机两端共用一份表时也不会把下游手里的配方字典换成副本）；厨锅配方里本端已有的行就地合并（`Recipe` 列表原地换内容，保住 `_Ways.slots`：食谱书一格一格轮换备选要读它）；
+  一条条隔离，换不回来的条目记日志跳过，消息本身不对（版本、表名、种类，或 `base` 比本端的表还长：两端不是同一版）整条不理；
+  并进去有变化的表重算缓存：厨锅配方索引（`CookingPot.rebuildIndex`）和砧板的工具表（`BoardStation.invalidate`，它的缓存键现在也看 `knifeList` / `axeList` 的长度）。其它站点读表都是现读的，没有缓存。
+- **什么时候发**（`Server/TableSync.py`）：① 玩家进服（`ClientLoadAddonsFinishServerEvent`：客户端刚加载完 Addon、端点已经登记好；dolorContainer 也在这时把绑定的方块名告诉客户端）
+  发一次累计的差异——必须在他开任何站点之前，而且"这一下右键开不开站点"是客户端先判的（`StoveList` 里没有的方块客户端根本不会去请求开站），**所以不能等开站时再发**；
+  ② 之后每 5 秒看一眼表变没变（下游可以随时追加，也可以不经接口直接改 `obtain` 拿到的对象，没有事件可听；一次检查是几张表和上次的深拷贝在 C 层比一下，开发机上不到 0.1 毫秒），
+  变了就把新的一版补发给进过服的人，每张表记着自己的版本（`rev`），补发只要他没收过的那几张；没进服的人（客户端还没加载完）和走了的人不发。没有任何追加时什么都不发。
+  两条路都要：万一某个环境里 `ClientLoadAddonsFinishServerEvent` 比下游的 `LoadServerAddonScriptsAfter` 还早，定时那条 5 秒内补上。热重载脚本之后进过服的名单是空的、
+  也不会再有进服事件，调试时用 `TableSync.step(everyone=True)`（游戏内自检的追加函数里就是它）。
+- 客户端端点 `OnTableSync`（`Client/TableSync.py`；`status()` 给调试看收了几条、改了几张、跳过几个）。
+
+**限制**：只同步新增和改动，下游从表里删东西客户端留着（多认一个不会坏事）；只靠 `arris:knife` 物品标签认的刀（不在 `knifeList` 里），客户端只在读得到 `GetItemTags` 时才认（`BoardInv.isKnife`，
+没实机核对客户端有没有这个接口）；JEI 联动（`Compat/Jei`，界面就绪时一次性登记）读的是登记那一刻的客户端表，晚到的下游内容不在 JEI 里；站点开着时表又变了，托盘亮不亮等下次开站才按新表算
+（`BoardView._usable` 每次开站建一份）；已经加载好的下游炉灶方块，场景要等下次加载 / 广播才建。
+
 ## 厨锅界面（dolorContainer）
 
 右键厨锅开的是 dolorContainer 的界面，不是 `netease:block_container` 的原生界面（阶段 A：只换界面，存储和烹饪逻辑不动）。
@@ -152,7 +205,8 @@ def OnServerSkilletBlockUse(args):
 - 界面模型 `Shared/Menus/CookingPot.py` 两端各建一份：格子类型、Shift 点击的去向、界面数据、动作；服务端权威，客户端只预测。
   热源 / 进度 / 预览由 `CookingPotHost.readState` 从方块实体数据读，开着界面时每 4 刻重读（`dataEvery`）。手动放东西什么格子都收（与旧界面一致，
   成品格除外）；Shift 点击时容器格与食材格各挑自己收的：只当容器的碗、玻璃瓶进容器格、不会落进食材格，既是容器又是食材的卷心菜叶当食材
-  （容器格里已经是它时才续上）。联机时客户端按自己的食谱表预测 Shift 点击，下游模组只在服务端追加的容器会预测错，以服务端为准。
+  （容器格里已经是它时才续上）。联机时客户端按自己的食谱表预测 Shift 点击；下游模组只在服务端追加的配方，经 `Server/TableSync` 进服时发给客户端、并进它的表
+  （见"联动契约与客户端的表"），预测用的是同一批，没同步到的（条目传不了被跳过、消息还没到）仍以服务端为准。
 - 食谱书：搜索、选中、换变体、"添加食材"都是动作（`search` / `pick` / `nextVariant` / `addFood`），选中的食谱和变体记在服务端会话里
   （每位查看者各一份）。客户端不传位置、玩家、背包下标；`addFood` 在会话的工作副本上从玩家背包搬运，整体成功或整体不做。
 - 布局：仓库根的 `layouts/cooking_pot.json`（手写）经 `tools/vendor.py` 编译成 `rp/ui/dolor_layout_*.json` 与 `dolorLayouts.py`。
@@ -503,8 +557,14 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   `dgkit.py` / `dgfixtures.py`（内核测试的断言与站点夹具），`test_diegesis_*.py`。`test_architecture.py` 同时守两个包。
 - 合成：`test_recipe_rules.py`（配方 JSON 的静态检查、生成的 `CraftReturns` 表是否最新）、`test_recipe_parity.py`（对照 JE 的做法 / 摆法 / 剩余物）、
   `test_crafting_rules.py`（`Shared/Rules/Crafting.py` 和 `Server/CraftReturns.py`，`fakeengine.py` 的假合成格驱动）；背刺：`test_backstabbing.py`。
+- 下游追加的表同步到客户端：`tablekit.py`（把行为包脚本根换个顶层包名再导入一遍，得到"另一个进程"里各自的 `Shared/Data`；`downstream()` 照 Ends Delight 的写法经联动契约追加；
+  `transport()` 先过前置包 `Shared/Wire.py` 的规矩、再 JSON 来回，py2 里字符串变 `unicode`、元组变列表，和网络上一样）；`test_table_wire.py`（编码）、`test_table_sync.py`（一份包当服务端、
+  一份当客户端：内容一致、`tool` 引用、幂等、`AddCookingPotRecipe`、之后追加的只补变了的表、传不了的跳过、不是同一版不并、坏消息不理）、`test_table_sync_stations.py`（真的客户端类：
+  砧板 / 煎锅 / 炉灶 / 厨锅 / 四本书对着下游追加的东西，并表前说不认、并表后认）、`test_table_sync_server.py`（进服发一次、定时补发只发变了的表）、`test_table_sync_selftest.py`（游戏内自检的两半）。
 - 游戏内自检：`Server/Debug/McdkSelfTest.py`（`mcdk_test_run()` / 约 15 秒后 `mcdk_test_collect()`），含切菜板站点用例
   （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。同目录还有 `McdkDishTest`（砧板摆盘、一桶水揉一叠面团）、
   `McdkBookTest`（食谱书放料）、`McdkPotTest` / `McdkPanTest` / `McdkGrillTest`（三个站点的烹饪）、`McdkCraftTest`（工作台合成：摆格子、
   点结果格、核对剩余物和拦截，要用 mc_input 点）、`McdkBackstabTest`（背刺），调用方法写在各文件头。几个自检别同时跑（共用玩家脚边的位置）。
+  `McdkTableSyncTest`（服务端 `Server/Debug/` 照下游的写法追加石剑当刀、黏土球的切菜配方、木棍 / 圆石煮钻石的厨锅配方、胡萝卜可煎烤，再补发；客户端 `Client/Debug/` 用
+  `is_client` 为真的 `execute_code` 看本端的表和站点判断认不认得）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
