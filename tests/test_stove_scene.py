@@ -632,5 +632,19 @@ def testTheDisplayWithoutTheSceneIsDrawnWhereTheScenesPiecesWouldBe():
         assert drawn == displayed, aux
 
 
+def testAParticleTheEngineDidNotMakeIsNotTouched():
+    """进世界头几秒粒子系统还没好、或者没有这个粒子：Create 回 0（不是 None）——不能拿 0 当编号去设变量。炉灶的场景谁都看得见，一加载就会放粒子。"""
+    GrillFx = C.load("Compat.Diegesis.GrillFx")
+    touched = []
+    create, setVariable = C.Comp.Create, C.Comp.SetVariable
+    C.Comp.Create = lambda self, identifier, pos: 0
+    C.Comp.SetVariable = lambda self, *args: touched.append(args)
+    try:
+        assert GrillFx.particle(GrillFx.STEAM, (0.5, 1.0, 0.5), color=0xFFFFFF, alpha=0.5, scale=1.0, velocity=(0.0, 1.0, 0.0)) is None
+    finally:
+        C.Comp.Create, C.Comp.SetVariable = create, setVariable
+    assert touched == []
+
+
 if __name__ == "__main__":
     raise SystemExit(C.dgtest.run(globals()))

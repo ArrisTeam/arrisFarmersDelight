@@ -23,7 +23,7 @@ def particle(identifier, world, color=None, alpha=None, scale=None, count=None, 
     """在世界坐标 world 放一次粒子。color 是 0xRRGGBB；velocity 是 (vx, vy, vz) 像素每秒。"""
     system = compFactory.CreateParticleSystem(None)
     particleId = system.Create(identifier, (float(world[0]), float(world[1]), float(world[2])))
-    if particleId is None:
+    if not particleId:                    # 没有这个粒子、进世界头几秒粒子系统还没好：引擎回 0（不是 None），不能当编号去设变量
         return None
     if color is not None:
         for name, shift in (("variable.tint_r", 16), ("variable.tint_g", 8), ("variable.tint_b", 0)):

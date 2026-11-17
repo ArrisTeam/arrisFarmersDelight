@@ -44,7 +44,7 @@ def dust(world, velocity, spread, count, color):
     """在世界坐标放一阵本包的碎屑：velocity 是世界方向的初速（格每秒），spread 起点的随机范围（格），color 是 0xRRGGBB。"""
     system = compFactory.CreateParticleSystem(None)
     particleId = system.Create(OWN_DUST, (float(world[0]), float(world[1]), float(world[2])))
-    if particleId is None:
+    if not particleId:                    # 没有这个粒子、进世界头几秒粒子系统还没好：引擎回 0（不是 None），不能当编号去设变量
         return None
     for name, shift in (("variable.tint_r", 16), ("variable.tint_g", 8), ("variable.tint_b", 0)):
         system.SetVariable(particleId, name, ((int(color) >> shift) & 0xFF) / 255.0)

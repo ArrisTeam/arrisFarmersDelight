@@ -211,6 +211,20 @@ def testTheShellBitsOfACrackedEggAreTheDiegesisDustParticleInTheShellColour():
     assert not [spec for spec in world.particles if spec["id"] == "arris_diegesis:droplet" and spec["vars"].get("variable.scale") == 0.6]
 
 
+def testAParticleTheEngineDidNotMakeIsNotTouched():
+    """进世界头几秒粒子系统还没好、或者没有这个粒子：Create 回 0（不是 None）——不能拿 0 当编号去设变量（内核的 view.particles 同一个规矩）。"""
+    PotFx = C.load("Compat.Diegesis.PotFx")
+    comp, touched = C.C.Comp, []
+    create, setVariable = comp.Create, comp.SetVariable
+    comp.Create = lambda self, identifier, pos: 0
+    comp.SetVariable = lambda self, *args: touched.append(args)
+    try:
+        assert PotFx.particle(PotFx.SPLASH, (0.5, 1.0, 0.5), color=0x3F76E4, alpha=0.5, scale=1.0, velocity=(0.0, 1.0, 0.0)) is None
+    finally:
+        comp.Create, comp.SetVariable = create, setVariable
+    assert touched == []
+
+
 if __name__ == "__main__":
     import fdtest
     raise SystemExit(fdtest.run(globals()))

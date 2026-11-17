@@ -160,5 +160,18 @@ def testWithoutTheGeometryAnOnlookerHearsButSeesNothingAndTheSwitchFallsBackToTh
         C.BoardFx.USE_OWN_DUST = True
 
 
+def testADustTheEngineDidNotMakeIsNotTouched():
+    """进世界头几秒粒子系统还没好、或者没有这个粒子：Create 回 0（不是 None）——不能拿 0 当编号去设变量。"""
+    C.engine.reset()
+    touched = []
+    C.engine.Create = lambda identifier, pos: 0
+    C.engine.SetVariable = lambda *args: touched.append(args)
+    try:
+        assert C.BoardFx.dust((1.5, 2.5, 3.5), (0.0, 0.25, -0.1), 0.075, 4, 0xFF8040) is None
+    finally:
+        del C.engine.Create, C.engine.SetVariable
+    assert touched == [] and C.engine.particles == []
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
