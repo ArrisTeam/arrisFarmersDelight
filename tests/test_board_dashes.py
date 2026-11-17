@@ -80,6 +80,18 @@ def testADashedLineIsEveryDashPlusGapAndTheLastDashIsCutAtTheEndWhateverItsLengt
     assert Dashes.dashes(0.0) == [], "没有长度没有线"
 
 
+def testEveryDashIsPlacedByItsMiddleAlongTheLineFromTheFirstEndToTheSecond():
+    """drawMarks：一段从 t 到 end（离线头 a 的距离）沿 a -> b 的方向，中点就是两端的平均。"""
+    placed = Dashes.layout((2.0, 5.0), (2.0 + 3.0, 5.0 + 4.0))                  # 长 5 的线，方向 (0.6, 0.8)
+    assert len(Dashes.dashes(5.0)) == len(placed) == 5 and all(_close(half, 0.3) for _middle, half in placed), "长 5：每 1.05 一段，一共 5 段（最后一段从 4.2 到 4.8，没被线尾截）"
+    for (middle, half), (first, last) in zip(placed, Dashes.dashes(5.0)):
+        along = (first + last) / 2.0
+        assert _same(middle, (2.0 + 0.6 * along, 5.0 + 0.8 * along)) and _close(half, (last - first) / 2.0)
+    cut = Dashes.layout((0.0, 0.0), (1.2, 0.0))
+    assert len(cut) == 2 and _close(cut[1][1], 0.075) and _same(cut[1][0], (1.05 + 0.075, 0.0)), "末尾截短的那段：半长是剩下的一半，中点跟着挪"
+    assert Dashes.layout((1.0, 1.0), (1.0, 1.0)) == [], "没有长度没有线"
+
+
 def testANewLineFadesInLinearlyToTheJavaAlphaByteInOneEighteenthOfASecond():
     assert Dashes.markAlpha(0.0) == 0.0
     assert Dashes.markAlpha(0.045) == 40 / 255.0 and Dashes.markAlpha(0.09) == 80 / 255.0, "每过 0.045 秒长 40 / 255"

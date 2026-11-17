@@ -25,6 +25,14 @@ def dashes(length):
     return out
 
 
+def layout(a, b):
+    """从 a 到 b（场景里的点 (x, z)）的一条虚线每一段放在哪：[((中点 x, 中点 z), 半长), ...]，从 a 往 b 的顺序（drawMarks 里一段的两端取平均）。"""
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dz)
+    return [((a[0] + dx * (first + last) / 2.0 / length, a[1] + dz * (first + last) / 2.0 / length), (last - first) / 2.0)
+            for first, last in dashes(length)]
+
+
 def markAlpha(age):
     """fade（1206-1208）：新的一条虚线出现 age 秒时的不透明度：MARK_ALPHA 按 age / MARK_FADE 线性长到全，Math.round 取整到字节。"""
     share = min(1.0, max(0.0, age / MARK_FADE))

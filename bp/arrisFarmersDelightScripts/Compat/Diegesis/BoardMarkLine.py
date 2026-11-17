@@ -8,8 +8,6 @@ particles_blend、贴图是 JE 那张白混凝土，没有 lighting 组件 = 满
 数（每段长、宽、不透明度、渐显）在 Shared/Rules/HandsOn/BoardDashes，粒子怎么摆（SetRot 的偏航）在 Shared/Rules/ParticleQuad。
 进世界头几秒粒子系统还没好（Create 回 0）：这一帧先用前置包的掉落物虚线（不透明、没有渐显），下一帧再试粒子，建出来就换掉它。
 """
-import math
-
 from ...Client.Engine import compFactory
 from ...Shared.Rules import ParticleQuad
 from ...Shared.Rules.HandsOn import BoardDashes as Dashes
@@ -52,21 +50,18 @@ class MarkLine(object):
     def _create(self):
         """每一段一颗粒子：平躺、长的那条边顺着线，一颗也不能少（建不出来就全不要，返回 []）。"""
         view, system = self.view, compFactory.CreateParticleSystem(None)
-        dx, dz = self.b[0] - self.a[0], self.b[2] - self.a[2]
-        length = math.hypot(dx, dz)
         start, end = view.toWorld(*self.a), view.toWorld(*self.b)
         yaw = ParticleQuad.flatYaw(end[0] - start[0], end[2] - start[2])
         ids = []
-        for first, last in Dashes.dashes(length):
-            along = (first + last) / 2.0 / length
-            particleId = system.Create(MARK, view.toWorld(self.a[0] + dx * along, self.a[1], self.a[2] + dz * along))
+        for middle, half in Dashes.layout((self.a[0], self.a[2]), (self.b[0], self.b[2])):
+            particleId = system.Create(MARK, view.toWorld(middle[0], self.a[1], middle[1]))
             if not particleId:                        # 回 0（不是 None）：不能当编号去设变量
                 for made in ids:
                     system.Remove(made)
                 return []
             system.SetRot(particleId, (0.0, yaw, 0.0))
             system.SetVariable(particleId, "variable.half_wide", Dashes.MARK_WIDTH * PIXEL)
-            system.SetVariable(particleId, "variable.half_len", (last - first) / 2.0 * PIXEL)
+            system.SetVariable(particleId, "variable.half_len", half * PIXEL)
             ids.append(particleId)
         return ids
 
