@@ -27,7 +27,7 @@ KIND_SKILLET = "skillet"
 KIND_STOVE = "stove"
 
 BOARD_TOP = 1.0 / 16.0
-STOVE_SLOTS =StoveLayout.blockFractions()        # FD 的 getStoveItemOffset 的六个位置（HoD 炉灶场景里也是它们，炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
+STOVE_SLOTS = StoveLayout.blockFractions()        # FD 的 getStoveItemOffset 的六个位置（HoD 炉灶场景里也是它们，炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
 
 # ---- FD 的渲染器（client/renderer/*.java）。贴图物品的 FIXED 变换缩放 1、方块物品缩放 0.5，掉落物缩放 1 时贴图 8 像素宽、立方体 4 像素：Java 的 scale(s) 都是掉落物缩放 2 * s
 FD_SCALE = 2.0
@@ -83,9 +83,12 @@ def _single(item):
 
 
 def _jitter(seed, index, span):
-    """确定的小偏移：同样的种子每次画都一样，不会一刷新就跳。"""
-    value = (seed * 2654435761 + index * 40503) & 0xFFFF
-    return (value / 65535.0 * 2.0 - 1.0) * span
+    """确定的小偏移（-span 到 span）：同样的种子每次画都一样，不会一刷新就跳。要混匀：只取低 16 位的话 x 和 z 的偏移差是个常数，一叠的几张排成一条斜线。"""
+    value = (seed * 2654435761 + index * 40503) & 0xFFFFFFFF
+    value = ((value ^ (value >> 15)) * 2246822519) & 0xFFFFFFFF
+    value = ((value ^ (value >> 13)) * 3266489917) & 0xFFFFFFFF
+    value ^= value >> 16
+    return ((value & 0xFFFF) / 65535.0 * 2.0 - 1.0) * span
 
 
 def _seedOf(item):
@@ -107,8 +110,7 @@ def _cubeCenter(height, scale):
 
 
 def carvedFront(yaw):
-    """板上插着的工具的贴图正面朝哪（世界方向 dx, dz）：FD 的 renderItemCarved 比摆平的东西多转半圈，贴图正面朝板 FACING 的反方向（站在板正面的人看到的是背面），
-    板的 FACING（模型的正面）在板自己的坐标里是 -z，所以正面是板自己坐标里的 +z。yaw 是板的朝向（度，StoveFacing.yawOfAux）。"""
+    """板上插着的工具的贴图正面朝哪（世界方向 dx, dz）：renderItemCarved 比摆平的东西多转半圈，正面朝板 FACING 的反方向，即板自己坐标里的 +z（模型的正面是 -z）。yaw 是板的朝向（度，StoveFacing.yawOfAux）。"""
     return StoveFacing.turnOffset(yaw, 0.0, 1.0)
 
 
@@ -152,8 +154,7 @@ def fdBoardLayout(item, itemType, carving, isBlock, yaw=0, maxStack=64):
 
 
 def boardLayout(item, itemType, carving, isBlock, offset=(0.0, 0.0), yaw=0):
-    """砧板站点在场时板上等着切的东西 / 插着的工具：站点里摆的（HoD 的 BoardScene），关站、开站不跳。carving(物品) 说是不是插着的工具、isBlock(物品) 说画成立着的方块还是平躺的图标
-    （BoardStation.Env.isCarving / isBlock，站点里问的是同一个）；
+    """砧板站点在场时板上等着切的东西 / 插着的工具：站点里摆的（HoD 的 BoardScene），关站、开站不跳。carving / isBlock 同 layout 的（站点里问的是同一个）；
     offset 是从方块中心挪到板底座中间的量（方块分数，x 往东 z 往南）；yaw 是板的朝向（度），插着的工具跟着它转。"""
     if not isItem(item):
         return []

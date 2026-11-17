@@ -257,6 +257,21 @@ def testTheSkilletDrawsFarmersDelightsPointFiveSizedThingsScatteredEvenWhenAlone
     assert abs(_skillet(_item("minecraft:beef", 1))[0].center[0] - 0.5) > 1e-6 or abs(_skillet(_item("minecraft:beef", 1))[0].center[2] - 0.5) > 1e-6, "错开不是 0"
 
 
+def testTheScatterOfAPileIsMixedWellNotAStaircaseOnADiagonal():
+    """x 和 z 的错开各自独立：哈希只取低 16 位时 z 比 x 恒差一个常数（一叠的几张排成一条斜线，每种东西都一样），JE 的两个 nextFloat 是各自随机的。"""
+    _standalone()
+    spots, differences, quadrants = set(), set(), {}
+    for number in range(100):
+        for placement in _skillet(_item("minecraft:item_%d" % number, 40)):                  # 每种 4 张
+            x, z = placement.center[0] - 0.5, placement.center[2] - 0.5
+            spots.add((round(x, 5), round(z, 5)))
+            differences.add(round((z - x) / BD.FD_SPREAD, 2))
+            quadrants[(x > 0, z > 0)] = quadrants.get((x > 0, z > 0), 0) + 1
+    assert len(spots) == 400, "没有两张错开得一模一样"
+    assert len(differences) > 100, "z 和 x 的差不是常数：%d 种" % len(differences)
+    assert len(quadrants) == 4 and min(quadrants.values()) > 60, "四个象限都有（每个约 100）：%r" % (quadrants,)
+
+
 def testASkilletPileGoesUpThreeHundredthsPerLayerAndIsTheSameEveryTime():
     _standalone()
     pile = _skillet(_item("minecraft:beef", 40))
