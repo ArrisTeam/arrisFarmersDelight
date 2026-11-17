@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
-"""BoardThing - 砧板站点里画出来的一样东西：Mover 管位置和缩放，客户端道具跟着（客户端）
+"""BoardThing - 砧板站点里画出来的一样东西：Mover 管位置、缩放和转角，客户端道具跟着（客户端）
 
 从 BoardDraw.py 拆出来。位置是离板面中心的偏移 (x, 离板面的高, z)；y 是它底边的高，立着的中心在底边上半个高；
 平躺的贴图中心离它躺着的面 FLAT_LIFT。看得见才有道具，看不见就删。
+平躺的东西按姿态矩阵摆（和炉灶的烤件一样：JE 节点的欧拉角 Ry * Rx * Rz 作用在一张躺平的贴图上，ItemPose.lyingMatrix）：没转过就是 turn 度的偏转，
+收尾动画（BoardFinishPlay）让层翻、立、滚时转角由 Mover 给。
 """
 import math
 import random
 
+from ...Shared.Rules import ItemPose
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
@@ -59,19 +62,40 @@ class Thing(object):
         self.dirty = True
 
     def put(self, x, y, z, visible=True):
-        """直接摆到偏移 (x, y, z)，缩放回到 1（不走动画）。"""
+        """直接摆到偏移 (x, y, z)，缩放回到 1、转角回到没转过（不走动画）。"""
         self.mover.move(x, y, z)
         self.mover.scaleTo(1.0)
+        self.mover.unturn()
         self.mover.visible = visible
         self.dirty = True
 
-    def hide(self):
-        self.mover.visible = False
+    def moveTo(self, x, y, z, seconds=0.0, hop=0.0):
+        """从现在的位置走到偏移 (x, y, z)（Mover.move：seconds 是 0 就是跳过去，hop 是中途的弧高）；收尾动画一条条排进来用。"""
+        self.mover.move(x, y, z, seconds, hop)
         self.dirty = True
 
+    def scaleTo(self, factor, seconds=0.0):
+        self.mover.scaleTo(factor, seconds)
+        self.dirty = True
+
+    def rotateTo(self, x, y, z, seconds=0.0):
+        """转到 (x, y, z) 度（JE 节点的欧拉角，Mover.rotateTo）。没转过的先从摆着的样子起（Ry(-turn)：和 frame 里没转过时画的是同一个朝向，不跳一下）。"""
+        if self.mover.rotation is None:
+            self.mover.rotateTo(0.0, -self.turn, 0.0)
+        self.mover.rotateTo(x, y, z, seconds)
+        self.dirty = True
+
+    def show(self, visible=True):
+        self.mover.visible = bool(visible)
+        self.dirty = True
+
+    def hide(self):
+        self.show(False)
+
     def reset(self):
-        """收起来，缩放也还原（JE 的 tick 里层沉完：scaleTo(1, 0) + setVisible(false)）：下一回这一格再摆东西不会还是缩着的。"""
+        """收起来，缩放和转角也还原（JE 的 tick 里层沉完：scaleTo(1, 0) + setVisible(false)）：下一回这一格再摆东西不会还是缩着、转着的。"""
         self.mover.scaleTo(1.0)
+        self.mover.unturn()
         self.hide()
 
     def drop(self):
@@ -103,8 +127,16 @@ class Thing(object):
         else:
             lift = Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale
         center = (self.draw.cx + x, Scene.TOP + y + lift, self.draw.cz + z)
-        along = (math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn)))
+        if upright:
+            along = (math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn)))
+            if self.prop is None:
+                self.prop = self.draw.view.props.item(self.item, center, flat=False, along=along, facing=self.facing, roll=self.roll, scale=scale)
+            else:
+                self.prop.move(center=center, along=along, facing=self.facing, roll=self.roll, scale=scale)
+            return
+        rx, ry, rz = self.mover.rotation if self.mover.rotation is not None else (0.0, -self.turn, 0.0)
+        matrix = ItemPose.lyingMatrix(ry, rx, rz)
         if self.prop is None:
-            self.prop = self.draw.view.props.item(self.item, center, flat=not upright, along=along, facing=self.facing, roll=self.roll, scale=scale)
+            self.prop = self.draw.view.props.item(self.item, center, flat=True, scale=scale, matrix=matrix)
         else:
-            self.prop.move(center=center, along=along, facing=self.facing, roll=self.roll, scale=scale)
+            self.prop.move(center=center, scale=scale, matrix=matrix)

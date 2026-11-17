@@ -105,7 +105,7 @@ def testOnlyTheEventsThatMakeSoundOrDustAreBroadcastAndWithoutTheBigAnimationDat
         K.do(manager, "a", K.custom("take"))                             # 板空了再取：没有东西被拒，什么事件也没有
         assert [look["event"] for look in _looks("b")] == events
         assert BoardLook.payloadOf(0, (1, 2, 3), "assembled", {"layers": [1], "finish": "sandwich", "block": False}) == \
-            {"dimensionId": 0, "pos": [1, 2, 3], "event": "assembled", "finish": "sandwich", "block": False}
+            {"dimensionId": 0, "pos": [1, 2, 3], "event": "assembled", "finish": "sandwich", "block": False, "count": 1}, "assembled 多带做成了几层：旁观的人据此算收尾演多久"
     finally:
         BoardLook.enable(False)
 
@@ -132,7 +132,7 @@ def testARefusedPlaceChopOrAssembleIsHeardByOnlookersToo():
         BoardLook.enable(False)
 
 
-def testAnAssembledDishIsBroadcastWithItsFinishButNotItsLayers():
+def testAnAssembledDishIsBroadcastWithItsFinishAndLayerCountButNotItsLayers():
     manager, data = _setup()
     try:
         K.opened(manager)
@@ -142,6 +142,7 @@ def testAnAssembledDishIsBroadcastWithItsFinishButNotItsLayers():
         assert K.do(manager, "a", K.custom("bookFill", key="d:arris:nether_salad", sets=1))
         made = [look for look in _looks("b") if look["event"] == "assembled"]
         assert len(made) == 1 and made[0]["finish"] and "layers" not in made[0]
+        assert made[0]["count"] == 3, "碗和两样菌：三层"
     finally:
         BoardLook.enable(False)
 

@@ -179,6 +179,7 @@ class FakeProp(object):
         self.facing = facing if facing is not None else self.facing
         self.roll = roll if roll is not None else self.roll
         self.scale = scale if scale is not None else self.scale
+        self.matrix = matrix if matrix is not None else self.matrix          # 真的 ItemProp.move 也是：给了姿态矩阵就换成它
         self.moves += 1
         return True
 

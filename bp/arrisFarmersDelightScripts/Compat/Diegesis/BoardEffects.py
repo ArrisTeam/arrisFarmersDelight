@@ -2,7 +2,7 @@
 """BoardEffects - 站点里本人收到的服务端表现事件：声音、碎屑、撤回刀口、弹回、拿走、做成（客户端）
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 onEffect（1350-1389）和 chopped（1395-1453）。声音按 Shared/Rules/BoardSounds 的表放
-（旁观的人在 BoardWatch 里按同一张表放，所以两边听到的一样）；动画在 BoardDraw，碎屑在 BoardFx。
+（旁观的人在 BoardWatch 里按同一张表放，所以两边听到的一样）；动画在 BoardDraw（做成一道菜时的十种收尾在 BoardFinishPlay），碎屑在 BoardFx。
 """
 from . import BoardFx
 from ...Shared.Rules import BoardSounds as Sounds
@@ -27,15 +27,11 @@ def onEffect(owner, name, data):
         if (data.get("stack") or {}).get("newItemName"):
             draw.taken(data["stack"], int(data.get("at", -1)), bool(data.get("carved")))
     elif name == "assembled":
-        arrive = draw.assembled([layer for layer in data.get("layers") or [] if layer])
-        if arrive > 0.0:
-            draw.after(arrive, lambda: _popped(owner, data))
-        else:
-            _popped(owner, data)
+        draw.assembled([layer for layer in data.get("layers") or [] if layer], data.get("finish"), lambda: _popped(owner, data))
 
 
 def _popped(owner, data):
-    """层都落完、开始沉进去、菜弹出来的那一刻：做成的两声、面粉（冰棒是霜；拌 / 摆 / 一起切开的菜不飞）和一点闪光。"""
+    """层都落定、收尾演完、开始沉进去、菜弹出来的那一刻（JE 的 pop）：做成的两声、面粉（冰棒是霜；拌 / 摆 / 一起切开的菜不飞）和一点闪光。"""
     draw, view = owner.draw, owner.view
     if draw is None:
         return

@@ -144,15 +144,20 @@ def testTheLastStrokeOnABlockBurstsAtItsMiddleButABarkStripRisesInstead():
 
 
 def testAnOnlookerSeesFlourWhenADishIsAssembledAndFrostForAnIceLolly():
+    """面粉 / 霜在 pop 那一刻飞（收尾演完）：旁观的人按层数算出收尾演多久，用计时器补上。"""
     C.engine.reset()
     C.BoardWatch.enable(C.Geometry)
-    C.BoardWatch.OnBoardLook(dict(_look(finish="sandwich", block=False), event="assembled"))
+    C.BoardWatch.OnBoardLook(dict(_look(finish="sandwich", block=False, count=4), event="assembled"))
+    assert C.engine.particles == [], "夹要演 0.42 秒：面粉等着"
+    C.engine.run_timers()
     flour = C.engine.particles[0]["vars"]
     assert flour["variable.count"] == 12.0 and flour["variable.vy"] == 3.0 / 16.0
     assert abs(flour["variable.tint_r"] - 0xED / 255.0) < 1e-9
     C.engine.reset()
-    C.BoardWatch.OnBoardLook(dict(_look(finish="freeze", block=False), event="assembled"))
-    frost = C.engine.particles[0]["vars"]
+    C.BoardWatch.OnBoardLook(dict(_look(finish="freeze", block=False, count=7), event="assembled"))
+    C.engine.run_timers()
+    assert [int(p["vars"]["variable.count"]) for p in C.engine.particles if p["id"] == "arris:board_dust"] == [10, 12], "冻：聚好那一刻一阵 10 颗霜，pop 再一阵 12 颗"
+    frost = [p for p in C.engine.particles if p["id"] == "arris:board_dust"][1]["vars"]
     assert frost["variable.vy"] == 2.0 / 16.0 and abs(frost["variable.tint_b"] - 1.0) < 1e-9, "霜：更白更轻"
 
 
@@ -180,7 +185,7 @@ def _crumbs(particles):
 
 
 def _madeAs(finish):
-    """站点里的人：板上摆着面包和蛋、做成了一道菜，收到 finish 这样收尾的 assembled。返回 (本包的碎屑, 前置包的粒子 view.dust)。"""
+    """站点里的人：板上摆着面包和蛋、做成了一道菜，收到 finish 这样收尾的 assembled，等它演完。返回 (本包的碎屑, 前置包的粒子 view.dust)。"""
     behavior, view, api = C.station()
     layers = [C.item("minecraft:bread", 1), C.item("arris:egg", 1)]
     view.state.board, view.state.layers = None, list(layers)
@@ -190,7 +195,7 @@ def _madeAs(finish):
     view.state.layers, view.state.board = [], C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
     behavior.onEffect("assembled", {"layers": layers, "finish": finish, "block": False})
-    for _ in range(5):
+    for _ in range(120):
         behavior.frame(1.0 / 60.0)
     return _crumbs(C.engine.particles), view.dust
 
@@ -202,30 +207,36 @@ def testTheCookSeesFlourOrFrostOrNothingBySignOfTheFinishAndAlwaysTheGlint():
         assert abs(crumbs[0]["vars"]["variable.tint_r"] - 0xED / 255.0) < 1e-9, finish
         assert [entry[0] for entry in dust] == ["arris_diegesis:glint"] and dust[0][2:] == (0xFFE9A0, 5), "闪光：每一道菜都有"
     crumbs, dust = _madeAs(Assembly.FINISH_FREEZE)
-    assert len(crumbs) == 1 and crumbs[0]["vars"]["variable.vy"] == 2.0 / 16.0 and abs(crumbs[0]["vars"]["variable.tint_b"] - 1.0) < 1e-9, "冰棒：霜"
-    assert [entry[0] for entry in dust] == ["arris_diegesis:glint"]
-    for finish in CRUMBLESS:
+    assert [int(p["vars"]["variable.count"]) for p in crumbs] == [10, 12], "冰棒：聚好那一刻 10 颗霜（收尾里），pop 再 12 颗"
+    assert crumbs[1]["vars"]["variable.vy"] == 2.0 / 16.0 and abs(crumbs[1]["vars"]["variable.tint_b"] - 1.0) < 1e-9, "冰棒：霜"
+    assert [entry[2:] for entry in dust] == [(0xE8F4FF, 4), (0xFFE9A0, 5)], "霜色的闪光 4 颗（收尾里），pop 的金色闪光 5 颗"
+    for finish in (Assembly.FINISH_TOSS, Assembly.FINISH_ARRANGE):
         crumbs, dust = _madeAs(finish)
-        assert crumbs == [], "沙拉 / 套餐 / 盛宴 / 一起切开的：不喷面粉（%s）" % finish
+        assert crumbs == [], "沙拉 / 套餐 / 盛宴：不喷面粉（%s）" % finish
         assert [entry[0] for entry in dust] == ["arris_diegesis:glint"] and dust[0][2:] == (0xFFE9A0, 5), "只有一点闪光"
+    crumbs, dust = _madeAs(Assembly.FINISH_CHOP)
+    assert [int(p["vars"]["variable.count"]) for p in crumbs] == [5, 5], "一起切开的：不喷面粉，碎屑是刀过两次各 5 颗（最上面一层的颜色）"
+    assert all(abs(p["vars"]["variable.tint_r"] - ((C.BoardFx.colorOf("arris:egg") >> 16) & 0xFF) / 255.0) < 1e-9 for p in crumbs)
+    assert [entry[2:] for entry in dust] == [(0xFFE9A0, 5)]
 
 
 def testAnOnlookerSeesTheSameCrumbsAsTheCookAndTheGlintToo():
     C.BoardWatch.enable(C.Geometry)
-    for finish in FLOURY + (Assembly.FINISH_FREEZE,) + CRUMBLESS:
-        C.engine.reset()
-        C.BoardWatch.OnBoardLook(dict(_look(finish=finish, block=False), event="assembled"))
+    for finish in FLOURY + (Assembly.FINISH_FREEZE, Assembly.FINISH_TOSS, Assembly.FINISH_ARRANGE):
         cook, _dust = _madeAs(finish)
         C.engine.reset()
-        C.BoardWatch.OnBoardLook(dict(_look(finish=finish, block=False), event="assembled"))
+        C.BoardWatch.OnBoardLook(dict(_look(finish=finish, block=False, count=2), event="assembled"))
+        C.engine.run_timers()
         crumbs, glints = _crumbs(C.engine.particles), _glints(C.engine.particles)
         assert [p["vars"] for p in crumbs] == [p["vars"] for p in cook], finish
-        assert len(glints) == 1 and glints[0]["vars"]["variable.count"] == 5.0 and abs(glints[0]["vars"]["variable.tint_g"] - 0xE9 / 255.0) < 1e-9, finish
+        assert len(glints) == (2 if finish == Assembly.FINISH_FREEZE else 1) and glints[-1]["vars"]["variable.count"] == 5.0, finish
+        assert abs(glints[-1]["vars"]["variable.tint_g"] - 0xE9 / 255.0) < 1e-9, finish
         cx, _, cz = C.BoardFx.centerOf(POS)
-        assert abs(glints[0]["pos"][0] - cx) < 1e-6 and abs(glints[0]["pos"][2] - cz) < 1e-6 and glints[0]["pos"][1] > POS[1], "板面中心上方"
+        assert abs(glints[-1]["pos"][0] - cx) < 1e-6 and abs(glints[-1]["pos"][2] - cz) < 1e-6 and glints[-1]["pos"][1] > POS[1], "板面中心上方"
     for bad in (None, 5, ["toss"], {"x": 1}):
         C.engine.reset()
         C.BoardWatch.OnBoardLook(dict(_look(block=False), event="assembled", finish=bad))
+        C.engine.run_timers()
         assert len(_crumbs(C.engine.particles)) == 1 and len(_glints(C.engine.particles)) == 1, "坏数据的收尾名：按压算、不抛"
 
 

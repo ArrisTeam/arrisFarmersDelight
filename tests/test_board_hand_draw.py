@@ -243,7 +243,7 @@ def testTheHandStartsFromTheCursorWhenThereIsOne():
 
 # ---------------------------------------------------------------- 书里点的菜、做成
 
-def _book(behavior, view, made, finish="knead"):
+def _book(behavior, view, made, finish="press"):
     """书里点的菜：状态先到（层是空的、菜躺在板上），assembled 效果随后。"""
     view.state.board, view.state.layers = C.item("arris:wheat_dough", 1), []
     behavior.onState(CHANGED)

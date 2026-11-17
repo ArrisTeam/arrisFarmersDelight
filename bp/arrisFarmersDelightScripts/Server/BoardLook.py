@@ -6,7 +6,7 @@ HoD 的站点效果（chopped / placed / taken / carved / assembled / refused）
 这条广播补上：服务端把同一批效果发给同维度 32 格内、没开着这个站点的玩家（开着的人收站点自己的 effect，两边不重复），
 客户端 Compat/Diegesis/BoardWatch 的 OnBoardLook 按和站点里一样的声音表（Shared/Rules/BoardSounds）放声音、飞碎屑；动画不演——
 旁观的人看到的板由 Client/BlockItems 摆。默认关着，前置包在场、砧板站点登记了时由 Compat/Diegesis/ServerBoot 打开（enable），没装什么都不发。
-负载（Call 到 OnBoardLook）：{"dimensionId", "pos": [x, y, z], "event": 效果名, ...效果的数据}，数据里只有动画才用的大块（stack、layers）不带。
+负载（Call 到 OnBoardLook）：{"dimensionId", "pos": [x, y, z], "event": 效果名, ...效果的数据}，数据里只有动画才用的大块（stack、layers）不带（assembled 带做成了几层 count）。
 """
 from .Helpers.Engine import Call
 from .PanLook import nearby
@@ -26,9 +26,11 @@ def enabled():
 
 
 def payloadOf(dimensionId, blockPos, name, data=None):
-    """发出去的负载：效果数据去掉动画专用的大块，再带上维度、方块位置、效果名。"""
+    """发出去的负载：效果数据去掉动画专用的大块，再带上维度、方块位置、效果名；assembled 多带做成了几层（count）：层不带，可收尾演多久（旁观的人按它放收尾的声音）要层数。"""
     payload = dict((key, value) for key, value in (data or {}).items() if key not in _ANIMATION_ONLY)
     payload.update({"dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])], "event": name})
+    if name == "assembled":
+        payload["count"] = len((data or {}).get("layers") or [])
     return payload
 
 

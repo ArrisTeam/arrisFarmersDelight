@@ -3,6 +3,7 @@
 """书里点一道菜时各层从玩家那边飞来（Compat/Diegesis/BoardDraw + BoardDrawEvents + BoardEffects，假引擎见 boardclient.py）：
 一次放好几层的，从屏幕下沿（玩家那边）一层隔一层飞来、落定；手放的一层从光标上方落下；放好就做成的（书里点的菜）板上没摆过的层先飞来、都落了才沉进去、
 做成的声音和面粉等落完；板上原来就摆着的层在原位。对应 HoD 的 refresh 里的 together / landFromPlayer（446-484、603-608）和 assembled 里的 arrive（1583-1617）。
+这里的菜都按"压"（什么收尾也不演）做成：只看层怎么来、什么时候沉；十种收尾本身在 test_board_finish_anim.py。
 """
 from __future__ import print_function
 
@@ -108,7 +109,7 @@ def testADishPickedInTheBookFliesInBeforeItMeltsAndItsSoundsWaitForTheLanding():
     view.state.board = C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())              # 状态先到：层是空的、菜已经躺在板上
     made = [C.item(BREAD), C.item(EGG), C.item("arris:tomato")]
-    behavior.onEffect("assembled", {"layers": made, "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": made, "finish": "press", "block": False})
     arrive = 2 * Motion.LAYER_STAGGER + Motion.PLAYER_LAND_TIME + Motion.SETTLE_TIME
     assert C.engine.played == [] and not C.engine.particles, "各层还没落：做成的声音、面粉都等着"
     assert _layer(behavior, 0).mover.visible and not _layer(behavior, 1).mover.visible, "没摆过的层一层隔一层飞来"
@@ -134,7 +135,7 @@ def _made(behavior, view, dish="arris:egg_sandwich", count=1, made=(BREAD, EGG),
     view.state.layers = []
     view.state.board = C.item(dish, count)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
-    behavior.onEffect("assembled", {"layers": [C.item(name) for name in made], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item(name) for name in made], "finish": "press", "block": False})
 
 
 def _shown(view):
@@ -164,7 +165,7 @@ def testADishTakenWhileTheLayersSinkDoesNotPopUpAfterwards():
     behavior.draw.quiet = False
     view.state.board = C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
-    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG), C.item(TOMATO)], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG), C.item(TOMATO)], "finish": "press", "block": False})
     _frames(behavior, 0.5)                                                # 各层还在飞
     view.state.board = None
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
@@ -194,7 +195,7 @@ def testLayersThatLayOnTheBoardStayAndOnlyTheLastOneComesFromThePlayer():
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
     _frames(behavior, 0.1)
     made = [C.item(BREAD), C.item(EGG), C.item("arris:tomato")]
-    behavior.onEffect("assembled", {"layers": made, "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": made, "finish": "press", "block": False})
     assert _near(_layer(behavior, 0).mover.pos, _home(0)) and _near(_layer(behavior, 1).mover.pos, _home(1)), "原来摆着的两层在原位"
     third = _layer(behavior, 2).mover
     assert third.visible and third.pos[1] > _home(2)[1] + 2.0, "最后放的那层从玩家那边飞来"
@@ -213,7 +214,7 @@ def testLayersClearedLongAgoAreNotTakenForTheOnesThatLay():
     _frames(behavior, 2.0)                                              # 一直空着（比如取空了）
     view.state.board = C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
-    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG)], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG)], "finish": "press", "block": False})
     assert not _layer(behavior, 1).mover.visible and _layer(behavior, 0).mover.visible and _layer(behavior, 0).mover.pos[1] > _home(0)[1] + 2.0, \
         "老早清空的层不算原来摆着的：全从玩家那边飞来"
 
@@ -238,7 +239,7 @@ def testWithoutAnythingNewToLandTheDishMeltsAtOnceAndMakesItsSoundsAtOnce():
     view.state.layers = []
     view.state.board = C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
-    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG)], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG)], "finish": "press", "block": False})
     assert len(C.engine.played) == 2 and C.engine.particles, "层都摆着：马上做成，声音和面粉不等"
     assert abs(behavior.draw.melting - (Motion.MELT_TIME + 0.05)) < 1.0e-9
 

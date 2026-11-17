@@ -69,7 +69,7 @@ def testPlacedGetsHigherWithTheLayerTakenHasOneSoundAndCarvedAndAssembledTheirOw
     behavior.onEffect("carved", {})
     assert C.engine.played == [("dig.wood", 1.0, 0.8)]
     C.engine.played[:] = []
-    behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "press", "block": False})
     assert C.engine.played == [], "板上没摆过这两层（书里点的菜）：先飞来，做成的声音等它们落完（test_board_arrival 细查）"
     for _ in range(60):
         behavior.frame(1.0 / 60.0)
@@ -95,8 +95,11 @@ def testAnOnlookerHearsTheSameSoundsFromTheBoard():
     C.engine.played[:] = []
     C.BoardWatch.OnBoardLook(_look("taken", carved=False, at=0))
     C.BoardWatch.OnBoardLook(_look("carved"))
-    C.BoardWatch.OnBoardLook(_look("assembled", finish="sandwich", block=False))
-    assert _names() == ["random.pop", "dig.wood", "dig.wood", "random.pop"]
+    C.BoardWatch.OnBoardLook(_look("assembled", finish="press", block=False, count=2))
+    assert _names() == ["random.pop", "dig.wood", "dig.wood", "random.pop"], "压没有收尾要演：做成的两声当场响"
+    C.engine.played[:] = []
+    C.BoardWatch.OnBoardLook(_look("assembled", finish="sandwich", block=False, count=2))
+    assert C.engine.played == [], "夹要先演 0.42 秒：做成的两声等着（收尾的细查在 test_board_finish_anim）"
 
 
 def _later():

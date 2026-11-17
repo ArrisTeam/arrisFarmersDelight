@@ -44,7 +44,7 @@ class Draw(DrawEvents):
         self.shown = {"board": None, "layers": []}      # 现在画着的：板上的 (身份, 数量, 种类)、各层的身份
         self.clock = 0.0
         self.steps = []
-        self.melting = 0.0                              # 层正在沉进做好的菜：这么久之内层是动画的，状态先记着（late）
+        self.melting = 0.0                              # 层在演收尾、沉进做好的菜：这么久之内层是动画的，状态先记着（late）；只有 assembled 的 done 把它归零
         self.late = None                                # 这一会儿里收到的最新状态 (板上的东西, 各层)：菜弹出来、层沉完时照它画
         self.cursor = None                              # 光标射线（站点射线）：落下的东西从光标上方来
         self.bouncing = 0.0                             # 板不收的东西正弹回手上：这么久之内光标栈上的那份先收起来
@@ -182,7 +182,7 @@ class Draw(DrawEvents):
         self.clock += dt
         self.bouncing = max(0.0, self.bouncing - dt)
         if self.melting > 0.0:
-            self.melting -= dt
+            self.melting = max(1.0e-6, self.melting - dt)     # 倒数不会自己走完：落在帧上的步骤最多晚一两帧，层还在沉时状态就不能等了
         due = [step for step in self.steps if step[0] <= self.clock]
         self.steps = [step for step in self.steps if step[0] > self.clock]
         for _at, run in due:

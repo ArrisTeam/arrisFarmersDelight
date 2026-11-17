@@ -15,6 +15,7 @@ Marks = fdtest.load("Shared.Rules.HandsOn.BoardMarks")
 Dashes = fdtest.load("Shared.Rules.HandsOn.BoardDashes")
 Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
+ItemPose = fdtest.load("Shared.Rules.ItemPose")
 
 KNIFE = "arris:iron_knife"
 
@@ -332,7 +333,10 @@ def testLayersAreStackedEachWithItsOwnTurnAndTheFirstIsTheBigOne():
     heights = [prop.center[1] for prop in props]
     assert heights == sorted(heights) and heights[1] - heights[0] > 0.5
     assert abs(props[0].scale - 1.25) < 1e-6 and abs(props[1].scale - 9.0 / 8.0) < 1e-6, "第 0 层 10 像素，以后的 9 像素"
-    assert len(set(round(prop.along[1], 3) for prop in props)) == 3, "每层转的角度不同"
+    for index, prop in enumerate(props):
+        want = ItemPose.lyingMatrix(-Scene.layerPose(index)["turn"])          # 平躺的东西按姿态矩阵摆：每层转自己的角度（和没开站时 BlockDisplay 的 along = (cos, sin) 一个朝向）
+        assert all(abs(a - b) < 1.0e-9 for row, wrow in zip(prop.matrix, want) for a, b in zip(row, wrow)), index
+    assert len(set(round(prop.matrix[0][1], 3) for prop in props)) == 3, "每层转的角度不同"
 
 
 def testLeftClickWithAStackPlacesAllAndRightClickPlacesOne():
@@ -566,7 +570,7 @@ def testAssemblingMeltsTheLayersAndPopsTheDishUp():
     view.state.layers = []
     view.state.board = C.item("arris:egg_sandwich", 1)
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
-    behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "sandwich", "block": False})
+    behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "press", "block": False})
     _frames(behavior, 5)
     assert len(_live(view, "minecraft:bread")) == 1 and len(_live(view, "arris:egg_sandwich")) == 1, "层往里沉，菜同一刻弹出来（JE 的 pop）"
     assert view.dust and view.dust[-1][0] == "arris_diegesis:glint"
