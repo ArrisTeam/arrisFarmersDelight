@@ -77,6 +77,9 @@ class FakeView(object):
     def tooltip(self, lines):
         pass
 
+    def rayAt(self, screen):
+        return None                                # 没有相机：端走的终点回到缺省
+
     def dropInto(self, group, button):
         self.drops.append((group, button))
         return 0
@@ -394,6 +397,32 @@ def testTheSoupRingsWhereTheCursorMeetsTheSurfaceNotWhereItHitTheBox():
     rings[:] = []
     assert behavior.onPointer(Event(LEFT, Hit("mouth"), ray=(8.0, 41.0, -21.0, 0.0, 0.0, 1.0))) is True
     assert rings == [(8.0, 9.0, 8.0)], "射线和液面平行（没有交点）：盒子上的点"
+
+
+def _splashes():
+    return [spec for spec in C.world.particles if spec["id"] == "arris_diegesis:splash"]
+
+
+def testTheBowlThatWentInUnderTheCursorSplashesFourAtSixPixelsPerSecond():
+    # PotBehavior.java:535：spawnParticles(SPLASH, 光标落在液面的点, (0, 6, 0), 0.6, 4, 汤色)
+    behavior, _view = behaviorOf()
+    behavior.serve.bowlWentIn((8.0, 9.0, 8.0))
+    found = _splashes()
+    assert len(found) == 1 and found[0]["vars"]["variable.count"] == 4.0, [spec["vars"] for spec in found]
+    assert (found[0]["vars"]["variable.vx"], found[0]["vars"]["variable.vy"], found[0]["vars"]["variable.vz"]) == (0.0, 6.0, 0.0)
+    assert found[0]["vars"]["variable.speed_set"] == 1.0
+
+
+def testTheOfferedBowlDippedIntoTheSoupSplashesFourAtSixPixelsPerSecond():
+    # KitchenMotions.java:639（Dip 浸到的那一刻）：spawnParticles(SPLASH, 落点, (0, 6, 0), 0.6, 4, 汤色)
+    behavior, _view = behaviorOf()
+    serve = behavior.serve
+    serve._dipOffered("minecraft:bowl", {"pos": (8.0, 9.5, 8.0), "scale": 1.0, "size": 2.0}, "arris:pumpkin_soup")
+    serve._dipping(0.2, behavior.scene.liquid.surfaceY())               # 过了 DOWN（0.14 秒）：浸到了
+    found = _splashes()
+    assert len(found) == 1 and found[0]["vars"]["variable.count"] == 4.0, [spec["vars"] for spec in found]
+    assert (found[0]["vars"]["variable.vx"], found[0]["vars"]["variable.vy"], found[0]["vars"]["variable.vz"]) == (0.0, 6.0, 0.0)
+    assert found[0]["vars"]["variable.speed_set"] == 1.0
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@
 """厨锅在本客户端的场景（Compat/Diegesis 的 PotScene / PotHands / PotSceneFx / PotModel，假引擎）。"""
 from __future__ import print_function
 
+import random
+
 import potclient as C
 
 world = C.world
@@ -246,6 +248,67 @@ def testTheOpenedEggDropsIntoTheSoupAsTheRawWhiteNotAsAFriedEgg():
         everything.update(drop["item"]["newItemName"] for drop in world.drops.values())
     assert inside == set(["arris:egg_look_0"]), "蛋液落进汤里：生蛋清"
     assert "arris:fried_egg" not in everything, "整个过程里没有煎蛋的熟样子：%r" % sorted(everything)
+
+
+def splashes(since=0):
+    return [spec for spec in world.particles[since:] if spec["id"] == "arris_diegesis:splash"]
+
+
+def testAnotherPlayersScoopSplashesFourSeparateSpotsOnTheSoupThatJumpSevenPixelsPerSecond():
+    # PotBehavior.java:119,690：spawnOnLiquid(SPLASH, "broth", 4, 汤色, SPLASH_UP = (0, 7, 0))，一颗一个点，在汤面中间 80% 里随机
+    random.seed(3)
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 0.2)
+    before = len(world.particles)
+    scene.event("scooped", {})
+    found = splashes(before)
+    assert len(found) == 4, [spec["vars"] for spec in found]
+    spots = set()
+    for spec in found:
+        assert spec["vars"]["variable.count"] == 1.0, "一颗一个点"
+        assert (spec["vars"]["variable.vx"], spec["vars"]["variable.vy"], spec["vars"]["variable.vz"]) == (0.0, 7.0, 0.0), spec["vars"]
+        assert spec["vars"]["variable.speed_set"] == 1.0
+        x, y, z = scene.local(*spec["pos"])
+        assert 4.8 - 1e-6 <= x <= 11.2 + 1e-6 and 4.8 - 1e-6 <= z <= 11.2 + 1e-6, "汤面中间那一块里：%r" % ((x, z),)
+        assert abs(y - scene.liquid.surfaceY()) < 1e-6
+        spots.add((round(x, 6), round(z, 6)))
+    assert len(spots) == 4, "四个点各不相同"
+
+
+def testTheCooksOwnScoopAddsNoSplashSinceTheBowlAlreadySplashedWhereItWentIn():
+    # PotBehavior.java:688：dip == null && time - scoopedHere > 1 才溅（盛的人自己那边碗落下去的地方已经溅过了）；声音照放
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 0.2)
+    before = len(world.particles)
+    scene.event("scooped", {}, True)
+    assert splashes(before) == [] and sounds("handson.pot.scoop")
+
+
+def testAnItemThatLandsSplashesFiveWithTheStyleDefaultSpeedNotAnInventedOne():
+    # PotBehavior.java:793：spawnParticles(SPLASH, 节点, 5, 汤色)——走节点那个重载，速度是样式缺省的 (0, 16, 0)，水花粒子不给速度就是这个
+    scene = setup()
+    scene.apply(C.look([]))
+    run(scene, 0.2)
+    before = len(world.particles)
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 2.0)
+    found = splashes(before)
+    assert len(found) == 1 and found[0]["vars"]["variable.count"] == 5.0
+    assert "variable.speed_set" not in found[0]["vars"] and "variable.vy" not in found[0]["vars"], found[0]["vars"]
+
+
+def testTheEggInsideSplashesThreeAtSixPixelsPerSecondWhereItLands():
+    # KitchenMotions.java:541：spawnParticles(SPLASH, 落点, (0, 6, 0), 0.5, 3, 蛋白色)
+    scene = setup()
+    withEgg(scene)
+    before = len(world.particles)
+    run(scene, 3.0)
+    found = splashes(before)
+    assert len(found) == 1 and found[0]["vars"]["variable.count"] == 3.0, [spec["vars"] for spec in found]
+    assert (found[0]["vars"]["variable.vx"], found[0]["vars"]["variable.vy"], found[0]["vars"]["variable.vz"]) == (0.0, 6.0, 0.0)
+    assert found[0]["vars"]["variable.speed_set"] == 1.0
 
 
 def testAParticleTheEngineDidNotMakeIsNotTouched():

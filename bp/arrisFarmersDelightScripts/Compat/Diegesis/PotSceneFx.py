@@ -9,7 +9,7 @@ import random
 
 from . import PotFx
 from ...Shared.Rules import PotLookState
-from ...Shared.Rules.HandsOn import PotDrift, PotFinish, PotLiquid, PotSounds
+from ...Shared.Rules.HandsOn import PotDrift, PotFinish, PotLiquid, PotServe, PotSounds
 
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
 FLOOR = PotLiquid.BROTH_FLOOR
@@ -79,6 +79,8 @@ class SceneFx(object):
             scene.model.ripple(8.0, 8.0, ripple)
             if near:
                 where = scene.world(drift.x[slot], scene.liquid.surfaceY(), drift.z[slot])
+                # 不传速度：JE 这一下（PotBehavior.java:793）走节点那个重载，速度是样式的缺省 (0, 16, 0)（ClientStation.java:294，重力大于 20 的样式），
+                # 就是水花粒子不给速度时的样子
                 PotFx.particle(PotFx.SPLASH, where, color=scene.liquid.brothColor, count=splashes)
                 play("plop", where, volume, pitch)
                 if sizzle > 0.0:
@@ -103,6 +105,14 @@ class SceneFx(object):
             x = (INNER_LO + along) if side < 2 else (INNER_LO + inset if side == 2 else INNER_LO + INNER_SPAN - inset)
             z = (INNER_LO + inset if side == 0 else INNER_LO + INNER_SPAN - inset) if side < 2 else (INNER_LO + along)
             PotFx.particle(PotFx.BUBBLE_POP, scene.world(x, surface + 0.15, z), color=liquid.bubbleColor, scale=EDGE_SCALE)
+
+    def scoopSplash(self):
+        """别人盛了一份：汤面中间那一块里随机的四处各溅一颗，起跳 7 像素每秒（PotBehavior.java:690 的 spawnOnLiquid(SPLASH, "broth", 4, 汤色, SPLASH_UP)，
+        一颗一个点）。盛的人自己那边碗落进汤的地方已经溅过了（PotOffer.bowlWentIn / Dip）。"""
+        scene = self.scene
+        for _ in range(PotServe.SPLASHES):
+            where = scene.world(_inner(0.1, 0.9), scene.liquid.surfaceY(), _inner(0.1, 0.9))
+            PotFx.particle(PotFx.SPLASH, where, color=scene.liquid.brothColor, count=1, velocity=PotServe.SPLASH_UP)
 
     def bubbles(self, count):
         """锅底随处冒 count 个泡。"""

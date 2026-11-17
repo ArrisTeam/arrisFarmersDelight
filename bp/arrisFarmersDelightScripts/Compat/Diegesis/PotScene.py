@@ -12,7 +12,6 @@
 """
 import random
 
-from . import PotFx
 from .PotHands import PotHands
 from .PotModel import PotModel
 from .PotSceneFx import SceneFx, play
@@ -222,11 +221,10 @@ class PotScene(object):
         rung：盛的人自己那边，碗落进汤的地方已经敲过水波了（PotBehavior.onEffect 的 dip / scoopedHere），只放声音。"""
         self.awake = AWAKE_SECONDS
         if name == "scooped":
-            where = self.world(8.0, self.liquid.surfaceY(), 8.0)
             if not rung:
                 self.model.ripple(8.0, 8.0, 0.5)
-                PotFx.particle(PotFx.SPLASH, where, color=self.liquid.brothColor, count=4)
-            play("scoop", where, 0.55, 1.0)
+                self.fx.scoopSplash()
+            play("scoop", self.world(8.0, self.liquid.surfaceY(), 8.0), 0.55, 1.0)
 
     # ---------------------------------------------------------------- 收场
 

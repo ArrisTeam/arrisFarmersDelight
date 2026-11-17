@@ -197,6 +197,6 @@ class PotHands(object):
             PotFx.particle(PotFx.DROPLET, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"],
                            scale=GRAIN_SCALE if kind == "grains" else None, velocity=self._turned(entry["frame"], event["rise"]))
         elif kind == "splash":
-            PotFx.particle(PotFx.SPLASH, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"])
+            PotFx.particle(PotFx.SPLASH, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"], velocity=event["rise"])
         elif kind == "bubbles":
             scene.fx.bubbles(event["count"])

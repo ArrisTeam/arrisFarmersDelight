@@ -187,7 +187,8 @@ class PotOffer(object):
             if kind == "ripple":
                 scene.model.ripple(event["x"], event["z"], event["strength"])
             elif kind == "splash":
-                PotFx.particle(PotFx.SPLASH, scene.world(*event["pos"]), color=scene.liquid.brothColor, count=event.get("count"))
+                PotFx.particle(PotFx.SPLASH, scene.world(*event["pos"]), color=scene.liquid.brothColor, count=event.get("count"),
+                               velocity=event["rise"])
             elif kind == "drip":
                 PotFx.particle(PotFx.DROPLET, scene.world(*event["pos"]), color=scene.liquid.brothColor)
             elif kind == "sound":
@@ -212,7 +213,8 @@ class PotOffer(object):
             return
         x, _, z = self.owner.toLocal(point)
         scene.model.ripple(x, z, 0.45)
-        PotFx.particle(PotFx.SPLASH, scene.world(x, scene.liquid.surfaceY(), z), color=scene.liquid.brothColor, count=4)
+        PotFx.particle(PotFx.SPLASH, scene.world(x, scene.liquid.surfaceY(), z), color=scene.liquid.brothColor, count=PotServe.SPLASHES,
+                       velocity=PotServe.SPLASH_RISE)
         self.scoopedAt = self.scoopedHere = self.owner.clock
 
     def close(self):
