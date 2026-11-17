@@ -461,8 +461,13 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   client_tick 是方块实体的标志，**这一版之前放下的煎锅要重新放才有蒸汽**，嗞嗞声是方块级的组件、旧锅也有）；"加热着"读方块实体模型的 `mod_heat`、
   "锅里有东西"读 `Client/BlockItems` 记着的内容、火焰附加读方块实体数据里记着的那件煎锅；场景接管（`mod_scene` 为 1）时不放，声音和烟是煎锅场景画的。
   粒子 `arris:skillet_steam`（FD 的 `SteamParticle`：半边长 0.2~0.4、活 4~6.45 秒、每秒升 0.1~0.34 格、alpha 0.6 最后 1.5 秒淡掉）和 `arris:skillet_spark`
-  （`CritParticle` 的附魔色：速度 0.4 倍、摩擦 0.7 每刻、重力 0.02 格每二次方刻）是本包自己的（厨锅的 `arris:steam_0` 飘得又高又快，是厨锅那一路的数）。
+  （`CritParticle` 的附魔色：速度 0.4 倍、摩擦 0.7 每刻、重力 0.02 格每二次方刻）是本包自己的（经典厨锅的蒸汽 `arris:steam` 是同一个 `SteamParticle`，见下一条）。
   原来实体定义里的嗞嗞动画（只要在热源上就每 15 秒响一声，空锅也响、没有蒸汽）删了。
+- 经典厨锅（没有站点）的蒸汽：实体动画 `animation.cooking_pot.smoke` 每秒（JE `CookingPotBlockEntity.animationTick` 每刻 5%，平均每秒一颗）在模型的 `steam` 定位点（方块中心、离底面 8 像素 = JE 的 `pos.y + 0.5`）放一颗 `arris:steam`。
+  它和煎锅的蒸汽是同一个 FD `SteamParticle`（速度、寿命、大小、渐隐、重力、挑图、光照一样，`tests/test_pot_steam.py` 逐项对），只有起点不同：锅的 x、z ±0.2 和 Factory 的 +0.3 写在粒子里，煎锅的 x、z 由脚本掷。
+  JE 在 `steam.json` 的 12 张图里每颗随机挑一张（`pickSprite`）：十二张图叠成一张 `rp/textures/particle/arris_steam.png`（16 x 192，和 JE 的 `steam_0` 到 `steam_11` 逐像素一样），
+  UV 的纵向写 `math.floor(variable.particle_random_2 * 12) * 16`（原版营火烟也这么挑图；大小用随机数 1，两个量各掷各的，和 JE 一样）。没做的：JE 的蒸汽碰到方块停住（`Particle.move` 的碰撞，这里只有
+  「离开锅和空气就消失」的粗略做法，原来就有）、横向每刻的随机游走（走完一生约 0.07 格）。粒子、实体、动画、模型都改了，没进过游戏，要完整重启后看。
 - 手持烹饪（`SkilletHand`）：JE 的 `SkilletItem.use` 两只手都认（煎锅在哪只手，原料就在另一只手）。**基岩版的副手只收引擎允许的那几种物品，生肉放不进去**（实测 `SetEntityItem(OFFHAND, 生牛肉)` 返回 False），所以这边常用的是反过来拿：煎锅放副手（物品 JSON 开了 `netease:allow_offhand`）、原料拿主手，这时在热源旁按住右键是煎不是吃——客户端在 `ClientItemTryUseEvent` 里取消"吃"（`SkilletHandRules.cooksInsteadOfEating`：副手煎锅、主手有营火配方、身边 3x3x3 有热源；JE 里饿着的时候主手的食物会先被吃掉，这里改成有热源就煎，不然基岩版饿着就没法手持煎东西了）。下面说的"副手食物"换成这种拿法就是主手的那件。
   基岩版没有"按住使用"的服务端事件，由客户端在主手或副手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
   每 0.2 秒报一次，`RightClickReleaseClientEvent` 报松开（`Client/Input.py` + `SkilletHandRules.HoldReporter`，RPC `SkilletUseHeld`）；服务端按最后一次"按着"的时间判断还按不按着
