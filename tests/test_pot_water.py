@@ -170,6 +170,38 @@ def testABystanderWhoNeverOpenedTheStationSeesTheBiomeWaterToo():
             assert scene.liquid.target == LiquidColor.brothTarget(scene.water, carrot, False, 0.0, None, [], 0)[0]
 
 
+def testAnOldEngineWithoutTheClientBiomeQueryKeepsTheDefaultWaterAndTheSceneStillShowsItsLook():
+    """客户端的 GetBiomeName 是 2.7 才有的：老引擎没有这个组件 / 这个接口时不问，锅的场景照样建、照样摆出存着的样子，水是缺省色。"""
+    PotBiome = C.load("Compat.Diegesis.PotBiome")
+    real = PotBiome.compFactory
+
+    class NoBiomeComponent(object):
+        def __getattr__(self, name):
+            if name == "CreateBiome":
+                raise AttributeError(name)
+            return getattr(real, name)
+
+    class NoBiomeQuery(object):
+        def __getattr__(self, name):
+            if name == "CreateBiome":
+                return lambda owner=None: object()
+            return getattr(real, name)
+
+    for factory in (NoBiomeComponent(), NoBiomeQuery()):
+        build("swampland")
+        Scenes._scenes.clear()
+        del world.biomeAsked[:]                                               # build 自己建的那一份问过了，不算
+        PotBiome.compFactory = factory
+        try:
+            assert PotBiome.lookup(POS) is None
+            Scenes.OnBlockEntityLoaded({"blockName": "arris:cooking_pot", "posX": POS[0], "posY": POS[1], "posZ": POS[2], "dimensionId": 0})
+        finally:
+            PotBiome.compFactory = real
+        scene = Scenes.sceneAt(0, POS)
+        assert scene is not None and scene.water == DEFAULT and scene.look is not None, type(factory).__name__
+    assert world.biomeAsked == [], "没有接口：一次也不问"
+
+
 def testTheEngineIsAskedOncePerSceneAndOnlyForTheColumnsOfThePotsChunk():
     scene = build("swampland")
     asked = list(world.biomeAsked)

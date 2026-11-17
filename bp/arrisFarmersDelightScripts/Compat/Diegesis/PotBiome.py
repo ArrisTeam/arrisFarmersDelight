@@ -5,6 +5,7 @@ JE 的 PotBehavior.colour 每次重算汤色都取 BiomeColors.getAverageWaterCo
 CreateBiome(levelId).GetBiomeName((x, y, z))（官方文档：获取客户端当前维度已加载区域某一位置所属的群系，回群系名、不带命名空间；
 那一带没加载回 None），一列一次调用。
 建场景时（PotScenes.ensure）问一次：水色挂在每口锅的场景上，没开站点的人看到的锅也对。之后不再问；区块卸载再加载时锅会重新建场景、再问一次。
+客户端的 GetBiomeName 是 2.7 才有的：老引擎没有这个组件 / 接口就不问（返回 None，场景用缺省色），不能让锅的场景因为它建不出来。
 """
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import PotWater
@@ -12,8 +13,11 @@ from ...Shared.Rules import PotWater
 
 def lookup(pos):
     """pos 处的水色 0xRRGGBB（周围 5 x 5 列的平均，见 PotWater）；一列都没问到返回 None。"""
-    biome = compFactory.CreateBiome(levelId)
-    return PotWater.waterAt(lambda x, y, z: biome.GetBiomeName((x, y, z)), pos)
+    create = getattr(compFactory, "CreateBiome", None)
+    ask = getattr(create(levelId), "GetBiomeName", None) if create is not None else None
+    if ask is None:
+        return None
+    return PotWater.waterAt(lambda x, y, z: ask((x, y, z)), pos)
 
 
 def bind(scene):
