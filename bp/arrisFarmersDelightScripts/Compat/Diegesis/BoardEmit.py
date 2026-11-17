@@ -11,4 +11,4 @@ def emit(logic, name, data=None):
     """站点的一个表现事件：发给开着站点的人（effect），再发给附近旁观的人（广播，只有出声 / 出碎屑的几种）。"""
     station = logic.station
     station.effect(name, data)
-    BoardLook.event(station.dimensionId, station.pos, name, data, skip=list(station.users))
+    BoardLook.event(station.dimensionId, station.pos, name, data, skip=list(station.users), actor=logic.actor)

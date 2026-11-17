@@ -10,12 +10,16 @@ import boardkit as K
 from boardkit import fake
 
 BoardLook = K.potfake.load("Server.BoardLook")
+REFUSED_GAP = BoardLook.REFUSED_GAP
+PAUSE = REFUSED_GAP + 0.05                                  # 隔够了（浮点的边界上不比）
 KNIFE, CABBAGE = "arris:iron_knife", "arris:cabbage"
 BOARD_SOUNDS = ("ambient.cutting_board.knife", "dig.wood", "armor.equip_leather", "random.pop")
 
 
 def _setup(enabled=True):
     manager, data = K.setup()
+    BoardLook.time = K.potfake.Clock(fake.world)             # 被拒的敲击声按玩家限速（真实时间）：测试里读假世界的钟
+    BoardLook._refusedAt.clear()
     fake.addPlayer("c", (200.5, 64.0, 10.5))                 # 太远
     fake.addPlayer("d", (10.5, 64.0, 10.5), dim=1)           # 别的维度
     BoardLook.enable(enabled)
@@ -121,6 +125,7 @@ def testARefusedPlaceChopOrAssembleIsHeardByOnlookersToo():
         assert _looks("a") == [], "开着站点的人收 effect，不再收一份广播"
         assert K.effects("a")[0][0] == "refused"
         before = len(_looks("b"))
+        K.advance(PAUSE)                                                   # 同一个人被拒的敲击声旁观的人 0.3 秒内至多听一声
         assert K.do(manager, "a", K.custom("assemble")) is False
         assert [look["event"] for look in _looks("b")[before:]] == ["refused"], "凑不成菜：拒绝"
         K.do(manager, "a", K.click(K.inv(0), kind="PUT_AWAY"))
@@ -130,6 +135,66 @@ def testARefusedPlaceChopOrAssembleIsHeardByOnlookersToo():
         assert _chop(manager) and [look["event"] for look in _looks("b")[before:]] == ["refused"], "没有刀：这一刀被拒"
     finally:
         BoardLook.enable(False)
+
+
+def testARefusedChopIsNotAHornTheCooksOwnClientCanBlowAtEveryoneNearby():
+    """被拒的动作每秒能来 40 个：改过的客户端发一串非法的 chop，每个都给 32 格内每个旁观的人发一次广播、放一声敲击。同一个人被拒的敲击声旁观的人 0.3 秒内至多听一声；
+    站点里的人收的 effect 一个不少（他的客户端据此撤回画好的切口）。"""
+    manager, data = _setup()
+    try:
+        K.opened(manager)
+        assert _place(manager, CABBAGE, 1)                                 # 板上有菜，没有刀
+        K.effects()
+        before = len(_looks("b"))
+        for _ in range(20):                                                # 20 个非法的 chop，每个隔 0.07 秒（一秒多一点）
+            K.advance(0.07)
+            assert K.do(manager, "a", K.custom("chop", mark=7, at=8.0))
+        heard = [look["event"] for look in _looks("b")[before:]]
+        assert heard == ["refused"] * 4, "第 1、6、11、16 个（每隔 0.35 秒）：%r" % (heard,)
+        assert [name for name, _data in K.effects("a")] == ["refused"] * 20, "站点里的人每个都收到"
+        K.advance(PAUSE)
+        K.do(manager, "a", K.custom("chop", mark=7, at=8.0))
+        assert len(_looks("b")) == before + 5, "隔够了又能听到"
+    finally:
+        BoardLook.enable(False)
+
+
+def testTheRefusalLimitIsPerPlayerAndOnlyForRefusedNotForTheOtherSounds():
+    manager, data = _setup()
+    fake.addPlayer("e", (11.5, 64.0, 10.5))                                # 另一个旁观的人
+    try:
+        K.opened(manager, "a")
+        K.opened(manager, "b")
+        assert _place(manager, CABBAGE, 1)
+        K.effects("a")
+        K.effects("b")
+        before = len(_looks("e"))
+        for _ in range(3):                                                 # 两个人各发三个非法的 chop，同一时刻
+            for playerId in ("a", "b"):
+                K.do(manager, playerId, K.custom("chop", mark=7, at=8.0))
+        assert [look["event"] for look in _looks("e")[before:]] == ["refused", "refused"], "一个人一声，不是两个人共用一声"
+        K.advance(PAUSE)
+        _knife()                                                           # 刀来了：合法的 chop 和放东西不受限，连着来也都听得到
+        before = len(_looks("e"))
+        assert _chop(manager) and _place(manager, CABBAGE, 1, slot=5)
+        assert [look["event"] for look in _looks("e")[before:]] == ["chopped", "placed"]
+    finally:
+        BoardLook.enable(False)
+
+
+def testOnlyThePlayersRefusedAMomentAgoAreRemembered():
+    BoardLook._refusedAt.clear()
+    clock = BoardLook.time = K.potfake.Clock(fake.world)
+    try:
+        for index in range(300):
+            clock.world.time += PAUSE
+            assert BoardLook._mayHearRefusal("player%d" % index)
+        assert len(BoardLook._refusedAt) <= 65, len(BoardLook._refusedAt)
+        assert not BoardLook._mayHearRefusal("player299"), "刚听过的还在"
+        clock.world.time -= 1000.0                                         # 时钟倒着走：当作隔够了
+        assert BoardLook._mayHearRefusal("player299")
+    finally:
+        BoardLook._refusedAt.clear()
 
 
 def testAnAssembledDishIsBroadcastWithItsFinishAndLayerCountButNotItsLayers():
