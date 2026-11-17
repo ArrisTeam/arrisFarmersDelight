@@ -87,7 +87,11 @@ class PotHud(object):
             return None
         if not item:
             return self._offerTip(state)
-        return [nameOf(item) if item["count"] <= 1 else "%s ×%d" % (nameOf(item), item["count"])]
+        whole = getattr(view, "itemText", None)       # JE 是这件物品原版的整份提示；老版本的前置包没有这个接口，只写名字
+        lines = list(whole(item)) if whole is not None else [nameOf(item)]
+        if item["count"] > 1:
+            lines[0] = "%s ×%d" % (lines[0], item["count"])
+        return lines
 
     def _offerTip(self, state):
         """悬着容器 / 悬着要取回的东西：说这一下做什么。"""

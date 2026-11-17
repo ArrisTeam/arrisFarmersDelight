@@ -85,8 +85,10 @@ def _scaleOf(view, name):
 
 
 def _bottomOf(view, name):
+    """方块那个立方体的底面：道具的轴心在"中心"下方半个贴图边长，引擎把立方体画在轴心上方 CUBE_LIFT。"""
     prop = _live(view, name)[0]
-    return prop.center[1] - prop.scale * Scene.SPRITE_SPAN / 2.0
+    pivot = prop.center[1] - prop.scale * Scene.SPRITE_SPAN / 2.0
+    return pivot + Scene.CUBE_LIFT - prop.scale * Scene.CUBE_SPAN / 2.0
 
 
 def testAShovelShrinksTheBlockFourteenPercentPerShovelfulAndItStaysOnTheBoard():

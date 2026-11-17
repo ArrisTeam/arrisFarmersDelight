@@ -23,7 +23,7 @@ from ...Server.Helpers.BlockItems import PublishStove
 from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Server.Helpers.StoveSlots import StoveSlots
 from ...Server.Stove import EnsureStoveData
-from ...Shared.Rules import GrillStation as Rules, StoveCover
+from ...Shared.Rules import GrillStation as Rules
 from ...Shared.Rules.HandsOn import Frying, Grill
 
 REACH = 6.0

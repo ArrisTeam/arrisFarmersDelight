@@ -33,6 +33,7 @@ MOUTH = ((2.0, 6.0, 2.0), (14.0, 14.0, 14.0))       # 锅口：拿着东西时�
 SOUP = ((4.0, 2.0, 4.0), (12.0, 9.0, 12.0))          # 悬着碗的时候才接点击（offerBowl 里 soup.setEnabled）
 SUNK_HALF = 0.3                                     # 取回沉下去的料：贴着汤面上下各 0.3 的一层（sunk 节点），漂着的料比它高
 ITEM_HALF, ITEM_TALL = 1.6, 0.3                     # 漂着的料的命中盒：左右各 1.6，上下各 0.3
+SLOT_SIZE = 3.2                                     # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）
 
@@ -43,7 +44,7 @@ class PotViewMixin(object):
     camera = CAMERA
     flightSeconds = FLIGHT_SECONDS
     chrome = "java"
-    workPlane, carryLift, carrySize = 10.0, 2.5, 3.2
+    workPlane, carryLift = 10.0, 2.5         # 手上的东西起始是 Diegesis 的缺省大小 4.5，光标到了锅口上变成锅里东西的大小（见 onPointer）
 
     def __init__(self, view):
         super(PotViewMixin, self).__init__(view)
@@ -145,6 +146,10 @@ class PotViewMixin(object):
         payload = event.hit.node.payload if event.hit is not None else None
         if event.kind == "move":
             self.hover, self.ray = (key, payload), event.ray
+            if key == "mouth" and self.view.hand is not None:
+                resize = getattr(self.view, "carryAs", None)        # 光标到了放东西的地方上：手上的东西变成那里的东西的大小，离开不变回去
+                if resize is not None:                              # （FocusInput.updateCarry 的 zoneItemSize；老版本的前置包没有这个接口）
+                    resize(SLOT_SIZE)
             self._aim(event.ray)
             return False
         if event.kind == "up":

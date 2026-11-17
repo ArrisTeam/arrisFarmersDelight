@@ -82,8 +82,11 @@ class Thing(object):
         x, y, z = (a + b for a, b in zip(self.mover.pos, self.offset))
         scale = self.size * self.mover.scale
         upright = self.kind == UPRIGHT
-        center = (self.draw.cx + x, Scene.TOP + y + (Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale),
-                  self.draw.cz + z)
+        if upright and self.draw.isBlock(self.item):
+            lift = Scene.blockLift(scale)                 # 方块类：立方体，轴心的规矩和贴图物品不一样
+        else:
+            lift = Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale
+        center = (self.draw.cx + x, Scene.TOP + y + lift, self.draw.cz + z)
         along = (math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn)))
         if self.prop is None:
             self.prop = self.draw.view.props.item(self.item, center, flat=not upright, along=along, facing=(0.0, -1.0),

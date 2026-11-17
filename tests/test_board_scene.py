@@ -30,7 +30,7 @@ def testBothPickBoxesAreInsideTheBlockAndTheMouthIsAtLeastAsBigAsTheSurface():
 
 
 def testItemsAreTenPixelsAndBlocksFivePointTwoAndTheScaleIsAnEighthOfThat():
-    assert _close(Scene.itemScale(), 10.0 / 8.0) and _close(Scene.itemScale(True), 5.2 / 8.0)
+    assert _close(Scene.itemScale(), 10.0 / 8.0) and _close(Scene.itemScale(True), 5.2 / 4.0), "方块的掉落物是立方体：缩放 1 棱长 4 像素"
     assert _close(Scene.scaleOf(8.0), 1.0) and _close(Scene.scaleOf(Scene.layerSize(0)), 1.25) and _close(Scene.scaleOf(Scene.layerSize(1)), 9.0 / 8.0)
     assert Scene.layerSize(0) == 10.0 and all(Scene.layerSize(index) == 9.0 for index in range(1, 9))
 
@@ -52,7 +52,12 @@ def testEachLayerIsOneStepHigherAndHasItsOwnFixedTurnAndOffset():
 
 
 def testAnUprightThingsCentreIsHalfItsEdgeAboveItsBottom():
-    assert _close(Scene.uprightLift(1.0), 4.0) and _close(Scene.uprightLift(0.65), 2.6) and _close(Scene.uprightLift(Scene.itemScale(True)), Scene.BLOCK_SIZE / 2.0)
+    assert _close(Scene.uprightLift(1.0), 4.0) and _close(Scene.uprightLift(0.65), 2.6)
+    block = Scene.itemScale(True)
+    pivot = Scene.blockLift(block) - block * Scene.SPRITE_SPAN / 2.0       # 道具把轴心放在"中心"下方半个贴图边长
+    assert _close(pivot + Scene.CUBE_LIFT, Scene.BLOCK_SIZE / 2.0), "引擎把立方体画在轴心上方 3.2 像素：它的中心正好在面上方半个棱长"
+    half = Scene.itemScale(True) * 0.5
+    assert _close(Scene.blockLift(half) - half * Scene.SPRITE_SPAN / 2.0 + Scene.CUBE_LIFT, half * Scene.CUBE_SPAN / 2.0), "缩小了底面还贴着面"
 
 
 def testTheCarvedToolIsPlantedAtTheJavaHeightAndTheKnifeTipPointsDown():

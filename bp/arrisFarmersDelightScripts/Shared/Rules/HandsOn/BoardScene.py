@@ -21,6 +21,8 @@ TOP = 1.0                    # 板面（FD 的板 1 像素高）
 BASE_X, BASE_Z = 6.5, 8.0    # 东西躺的地方：板底座的中间，方块自己的坐标
 LAYER_SIZE = 9.0             # 摆盘的层（除第 0 层）画多大
 SPRITE_SPAN = 8.0            # 掉落物缩放 1 时贴图边长
+CUBE_SPAN = 4.0              # 方块物品的掉落物是个小立方体：缩放 1 时棱长（贴图物品边长的一半；2026-11-17 实机标定，前置包 Client/PropMath）
+CUBE_LIFT = 3.2              # 立方体的中心固定在掉落物轴心正上方 0.2 格，不跟缩放和旋转走（引擎定格那一支的 T(0, 0.2, 0)）
 FLAT_LIFT = 0.32             # 平躺的贴图中心离它躺着的面多高
 KNIFE_SCALE = 0.45 * 16.0 / SPRITE_SPAN     # 刀（和别的工具）画 0.45 个图标大：7.2 像素
 KNIFE_ROLL = 135.0           # 竖着的刀顺时针转 135 度：刀柄朝上、刀尖朝下（实机标定）
@@ -35,14 +37,21 @@ def scaleOf(size):
 
 
 def uprightLift(scale):
-    """立着的东西（方块类、插着的工具）的道具中心离它底边多高：贴图轴心在底边中点、缩放 1 时边长 SPRITE_SPAN，中心在边长一半处。
-    砧板站点（BoardThing）和没开站时的 Client/BlockItems 都按它摆，实机要标定立着的东西离板面多高只改这一处。"""
+    """立着的贴图物品（插着的工具）的道具中心离它底边多高：贴图轴心在底边中点、缩放 1 时边长 SPRITE_SPAN，中心在边长一半处。
+    方块类的东西是立方体，用 blockLift。砧板站点（BoardThing）和没开站时的 Client/BlockItems 都按这两个摆。"""
     return scale * SPRITE_SPAN / 2.0
 
 
 def itemScale(isBlock=False):
-    """等着切的东西的缩放：方块类按物品画、缩到 BLOCK_SCALE，图标画 ITEM_SIZE 像素。"""
-    return scaleOf(BLOCK_SIZE if isBlock else ITEM_SIZE)
+    """等着切的东西的缩放：方块类是棱长 BLOCK_SIZE 的立方体（掉落物缩放 1 时棱长 CUBE_SPAN），图标画 ITEM_SIZE 像素。"""
+    return BLOCK_SIZE / CUBE_SPAN if isBlock else scaleOf(ITEM_SIZE)
+
+
+def blockLift(scale):
+    """方块类的东西坐在一个面上时，道具的"中心"要写在面上方多高。道具按贴图物品的规矩摆（轴心 = 中心下方半个贴图边长），
+    而引擎把立方体画在轴心上方 CUBE_LIFT：立方体的中心该在面上方半个棱长，所以是 半棱长 - CUBE_LIFT + 半个贴图边长。
+    scale 用现在的缩放（铲一铲缩一点时底面一直贴着面）。"""
+    return scale * CUBE_SPAN / 2.0 - CUBE_LIFT + scale * SPRITE_SPAN / 2.0
 
 
 def layerPose(index):

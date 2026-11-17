@@ -26,7 +26,7 @@ from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
-CARRY_SIZE, CARRY_HIDDEN = 3.2, 0.01                    # 光标栈上的东西画多大；收起来时缩成一个点（不为 0：零矩阵不稳）
+CARRY_SIZE, CARRY_HIDDEN = 4.5, 0.01                    # 光标栈上的东西画多大（Diegesis 的缺省：板上没有槽节点，不改）；收起来时缩成一个点
 
 
 class BoardViewMixin(object):
@@ -93,8 +93,17 @@ class BoardViewMixin(object):
             self._usable[key] = bool(self.env.usable(item))
         return self._usable[key]
 
+    def onInventoryShiftClick(self, slot, item):
+        """空手 Shift 点托盘里的一叠（BoardBehavior.onInventoryShiftClick）：能切的 / 能摆盘的整叠直接放上板，返回真——
+        内核就不再发 QUICK_MOVE；刀、工具、板不收的返回假。"""
+        if slot < 0 or item is None or not self.env.shiftPlaces(item, self.board()):
+            return False
+        self.view.sendAction("place", {"from": slot})
+        return True
+
     def onTrayClick(self, slot, button, quick):
-        """Shift 点托盘里的格子：能切的 / 能摆盘的整叠直接放上板（内核先发的 QUICK_MOVE 服务端不收）。"""
+        """老版本的前置包没有上面那个钩子：Shift 点先发了 QUICK_MOVE（服务端不收），再在这里补 place。新的前置包里
+        上面的钩子接了就到不了这里，没接（返回假）的到这里也是同一个判断、什么都不发。"""
         if quick and slot >= 0:
             item = self.view.ports.inventory()[slot]
             if item is not None and self.env.shiftPlaces(item, self.board()):

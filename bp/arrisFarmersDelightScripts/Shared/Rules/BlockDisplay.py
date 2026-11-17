@@ -27,7 +27,7 @@ STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六�
 TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 FOOD_SCALE = 1.2
-BLOCK_SCALE = BoardScene.itemScale(True)     # HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西
+BLOCK_SCALE = BoardScene.itemScale(True)     # 方块类在板上是棱长 5.2 像素的立方体（HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西）
 BOARD_FOOD_SCALE = BoardScene.itemScale()    # 板上等着切的东西 10 像素
 CARVED_SCALE = BoardScene.scaleOf(BoardScene.CARVED_SCALE * 16.0)
 PILE_TURN = 17.0                              # 一叠的底下那张转的角度（scene 里 pile 节点的 rotation）
@@ -85,7 +85,7 @@ def boardLayout(item, itemType, offset=(0.0, 0.0)):
     shown = _single(item)
     cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if itemType == "block":
-        return [Placement(shown, (cx, BOARD_TOP + BoardScene.uprightLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
+        return [Placement(shown, (cx, BOARD_TOP + BoardScene.blockLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
     if itemType in TOOL_TYPES:
         return [Placement(shown, (cx, (BoardScene.CARVED_Y + BoardScene.TOP) / 16.0, cz), False, (0.7071, -0.7071), TOOL_ROLL,
                           CARVED_SCALE)]

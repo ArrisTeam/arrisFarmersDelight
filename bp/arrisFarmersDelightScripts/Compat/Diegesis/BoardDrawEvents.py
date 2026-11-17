@@ -56,7 +56,7 @@ class DrawEvents(object):
     def stripped(self, item):
         """削皮切到底：削出来的去皮原木从方块的位置升起 3 像素、缩没（0.3 秒）。"""
         ghost = self._ghost(item, UPRIGHT, Scene.itemScale(True))
-        Motion.stripAway(ghost.mover, (0.0, 0.0, 0.0), Scene.uprightLift(Scene.itemScale(True)))
+        Motion.stripAway(ghost.mover, (0.0, 0.0, 0.0), Scene.BLOCK_SIZE / 2.0)
 
     def _seen(self):
         """刚被清空的层原来摆着哪些（状态先到、assembled 效果随后，所以这时 shown 已经空了）；隔太久的不算。"""
