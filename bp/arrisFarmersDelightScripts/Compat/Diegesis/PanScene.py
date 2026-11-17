@@ -10,6 +10,9 @@
 全部用"场景坐标"（HoD 的 skillet.json：锅心 (8, 0, 8)，锅柄朝 +z），出手时经 PanModelMath 换到世界（锅柄永远朝方块的朝向）。
 本人开着这口锅的站点时，PanView 把手交进来：focused、startsOf（一次放进好几件时从玩家屏幕底边飞来）、cursorAt（光标在某个高度的平面上的点）、
 strokeAt（抓着锅柄时光标的高度，每帧读）、hovered（光标在锅柄上）。
+每口加载着的锅在 32 格内每个渲染帧都过一遍 frame，所以静着的锅要歇着、道具没变不碰引擎（见 busy 和 Prop）：食物躺着不动的锅（凉的、生的）
+歇着时道具原样留在世界里，一帧只做一次便宜的核对；歇着的锅被叫醒的路有六条：广播 / 方块实体数据来了、一次性的表现来了、方块实体在本端重建、
+核对发现模型上的值丢了、本人开了站点（show.focused），和 busy 里别的任何一条成立。
 """
 import random
 
@@ -20,9 +23,20 @@ from ...Shared.Rules import ItemPose, PanLookState, PanModelMath, PanPose, PanSt
 from ...Shared.Rules.HandsOn.PanShow import PanShow
 
 CHECK_SECONDS = 0.5          # 多久核对一次模型上的值还在不在（方块实体重建会清掉）
-AWAKE_SECONDS = 4.0          # 没动静之后再跑这么久就歇着
+AWAKE_SECONDS = 4.0          # 没动静之后再跑这么久就歇着（让最后一次变化的姿态、油膜收干都推到引擎里）
 FLAT_LIFT = 0.5              # 平躺的掉落物离锅底再高这么多（半个像素厚），不然陷进锅底
 PAN_CHILDREN = ("piece", "under", "lift")      # 锅的孩子：跟着锅转；hand / spill 是场景里最外层的节点，不跟锅
+
+
+class Prop(object):
+    """一件掉落物和它最近一次送给引擎的样子。位置和转角要连乘好几个矩阵，是每帧里最贵的一段（8 块食物 700 微秒）：
+    节点的位置、转角和锅的转动都没变就不重算；缩放没变也不再调引擎。熟好的食物一鼓一鼓只变缩放，所以缩放单独记。"""
+
+    __slots__ = ("entityId", "kind", "orient", "center", "matrix", "euler", "scale")
+
+    def __init__(self, entityId, kind):
+        self.entityId, self.kind = entityId, kind
+        self.orient = self.center = self.matrix = self.euler = self.scale = None
 
 
 class PanScene(object):
@@ -38,7 +52,7 @@ class PanScene(object):
         self.clock = 0.0
         self.awake = 0.0
         self.sinceCheck = 0.0
-        self.props = {}                       # 节点名 -> [掉落物 id, (物品名, aux)]
+        self.props = {}                       # 节点名 -> Prop
         self.hovered = False                  # 光标在锅柄上（本人）
         self.offering = False                 # 本人手上的东西放得进锅：锅身描边
         self.startsOf = None                  # startsOf(高度, 第几个, 共几个) -> (dx, dz)：从玩家屏幕底边飞来的起点相对中心的偏移
@@ -87,12 +101,17 @@ class PanScene(object):
     # ---------------------------------------------------------------- 每帧
 
     def busy(self):
+        """还有什么在随时间变，锅就不能歇：热着（热浪、油星、油泡、滋滋声、油膜）、本人开着站点（描边、抓锅柄、飞入的起点）、
+        熟好的食物在鼓（readyGlow：闪、冒汽，凉锅也一样）、排着队的小步骤（跳、落、声音）、油膜在收干、蛋在磕、颠锅这一阵。
+        每个渲染帧、每口锅都问一遍，所以只看这几个字段。锅里躺着食物、有掉落物，都不算（没变的掉落物不碰引擎，见 _prop）。
+        热着一定是 rate > 0 的前提（PanLook.rateOf），熟度外推不用另列。"""
         show = self.show
-        return bool(self.look.item) or self.look.heated or show.focused or len(show.steps) > 0 or show.oil.amount > 0.0 \
-            or any(show.cracking) or show.tossing() or bool(self.props)
+        return self.look.heated or show.focused or len(show.steps) > 0 or show.oil.amount > 0.0 or show.tossing() \
+            or any(show.cracking) or show.heat.glows()
 
     def frame(self, dt, near=True):
-        """推进一帧。near：离本人够近，粒子和声音才放。返回 False 表示这口锅歇着（什么都没动）。"""
+        """推进一帧。near：离本人够近，粒子和声音才放。返回 False 表示这口锅歇着（什么都没动：掉落物和模型停在最后摆好的样子，
+        这一帧只做了核对和 busy）。"""
         look = self.look
         if look is None:
             return False
@@ -103,7 +122,6 @@ class PanScene(object):
                 self.awake = AWAKE_SECONDS
         self.awake = AWAKE_SECONDS if self.busy() else self.awake - dt
         if self.awake <= 0.0:
-            self._rest()
             return False
         self.clock += dt
         self.show.progress(*PanLookState.progressAt(look, self.clock))
@@ -121,23 +139,23 @@ class PanScene(object):
     def _pose(self):
         show, model = self.show, self.model
         pan = show.nodes["pan"]
+        panPos, panRot = pan.pos, pan.rot
         model.scene(True)
-        model.pan(pan.rot[0], (pan.pos[0] - 8.0, pan.pos[1], pan.pos[2] - 8.0))
+        model.pan(panRot[0], (panPos[0] - 8.0, panPos[1], panPos[2] - 8.0))
         model.glow(show.handleOutlined(self.hovered), self.offering)
         model.oil(show.oil.puddles())
-        itemComp = compFactory.CreateItem(levelId)
         for name, node in show.nodes.items():
-            if name != "pan":
-                self._prop(itemComp, name, pan, node)
+            if name != "pan" and (node.visible or name in self.props):      # 没画出来、本来也没有的节点（四十个里常常只有几个）不用看
+                self._prop(name, panPos, panRot, node)
 
     # ---------------------------------------------------------------- 掉落物
 
-    def _prop(self, itemComp, name, pan, node):
+    def _prop(self, name, panPos, panRot, node):
         item = node.item if node.visible else None
         kind = (item["newItemName"], item.get("newAuxValue") or 0) if item else None
         prop = self.props.get(name)
-        if prop is not None and prop[1] != kind:
-            itemComp.DeleteClientDropItemEntity(prop[0])
+        if prop is not None and prop.kind != kind:
+            compFactory.CreateItem(levelId).DeleteClientDropItemEntity(prop.entityId)
             del self.props[name]
             prop = None
         if kind is None:
@@ -147,33 +165,37 @@ class PanScene(object):
                                    self.world(PanModelMath.SCENE_PAN))
             if not entityId:
                 return
-            prop = self.props[name] = [entityId, kind]
-        center, matrix = self._placed(name, pan, node)
+            prop = self.props[name] = Prop(entityId, kind)
+        orient = (node.pos, node.rot, panPos, panRot)
         scale = max(0.01, node.size * node.scale / ItemPose.ITEM_SPAN)
-        world = PanPose.toWorld(self.facing, matrix)
-        pivot = ItemPose.pivotFor(self.world(center), world, scale)
-        itemComp.SetDropItemTransform(prop[0], pivot, ItemPose.engineEuler(world), scale)
+        if orient == prop.orient and scale == prop.scale:
+            return                                  # 和引擎里的一模一样：不重算、不调引擎
+        if orient != prop.orient:
+            center, matrix = self._placed(name, panPos, panRot, node)
+            prop.matrix = PanPose.toWorld(self.facing, matrix)
+            prop.center, prop.euler = self.world(center), ItemPose.engineEuler(prop.matrix)
+        sent = compFactory.CreateItem(levelId).SetDropItemTransform(prop.entityId, ItemPose.pivotFor(prop.center, prop.matrix, scale), prop.euler, scale)
+        prop.orient, prop.scale = (orient, scale) if sent else (None, None)         # 引擎没收下就下一帧再来（和每帧都调时一样）
 
     @staticmethod
-    def _placed(name, pan, node):
+    def _placed(name, panPos, panRot, node):
         """节点在场景里的中心和矩阵。锅的孩子经锅的转动，蛋的手立着，蛋液平躺。"""
         group = name.split("_")[0]
         x, y, z = node.pos
         if group in PAN_CHILDREN:
-            return PanPose.inPan(pan.pos, pan.rot, (x, y + FLAT_LIFT, z)), PanPose.lying(node.rot, pan.rot)
+            return PanPose.inPan(panPos, panRot, (x, y + FLAT_LIFT, z)), PanPose.lying(node.rot, panRot)
         return (x, y, z), (PanPose.upright(node.rot) if group == "hand" else PanPose.lying(node.rot))
 
     def _clearProps(self):
         itemComp = compFactory.CreateItem(levelId)
         for prop in self.props.values():
-            itemComp.DeleteClientDropItemEntity(prop[0])
+            itemComp.DeleteClientDropItemEntity(prop.entityId)
         self.props = {}
 
     # ---------------------------------------------------------------- 收场
 
     def _rest(self):
-        """歇着：掉落物收起来，锅放回原位、不描边、没有油。"""
-        self._clearProps()
+        """场景停用、方块还在：锅放回原位、不描边、没有油。（场景歇着不走这里：歇着时模型已经是这个样子了，掉落物也要留着。）"""
         self.model.pan(0.0, (0.0, 0.0, 0.0))
         self.model.glow(False)
         self.model.oil([])

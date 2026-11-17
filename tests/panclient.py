@@ -47,6 +47,7 @@ class World(object):
         self.listeners = {}
         self.endpoints = {}
         self.calls = []
+        self.counts = {}                # 引擎组件的接口名 -> 被调了几次（数"没变的东西不碰引擎"用；要数一段就先 counts.clear()）
         self._next = 0
 
     def nextId(self):
@@ -60,6 +61,12 @@ world = World()
 class Comp(object):
     def __init__(self, owner):
         self.owner = owner
+
+    def __getattribute__(self, name):
+        found = object.__getattribute__(self, name)
+        if callable(found) and not name.startswith("_"):
+            world.counts[name] = world.counts.get(name, 0) + 1          # 取出来就是要调：每次取记一次
+        return found
 
     # ---- 物品 ----
     def AddDropItemToWorld(self, item, dim, pos, rx=0, ry=0):

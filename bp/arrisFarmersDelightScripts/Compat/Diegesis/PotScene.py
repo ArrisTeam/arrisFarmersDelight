@@ -5,22 +5,24 @@
 这里每口加载着的厨锅一份（PotScenes.py 管登记和每帧调度）：状态来自服务端广播（Shared/Rules/PotLookState.py），
 动作照 HoD 的纯计算（Shared/Rules/HandsOn 的 PotLiquid / PotSpoonMotion / PotDrift），画法是
 - 方块实体模型：开盖、液面高度与汤色（自定义着色器）、煮好的汤里浮着的碎料、勺子骨骼（PotModel.py）；
-- 漂着的料：客户端掉落物，平躺在液面上绕圈；
+- 漂着的料：客户端掉落物，平躺在液面上绕圈（PotProps.py：摆法没变不碰引擎）；
 - 粒子、声音、一批煮好的收尾：PotSceneFx.py。
 全部用"锅自己的坐标"（像素，方块朝北时 +x 东、+z 南，锅心 (8, *, 8)），出手时按方块朝向换到世界。
 本人开着这口锅的站点时，PotView 把手交进来：hand / aim（光标在液面上的点）/ onSend（勺尖该报给服务端了）。
+每口加载着的锅在 32 格内每个渲染帧都过一遍 frame，所以静着的锅要歇着（busy）：凉的、没人动的锅一帧只做一次便宜的核对；歇着的锅被叫醒的路有五条：
+广播 / 方块实体数据来了（apply）、一次性的表现来了（event）、方块实体在本端重建（rebuilt）、核对发现模型上的值丢了、busy 里任何一条成立。
+烧着的锅不歇：水在沸（气泡、蒸汽、水波、声音），JE 里也是这样画的。
 """
 import random
 
 from .PotHands import PotHands
 from .PotModel import PotModel
+from .PotProps import PotProps
 from .PotSceneFx import SceneFx, play
-from ...Client.Engine import addDropItem, compFactory, levelId
-from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook, PotTint
-from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotHover, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
+from ...Shared.Rules import PotLookState, PotModelMath, PotPiecesLook, PotTint
+from ...Shared.Rules.HandsOn import PotDrift, PotHover, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
 
 SLOTS = PotLookState.SLOTS
-ITEM_SCALE = 3.2 / ItemPose.ITEM_SPAN       # JE 的料是 3.2 像素见方
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
 CHECK_SECONDS = 0.5                         # 多久核对一次模型上的值还在不在（方块实体重建会清掉）
 AWAKE_SECONDS = 4.0                         # 没动静之后再跑这么久就歇着（等水位、勺子、颜色都落定）
@@ -48,6 +50,7 @@ class PotScene(object):
         self.sinceCheck = 0.0
         self.progress = -1.0
         self.props = [None] * (SLOTS + 1)     # [掉落物 id, (物品名, aux)]：六格料，最后一个是产出格里装好的菜（浮在锅心）
+        self.drops = PotProps(self)           # 摆这些掉落物（也替手部动作、盛汤的碗、收尾的道具摆），摆法没变不碰引擎
         self.lift = PotHover.HoverLift(SLOTS + 1)       # 光标指着的那一件（props 的下标，PotView 给 lift.target）抬起 0.6 像素
         self.hand = False
         self.aim = None
@@ -120,6 +123,14 @@ class PotScene(object):
 
     # ---------------------------------------------------------------- 每帧
 
+    def busy(self):
+        """还有什么在随时间变，锅就不能歇：本人拿着勺子（hand）、烧着（沸腾的气泡 / 蒸汽 / 水波 / 声音，料在水上起伏转圈）、被搅着、
+        进度在走（汤色随煮熟程度变）、气泡等着破或一批煮好的收尾在演（fx.busy）、光标指着一件料或抬起的还没落回去（lift.active，
+        PotView 给 lift.target）、厨师的手正在倒 / 磕 / 抖（hands.going）。每个渲染帧、每口锅都问一遍，所以只看这几个字段。
+        漂着的料不算：凉的锅里它们定在最后的位置（歇着时掉落物原样留着），烧着的锅本来就不歇。"""
+        look = self.look
+        return self.hand or look.heated or look.stirring or look.rate > 0.0 or self.fx.busy or self.lift.active or bool(self.hands.going)
+
     def frame(self, dt, near=True):
         """推进一帧。near：离本人够近，粒子和声音才放。返回 False 表示这口锅歇着（什么都没动）。"""
         look = self.look
@@ -130,8 +141,7 @@ class PotScene(object):
             self.sinceCheck = 0.0
             if self.model.check():
                 self.awake = AWAKE_SECONDS
-        busy = self.hand or look.heated or look.stirring or look.rate > 0.0 or self.fx.busy or self.lift.active
-        self.awake = AWAKE_SECONDS if busy else self.awake - dt
+        self.awake = AWAKE_SECONDS if self.busy() else self.awake - dt
         if self.awake <= 0.0:
             self.fx.silence()
             return False
@@ -161,7 +171,7 @@ class PotScene(object):
             u, v, height = liquid.impulse(random.random)
             self.model.ripple(INNER_LO + INNER_SPAN * u, INNER_LO + INNER_SPAN * v, height)
         self.lift.step(dt)
-        self._moveProps(present)
+        self.drops.move(present)
         self.fx.step(dt, near)
         self.hands.step(dt, near)
         self.model.waves(dt)
@@ -185,39 +195,12 @@ class PotScene(object):
             x, z = PotPiecesLook.wayOf(index, self.liquid.turned % PotPiecesLook.TURN_WRAP)
             self.model.ripple(8.0 + x, 8.0 + z, PotPiecesPiece.RISE_RING)
 
-    def _moveProps(self, present):
-        look, drift = self.look, self.drift
-        itemComp = compFactory.CreateItem(levelId)
-        for slot in range(SLOTS + 1):
-            if slot < SLOTS:
-                item = look.items[slot] if present[slot] and drift.visible[slot] else None
-                pose = (drift.x[slot], drift.y[slot], drift.z[slot], drift.yaw[slot], drift.pitch[slot], drift.roll[slot])
-            else:
-                item, pose = look.served, PotDriftExtras.servedAt(self.liquid.surfaceY()) + (0.0, 0.0, 0.0)
-            kind = (item["newItemName"], item["newAuxValue"]) if item else None
-            prop = self.props[slot]
-            if prop is not None and prop[1] != kind:
-                itemComp.DeleteClientDropItemEntity(prop[0])
-                prop = self.props[slot] = None
-            if kind is None:
-                continue
-            if prop is None:
-                one = {"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}
-                entityId = addDropItem(one, self.dimensionId, self.world(pose[0], pose[1], pose[2]))
-                if not entityId:
-                    continue
-                prop = self.props[slot] = [entityId, kind]
-            self.placeProp(prop[0], *self.lift.raised(slot, pose))      # 抬起只动摆出来的位置；点哪里（PotPick 的盒子）用的是不含抬起的
-
     def placeProp(self, entityId, x, y, z, yaw, pitch, roll, scale=1.0):
-        """把一件平躺的料摆在锅自己坐标的 (x, y, z)，按 JE 节点的欧拉角转；scale 是相对料的本来大小。"""
-        size = ITEM_SCALE * max(scale, 0.01)
-        matrix = ItemPose.lyingMatrix(PotModelMath.FACING_YAW[self.facing] + yaw, pitch, roll)
-        pivot = ItemPose.pivotFor(self.world(x, y, z), matrix, size)
-        compFactory.CreateItem(levelId).SetDropItemTransform(entityId, pivot, ItemPose.engineEuler(matrix), size)
+        """手部动作、盛汤的碗、一批煮好的收尾摆道具走这里（摆法没变不碰引擎，见 PotProps）。"""
+        self.drops.place(entityId, x, y, z, yaw, pitch, roll, scale)
 
     def removeProp(self, entityId):
-        compFactory.CreateItem(levelId).DeleteClientDropItemEntity(entityId)
+        self.drops.remove(entityId)
 
     def event(self, name, payload, rung=False):
         """一次性的表现。盛出：锅心溅水、舀的一声（出锅时星星的闪在开着站点的人那边，见 PotView）。

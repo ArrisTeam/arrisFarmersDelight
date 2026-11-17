@@ -160,10 +160,15 @@ class Heat(object):
                 if not node.moving:
                     show.steps.after(i * 0.04, partial(node.hopTo, at[0], height(under, show.shownUnders), at[1], POP_HOP, POP_TIME))
 
+    def glows(self):
+        """熟好的食物等着被取走：readyGlow 一直鼓着它、闪着、冒汽（客户端场景因此歇不得，哪怕锅是凉的）。"""
+        show = self.show
+        return show.shown is not None and show.shownPieces > 0 and show.isShownDone()
+
     def readyGlow(self, dt):
         """熟好的食物一直亮着，告诉人"好了"（628-653）：每块一起鼓一下再缩回来，每鼓一下闪两颗，一路冒汽。不出声（噗是"翻我"）。"""
         show = self.show
-        if show.shown is None or show.shownPieces == 0 or not show.isShownDone():
+        if not self.glows():
             if self.readySince is not None:
                 self.readySince = None
                 self.swell(1.0)
