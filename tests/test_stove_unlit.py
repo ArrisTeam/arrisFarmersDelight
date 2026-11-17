@@ -35,7 +35,7 @@ def testFoodGoesOnAnUnlitStoveJustLikeOnALitOne():
     assert unlit == lit, (lit, unlit)
     assert unlit["items"] == [(BEEF, 1)] + [None] * 5 and unlit["hand"] == 2 and unlit["timer"] == 30
     assert unlit["shown"] == [{"newItemName": BEEF, "newAuxValue": 0, "count": 1}] and unlit["kind"] == ["stove"], "世界里的展示照样发给客户端"
-    assert unlit["sounds"] == ["armor.equip_leather"], "没装前置包：放上去那一声"
+    assert unlit["sounds"] == ["block.lantern.place"], "没装前置包：放上去那一声（FD 的 LANTERN_PLACE）"
 
 
 def testWithThePrerequisiteTheSameOnePlacedEventGoesOutLitOrNot():

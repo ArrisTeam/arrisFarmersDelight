@@ -102,7 +102,7 @@ def OnServerStoveItemUse(args):
             StoveLook.event(dimensionId, (x, y, z), "placed", {"places": [freeIndex]})
             StoveLook.tick(dimensionId, (x, y, z), blockEntityData, hand, time.time())
         else:
-            ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
+            ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 0.5, z + 0.5), *GrillBlocks.SOUND_FOOD)       # FD 的 LANTERN_PLACE 0.5 / 1.0
     elif itemDict["newItemName"] not in _PASS_ITEMS and not GrillBlocks.isTool(itemDict["newItemName"], GetItemType(itemDict)):
         ShowTip(playerId, "这东西可不能被烹饪……")
 

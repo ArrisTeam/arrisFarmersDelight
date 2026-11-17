@@ -48,5 +48,34 @@ def testWhenTheLowestSlotsAreFullTheNextOneIsTheFirstFreeAfterThem():
     assert K.names(data) == [BEEF] * 5 + [None], "2 号、再 4 号"
 
 
+# ---------------------------------------------------------------- 放上去的声音
+
+def _played():
+    return [call[2][0] for call in fake.calls if call[1] == "OnPlaySound"]
+
+
+def testPlacingPlaysTheLanternPlaceSoundAtHalfVolumeInTheMiddleOfTheBlock():
+    _stove()
+    F.give("a", BEEF, 2)
+    F.use()
+    call, = _played()
+    assert call["soundName"] == "block.lantern.place" and call["volume"] == 0.5, "JE 的 LANTERN_PLACE 0.5"
+    assert abs(call["pitch"] - 1.0 / 1.1) < 1.0e-12, "JE 音调 1.0；原版这条声音每个采样自带 1.1，除掉才是 1.0"
+    assert tuple(call["pos"]) == (K.STOVE[0] + 0.5, K.STOVE[1] + 0.5, K.STOVE[2] + 0.5)
+    F.use()
+    assert len(_played()) == 2, "每放一件响一声"
+
+
+def testNothingPlaysWhenNothingWasPlaced():
+    _stove()
+    F.give("a", "minecraft:stick", 1)
+    F.use()
+    F.give("a", BEEF, 1)
+    for place in range(6):
+        F.lay(F.data(), place)
+    F.use()
+    assert _played() == [], "不能烤的东西、满了：不响"
+
+
 if __name__ == "__main__":
     raise SystemExit(F.fdtest.run(globals()))

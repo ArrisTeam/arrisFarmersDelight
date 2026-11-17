@@ -20,6 +20,7 @@ WATER_BUCKETS = ("minecraft:water_bucket",)       # FD 的 #forge:buckets/water�
 IGNITE, EXTINGUISH = "ignite", "extinguish"
 WEAR, SPEND, EMPTY = "wear", "spend", "empty"      # 用掉什么：磨损 1 点耐久（hurtAndBreak）/ 少一个（shrink）/ 换成剩余物（getCraftingRemainingItem，空桶）
 SOUND_IGNITE, SOUND_CHARGE, SOUND_FIZZ = "fire.ignite", "mob.ghast.fireball", "random.fizz"     # FLINTANDSTEEL_USE / FIRECHARGE_USE / 灭火声
+SOUND_FOOD = ("block.lantern.place", 0.5, 1.0)       # 放食物上去（AbstractStoveBlock.java:140 的 LANTERN_PLACE 0.5 / 1.0）：(声音名, 音量, 音调)
 
 
 def isLit(blockName):
