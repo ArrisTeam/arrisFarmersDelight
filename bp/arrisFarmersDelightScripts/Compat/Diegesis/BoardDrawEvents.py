@@ -23,6 +23,8 @@ CLEARED_WINDOW = 1.0         # 层刚被清空这么久之内收到的 assembled
 
 
 class DrawEvents(object):
+    assembling = 0             # 还在演（pop、done 没走完）的 assembled 有几个：两个重叠时先演完的不还原层，等最后一个演完才还原
+
     def _dress(self, thing, index, layer):
         """第 index 层画成什么（dress，1963-1984）：液体层不画、蛋画成打开的蛋、别的原样（BoardHands.lookOf）；返回它躺的位置 (x, y, z)。"""
         pose = Scene.layerPose(index)
@@ -106,7 +108,9 @@ class DrawEvents(object):
         （BoardFinishPlay：拌 / 卷 / 串 / 揉 / 摆 / 夹 / 成形 / 冻 / 一起切，压什么也不演），演完（finishing）各层缩小沉进去，菜同一刻弹出来
         （JE 的 pop：两件事一起开始，popped() 放做成的声音、面粉 / 霜、闪光），层沉完（MELT_TIME）才收起来、菜底下垫的那一张才露出来。
         melting 是从现在起到层沉完要多久（等层落完 + 收尾 + MELT_TIME + 一刻）。这一会儿里又来的状态（又放了一层、菜被取走了）先记着
-        （Draw.refresh 的 late）：板上的东西在弹出来那一刻、层在沉完那一刻照最新的画。"""
+        （Draw.refresh 的 late）：板上的东西在弹出来那一刻、层在沉完那一刻照最新的画。
+        第二个 assembled 在第一个没演完时到（书里点菜一键做成，每 0.1 秒能来一次）：JE 不取消前一个（排下的步骤照走），每个各演各的收尾、各响各的做成的声音，
+        melting 是后一个覆盖前一个，层只在最后一个演完时才还原（assembling 数着还在演的几个）。"""
         seen, arrive, order, count = self._seen(), self.hand.remaining(), 0, len(made[:MOST_LAYERS])         # 手还在倒 / 磕的先等它放好（pourUntil，1526）
         self.item.hide()
         self.pile.hide()                                      # 垫的那一张不和正在沉的层抢位置（1638）
@@ -139,6 +143,9 @@ class DrawEvents(object):
             self.after(Motion.MELT_TIME, done)
 
         def done():
+            self.assembling -= 1
+            if self.assembling > 0:
+                return                                        # 后一个 assembled 还在演：层是它在用的，等它演完再还原（JE 的 melting 是后一个覆盖前一个，倒数走完才 scaleTo(1, 0) + setVisible(false)）
             self.melting = 0.0
             for thing in self.layers:
                 thing.reset()                                 # 缩小了、转着的层下一回再摆东西不能还是那样（JE 的 tick：scaleTo(1, 0) + setVisible(false)）
@@ -150,6 +157,7 @@ class DrawEvents(object):
                 self.pile.put(0.0, 0.0, 0.0)
             if late is not None:
                 self._layers(late[1])
+        self.assembling += 1                                  # pop 和 done 各自排下了：和 done 里的减一对着
         if arrive + plan.seconds > 0.0:
             self.after(arrive + plan.seconds, pop)
         else:
