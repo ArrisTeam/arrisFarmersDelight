@@ -52,8 +52,12 @@ class Comp(object):
 
     # ---- 物品 ----
     def GetContainerItem(self, pos, slot, dim=-1, getUserData=False):
+        """和引擎一样：不要 userData 就不给（getUserData 缺省 False），要了才带。"""
         slots = self.fake.containers.get((dim, tuple(pos)))
-        return copy.deepcopy(slots[slot]) if slots and slots[slot] else None
+        item = copy.deepcopy(slots[slot]) if slots and slots[slot] else None
+        if item is not None and not getUserData:
+            item.pop("userData", None)
+        return item
 
     def SpawnItemToContainer(self, item, slot, pos, dim):
         slots = self.fake.containers.setdefault((dim, tuple(pos)), [None] * 9)
@@ -180,8 +184,10 @@ class Fake(object):
         player["selected"], player["creative"] = 0, creative
         return player
 
-    def give(self, playerId, slot, name, count, aux=0):
-        self.world.players[playerId]["inv"][slot] = {"newItemName": name, "newAuxValue": aux, "count": count}
+    def give(self, playerId, slot, name, count, aux=0, userData=None):
+        item = self.world.players[playerId]["inv"][slot] = {"newItemName": name, "newAuxValue": aux, "count": count}
+        if userData is not None:
+            item["userData"] = userData
 
     def count(self, playerId, name):
         return sum(item["count"] for item in self.world.players[playerId]["inv"] if item and item["newItemName"] == name)
@@ -189,8 +195,10 @@ class Fake(object):
     def container(self, pos, slot, dim=0):
         return self.containers[(dim, tuple(pos))][slot]
 
-    def setContainer(self, pos, slot, name, count, aux=0, dim=0):
-        self.containers[(dim, tuple(pos))][slot] = {"newItemName": name, "newAuxValue": aux, "count": count}
+    def setContainer(self, pos, slot, name, count, aux=0, dim=0, userData=None):
+        item = self.containers[(dim, tuple(pos))][slot] = {"newItemName": name, "newAuxValue": aux, "count": count}
+        if userData is not None:
+            item["userData"] = userData
 
 
 _installed = {}

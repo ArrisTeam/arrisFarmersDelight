@@ -11,6 +11,7 @@ import random
 
 from .Engine import compFactory, levelId, System
 from ...Shared.Rules import CookingPot as CookingPotRules
+from ...Shared.Rules import ItemUserData
 
 INPUT_SLOTS = 6
 VESSEL_SLOT = 6
@@ -36,9 +37,17 @@ def maxStackOf(itemName, auxValue=0):
 
 
 def inputs(dimensionId, blockPos):
-    """6 个食材格（空格是 {}）。"""
+    """6 个食材格（空格是 {}）。连 userData 一起读（GetContainerItem 的第四个参数 getUserData 缺省是 False）：改过名、带自定义数据的料，
+    摆开、退回、煮掉一部分写回去时数据跟着走（JE 的物品栈本来就带），不然一写回去就被抹掉。"""
     itemComp = compFactory.CreateItem(levelId)
-    return [itemComp.GetContainerItem(blockPos, index, dimensionId) or {} for index in range(INPUT_SLOTS)]
+    return [itemComp.GetContainerItem(blockPos, index, dimensionId, True) or {} for index in range(INPUT_SLOTS)]
+
+
+def _storable(item):
+    """写回容器格的物品：没有 userData（引擎读出来是 None）的不带这个键，和以前写的一样；有数据的原样带着。"""
+    if item and "userData" in item and item["userData"] is None:
+        return dict((key, value) for key, value in item.items() if key != "userData")
+    return item
 
 
 def setInputs(dimensionId, blockPos, before, after):
@@ -48,7 +57,7 @@ def setInputs(dimensionId, blockPos, before, after):
         old, new = before[index] or {}, after[index] or {}
         if (old.get("newItemName"), old.get("newAuxValue"), old.get("count")) != \
                 (new.get("newItemName"), new.get("newAuxValue"), new.get("count")):
-            itemComp.SpawnItemToContainer(new if new.get("count", 0) > 0 else {}, index, blockPos, dimensionId)
+            itemComp.SpawnItemToContainer(_storable(new) if new.get("count", 0) > 0 else {}, index, blockPos, dimensionId)
 
 
 class ContainerSlots(object):
@@ -65,11 +74,17 @@ class ContainerSlots(object):
         return self.count
 
     def get(self, index):
-        item = compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId)
-        return item if item and item.get("newItemName") and item.get("count", 0) > 0 else None
+        """也带 userData（站点里拿起来、放回去、并进同一叠，数据都不丢）；放不进站点载荷的（Shared/Rules/ItemUserData）照旧不带，
+        内核把格子里的物品原样编进状态，编不了会让这口锅的站点同步出错。"""
+        item = compFactory.CreateItem(levelId).GetContainerItem(self.blockPos, self.start + index, self.dimensionId, True)
+        if not item or not item.get("newItemName") or item.get("count", 0) <= 0:
+            return None
+        if not ItemUserData.fitsWire(item.get("userData")):
+            item = dict((key, value) for key, value in item.items() if key != "userData")
+        return item
 
     def set(self, index, item):
-        stored = item if item and item.get("count", 0) > 0 else {}
+        stored = _storable(item) if item and item.get("count", 0) > 0 else {}
         compFactory.CreateItem(levelId).SpawnItemToContainer(stored, self.start + index, self.blockPos, self.dimensionId)
 
 
@@ -122,7 +137,7 @@ def cookOnce(dimensionId, blockPos, blockEntityData, slots, meal, pushItemList, 
         if not item:
             continue
         item["count"] -= times
-        itemComp.SpawnItemToContainer(item if item["count"] > 0 else {}, index, blockPos, dimensionId)
+        itemComp.SpawnItemToContainer(_storable(item) if item["count"] > 0 else {}, index, blockPos, dimensionId)
         if item["count"] <= 0:
             slots[index] = {}
     addMeals(blockEntityData, meal, times * (meal.get("count") or 1))
@@ -179,7 +194,7 @@ def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
     vessel = recipeDict.get("Vessel")
     vesselItemSlot = None
     if vessel:
-        vesselItemSlot = itemComp.GetContainerItem(blockPos, VESSEL_SLOT, dimensionId)
+        vesselItemSlot = itemComp.GetContainerItem(blockPos, VESSEL_SLOT, dimensionId, True)       # 剩下的容器写回去，数据跟着走
         # 只比较物品名（与旧实现一致）
         if not vesselItemSlot or vesselItemSlot.get("newItemName") != vessel[0]:
             return
@@ -189,7 +204,7 @@ def MoveFinishedMeals(blockEntityData, blockPos, dimensionId):
         return
     if vesselItemSlot:
         vesselItemSlot["count"] -= amount
-        itemComp.SpawnItemToContainer(vesselItemSlot if vesselItemSlot["count"] > 0 else {}, VESSEL_SLOT, blockPos, dimensionId)
+        itemComp.SpawnItemToContainer(_storable(vesselItemSlot) if vesselItemSlot["count"] > 0 else {}, VESSEL_SLOT, blockPos, dimensionId)
     resultDict = {"newItemName": resultItemName, "newAuxValue": resultAuxValue, "count": resultCount + amount, "enchantData": []}
     itemComp.SpawnItemToContainer(resultDict, RESULT_SLOT, blockPos, dimensionId)
     previewItemSlot["count"] -= amount
