@@ -5,10 +5,16 @@
 比在服务端给每个玩家建一次维度组件查询要便宜。
 """
 from .Engine import Call
+from ...Shared.Rules import SoundMix
 
 
-def ToAllPlayerPlaySound(dimensionId, pos, soundName):
-    Call("*", "OnPlaySound", {"soundName": soundName, "pos": pos, "dimensionId": dimensionId})
+def ToAllPlayerPlaySound(dimensionId, pos, soundName, volume=None, pitch=None):
+    """在 pos 放一声。不给 volume / pitch 就按声音定义原样；给了的是 JE 里这一声的数，定义里自带音量 / 音调的声音（Shared/Rules/SoundMix）
+    在这里除掉那一份，各客户端听到的就是 JE 的数。"""
+    payload = {"soundName": soundName, "pos": pos, "dimensionId": dimensionId}
+    if volume is not None or pitch is not None:
+        payload["volume"], payload["pitch"] = SoundMix.engineArgs(soundName, 1.0 if volume is None else volume, 1.0 if pitch is None else pitch)
+    Call("*", "OnPlaySound", payload)
 
 
 def ToAllPlayerGrowthParticle(pos):

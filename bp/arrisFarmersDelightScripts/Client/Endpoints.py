@@ -8,13 +8,17 @@ from ..QuModLibs.Client import AllowCall
 from .Engine import compFactory, levelId, playerId
 
 
+def _elsewhere(args):
+    # 服务端广播给所有玩家，这里按维度本地过滤，跨维度的直接丢弃
+    dimensionId = args.get("dimensionId")
+    return dimensionId is not None and dimensionId != compFactory.CreateGame(levelId).GetCurrentDimension()
+
+
 @AllowCall
 def OnPlaySound(args):
-    # 服务端广播给所有玩家，这里按维度本地过滤，跨维度的声音直接丢弃
-    dimensionId = args.get("dimensionId")
-    if dimensionId is not None and dimensionId != compFactory.CreateGame(levelId).GetCurrentDimension():
+    if _elsewhere(args):
         return
-    compFactory.CreateCustomAudio(levelId).PlayCustomMusic(args["soundName"], args["pos"], 1, 1, False, None)
+    compFactory.CreateCustomAudio(levelId).PlayCustomMusic(args["soundName"], args["pos"], args.get("volume", 1), args.get("pitch", 1), False, None)
 
 
 @AllowCall

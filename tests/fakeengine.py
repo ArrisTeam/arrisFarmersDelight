@@ -46,6 +46,7 @@ class FakeWorld(object):
         self.spawned = []       # [(itemDict, dim, pos)]
         self.destroyed = []     # 被 DestroyEntity 删掉的实体 id
         self.sounds = []        # [(声音名, 位置)]
+        self.soundArgs = []     # [Call("*", "OnPlaySound", ...) 的完整载荷]，和 sounds 一一对应：要看音量 / 音调时读它
         self.calls = []         # [(目标, 端点, 参数)]
         self.timers = []        # [(秒, 函数, 参数)]
         self.modAttr = {}
@@ -258,6 +259,7 @@ def install():
     def call(target, endpoint, data=None):
         if endpoint == "OnPlaySound":
             world.sounds.append((data["soundName"], data["pos"]))
+            world.soundArgs.append(data)
         else:
             realCall(target, endpoint, data)
 

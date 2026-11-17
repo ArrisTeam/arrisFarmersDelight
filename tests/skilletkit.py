@@ -42,7 +42,7 @@ def extend(world):
     def reset():
         for name in ("entities", "players", "blocks", "itemEntities", "modAttr"):
             getattr(world, name).clear()
-        for name in ("spawned", "destroyed", "sounds", "calls", "timers", "listened"):
+        for name in ("spawned", "destroyed", "sounds", "soundArgs", "calls", "timers", "listened"):
             del getattr(world, name)[:]
         world.offhand.clear()
         world.sneaking.clear()
