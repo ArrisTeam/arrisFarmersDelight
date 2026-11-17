@@ -36,11 +36,6 @@ BUCKET_EMPTY = "bucket.empty_water"
 BOTTLE_EMPTY = "bottle.empty"
 EGG_CRACK = "block.turtle_egg.crack"
 
-# 声音定义（rp/sounds/sound_definitions.json）里每个采样自带的音量，不是 1 的：引擎把 PlayCustomMusic 的音量乘上它（炉灶的 GrillFx.SOUNDS 也是这样除回去），
-# 刀声两个采样各 1.5，JE 的 0.8 不除的话放出来是 1.2。别的声音是原版的、采样没有音量。放声音的一处（Compat/Diegesis/BoardFx.play）除回去；
-# tests/test_board_sounds 对着定义文件核对这张表
-DEFINITION_VOLUMES = {KNIFE_CUT: 1.5}
-
 KNOCK = (WOOD_HIT, 0.25, 1.6)                   # 刀敲在食物上、没落在刀口线上（本人）
 BOUNCE = (WOOD_HIT, 0.4, 1.4)                   # 板不收（refused）：弹回的那一声，JE 的效果发给所有看得见这块板的人，旁观的人也听得到
 SETTLE = (BOARD_PLACE, 0.5, 0.8)                # 层凑成一道等点的菜：各层落定
@@ -208,6 +203,4 @@ def processed(tool, item, yields, stroke, block):
     """FD 切一件时响的那一声（CuttingBoardBlockEntity.playProcessingSound，:152-168）：配方自带的声音 -> 剪刀 -> 刀 0.8 -> 方块的破坏声 -> 木头的破坏声。
     tool 是手里工具的物品名，item 是被切的东西的物品名，yields 是配方产物的物品名，stroke 是 CuttingStation.strokeOf(配方)，block 是被切的是不是方块物品。
     配方自带声音的只有削皮的 21 条（都写着 item.axe.strip，音量音调 1.0 / 1.0，:156），产物是 stripped_* 的那一类。返回 (声音名, 音量, 音调)。"""
-    if stroke == Cutting.TOOL_STRIP:
-        return (AXE_STRIP, 1.0, 1.0)
     return _processing(stroke, tool, block, materialOf(item, yields))

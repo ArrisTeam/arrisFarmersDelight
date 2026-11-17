@@ -15,14 +15,14 @@ import math
 import random
 
 from . import PotFx
-from ...Shared.Rules import PanModelMath
+from ...Shared.Rules import PanModelMath, SoundMix
 from ...Shared.Rules.HandsOn.PotServeMath import rotateY
 
-SOUNDS = {
-    "sizzle": ("ambient.skillet.sizzle", 0.05), "add_food": ("ambient.skillet.addfood", 0.5),
-    "lantern_step": ("block.lantern.step", 1.0), "lantern_place": ("block.lantern.place", 1.0), "lantern_hit": ("block.lantern.hit", 1.0),
-    "item_pickup": ("random.pop", 1.0), "lava_pop": ("liquid.lavapop", 1.0), "campfire_crackle": ("block.campfire.crackle", 1.0),
-    "egg_crack": ("block.turtle_egg.crack", 1.0),
+SOUNDS = {      # HoD 的声音 -> 基岩版的声音名；定义里采样自带的音量 / 音调经 Shared/Rules/SoundMix 除回去（挂灯放置声原来没除，比 JE 高 1.1 倍）
+    "sizzle": "ambient.skillet.sizzle", "add_food": "ambient.skillet.addfood",
+    "lantern_step": "block.lantern.step", "lantern_place": "block.lantern.place", "lantern_hit": "block.lantern.hit",
+    "item_pickup": "random.pop", "lava_pop": "liquid.lavapop", "campfire_crackle": "block.campfire.crackle",
+    "egg_crack": "block.turtle_egg.crack",
 }
 HEAT = "arris:pan_heat"
 # JE 的 PAN_SMOKE（HandsOnDelightClient.java:93-94）：蒸汽的帧、染 0x58C8C6C2、大小 1.8~2.6 像素、活 1.6~2.4 秒；前置包的蒸汽是 0.6~1.0 像素，
@@ -64,7 +64,7 @@ class PanFx(object):
     def sound(self, name, volume, pitch):
         found = SOUNDS.get(name)
         if found is not None:
-            PotFx.sound(found[0], self.world((8.0, 2.0, 8.0)), min(1.0, volume * found[1]), pitch)
+            PotFx.sound(found, self.world((8.0, 2.0, 8.0)), *SoundMix.engineArgs(found, volume, pitch))
 
     def particle(self, event):
         found = STYLES.get(event["style"])

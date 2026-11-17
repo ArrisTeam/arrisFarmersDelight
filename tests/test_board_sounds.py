@@ -166,19 +166,17 @@ def _names():
     return names
 
 
-def testTheTableOfDefinitionVolumesIsWhatTheDefinitionFileSaysForEveryBoardSound():
-    """BoardSounds.DEFINITION_VOLUMES（引擎会把调用的音量乘上定义里每个采样自带的音量，除回去才是 JE 的音量）和 sound_definitions.json 对得上：
-    本包自己定义的声音里，采样自带的音量不是 1 的都在表里、数一样；表里没有多余的。"""
+def testEveryBoardSoundWithABuiltInVolumeIsInTheOneTable():
+    """引擎会把调用的音量乘上定义里每个采样自带的音量，除回去才是 JE 的音量：砧板用到的、本包自己定义的声音里，采样自带的音量不是 1 的
+    都在 Shared/Rules/SoundMix.BUILT_IN 里、数一样（全包只此一张，BoardFx.play 经它放）。"""
+    Mix = fdtest.load("Shared.Rules.SoundMix")
     own = json.load(io.open(os.path.join(fdtest.ROOT, "rp", "sounds", "sound_definitions.json"), encoding="utf-8"))
     own = own.get("sound_definitions", own)
-    found = {}
     for name in _names():
         if name in own:
             volumes = set(sample.get("volume", 1.0) if isinstance(sample, dict) else 1.0 for sample in own[name]["sounds"])
             assert len(volumes) == 1, "一条定义里的采样音量不一样，除不回去：" + name
-            if volumes != set([1.0]):
-                found[name] = volumes.pop()
-    assert Sounds.DEFINITION_VOLUMES == found, (Sounds.DEFINITION_VOLUMES, found)
+            assert Mix.BUILT_IN.get(name, (1.0, 1.0))[0] == volumes.pop(), name
 
 
 def testEverySoundNameExists():

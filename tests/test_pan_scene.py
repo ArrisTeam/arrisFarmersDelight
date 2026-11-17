@@ -167,6 +167,9 @@ def testTheSoundsAreVanillaOrFlavouredAndTheLoudOnesAreDividedBack():
               {"type": "sound", "name": "lantern_step", "volume": 0.35, "pitch": 1.0}, {"type": "sound", "name": "nope", "volume": 1.0, "pitch": 1.0}])
     names = [(s["name"], round(s["volume"], 4)) for s in world.sounds]
     assert names == [("ambient.skillet.sizzle", 0.015), ("liquid.lavapop", 0.4), ("block.lantern.step", 0.35)], names
+    del world.sounds[:]
+    Fx_.play([{"type": "sound", "name": "lantern_place", "volume": 0.5, "pitch": 1.0}])
+    assert [(s["name"], s["volume"], round(s["pitch"], 6)) for s in world.sounds] == [("block.lantern.place", 0.5, round(1.0 / 1.1, 6))],         "原版挂灯放置声每个采样自带 1.1 倍音调：除回去才是 JE 的 1.0（原来煎锅这边没除，炉灶除了）"
     assert all(near(s["pos"][0], POS[0] + 0.5) for s in world.sounds), "声音在锅心"
 
 

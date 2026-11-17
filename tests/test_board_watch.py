@@ -11,7 +11,7 @@ import fdtest
 
 KNIFE, AXE = "arris:iron_knife", "minecraft:iron_axe"
 POS = list(C.STATION_POS)
-KNIFE_ENGINE_VOLUME = 0.8 / 1.5          # JE 的刀声 0.8；定义里每个采样自带 1.5，引擎会乘上去，所以交给引擎的是 0.8 / 1.5（BoardSounds.DEFINITION_VOLUMES）
+KNIFE_ENGINE_VOLUME = 0.8 / 1.5          # JE 的刀声 0.8；定义里每个采样自带 1.5，引擎会乘上去，所以交给引擎的是 0.8 / 1.5（Shared/Rules/SoundMix）
 
 
 def _open(board=None, layers=(), data=None, hand=None):
@@ -164,7 +164,7 @@ def testAnOnlookerHearsTheKnockOfARefusedStackTheSameAsTheCook():
 def testTheKnifeIsNotOneAndAHalfTimesLouderThanJavaBecauseOfItsDefinition():
     """rp/sounds/sound_definitions.json 里刀声两个采样各自带 volume 1.5，引擎把调用的音量乘上去：JE 的 0.8 不除的话放出来是 1.2。
     站点里的人、旁观的人、点空了的刀（敲一声）、最后一刀，听到的刀声乘上定义的音量都是 JE 的 0.8；别的声音（原版的，定义里没有音量）原样交给引擎。"""
-    assert C.BoardFx.DEFINITION_VOLUMES == {"ambient.cutting_board.knife": 1.5}, "BoardFx 用的就是声音表里的那张"
+    assert C.BoardFx.SoundMix.BUILT_IN["ambient.cutting_board.knife"] == (1.5, 1.0), "BoardFx 经全包那一张表放声"
     behavior, view = _open(C.item("arris:cabbage", 2), data={"plan": 1, "marks": 0, "style": "across", "spots": [0.5], "angles": [0.0], "stroke": "cut", "dish": ""})
     for done in (False, True):
         C.engine.played[:] = []

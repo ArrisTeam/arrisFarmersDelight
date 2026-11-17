@@ -9,13 +9,14 @@ glint 闪光，diegesisRp/particles）和本包 / 原版的声音。JE 的粒子
 - glint：闪光；
 - heat（热浪，HEAT）：煎锅用的同一个粒子 arris:pan_heat（rp/particles/arris_pan_heat.json，HoD 的 heat 四帧，淡白 0x48、3.5 倍、活 0.8~1.3 秒，
   照 PanFx.STYLES 的 heat），点着的烤架每秒 1.6 个，空烤架也有（JE 的 heat() 不看有没有东西）。
-声音是农夫乐事自己的煎锅声（rp/sounds/skillet，定义自带 20 倍 / 2 倍的音量，这里除回去）和原版的方块声，JE 用的灯笼的三种声音
-（LANTERN_STEP / PLACE / HIT）在基岩版里是 block.lantern.*（放置声自带 1.1 倍音调，音调除回去）、拾取声（ITEM_PICKUP）是 random.pop。
+声音是农夫乐事自己的煎锅声（rp/sounds/skillet）和原版的方块声，JE 用的灯笼的三种声音（LANTERN_STEP / PLACE / HIT）在基岩版里是 block.lantern.*、
+拾取声（ITEM_PICKUP）是 random.pop；定义里采样自带的音量（煎锅声 20 倍 / 2 倍）、音调（挂灯放置声 1.1 倍）经 Shared/Rules/SoundMix 除回去。
 放上去、取走、烤好、被拒的声音都在这里放（谁都听得见，不再靠服务端的世界广播）。粒子是一次性的：每颗按 spread 把速度各抖一点再放。
 """
 import random
 
 from ...Client.Engine import compFactory, levelId
+from ...Shared.Rules import SoundMix
 from ...Shared.Rules.HandsOn import StoveFx
 from .PanFx import PAN_SMOKE
 
@@ -23,11 +24,10 @@ STEAM = "arris_diegesis:steam"
 GLINT = "arris_diegesis:glint"
 HEAT = "arris:pan_heat"
 HEAT_ARGB, HEAT_SCALE, HEAT_LIFE = 0x48FFFFFF, 3.5, (0.8, 1.3)        # 同 PanFx.STYLES["heat"]
-SOUNDS = {                       # StoveFx 里的名字 -> (基岩版的声音名, 音量要乘多少, 音调要乘多少)
-    "sizzle": ("ambient.skillet.sizzle", 0.05, 1.0), "add_food": ("ambient.skillet.addfood", 0.5, 1.0),
-    "lantern_step": ("block.lantern.step", 1.0, 1.0), "lantern_place": ("block.lantern.place", 1.0, 1.0 / 1.1),
-    "lantern_hit": ("block.lantern.hit", 1.0, 1.0), "item_pickup": ("random.pop", 1.0, 1.0),
-}                                # 原版基岩版的 block.lantern.place 每个采样自带 1.1 倍音调（vanilla sound_definitions），除回去才是 JE 的 1.1
+SOUNDS = {                       # StoveFx 里的名字 -> 基岩版的声音名
+    "sizzle": "ambient.skillet.sizzle", "add_food": "ambient.skillet.addfood", "lantern_step": "block.lantern.step",
+    "lantern_place": "block.lantern.place", "lantern_hit": "block.lantern.hit", "item_pickup": "random.pop",
+}
 
 
 def particle(identifier, world, color=None, alpha=None, scale=None, count=None, life=None, velocity=None):
@@ -54,7 +54,8 @@ def sound(name, world, volume, pitch):
     """按 StoveFx 的声音名放一声。"""
     found = SOUNDS.get(name)
     if found is not None:
-        compFactory.CreateCustomAudio(levelId).PlayCustomMusic(found[0], tuple(world), min(1.0, volume * found[1]), float(pitch) * found[2], False, None)
+        volume, pitch = SoundMix.engineArgs(found, volume, pitch)
+        compFactory.CreateCustomAudio(levelId).PlayCustomMusic(found, tuple(world), volume, pitch, False, None)
 
 
 def _style(spawn):

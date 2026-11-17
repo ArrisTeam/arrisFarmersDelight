@@ -48,6 +48,17 @@ def testTheKnifeAndTheAddFoodSoundsCarryTheVolumeTheTableSays():
         assert samples and all(sample.get("volume", 1.0) == volume and sample.get("pitch", 1.0) == pitch for sample in samples), name
 
 
+def testEveryOwnDefinitionThatCarriesItsOwnVolumeOrPitchIsInTheOneTable():
+    """本包的声音定义里，采样自带音量 / 音调（不是 1）的每一条都在 BUILT_IN 里、数一样：全包放声音只经这一张表除回去，
+    原来砧板、煎锅、炉灶、厨锅各抄一份，煎锅那份漏了挂灯放置声的音调。"""
+    own = _definitions(os.path.join(fdtest.ROOT, "rp", "sounds", "sound_definitions.json"))
+    for name, definition in sorted(own.items()):
+        values = set((sample.get("volume", 1.0), sample.get("pitch", 1.0)) for sample in _samples(definition)) if definition.get("sounds") else set()
+        if values and values != set([(1.0, 1.0)]):
+            assert len(values) == 1, "一条定义里的采样不一样，除不回去：" + name
+            assert Mix.BUILT_IN.get(name) == values.pop(), name
+
+
 def testTheLanternPlaceSoundCarriesTheVanillaPitch():
     if not os.path.exists(VANILLA):
         print("（本机没有原版资源包：挂灯放置声的音调没查）")
