@@ -5,7 +5,7 @@
 板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）就当是拿工具来切：工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），
 带 chance 的产物按概率给，从板的侧面带着初速弹出去（CuttingBoardBlockEntity:89-92，Helpers/Drops.PopFromBoard）。空手取回，创造模式取回的东西不给玩家（:68）。
 放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的 FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
-拆了板：板上的东西从方块里随机一点掉出来（CuttingBoardBlock.onRemove 的 Containers.dropItemStack，Helpers/Drops.ScatterItem）。
+拆了板：板上的东西从方块里随机一点掉出来（CuttingBoardBlock.onRemove 的 Containers.dropItemStack，Helpers/Drops.ScatterItem），摆着的菜的每一层也是（HoD 的 CuttingBoardBlockMixin）。
 板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """

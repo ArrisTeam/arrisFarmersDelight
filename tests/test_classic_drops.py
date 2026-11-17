@@ -17,6 +17,7 @@ world = fakeengine.install()
 skilletkit.extend(world)
 Board = fdtest.load("Server.CuttingBoard")
 Skillet = fdtest.load("Server.Skillet")
+BoardDish = fdtest.load("Server.Helpers.BoardDish")
 HandFrying = fdtest.load("Server.HandFrying")
 
 POS = (7, 64, 7)
@@ -121,6 +122,17 @@ def testBreakingTheBoardScattersWhatIsOnItInsideTheBlock():
     _board(SOUTH, stack=_item("minecraft:stick", 50))
     Board.OnCuttingBoardRemove({"x": POS[0], "y": POS[1], "z": POS[2], "dimension": 0, "fullName": "arris:cutting_board"})
     _scattered("minecraft:stick", 50)
+
+
+def testBreakingABoardAlsoScattersTheDishBeingBuiltOnIt():
+    """HoD 的 CuttingBoardBlockMixin：拆板时摆着的菜（层）也 Containers.dropContents，每叠各自随机一点。"""
+    data = _board(SOUTH)
+    data["dishLayers"] = [BoardDish.stack(_item("minecraft:bread", 1)), BoardDish.stack(_item("minecraft:carrot", 40))]
+    Board.OnCuttingBoardRemove({"x": POS[0], "y": POS[1], "z": POS[2], "dimension": 0, "fullName": "arris:cutting_board"})
+    assert [pop[0]["newItemName"] for pop in _pops() if pop[0]["count"] == 1] == ["minecraft:bread"]
+    _scattered("minecraft:carrot", 40)
+    assert all(_inside(pos) and pos != (POS[0] + 0.5, POS[1] + 0.5, POS[2] + 0.5) for _item, pos, _motion in _pops())
+    assert data["dishLayers"] is None, "掉出来的不再留在板上"
 
 
 def testBreakingABoardWithOneItemDropsItInsideTheBlockToo():

@@ -3,11 +3,11 @@
 
 只在场景交互 · 前置在场时由砧板站点（Compat/Diegesis/BoardDish.py）往里放；经典玩法也认它：右键砧板把它们全还给玩家，
 拆砧板时掉出来。存在方块实体数据 dishLayers（物品字典的列表，底座在前）和 dishDone（做好的那叠或 None），
-整件存：名字、aux、数量和附魔 / 耐久 / 改名 / extraId / userData（Shared/Rules/HandsOn/ItemData.py），读出来换回物品字典，还给玩家 / 掉出来都原样；
+整件存：名字、aux、数量和附魔 / 耐久 / 改名 / extraId / userData（Shared/Rules/HandsOn/ItemData.py），读出来换回物品字典，还给玩家 / 掉出来都原样（掉出来是随机散开，Helpers/Drops.ScatterItem）；
 变了就广播给各客户端画（Helpers/BlockItems.PublishBoardDish）。
 """
 from .BlockItems import PublishBoardDish
-from .Engine import System
+from .Drops import ScatterItem
 from .Fx import ToAllPlayerPlaySound
 from .Player import GiveOrDropItem
 from ...Shared.Rules.HandsOn import ItemData
@@ -56,9 +56,8 @@ def giveBack(playerId, dimensionId, blockPos, blockEntityData):
 
 
 def spill(dimensionId, blockPos, blockEntityData):
-    """拆砧板：层和做好的菜掉在原地。"""
-    x, y, z = blockPos
+    """拆砧板：层和做好的菜每叠从方块里随机一点掉出来（HoD 的 CuttingBoardBlockMixin：Containers.dropContents，同板上待切的那叠）。"""
     for item in ([dishOf(blockEntityData)] if dishOf(blockEntityData) else []) + layersOf(blockEntityData):
-        System.CreateEngineItemEntity(item, dimensionId, (x + 0.5, y + 0.5, z + 0.5))
+        ScatterItem(dimensionId, blockPos, item)
     blockEntityData[LAYERS_KEY] = None
     blockEntityData[DONE_KEY] = None
