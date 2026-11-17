@@ -32,7 +32,7 @@ class Swap(object):
     """一次换方块：old / new 是换之前 / 之后的方块名，data 是还没写进新方块实体的快照（写了是 None），at 是换的时刻，removals 是还能认几次移除事件。"""
 
     def __init__(self, old, new, data, at):
-        self.old, self.new, self.data, self.at, self.removals = old, new, data, at, 2
+        self.old, self.new, self.data, self.at, self.removals = old, new, data, at, 1
 
 
 def _pos(blockPos):
@@ -112,9 +112,11 @@ def apply(dimensionId, blockPos):
 
 
 def claims(dimensionId, blockPos, fullName, now):
-    """这个移除事件是换方块引发的吗（Stove.OnStoveRemove 先问）：是就别丢东西、别忘记录。每次换最多认两次（旧方块的、新方块的）。"""
+    """这个移除事件是换方块引发的吗（Stove.OnStoveRemove 先问）：是就别丢东西、别忘记录。实机（3.10）换一次方块引擎只发一次移除事件：
+    在 SetBlockNew 里面同步发、名字是旧方块的。所以只认旧方块名字的那一次；新方块名字的移除从来不是换方块自己的——刚点着 / 刚熄灭的炉灶
+    半秒内被真的拆掉（创造模式、爆炸、命令），原来会被当成换方块的那一次吞掉，烤架上的东西不掉出来、跟着方块实体一起没了。"""
     record = _swaps.get((dimensionId, _pos(blockPos)))
-    if record is None or record.removals <= 0 or fullName not in (record.old, record.new) or now - record.at > GUARD_SECONDS:
+    if record is None or record.removals <= 0 or fullName != record.old or now - record.at > GUARD_SECONDS:
         return False
     record.removals -= 1
     return True

@@ -238,8 +238,14 @@ def testTheRemovalOfTheOldBlockIsTheSwapsAndARealBreakAfterwardsStillDrops():
     _light()
     now = fake.world.time
     assert F.StoveSwap.claims(0, K.STOVE, "minecraft:stone", now) is False and F.StoveSwap.claims(0, (1, 2, 3), LIT, now) is False, "别的名字、别的位置不认"
-    assert F.StoveSwap.claims(0, K.STOVE, UNLIT, now) is True and F.StoveSwap.claims(0, K.STOVE, LIT, now) is True
-    assert F.StoveSwap.claims(0, K.STOVE, LIT, now) is False, "每次换最多认两次（旧方块的、新方块的）"
+    assert F.StoveSwap.claims(0, K.STOVE, LIT, now) is False, "新方块的名字从来不是换方块自己的（实机换一次只发一次移除事件，名字是旧方块的）"
+    assert F.StoveSwap.claims(0, K.STOVE, UNLIT, now) is True and F.StoveSwap.claims(0, K.STOVE, UNLIT, now) is False, "旧方块的那一次，只认一次"
+    manager, data = F.setup(events="silent")
+    F.setBlock(UNLIT)
+    _seed(data)
+    _light()                                                  # 刚点着（半秒之内）就被真的拆了：创造模式、爆炸、命令
+    F.EventRegistry.dispatch("BlockRemoveServerEvent", {"x": K.STOVE[0], "y": K.STOVE[1], "z": K.STOVE[2], "fullName": LIT, "auxValue": 0, "dimension": 0}, LIT)
+    assert sorted(F.groundItems()) == sorted([BEEF, CHICKEN, COOKED]), "烤架上的东西照样掉出来（原来被当成换方块的那一次吞掉，东西跟着方块实体没了）"
     manager, data = F.setup(events="silent")
     F.setBlock(UNLIT)
     _seed(data)
