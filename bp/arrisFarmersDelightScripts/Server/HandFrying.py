@@ -6,11 +6,14 @@
 Frying.save / load）：服务器重启、区块卸载再加载之后接着煎。
 不是手放的（FD 自己的右键放进来的）照旧由 Server/Skillet.py 一件一件煎、弹出来；颠一下锅就从此归厨师，从生开始重算。
 一面多久按方块里那件煎锅的火焰附加和配置里的 skillet_time 倍率算（PanStation.sideSeconds）；
-站点关了（配置里 skillet 为假）时存档里留下的手放的锅交给 FD 原样煎，不再等人颠。两面都熟时这一批换成成品留在锅里，并广播 fried 事件（PanLook）。
+站点关了（配置里 skillet 为假）时存档里留下的手放的锅交给 FD 原样煎，不再等人颠。两面都熟时这一批换成成品留在锅里，并广播 fried 事件（PanLook）；
+锅里比一批多（FD 右键放的一大叠又被颠过）时，这一批的成品给站点里的厨师（最后颠锅的人还在就是他，否则站点里的第一位；背包放不下掉在他脚下），
+站点里没人就跳出锅外，剩下的生料留在锅里接着煎。
 """
 from . import PanLook
 from .Helpers.BlockItems import PublishSkillet
 from .Helpers.Engine import System
+from .Helpers.Player import GiveOrDropItem
 from ..Shared.Rules import HandsOnOptions as Options
 from ..Shared.Rules import PanStation
 from ..Shared.Rules.HandsOn import Frying
@@ -22,7 +25,8 @@ class PanHand(object):
     def __init__(self):
         self.frying = Frying.Frying()
         self.cook = None                 # 最后放料 / 颠锅的玩家
-        self.fried = 0                   # 煎好的批数（站点看它变了就报"煎好了"）
+        self.users = []                  # 站点里正用着这口锅的人：站点实例的活列表（PanLogic.onOpen 接上；站点销毁时它是空的）
+        self.fried = 0                  # 煎好的批数（站点看它变了就报"煎好了"）
         self.tosses = 0                  # 颠成功的次数（广播看它变了就马上发）
         self.loaded = False              # 方块实体里存的两面进度读过没有
 
@@ -96,12 +100,33 @@ def fry(hand, dimensionId, blockPos, blockEntityData, dt, fireAspect=0):
     return True
 
 
+def _cookAt(hand):
+    """站点里该拿到成品的人（SkilletCooking.finish 里 users 按"是不是最后颠锅的人"取最小）：最后放料 / 颠锅的那位还在就是他，
+    否则站点里的第一位；站点里没有人是 None。"""
+    users = list(hand.users)
+    return hand.cook if hand.cook in users else (users[0] if users else None)
+
+
+def _handOut(hand, dimensionId, blockPos, done):
+    """一批煎好的成品给站点里的厨师（背包放不下掉在他脚下），没有人就像 FD 的煎锅那样跳出锅外。
+    返回是不是给了厨师（客户端据此演东西抬起缩没，还是抛出锅外）。"""
+    cook = _cookAt(hand)
+    if cook is None:
+        x, y, z = blockPos
+        System.CreateEngineItemEntity(done, dimensionId, (x + 0.5, y + 0.3, z + 0.5))
+        return False
+    GiveOrDropItem(cook, done, dimensionId)
+    return True
+
+
 def _finish(hand, dimensionId, blockPos, blockEntityData, item, fried):
-    """两面都熟：这一批换成成品留在锅里；锅里比一批多（FD 右键放的一大叠又被颠过）时，成品照 FD 那样弹出来。"""
+    """两面都熟：这一批换成成品留在锅里；锅里比一批多（FD 右键放的一大叠又被颠过）时，剩下的生料留在锅里，这一批成品给站点里的厨师，
+    没人在就跳出锅外（SkilletCooking.finish）。"""
     count = min(hand.frying.batch, item["count"])
     done = {"newItemName": fried, "newAuxValue": item.get("newAuxValue", 0), "count": count}
     rest = item["count"] - count
     hand.frying.reset()
+    toCook = False
     if rest <= 0:
         blockEntityData["cookingDict"] = done
         PublishSkillet(dimensionId, blockPos, done)
@@ -110,10 +135,9 @@ def _finish(hand, dimensionId, blockPos, blockEntityData, item, fried):
         left["count"] = rest
         blockEntityData["cookingDict"] = left
         PublishSkillet(dimensionId, blockPos, left)
-        x, y, z = blockPos
-        System.CreateEngineItemEntity(done, dimensionId, (x + 0.5, y + 0.3, z + 0.5))
+        toCook = _handOut(hand, dimensionId, blockPos, done)
     hand.fried += 1
-    PanLook.event(dimensionId, blockPos, "fried", {"stack": done, "in_pan": rest <= 0, "to_cook": False})
+    PanLook.event(dimensionId, blockPos, "fried", {"stack": done, "in_pan": rest <= 0, "to_cook": toCook})
 
 
 def toss(hand, playerId, now, item):

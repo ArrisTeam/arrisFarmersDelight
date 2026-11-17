@@ -70,6 +70,7 @@ class PanLogicMixin(object):
         if data is None:
             return False
         self.hand = HandFrying.handOf(station.dimensionId, station.pos, data)
+        self.hand.users = station.users               # 一批超过 16 件煎好时，成品给站点里的厨师（HandFrying._handOut）
         PanLook.resend(station.dimensionId, station.pos, data, self.hand, playerId)       # 他的客户端要用当前的样子，先单发一份
         self._count = _count(PanContents.itemOf(station.dimensionId, station.pos))
         if Arrival.byUse(station, playerId):          # 从相邻的站点走过来的：主手上的东西不是给这口锅的（openedByUse）
