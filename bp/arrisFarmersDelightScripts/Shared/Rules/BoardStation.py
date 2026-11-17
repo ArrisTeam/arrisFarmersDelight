@@ -9,6 +9,7 @@ client/BoardBehavior.usable（1502-1505）。放上板的判定树在 HandsOn/Bo
 物品是 (物品名, aux)；这里的物品字典是引擎的 {"newItemName", "newAuxValue", "count", ...}。
 """
 from ..Data.Cutting import CuttingBoardDict, axeList, knifeList
+from ..Data.FlatBlockItems import FlatBlockItems
 from . import DishStation
 from .CuttingStation import BOARD_BLOCKS, STATION_ID, fitsTool  # noqa: F401 - 站点和测试从这里取
 from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最多 9 层
@@ -133,6 +134,13 @@ class Env(object):
         """板上这件是不是插着的工具（不是等着切的食物）。我们没有 FD 的 IsItemCarved 标记：板上有、却是能插的工具就是。
         板上怎么画（站点里 Compat/Diegesis/BoardDraw、没开站时 Shared/Rules/BlockDisplay）、取回要不要拔出来的动作都问它，说同一个答案。"""
         return keyOf(item) is not None and not self.cuttable(item) and self.canStick(item)
+
+    def isBlock(self, item):
+        """板上这件东西画成立着的方块、还是平躺的图标（JE：物品模型立体才是方块，HoD 的 ItemVoxels.icon / FD 的 CuttingBoardRenderer 的 isGui3d）。
+        基岩版的物品类型是 block 的才可能是方块，其中花、野生作物、蘑菇丛的模型在 JE 里是一张贴图（Data/FlatBlockItems），要平躺。
+        站点里画板上的东西（Compat/Diegesis/BoardDraw）、没开站时的世界展示（Shared/Rules/BlockDisplay）、切一刀的效果里的 block（BoardChop）都问它，说同一个答案。"""
+        key = keyOf(item)
+        return key is not None and self.typeOf(item) == "block" and key[0] not in FlatBlockItems
 
     def isDone(self, onBoard):
         """板上的东西是不是"没活干"，该给新的食物让位（BoardLogic.isDone，245-248）：插着的工具，或没有刀切得了的东西（做好的菜）。"""

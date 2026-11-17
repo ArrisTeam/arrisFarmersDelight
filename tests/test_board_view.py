@@ -168,6 +168,39 @@ def testTheBoardIsOutlinedWhileWhatIsCarriedCanBeLaidOnIt():
     assert lit() == 0.0, "关站收掉"
 
 
+def testAFlowerAWildCropAndAMushroomColonyLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
+    """JE（HoD 的 ItemVoxels.icon、FD 的 isGui3d）：模型是一张贴图的方块类物品像食物一样平躺；引擎的 itemType 对它们也是 block，按名字认（Data/FlatBlockItems）。
+    原木这样的真方块照旧立着。"""
+    for name in ("minecraft:poppy", "arris:wild_cabbages", "arris:red_mushroom_colony"):
+        assert C.engine.GetItemBasicInfo(name)["itemType"] == "block"
+        behavior, view = _open(C.item(name, 1))
+        _frames(behavior, 2)
+        assert behavior.draw.kindOf(C.item(name)) == "flat" and not behavior.draw.isBlock(C.item(name)), name
+        props = _live(view, name)
+        assert len(props) == 1 and props[0].flat and abs(props[0].scale - 1.25) < 1e-6, "和食物一样：10 像素的图标平躺，缩放 1.25（%s）" % name
+        behavior, view = _open(C.item(name, 5))
+        _frames(behavior, 2)
+        assert len(_live(view, name)) == 2 and all(prop.flat for prop in _live(view, name)), "一叠：底下再垫一张（%s）" % name
+    behavior, view = _open(C.item("minecraft:oak_log", 1))
+    _frames(behavior, 2)
+    assert behavior.draw.kindOf(C.item("minecraft:oak_log")) == "block" and not _live(view, "minecraft:oak_log")[0].flat, "原木是真的方块：立着"
+
+
+def testTheKnifeLinesOnAFlowerFollowItsOutlineNotTheSquareOfABlock():
+    """平躺的花刀口线按它图标的轮廓走（掩码）：几何里有图标、不是方块；原木才是方形刀口。"""
+    board, data = _across(2, "minecraft:poppy")
+    behavior, view = _open(board, data=data, hand=C.item(KNIFE))
+    _frames(behavior, 2)
+    icon, isBlock, axis, marks = behavior.cutter._geometry()
+    assert icon is not None and icon is Marks.iconOf("minecraft:poppy") and not isBlock and marks == 1
+    assert axis.elongation > 1.0 and axis.elongation != Marks.axisOf(None, True).elongation, "有轮廓的轴，不是方块的正方形"
+    board, data = _across(2, "minecraft:oak_log")
+    behavior, view = _open(board, data=data, hand=C.item("minecraft:iron_axe"))
+    _frames(behavior, 2)
+    icon, isBlock, axis, marks = behavior.cutter._geometry()
+    assert icon is None and isBlock, "原木：方块，方形刀口"
+
+
 def testALoneItemIsDrawnFlatAndAPileGetsASecondOneUnderIt():
     behavior, view = _open(C.item("arris:cabbage", 1))
     _frames(behavior, 2)
@@ -224,6 +257,8 @@ def testTheStationAndTheBlockItemsPutEverythingAtTheSamePlaceAndSize():
     cases = [({"0": C.item("arris:cabbage", 1)}, C.item("arris:cabbage", 1), []),
              ({"0": C.item("arris:cabbage", 5)}, C.item("arris:cabbage", 5), []),
              ({"0": C.item("minecraft:oak_log", 2)}, C.item("minecraft:oak_log", 2), []),
+             ({"0": C.item("minecraft:poppy", 1)}, C.item("minecraft:poppy", 1), []),
+             ({"0": C.item("arris:wild_cabbages", 5)}, C.item("arris:wild_cabbages", 5), []),
              ({"0": C.item("arris:iron_knife")}, C.item("arris:iron_knife"), []),
              ({"L0": C.item("minecraft:bread", 2), "L1": C.item("arris:beef_patty", 2), "L2": C.item("arris:tomato", 2)}, None,
               [C.item("minecraft:bread", 2), C.item("arris:beef_patty", 2), C.item("arris:tomato", 2)])]

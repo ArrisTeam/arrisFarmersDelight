@@ -48,7 +48,7 @@ def _look(logic, data, mark, tool, item, recipe):
     out = {"at": _at(data["at"]) if _number(data.get("at")) else 8.0, "spot": round(logic.cut.spots[mark], 4),
            "angle": round(logic.cut.angles[mark], 4), "tool": _name(tool["newItemName"]), "item": _name(item["newItemName"]),
            "yaw": data["yaw"] if data.get("yaw") in YAWS else 0, "stroke": Rules.strokeOf(recipe),
-           "block": logic.env().typeOf(item) == "block", "yields": [_name(entry["itemName"]) for entry in recipe["itemList"]][:MOST_YIELDS]}
+           "block": logic.env().isBlock(item), "yields": [_name(entry["itemName"]) for entry in recipe["itemList"]][:MOST_YIELDS]}
     if _number(data.get("at_x")):
         out["at_x"] = _at(data["at_x"])
     return out

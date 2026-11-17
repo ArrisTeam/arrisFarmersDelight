@@ -281,6 +281,22 @@ def testAnAxeStripsTwoLogsAndShearsCutLeatherArmourAtTheStation():
     assert K.board(data) is None and K.count("minecraft:leather") >= 1, "剪成了皮革"
 
 
+def testTheChoppedEffectCallsOnlyWhatIsDrawnAsABlockABlockNotFlowersAndWildCrops():
+    """chopped 的 block 是 JE 里 chopped 的 block（ItemVoxels.icon(worked).isEmpty()，画成立着的方块）：碎屑从方块顶面起飞、最后一刀在方块中心炸开、
+    食物不飘走。花、野生作物、蘑菇丛基岩版的 itemType 也是 block，JE 里却是一张平面图标、像食物一样平躺：block 是假的。原木是真的方块。"""
+    for name, tool, block in (("minecraft:poppy", "arris:iron_knife", False), ("arris:wild_cabbages", "arris:iron_knife", False),
+                              ("minecraft:oak_log", "minecraft:iron_axe", True)):
+        manager, data = K.setup()
+        K.opened(manager)
+        assert _place(manager, name, 1)
+        _tool(6, tool)
+        K.effects()
+        K.advance(0.2)
+        assert _chop(manager, 0)
+        chopped = [payload for effect, payload in K.effects() if effect == "chopped"]
+        assert len(chopped) == 1 and chopped[0]["block"] is block and chopped[0]["item"] == name, (name, chopped)
+
+
 def testAxeAndShearsDoNotCutWhatTheyDoNotCutAtTheStation():
     """板上是原木、手里是剪刀，或者板上是皮甲、手里是斧：刀口拒绝，板上的东西原样。"""
     manager, data = K.setup()

@@ -112,10 +112,10 @@ def release(dimensionId, pos):
 
 
 def _layoutOf(kind, items, pos):
-    """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：砧板要板底座的偏移、朝向和"是不是插着的工具"，炉灶要朝向。"""
+    """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：砧板要板底座的偏移、朝向和"是不是插着的工具""画成方块还是平躺的图标"，炉灶要朝向。"""
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
     yaw = _facingYaw(pos) if kind in (BlockDisplay.KIND_BOARD, BlockDisplay.KIND_STOVE) else 0
-    return BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw, _boardEnv.isCarving)
+    return BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw, _boardEnv.isCarving, _boardEnv.isBlock)
 
 
 def show(dimensionId, pos, kind, items):

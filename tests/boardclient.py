@@ -19,7 +19,8 @@ PACKAGE = fdtest.SCRIPTS
 STATION_POS = (10, 64, 10)
 TYPES = {"arris:iron_knife": "sword", "arris:flint_knife": "sword", "minecraft:iron_axe": "axe", "minecraft:cobblestone": "block",
          "minecraft:oak_log": "block", "minecraft:stripped_oak_log": "block", "minecraft:gravel": "block", "minecraft:stone": "block",
-         "minecraft:iron_shovel": "shovel", "minecraft:iron_pickaxe": "pickaxe", "minecraft:shears": "shears"}
+         "minecraft:iron_shovel": "shovel", "minecraft:iron_pickaxe": "pickaxe", "minecraft:shears": "shears",
+         "minecraft:poppy": "block", "arris:wild_cabbages": "block", "arris:red_mushroom_colony": "block"}        # 花、野生作物、蘑菇丛：3.10 实机的 itemType 也是 block，引擎画的却是一张平面图
 
 
 class FakeClientEngine(object):

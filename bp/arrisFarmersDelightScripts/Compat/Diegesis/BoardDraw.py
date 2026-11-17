@@ -21,8 +21,6 @@ from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import FromPlayer
 
-BLOCK_TYPE = "block"
-
 
 class Draw(DrawEvents):
     """一个打开着的砧板的画面。view 是 StationView，center 是板面中心（站点像素 x, z），env 是站点的 BoardStation.Env（问物品类型、是不是插着的工具），
@@ -57,7 +55,8 @@ class Draw(DrawEvents):
     # ---------------------------------------------------------------- 类型
 
     def isBlock(self, item):
-        return self.typeOf(item) == BLOCK_TYPE
+        """画成立着的方块还是平躺的图标（BoardStation.Env.isBlock：物品类型是 block、而且 JE 里的模型是立体的；花、野生作物、蘑菇丛是一张贴图，平躺）。"""
+        return self.env.isBlock(item)
 
     def kindOf(self, item):
         """这件东西躺在板上是什么样：flat 平躺、block 立着的方块、tool 插着的工具（BoardStation.Env.isCarving：没开站时 Client/BlockItems 问的是同一个规矩）。"""

@@ -87,8 +87,9 @@ def carvedFront(yaw):
     return StoveFacing.turnOffset(yaw, 0.0, 1.0)
 
 
-def boardLayout(item, itemType, carving, offset=(0.0, 0.0), yaw=0):
-    """板上等着切的东西 / 做好的菜 / 插着的工具。carving(物品) 说是不是插着的工具（BoardStation.Env.isCarving，站点里问的是同一个）；
+def boardLayout(item, itemType, carving, isBlock, offset=(0.0, 0.0), yaw=0):
+    """板上等着切的东西 / 做好的菜 / 插着的工具。carving(物品) 说是不是插着的工具、isBlock(物品) 说画成立着的方块还是平躺的图标
+    （BoardStation.Env.isCarving / isBlock，站点里问的是同一个）；
     offset 是从方块中心挪到板底座中间的量（方块分数，x 往东 z 往南）；yaw 是板的朝向（度），插着的工具跟着它转。"""
     if not isItem(item):
         return []
@@ -97,7 +98,7 @@ def boardLayout(item, itemType, carving, offset=(0.0, 0.0), yaw=0):
         return [Placement(shown, (BoardScene.CARVED_X / 16.0, BoardScene.CARVED_HEIGHT / 16.0, BoardScene.CARVED_X / 16.0), False, carvedFront(yaw),
                           BoardScene.carvedRoll(itemType), CARVED_SCALE)]
     cx, cz = 0.5 + offset[0], 0.5 + offset[1]
-    if itemType == "block":
+    if isBlock(item):
         return [Placement(shown, (cx, BOARD_TOP + BoardScene.blockLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
     flat = [Placement(shown, (cx, BOARD_TOP + 0.02 + BoardScene.pileLift(item.get("count", 1) or 1) / 16.0, cz), True, (1.0, 0.0), 0.0,
                       BOARD_FOOD_SCALE)]
@@ -159,16 +160,16 @@ def stoveLayout(slots, yaw=0):
     return placements
 
 
-def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0), yaw=0, carving=None):
+def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0), yaw=0, carving=None, isBlock=None):
     """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标；
     offset 只有砧板用：板底座中间离方块中心的量（方块分数）；yaw 炉灶和砧板用：方块的朝向（度，StoveFacing.yawOfAux），炉灶转烤位、砧板转插着的工具；
-    carving 只有砧板用：carving(物品) 说是不是插着的工具（BoardStation.Env.isCarving）。"""
+    carving、isBlock 只有砧板用：carving(物品) 说是不是插着的工具、isBlock(物品) 说画成立着的方块还是平躺的图标（BoardStation.Env.isCarving / isBlock）。"""
     if kind == KIND_BOARD:
         layers = [items.get(layerKey(index)) for index in range(DISH_LAYERS)]
         if isItem(items.get(DISH_KEY)) or any(isItem(layer) for layer in layers):
             return boardDishLayout(layers, items.get(DISH_KEY), posHash(pos), offset)
         item = items.get("0")
-        return boardLayout(item, itemTypeOf(item), carving, offset, yaw) if isItem(item) else []
+        return boardLayout(item, itemTypeOf(item), carving, isBlock, offset, yaw) if isItem(item) else []
     if kind == KIND_SKILLET:
         return skilletLayout(items.get("0"), posHash(pos))
     if kind == KIND_STOVE:

@@ -4,7 +4,8 @@
 Hands-On Delight 的砧板把板上的物品按它的图标画（ItemVoxels.read：alpha >= 128 的像素是实心），刀口线穿过实心像素的中心、
 顺着它们最长的方向（ItemVoxels.Icon.axis），虚线只画在实心像素上（solidSpan）。基岩版的客户端读不到物品贴图的像素，
 所以这里把砧板上要切的东西的图标离线读出来，每行一个整数（第 0 列是最低位，实心为 1），客户端照 JE 的算法在这个掩码上算
-（Shared/Rules/HandsOn/BoardMarks.py）。没有贴图的东西（方块、别的包的物品）不进表，客户端按整格实心算。
+（Shared/Rules/HandsOn/BoardMarks.py）。没有贴图的东西（立体的方块、别的包的物品）不进表，客户端按整格实心算。
+基岩版说是方块、JE 里画成一张平面图标的花、野生作物、蘑菇丛（Shared/Data/FlatBlockItems）也进表：它们的图是方块的贴图（terrain_texture.json）。
 农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10）。
 用法：py -3 tools/gen_item_masks.py [--vanilla <resource_packs/vanilla 目录>] [--check] [--show 物品名]
 """
@@ -51,6 +52,13 @@ for _kind in ("chest", "hopper", "tnt"):
     VANILLA["minecraft:%s_minecart" % _kind] = "textures/items/minecart_%s" % _kind
 for _piece in ("helmet", "chestplate", "leggings", "boots"):
     VANILLA["minecraft:leather_%s" % _piece] = "textures/items/leather_%s" % _piece
+# 基岩版说是方块、JE 里画成一张平面图标的物品（Shared/Data/FlatBlockItems）：图是方块的贴图，在 terrain_texture.json 里、键和物品同名（原版的花、本包的野生作物）。
+# 例外写在这里（本包 rp 里的路径）：野生稻的物品图标是 wild_rice_icon（JE 的 wild_rice_top），蘑菇丛 JE 的物品模型用的是 stage3
+FLAT_BLOCK_TEXTURES = {
+    "arris:wild_rice": "textures/items/wild_rice_icon",
+    "arris:brown_mushroom_colony": "textures/blocks/brown_mushroom_colony_stage3",
+    "arris:red_mushroom_colony": "textures/blocks/red_mushroom_colony_stage3",
+}
 
 
 def _data(name):
@@ -77,9 +85,18 @@ def paths(vanilla):
     """要切的东西（和收尾动画沿着放的两件）的物品名 -> 贴图文件（不带扩展名）；找不到的不列。"""
     ours = _json(os.path.join(ROOT, "rp", "textures", "item_texture.json"))
     theirs = _json(os.path.join(vanilla, "textures", "item_texture.json")) if os.path.isdir(vanilla) else {}
+    ours_blocks = _json(os.path.join(ROOT, "rp", "textures", "terrain_texture.json"))
+    theirs_blocks = _json(os.path.join(vanilla, "textures", "terrain_texture.json")) if os.path.isdir(vanilla) else {}
+    flat = _data("FlatBlockItems").FlatBlockItems
     found = {}
     for name in sorted(set(name for name, _aux in _data("Cutting").CuttingBoardDict) | set(FINISH_BASES)):
-        if name.startswith("arris:") and name in ours:
+        if name in FLAT_BLOCK_TEXTURES:
+            found[name] = os.path.join(ROOT, "rp", FLAT_BLOCK_TEXTURES[name])
+        elif name in flat and name.startswith("arris:") and name in ours_blocks:
+            found[name] = os.path.join(ROOT, "rp", _texture(ours_blocks[name]))
+        elif name in flat and name.startswith("minecraft:") and name[len("minecraft:"):] in theirs_blocks:
+            found[name] = os.path.join(vanilla, _texture(theirs_blocks[name[len("minecraft:"):]]))
+        elif name.startswith("arris:") and name in ours:
             found[name] = os.path.join(ROOT, "rp", _texture(ours[name]))
         elif name in VANILLA:
             found[name] = os.path.join(vanilla, VANILLA[name])
@@ -123,7 +140,7 @@ def render(masks):
         '"""ItemMasks - 砧板上要切的东西的图标哪些像素是实心（双端，纯数据，由 tools/gen_item_masks.py 按贴图生成，别手改）',
         "",
         "物品名 -> (宽, 高, 每行一个整数)：第 0 列是最低位，实心（alpha >= 128，同 HoD 的 ItemVoxels.read）为 1，第 0 行在图标最上面。",
-        "刀口线怎么穿过它见 Shared/Rules/HandsOn/BoardMarks.py；表里没有的东西（方块、别的包的物品）客户端按整格实心算。",
+        "刀口线怎么穿过它见 Shared/Rules/HandsOn/BoardMarks.py；表里没有的东西（立体的方块、别的包的物品）客户端按整格实心算。",
         '"""',
         "ItemMasks = {",
     ]
