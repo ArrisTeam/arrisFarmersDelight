@@ -375,18 +375,24 @@ def testAfterTheSwapTheLookAndTheWorldDisplayAreSentAgainForAWhile():
     assert F.StoveSwap.settling(0, K.STOVE, fake.world.time) is False
 
 
-def testTheStationClosesForAnotherCookWhenTheBlockUnderItChanges():
-    """和 JE 不一样、前置包的内核就是这么做的：站点实例记着方块名，换了方块（点火 / 灭火）就请使用者离开（Upkeep.stillValid）。"""
+def testTheStationStaysOpenForAnotherCookWhenSomeoneLightsOrPutsOutTheStove():
+    """JE：点火 / 灭火只改 LIT，站点不受影响（ActiveStation.canStay 问 type.matches，点着的和熄着的是同一种站点的方块）。内核按站点类型认方块
+    （Upkeep.stillValid 的 station.type.binds），不按方块名：正开着炉灶站点的另一位厨师不被请走，站点还是同一个实例（C05，另见 test_diegesis_block_swap）。"""
     manager, data = F.setup()
     F.setBlock(UNLIT)
     K.opened(manager, "b")
     assert "b" in manager.sessions
+    station = manager.stations[F.KEY]
     fake.give("a", 0, F.FLINT, 1)
     F.use()
     assert F.blockName() == LIT
     K.step(2.0, manager=manager)
-    assert "b" not in manager.sessions, "站点关了"
-    assert K.opened(manager, "b") and "b" in manager.sessions, "再右键又能开（现在是点着的）"
+    assert "b" in manager.sessions and manager.stations[F.KEY] is station, "点着了：另一位厨师还在站点里，还是同一个实例"
+    fake.give("a", 1, F.WATER, 1)
+    F.use(slot=1)
+    assert F.blockName() == UNLIT
+    K.step(2.0, manager=manager)
+    assert "b" in manager.sessions and manager.stations[F.KEY] is station, "又浇灭了：照样在"
 
 
 if __name__ == "__main__":
