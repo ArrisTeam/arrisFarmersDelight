@@ -12,6 +12,7 @@ Scenes = C.load("Compat.Diegesis.PotScenes")
 BrothColors = C.load("Shared.Data.BrothColors")
 Rules = C.load("Shared.Rules.PotStation")
 Geometry = dgtest.load("Shared.Geometry")        # 前置包的几何：光标射线和液面的交点
+Txn = dgtest.load("Shared.ActionTxn")            # 前置包的动作目标 / 点击种类
 POS = C.POS
 LEFT, RIGHT, MIDDLE = 0, 1, 2
 BOWL = {"newItemName": "minecraft:bowl", "newAuxValue": 0, "count": 1}
@@ -29,8 +30,8 @@ class Hit(object):
 
 
 class Event(object):
-    def __init__(self, button=LEFT, hit=None, quick=False, ray=None):
-        self.kind, self.button, self.hit, self.quick = "down", button, hit, quick
+    def __init__(self, button=LEFT, hit=None, quick=False, ray=None, kind="down"):
+        self.kind, self.button, self.hit, self.quick = kind, button, hit, quick
         self.point, self.ray = (8.0, 9.0, 8.0), ray
 
 
@@ -43,7 +44,9 @@ class Box(object):
 
 class Api(object):
     TOUCH = "touch"
+    PICKUP, QUICK_MOVE, PICKUP_ALL = Txn.PICKUP, Txn.QUICK_MOVE, Txn.PICKUP_ALL
     Geometry = Geometry
+    stationTarget = staticmethod(Txn.stationTarget)
 
     @staticmethod
     def box(key, lo, hi, payload=None):
@@ -51,7 +54,7 @@ class Api(object):
 
 
 class FakeView(object):
-    """前置包给表现类的 view：只记下发出去的动作和放料的调用。"""
+    """前置包给表现类的 view：只记下发出去的动作、内核点击和放料的调用。"""
 
     def __init__(self):
         self.hand = None
@@ -59,10 +62,13 @@ class FakeView(object):
         self.input = "mouse"
         self.dimensionId = 0
         self.pos = POS
-        self.actions, self.drops = [], []
+        self.actions, self.drops, self.clicks = [], [], []
 
     def sendAction(self, name, payload):
         self.actions.append((name, payload))
+
+    def click(self, target, button=0, kind="PICKUP"):
+        self.clicks.append((target, button, kind))
 
     def dropInto(self, group, button):
         self.drops.append((group, button))
@@ -100,14 +106,59 @@ def testTheLastSunkThingComesBackOnAnyMouseButton():
         assert behavior.onPointer(Event(button, Hit("sunk"))) is True and taken == [True], button
 
 
-def testTheSpoonAndTheSoupStillTakeOnlyTheLeftButton():
+def testOnlyTheSoupTakesJustTheLeftButton():
+    # PotBehavior.java:491：Click soup && button == 0（握勺子的 Stroke 不在这里，见下面几条）
     behavior, _view = behaviorOf()
     scooped = []
     behavior.serve.soupClick = lambda event: scooped.append(event.button) or True
     assert behavior.onPointer(Event(RIGHT, Hit("soup"))) is False and scooped == []
     assert behavior.onPointer(Event(LEFT, Hit("soup"))) is True and scooped == [LEFT]
-    assert behavior.onPointer(Event(RIGHT, Hit("ladle"))) is False and not behavior.scene.hand
-    assert behavior.onPointer(Event(LEFT, Hit("ladle"))) is True and behavior.scene.hand
+
+
+def testBothMouseButtonsGraspTheSpoonHandle():
+    # FocusInput.java:412-413：笔画左右键都起；PotBehavior.java:466-488：START / END 不看按键
+    for button in (LEFT, RIGHT):
+        behavior, view = behaviorOf()
+        assert behavior.onPointer(Event(button, Hit("ladle"))) is True, button
+        assert behavior.scene.hand and behavior.gesture.stroking and view.clicks == [] and view.actions == [], button
+        behavior.clock += 0.6                                  # 按得久：拖着搅，松手就放下
+        assert behavior.onPointer(Event(button, kind="up")) is True
+        assert not behavior.scene.hand and not behavior.gesture.stroking and not behavior.gesture.heldByClick, button
+
+
+def testAQuickClickWithEitherButtonKeepsTheSpoonInHandAndTheNextPressAnywhereOnlyPutsItDown():
+    # FocusInput.java:360-363：留在手里的笔画，下一次按下不管哪个键、按在哪里（料上也一样）只是把它放下，不做别的
+    for button, next_button in ((LEFT, LEFT), (RIGHT, RIGHT), (RIGHT, LEFT), (LEFT, RIGHT)):
+        behavior, view = behaviorOf()
+        behavior.onPointer(Event(button, Hit("ladle")))
+        behavior.clock += 0.1
+        assert behavior.onPointer(Event(button, kind="up")) is True
+        assert behavior.scene.hand and behavior.gesture.heldByClick, (button, "点一下：勺子留在手里")
+        assert behavior.onPointer(Event(next_button, Hit("item", 0))) is True, (button, next_button)
+        assert not behavior.scene.hand and not behavior.gesture.stroking and view.clicks == [], (button, next_button, "只放下，没有拿料")
+        assert behavior.onPointer(Event(next_button, kind="up")) is False and not behavior.scene.hand, "放下那一按的抬起：没有后续"
+        assert behavior.onPointer(Event(button, Hit("item", 0))) is True and view.clicks, "放下之后料照常点得到"
+
+
+def testAnotherButtonPressedWhileDraggingTheSpoonDoesNothing():
+    # FocusInput.press：gesture != null 就 return；原来右键根本进不来握勺子，现在两个键都能起笔画，别让拖着搅的时候点料也拿起来
+    behavior, view = behaviorOf()
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    assert behavior.onPointer(Event(RIGHT, Hit("item", 0))) is True
+    assert view.clicks == [] and behavior.scene.hand and behavior.gesture.stroking, "还握着勺子，料没动"
+    behavior.clock += 0.6
+    behavior.onPointer(Event(LEFT, kind="up"))
+    assert not behavior.scene.hand, "松开按着的那个键，笔画结束"
+
+
+def testTouchStillNeverKeepsTheSpoonInHandWhicheverButtonTheTapWasSentAs():
+    for button in (LEFT, RIGHT):                               # "单个"档把点按送成右键
+        behavior, view = behaviorOf()
+        view.input = Api.TOUCH
+        behavior.onPointer(Event(button, Hit("ladle")))
+        behavior.clock += 0.1
+        behavior.onPointer(Event(button, kind="up"))
+        assert not behavior.scene.hand and not behavior.gesture.heldByClick, button
 
 
 def testTheMealsContainerInHandScoopsOnAnyMouseButton():
