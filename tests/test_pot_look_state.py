@@ -36,6 +36,16 @@ def testGarbageFromTheNetworkIsIgnored():
     assert State.decode(None, 1.0).items == [None] * 6 and State.decode([1, 2], 1.0).heated is False
 
 
+def testTheSupportIsReadAndKeptLikeTheOtherStaticParts():
+    assert State.decode(_payload(), 0.0).support == 0, "没带 support 的载荷（旧的、镜像里空着的）是没有支架"
+    hanging = State.decode(_payload(support=2), 0.0)
+    assert hanging.support == 2
+    assert State.decode({"stirring": True}, 1.0, hanging).support == 2, "没带 support 的载荷沿用上一份"
+    assert State.decode(_payload(support=1), 0.0).support == 1
+    for junk in (3, -1, "2", None, True, [2], float("nan")):
+        assert State.decode(_payload(support=junk), 0.0).support == 0, junk
+
+
 def testPartialPayloadsKeepTheRest():
     first = State.decode(_payload(), 10.0)
     second = State.decode({"stirring": True, "spoon": [0.0, 1.0]}, 12.0, first)

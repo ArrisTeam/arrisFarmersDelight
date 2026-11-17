@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """BlockEntityRestore - 方块实体在本端加载时按存档数据恢复 molang（客户端）
 
-厨锅 / 煎锅的"支架""加热"、派吃到第几块都由服务端在变化时广播；
+厨锅 / 煎锅的"支架"（托盘、厨锅的吊把手）"加热"、派吃到第几块都由服务端在变化时广播；
 区块重新加载或玩家刚进服时，客户端按方块实体数据自己补一次。
 """
 from ..QuModLibs.Client import Listen
 from .Engine import compFactory, levelId, unwrap, blockEntityExData
 
 _HEATED = ("arris:skillet", "arris:cooking_pot")
+_POT = "arris:cooking_pot"
 _PIES = ("arris:apple_pie", "arris:chocolate_pie", "arris:sweet_berry_cheesecake", "arris:pumpkin_pie")
 
 
@@ -30,5 +31,8 @@ def OnBlockEntityLoaded(args):
         shelf = unwrap(exData.get("shelfEnable"))
         if shelf is not None:
             blockInfo.SetBlockEntityMolangValue(blockPos, "variable.mod_shelf", shelf)
+        handle = unwrap(exData.get("handleEnable")) if blockName == _POT else None          # 吊把手只有厨锅有
+        if handle is not None:
+            blockInfo.SetBlockEntityMolangValue(blockPos, "variable.mod_handle", handle)
     else:
         blockInfo.SetBlockEntityMolangValue(blockPos, "variable.mod_pie", unwrap(exData.get("blockStatus"), 0.0))

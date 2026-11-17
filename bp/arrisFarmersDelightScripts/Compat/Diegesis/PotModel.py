@@ -3,7 +3,8 @@
 
 模型（rp/entity/cooking_pot.json）缺省是合着盖的农夫乐事原样；场景接管之后 mod_open = 1：盖子收起，液面那一层露出来。
 - molang：variable.mod_open、mod_level（液面比锅底内面高多少像素，0..6.5）、mod_spoon_x/y/z 与 mod_spoon_rx/ry/rz
-  （ladle 骨骼的位移和欧拉角，换算在 Shared/Rules/PotModelMath.py）、mod_spoon_lit（勺子描一圈亮边：光标在柄上、能抓）；
+  （ladle 骨骼的位移和欧拉角，换算在 Shared/Rules/PotModelMath.py）、mod_spoon_lit（勺子描一圈亮边：光标在柄上、能抓）、
+  mod_handle / mod_shelf（支架：吊把手 / 托盘，服务端变的时候也直接推过，这里再推一遍是为了方块实体重建之后它们不丢，见 support）；
 - 着色器（rp/shaders/glsl/arris_pot_broth_vertex.glsl / _fragment.glsl）的四组数经 SetBlockEntityExtraUniforms 给：
   1 = (r, g, b, a) 汤色与浓度，2 = (mottle 的 255 档 + edgeBoil 的小数, 汤转过的弧度, 碎料的钟, 液面比内胆中心高多少像素)，
   3 = 两个水波，每个两个数：位置（x + 128 z，各按 1/16 像素取整）和"强度的百分数 + 年龄（秒）"，
@@ -13,7 +14,7 @@
 mod_food（锅里有东西）决定沸腾声归谁：有，场景自己放；空锅烧着，模型自带的水沸声照响（JE 的 CookingPotBlockMixin 同样只在有东西时才让农夫乐事的声音让位）。
 """
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Rules import PotModelMath, PotPiecesLook
+from ...Shared.Rules import PotModelMath, PotPiecesLook, PotSupport
 
 FLOOR_TOP = 2.0          # 锅底内面的高度（像素）
 TANK_MIDDLE = 5.25       # 内胆（2 .. 8.5）的中心高度
@@ -69,6 +70,12 @@ class PotModel(object):
 
     def open(self, opened):
         self._set("variable.mod_open", 1.0 if opened else 0.0)
+
+    def support(self, kind):
+        """锅的支架（FD 的 SUPPORT，PotSupport 的三个数）：吊把手 / 托盘 / 都没有。这两个变量方块实体重建之后回到缺省（都没有），
+        所以和别的值一样由场景每帧交给这里、重建时整份重推（服务端广播的 look.support 是最新的那份）。"""
+        self._set("variable.mod_handle", 1.0 if kind == PotSupport.HANDLE else 0.0)
+        self._set("variable.mod_shelf", 1.0 if kind == PotSupport.TRAY else 0.0)
 
     def food(self, has):
         """锅里有没有东西：有，场景放沸腾声、模型自带的农夫乐事那条让位；没有（空锅烧着），模型自带的水沸声照响（rp/entity 的 boil_water）。"""

@@ -7,10 +7,12 @@
 炉灶的 LIT 是两个方块（点着的 arris:stove 在 CanProvideHeatBlockList 里，熄着的孪生方块不在）。
 支架（托盘）只认正下方那一格：CookingPotBlock.getTrayState / SkilletBlock 只看 pos.below() 是不是 tray_heat_sources（熔岩、营火、火），
 所以漏斗再下面有火也不画托盘，和 JE 一样；传热的那一格变了没有邻居事件，由 Server/HeatConduct.py 隔一会儿去看。
+厨锅还有第三种支架：吊把手（HANDLE，Server/PotSupport.py），挂着时不论下面是什么都不画托盘；热不热和它无关（isHeated 不看支架）。
 """
 from .Engine import compFactory, levelId, GetBlockName
 from .Fx import ToAllPlayerBlockMolang
 from ...Shared.Data.Cooking import CanProvideHeatBlockList, HeatConductorList
+from ...Shared.Rules import PotSupport
 
 # 厨锅 / 煎锅放在这些方块上时显示支架模型
 ShelfBlockSet = frozenset(["minecraft:fire", "minecraft:campfire", "minecraft:soul_fire", "minecraft:soul_campfire",
@@ -50,16 +52,26 @@ def IsHeated(belowPos, dimensionId, belowName=None):
     return belowName in HeatConductorList and IsHeatSource((belowPos[0], belowPos[1] - 1, belowPos[2]), dimensionId)
 
 
+def SupportOf(blockEntityData):
+    """厨锅现在的支架（PotSupport.NONE / TRAY / HANDLE），从方块实体数据里的两个旗读（世界外观广播 Server/PotLook 用）。"""
+    return PotSupport.kindOf(blockEntityData["handleEnable"] == 1.0, blockEntityData["shelfEnable"] == 1.0)
+
+
 def RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName, delay=0.0):
     """按下方方块刷新"支架""加热"两个状态，并同步给客户端的方块实体 molang；返回是否有热源。
 
+    厨锅挂着吊把手（handleEnable，Server/PotSupport 存的）时下面是什么都不画托盘（FD 的 updateShape：HANDLE 不动），也把这个旗一并同步；
+    煎锅和没有这个键的厨锅（/setblock 放的）没有吊把手。
     delay > 0 时延后发送（方块刚放下时客户端的方块实体还没建好）。
     """
-    blockEntityData["shelfEnable"] = 1.0 if belowName in ShelfBlockSet else 0.0
+    handle = blockEntityData["handleEnable"]
+    blockEntityData["shelfEnable"] = 1.0 if belowName in ShelfBlockSet and handle != 1.0 else 0.0
     heat = IsHeated(belowPos, dimensionId, belowName)
     blockEntityData["heatEnable"] = heat
     blockEntityData["heatParticleEnable"] = 1.0 if heat else 0.0
-    pairs = (("variable.mod_shelf", blockEntityData["shelfEnable"]), ("variable.mod_heat", blockEntityData["heatParticleEnable"]))
+    pairs = [("variable.mod_shelf", blockEntityData["shelfEnable"]), ("variable.mod_heat", blockEntityData["heatParticleEnable"])]
+    if handle is not None:
+        pairs.append(("variable.mod_handle", handle))
     for name, value in pairs:
         if delay > 0:
             compFactory.CreateGame(levelId).AddTimer(delay, ToAllPlayerBlockMolang, blockPos, name, value)

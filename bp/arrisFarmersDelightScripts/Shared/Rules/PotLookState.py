@@ -4,9 +4,12 @@
 对应 Hands-On Delight 里每个客户端都跑的那部分（PotLogic.refresh + PotBehavior.frame 读的状态）：JE 靠方块实体的更新包，
 这边是服务端 Server/PotLook.py 发给 32 格内的人的载荷（静态部分另存在方块实体数据的 potLook 里，区块重载时补）：
     items 6 格料、served 产出格里装好的、meal 锅里煮好还没装的（count = 份数）、dish 这些料能做的菜、sunk 不浮的那几格、
-    heated、stirring、spoon [x, z]（世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）、progress 0..1、rate 每秒进度、cooking。
+    heated、support（支架：PotSupport 的 0 没有 / 1 托盘 / 2 吊把手）、stirring、spoon [x, z]（世界朝向，-1..1 = 勺尖偏移 / 2.3 像素）、
+    progress 0..1、rate 每秒进度、cooking。
 载荷来自网络，逐项查类型，不对的当作没有。
 """
+from . import PotSupport
+
 SLOTS = 6
 NO_SPOON = (0.0, 0.0)
 
@@ -31,13 +34,14 @@ def _number(value, default=0.0):
 class Look(object):
     """一口锅此刻的样子。"""
 
-    __slots__ = ("items", "served", "meal", "dish", "sunk", "heated", "stirring", "spoon", "progress", "rate", "cooking", "stamp")
+    __slots__ = ("items", "served", "meal", "dish", "sunk", "heated", "support", "stirring", "spoon", "progress", "rate", "cooking", "stamp")
 
     def __init__(self):
         self.items = [None] * SLOTS
         self.served = self.meal = self.dish = None
         self.sunk = frozenset()
         self.heated = self.stirring = self.cooking = False
+        self.support = PotSupport.NONE
         self.spoon = NO_SPOON
         self.progress = self.rate = 0.0
         self.stamp = 0.0
@@ -71,6 +75,8 @@ def decode(payload, now, previous=None):
     for name in ("heated", "stirring", "cooking"):
         if name in payload:
             setattr(look, name, payload[name] is True)
+    if "support" in payload:
+        look.support = PotSupport.readKind(payload["support"])
     spoon = payload.get("spoon")
     if isinstance(spoon, (list, tuple)) and len(spoon) == 2:
         look.spoon = (max(-1.0, min(1.0, _number(spoon[0]))), max(-1.0, min(1.0, _number(spoon[1]))))

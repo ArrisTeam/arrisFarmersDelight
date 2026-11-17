@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""CookingPot - 厨锅：放置、热源、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅并弹出没领的经验（服务端）
+"""CookingPot - 厨锅：放置、热源和支架、烹饪 tick、配方书一键放入、拆掉时掉一口带着菜的厨锅并弹出没领的经验（服务端）
 
 容器格与预览槽的读写在 Helpers/PotContainer.py；每一步怎么煮（FD 原样一份一份，或厨师搅着整批）在 HandCooking.py；
-每步煮完把锅的样子广播给附近的玩家在 PotLook.py（前置包在场时才开）。
+每步煮完把锅的样子广播给附近的玩家在 PotLook.py（前置包在场时才开）；吊把手 / 托盘（支架）在 PotSupport.py。
 """
 import copy
 import time
 
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
-from . import CookingPotItem, HandCooking, PotLook
+from . import CookingPotItem, HandCooking, PotLook, PotSupport
 from .EventRegistry import registerHandler
 from .Helpers import PotContainer
 from .Helpers.Engine import compFactory, levelId, ItemPosType, GetBlockEntityData, GetBlockName
@@ -35,6 +35,7 @@ def OnServerCookingPotCreate(args):
     blockEntityData["previewItemSlot"] = [{}]
     blockEntityData["timer"] = COOK_SECONDS
     CookingPotItem.attachPending(blockEntityData, dimensionId, blockPos)      # 放下的这口锅带着菜（JE 的 BlockEntityTag）
+    PotSupport.attach(blockEntityData, dimensionId, blockPos)                 # 点的是方块的下面就挂着吊把手（JE 的 getStateForPlacement）
     belowPos = (args["posX"], args["posY"] - 1, args["posZ"])
     RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, GetBlockName(belowPos, dimensionId), delay=0.1)
 

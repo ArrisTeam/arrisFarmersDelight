@@ -5,9 +5,12 @@
 Server/CookingPot.py 照旧推进；本模块让库的方块宿主接管对厨锅的右键：打开库的界面（Shared/Menus/CookingPot.py），
 并把方块实体数据里的热源、烹饪计时、预览格读成界面数据。
 
-右键盛菜：手里拿着这道菜的容器（只比物品名）、预览槽里有煮好的菜时，拿走一个容器、给一份菜（Server/PotServe.py，算做过一份、不给经验）；
-前置包在场、厨锅站点登记着时普通右键被客户端取消、到不了这里，站点开站那一下（Compat/Diegesis/PotLogic.py 的 onOpen）做同一件事；
-HoD 配置（Shared/Data/HandsOnConfig.py）里关了 cooking_pot，站点就不登记，普通右键不再被取消，到这里开经典界面。
+照 FD 的 CookingPotBlock.use（java:68-90）：潜行空手右键是切吊把手 / 托盘（Server/PotSupport.py），不开界面、不盛菜；
+潜行并拿着东西时原版根本不调方块的 use（手里的东西照常用出去、放下），库的缺省规则（sneakPasses）已经放过，到不了这里；
+不潜行时右键盛菜：手里拿着这道菜的容器（只比物品名）、预览槽里有煮好的菜时，拿走一个容器、给一份菜（Server/PotServe.py，算做过一份、不给经验），否则开界面。
+前置包在场、厨锅站点登记着时普通右键被客户端取消、到不了这里，站点开站那一下（Compat/Diegesis/PotLogic.py 的 onOpen）做同一件事；潜行时客户端不开站（前置包的
+sneakFallback），所以和 JE + HoD 一样：装了前置，经典界面只剩 HoD 配置（Shared/Data/HandsOnConfig.py）里关了 cooking_pot 一条路，站点就不登记，
+普通右键不再被取消，到这里开界面。
 有人开着这口锅的经典界面时（宿主的 onViewers），锅里厨师放的料也按 FD 原样自己煮，不等勺子（HoD 的 isInMenu）。
 宿主登记时由库在运行期让引擎报厨锅的移除（ListenOnBlockRemoveEvent），所以方块 JSON 里不再写 netease:listen_block_remove
 （两处同时开会让方块和物品图标都不画）；OnCookingPotRemove 照常经 BlockRemoveServerEvent 收到事件。
@@ -15,7 +18,7 @@ HoD 配置（Shared/Data/HandsOnConfig.py）里关了 cooking_pot，站点就不
 from ..dolorContainer.Server import Api
 from ..dolorContainer.Std.Block import Server as Block
 from ..Shared.Menus import CookingPot as PotMenu
-from . import HandCooking, PotServe
+from . import HandCooking, PotServe, PotSupport
 from .CookingPot import COOKING_POT, COOK_SECONDS
 from .Helpers.Engine import GetBlockEntityData
 
@@ -27,12 +30,15 @@ DOLOR_SCREEN = True
 
 class CookingPotHost(Block.Host):
     """厨锅的方块宿主：右键开界面（缺省的潜行拿着东西放过、按住不重复开都照库的）；DOLOR_SCREEN 关掉时全部放行。
-    手里拿着锅里这道菜的容器、锅里有煮好的菜时，右键是盛一份（FD 的 CookingPotBlock.use），不开界面。"""
+    潜行空手右键是切吊把手（FD 的 CookingPotBlock.use），手里拿着锅里这道菜的容器、锅里有煮好的菜时右键是盛一份，都不开界面。"""
 
     def use(self, playerId, typeId, key, event=None):
         place = Block.parseKey(key)
-        if place is not None and PotServe.serveByHand(playerId, place[0], place[1]):
-            return Block.BLOCK
+        if place is not None:
+            if PotSupport.sneaking(playerId):
+                return Block.BLOCK if PotSupport.toggle(playerId, place[0], place[1]) else Block.PASS     # 副手拿着东西：JE 不调 use
+            if PotServe.serveByHand(playerId, place[0], place[1]):
+                return Block.BLOCK
         return Block.OPEN if DOLOR_SCREEN else Block.PASS
 
     def onViewers(self, key, viewers):

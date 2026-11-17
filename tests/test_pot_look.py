@@ -40,7 +40,8 @@ def testTheLookGoesToThePlayersWithin32BlocksOfTheSameDimensionAndIsMirroredInTh
     assert len(looks) == 1 and looks[0][0] == ["a", "b"], "只发给同维度 32 格内的人：%r" % [look[0] for look in looks]
     payload = looks[0][1]
     assert sorted(payload) == ["cooking", "dimensionId", "dish", "heated", "items", "meal", "pos", "progress", "rate", "served",
-                               "spoon", "stirring", "sunk"]
+                               "spoon", "stirring", "sunk", "support"]
+    assert payload["support"] == 0, "没有支架（Shared/Rules/PotSupport.NONE）"
     assert payload["dimensionId"] == 0 and payload["pos"] == [10, 64, 10]
     assert [item.get("count") for item in payload["items"]] == [8, 8, None, None, None, None] and len(payload["items"]) == 6
     assert payload["dish"] == {"newItemName": SAUCE, "newAuxValue": 0, "count": 1}

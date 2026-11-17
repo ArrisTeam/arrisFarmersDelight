@@ -8,6 +8,7 @@
 2. 漏斗传热的刷新（Server/HeatConduct）：自上而下摆 厨锅（或煎锅）、漏斗、点着的营火（炉灶、熔岩、岩浆块、熔岩炼药锅也行），读锅那一格：
    stored_heat（锅存着的 heatEnable）应是真、stored_shelf 是 0（漏斗上没有托盘）；浇灭营火 / 铲子熄炉灶，隔 1 秒再读：stored_heat 应变成假；再点着又是真。
    heated_by_helper 是 Heat.IsHeated 现算的，和 stored_heat 对不上的那一刻就是还没刷新（HeatConduct 每 0.5 秒一次）。
+   厨锅那一格还给 stored_handle（吊把手的旗，Server/PotSupport 存的：挂着是 1.0，没有这个键是 None）：吊把手挂着时 stored_shelf 一定是 0。
     from arrisFarmersDelightScripts.Server.Debug import McdkHeatTest as T
     return T.mcdk_test_heat_probe(x, y, z)
 """
@@ -27,6 +28,6 @@ def mcdk_test_heat_probe(x, y, z):
     data = GetBlockEntityData(dim, pos)
     if data and result["name"] in ("arris:cooking_pot", "arris:skillet"):
         below = (pos[0], pos[1] - 1, pos[2])
-        result.update(stored_heat=data["heatEnable"], stored_shelf=data["shelfEnable"], below=GetBlockName(below, dim),
-                      heated_by_helper=IsHeated(below, dim))
+        result.update(stored_heat=data["heatEnable"], stored_shelf=data["shelfEnable"], stored_handle=data["handleEnable"],
+                      below=GetBlockName(below, dim), heated_by_helper=IsHeated(below, dim))
     return result

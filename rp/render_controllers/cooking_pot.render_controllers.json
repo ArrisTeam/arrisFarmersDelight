@@ -23,6 +23,9 @@
 				},
 				{
 					"lid": "variable.mod_open < 0.5"
+				},
+				{
+					"handle": "variable.mod_handle > 0.5"
 				}
 			]
 		},

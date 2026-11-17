@@ -67,6 +67,16 @@ class Comp(object):
     def GetItemBasicInfo(self, name, aux=0):
         return {"maxStackSize": self.fake.stackOf(name), "itemName": "name:" + name, "itemType": "food"}
 
+    def GetPlayerItem(self, posType, slot, getUserData=False):
+        """CreateItem(玩家).GetPlayerItem：副手（ItemPosType.OFFHAND）读玩家的 offhand，主手读选中的快捷栏格；空的是 None。"""
+        player = self.fake.world.players[self.owner]
+        item = player.get("offhand") if posType == ItemPosType.OFFHAND else player["inv"][player.get("selected", 0)]
+        return copy.deepcopy(item) if item else None
+
+    def isSneaking(self):
+        """CreatePlayer(玩家).isSneaking：测试把玩家的 sneaking 设成真。"""
+        return bool(self.fake.world.players[self.owner].get("sneaking"))
+
     def GetSelectSlotId(self):
         return self.fake.world.players[self.owner].get("selected", 0)
 

@@ -54,18 +54,19 @@ def itemOf(meal, mealName):
 
 
 class Pending(object):
-    """刚放下去的厨锅带着的菜：放置前记一笔（那时才看得到手里的物品），方块实体建好时取走。按位置记、会过期。"""
+    """刚放下去的厨锅带着的东西（它带的菜；放置时点的是不是方块的下面，Server/PotSupport）：放置前记一笔（那时才看得到手里的物品、点的面），
+    方块实体建好时取走。按位置记、会过期。"""
     SECONDS = 5.0
     LIMIT = 64
 
     def __init__(self):
         self._meals = {}
 
-    def put(self, key, meal, now):
+    def put(self, key, value, now):
         if len(self._meals) >= self.LIMIT:
             for oldKey in [k for k, entry in self._meals.items() if entry[1] < now]:
                 del self._meals[oldKey]
-        self._meals[key] = (meal, now + self.SECONDS)
+        self._meals[key] = (value, now + self.SECONDS)
 
     def take(self, key, now):
         entry = self._meals.pop(key, None)

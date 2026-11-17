@@ -5,10 +5,11 @@
 这里靠这条广播：服务端把锅的样子发给同维度 32 格内的玩家（客户端的 OnPotLook 去画）。默认关着，前置包在场时由
 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。负载（Call 到 OnPotLook）：
     {"dimensionId", "pos": [x, y, z], "items": [6 件料的线格式或 {}], "served": 产出格, "meal": 煮好待盛的菜, "dish": 现在这些料能做的菜,
-     "sunk": [沉着的格号], "heated": 有没有热源, "stirring": 锅算不算被搅着, "spoon": [x, z]（世界朝向，-1..1，同 spoon_x / spoon_z），
+     "sunk": [沉着的格号], "heated": 有没有热源, "support": 支架（PotSupport：0 没有 / 1 托盘 / 2 吊把手），
+     "stirring": 锅算不算被搅着, "spoon": [x, z]（世界朝向，-1..1，同 spoon_x / spoon_z），
      "progress": 0..1, "rate": 进度每秒走多少（0 = 停着）, "cooking": 加热着、被搅着、有料可做、没有菜等着盛}
-静态的部分（items / served / meal / dish / sunk / heated）变了就写进方块实体数据 potLook（区块晚加载的客户端从它恢复），
-锅的 5 Hz 步里查；写进去的是同一份，只是空的几项（served / meal / dish 是 {}、sunk 是 []）不写，读的人缺键当空
+静态的部分（items / served / meal / dish / sunk / heated / support）变了就写进方块实体数据 potLook（区块晚加载的客户端从它恢复），
+锅的 5 Hz 步里查；写进去的是同一份，只是空的几项（served / meal / dish 是 {}、sunk 是 []、support 是 0）不写，读的人缺键当空
 （引擎文档只说列表各项要同类型，空列表和空字典放不放得下没说，不碰）。
 勺子每个被接受的搅拌发一次（每口锅每秒最多 8 次）；进度在走时每 2 秒补一次，客户端按 rate 往前推。
 样子没变的时候，刚走进 32 格的人单发一份当前的样子：别人做菜时他在 32 格外（区块却加载着），客户端的场景停在老样子上，走近了也没有下一次
@@ -17,8 +18,9 @@ Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发�
 （开站点的人从站点的表现事件里拿到；站点每刻用 attend 告诉这里现在有谁在用它）。
 """
 from .Helpers import LookWatch, PotContainer
+from .Helpers.Heat import SupportOf
 from ..QuModLibs.Server import MultiClientsCall
-from ..Shared.Rules import PotStation
+from ..Shared.Rules import PotStation, PotSupport
 from ..Shared.Rules.HandsOn import PotCooking
 
 ENDPOINT = "OnPotLook"
@@ -68,14 +70,14 @@ def _rate(hand):
     return 1.0 / hand.total if hand.mode == PotCooking.FD_WAY else 0.0
 
 
-def build(dimensionId, blockPos, items, served, meal, hand, now):
-    """锅现在的样子（上面说的负载）：items 是 6 个食材格，served 产出格，meal 预览槽里煮好的菜，hand 是这口锅的 PotHand。"""
+def build(dimensionId, blockPos, items, served, meal, hand, now, support=PotSupport.NONE):
+    """锅现在的样子（上面说的负载）：items 是 6 个食材格，served 产出格，meal 预览槽里煮好的菜，hand 是这口锅的 PotHand，support 是支架。"""
     stirring = hand.clock.isStirred(now)
     wires = [_wire(item) for item in items]
     return {
         "dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])],
         "items": wires, "served": _wire(served), "meal": _wire(meal), "dish": _wire(hand.dish),
-        "sunk": PotStation.sunkSlots(items), "heated": bool(hand.heated),
+        "sunk": PotStation.sunkSlots(items), "heated": bool(hand.heated), "support": support,
         "stirring": stirring, "spoon": [round(hand.spoonAt[0], 3), round(hand.spoonAt[1], 3)] if stirring else [0.0, 0.0],
         "progress": round(hand.clock.progress(hand.total, hand.batch), 3), "rate": round(_rate(hand), 5),
         "cooking": bool(hand.heated and stirring and hand.dish and not meal),
@@ -84,7 +86,7 @@ def build(dimensionId, blockPos, items, served, meal, hand, now):
 
 def _static(payload):
     """静态的部分（变了才写方块实体数据、才算"静态变了"）。"""
-    return dict((key, payload[key]) for key in ("items", "served", "meal", "dish", "sunk", "heated"))
+    return dict((key, payload[key]) for key in ("items", "served", "meal", "dish", "sunk", "heated", "support"))
 
 
 def _mirror(static):
@@ -95,12 +97,14 @@ def _mirror(static):
             mirror[key] = static[key]
     if static["sunk"]:
         mirror["sunk"] = static["sunk"]
+    if static["support"]:
+        mirror["support"] = static["support"]
     return mirror
 
 
 def _signatureOf(static):
     return (tuple(_signature(w) for w in static["items"]), _signature(static["served"]), _signature(static["meal"]),
-            _signature(static["dish"]), tuple(static["sunk"]), static["heated"])
+            _signature(static["dish"]), tuple(static["sunk"]), static["heated"], static["support"])
 
 
 def _nearby(dimensionId, blockPos, now=None):
@@ -132,7 +136,7 @@ def tick(dimensionId, blockPos, blockEntityData, hand, slots, now):
         return
     entry = _entry(dimensionId, blockPos)
     payload = build(dimensionId, blockPos, slots, PotContainer.resultItem(dimensionId, blockPos), PotContainer.preview(blockEntityData),
-                    hand, now)
+                    hand, now, SupportOf(blockEntityData))
     static = _static(payload)
     signature = _signatureOf(static)
     changed = signature != entry["static"]
@@ -161,7 +165,7 @@ def stroke(dimensionId, blockPos, blockEntityData, hand, now):
         return
     entry["stroke"] = now
     _send(build(dimensionId, blockPos, PotContainer.inputs(dimensionId, blockPos), PotContainer.resultItem(dimensionId, blockPos),
-                PotContainer.preview(blockEntityData), hand, now), entry, now)
+                PotContainer.preview(blockEntityData), hand, now, SupportOf(blockEntityData)), entry, now)
 
 
 def event(dimensionId, blockPos, name, data=None, skip=()):

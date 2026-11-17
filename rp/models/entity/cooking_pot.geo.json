@@ -87,6 +87,45 @@
 					]
 				},
 				{
+					"name": "handle",
+					"parent": "cooking_pot",
+					"pivot": [-8, 8, 8],
+					"cubes": [
+						{
+							"origin": [-15, 8, 8],
+							"size": [14, 8, 0],
+							"uv": {
+								"north": {"uv": [1, 48], "uv_size": [14, 8]},
+								"south": {"uv": [1, 48], "uv_size": [14, 8]}
+							}
+						},
+						{
+							"origin": [-15, 8, 7],
+							"size": [0, 8, 2],
+							"uv": {
+								"east": {"uv": [2, 40], "uv_size": [-2, 8]},
+								"west": {"uv": [0, 40], "uv_size": [2, 8]}
+							}
+						},
+						{
+							"origin": [-1, 8, 7],
+							"size": [0, 8, 2],
+							"uv": {
+								"east": {"uv": [2, 40], "uv_size": [-2, 8]},
+								"west": {"uv": [0, 40], "uv_size": [2, 8]}
+							}
+						},
+						{
+							"origin": [-15, 15.999, 7],
+							"size": [14, 0, 2],
+							"uv": {
+								"up": {"uv": [2, 40], "uv_size": [14, 2]},
+								"down": {"uv": [2, 40], "uv_size": [14, 2]}
+							}
+						}
+					]
+				},
+				{
 					"name": "pot",
 					"parent": "cooking_pot",
 					"pivot": [-8, 8, 8],

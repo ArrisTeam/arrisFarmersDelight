@@ -41,6 +41,7 @@
         "initialize": [
           "variable.mod_heat = 0.0;",
           "variable.mod_shelf = 0.0;",
+          "variable.mod_handle = 0.0;",
           "variable.mod_open = 0.0;",
           "variable.mod_food = 0.0;",
           "variable.mod_level = 0.0;",
