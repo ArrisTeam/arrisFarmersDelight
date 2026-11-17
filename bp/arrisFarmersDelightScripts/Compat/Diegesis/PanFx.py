@@ -25,10 +25,13 @@ SOUNDS = {
     "egg_crack": ("block.turtle_egg.crack", 1.0),
 }
 HEAT = "arris:pan_heat"
+# JE 的 PAN_SMOKE（HandsOnDelightClient.java:93-94）：蒸汽的帧、染 0x58C8C6C2、大小 1.8~2.6 像素、活 1.6~2.4 秒；前置包的蒸汽是 0.6~1.0 像素，
+# 所以大小倍数取两个区间中点的比 2.2 / 0.8。煎锅（"pan_smoke"）和炉灶（GrillFx 的 "smoke"）在 JE 里是同一个样式，这里也只此一处
+PAN_SMOKE = (PotFx.STEAM, 0x58C8C6C2, 2.2 / 0.8, (1.6, 2.4))
 STYLES = {      # 样式 -> (粒子, 缺省色 ARGB, 大小倍数, 活多久（秒）的范围，None 用粒子自己的)
     "oil_pop": (PotFx.BUBBLE_POP, 0xE6F7C27A, 1.0, (0.25, 0.5)),
     "fat": (PotFx.DROPLET, 0xFFFFE7A8, 0.33, (0.3, 0.6)),
-    "pan_smoke": (PotFx.STEAM, 0x58C8C6C2, 3.0, (1.6, 2.4)),
+    "pan_smoke": PAN_SMOKE,
     "steam": (PotFx.STEAM, 0x50FFFFFF, 1.0, None),
     "glint": (PotFx.GLINT, 0xFFFFFFFF, 1.0, None),
     "dust": ("arris_diegesis:dust", 0x99C0B090, 1.0, None),
