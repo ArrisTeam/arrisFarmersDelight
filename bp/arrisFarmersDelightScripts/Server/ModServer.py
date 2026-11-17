@@ -8,7 +8,7 @@ ServerItemUseOnEvent 是唯一靠执行顺序区分处理者的事件（同一�
 由共用的交互冷却决定谁认领）。各处理函数的 priority 按旧版模块加载顺序给出：
     100 砧板 / 成熟作物取消物品使用    99 野生作物放置检查    98.5 煎锅物品（只有潜行才放，ItemToBlock 看不到它）
      98 物品放成方块（派）、长 / 短榻榻米垫
-     50 种水稻 / 骨粉 / 蘑菇菌落        10 炉灶放食物
+     50 种水稻 / 骨粉 / 蘑菇菌落        11 炉灶点火 / 灭火（用上了认领，不再往下走）    10 炉灶放食物
 DamageEvent 同理：100 展示实体删除器、60 爬绳免摔、0 背刺魔咒加伤害（不认领，后面的照常）。
 """
 from ..QuModLibs.Server import Listen
@@ -24,6 +24,7 @@ from . import CookingPotHost  # noqa: F401
 from . import Skillet  # noqa: F401
 from . import SkilletHold  # noqa: F401
 from . import Stove  # noqa: F401
+from . import StoveFire  # noqa: F401
 from . import CuttingBoard  # noqa: F401
 from . import ItemToBlock  # noqa: F401
 from . import Crops  # noqa: F401
