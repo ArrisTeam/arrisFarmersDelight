@@ -9,7 +9,7 @@ from __future__ import print_function
 import fdtest
 import potkit as K
 from optkit import Config
-from potkit import POT, SAUCE, TOMATO, fake
+from potkit import POT, TOMATO, fake
 
 HandCooking = K.HandCooking
 PotCooking = HandCooking.PotCooking
@@ -108,7 +108,7 @@ def testTheRecipeBookWritesTheSameTimeAsThePotTakes():
 
 
 def testTheBookRoundsHalvesUpLikeJavaMathRound():
-    # 5 秒 x 0.9 / 1.5 = 3.0，5 x 0.75 / 1.5 = 2.5：Math.round 进到 3（py3 的 round 是 2）
+    # 5 秒 x 0.75 / 1.5 = 2.5：Math.round 进到 3（Python 3 的 round 是 2，Python 2 是 3）
     with Config(cooking_pot_time=0.75):
         pages = dict((page["item"]["newItemName"], page) for page in Books.potPages())
         assert pages["arris:tomato_sauce"]["note"] == "3 秒"
