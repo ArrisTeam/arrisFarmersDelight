@@ -8,10 +8,11 @@
 切不是划，是点：刀跟着光标走（每帧追 1 - exp(-22 dt)）；光标在食物上时，下一刀的线离光标 < SNAP（1.4）像素就吸附上去，
 刀站到线上、顺着线摆正，这时 overMark 是下一刀的序号；点下去刀落下（0.05 秒下、0.14 秒起）。点的时候没吸附上（overMark < 0）
 只是"敲"一声，不发给服务端；吸附上了才发 chop {mark, at}。手上拿着别的工具（斧、镐……）的动作在 BoardStroke.py。
+触屏没有悬停（JE 没有，给手机的适配）：手指落下的那一下 overMark 还是上一帧的，所以点按先 land（按这一刻的落点现算，吸附带放到无限），再 click。
 """
 import math
 
-from .BoardMarks import snapOffset
+from .BoardMarks import SNAP, snapOffset
 
 CHOP_DOWN = 0.05         # BoardBehavior.CHOP_DOWN（76）：刀从悬着落到食物顶面
 CHOP_UP = 0.14           # :77 再抬回悬着的高度
@@ -45,9 +46,9 @@ class Knife(object):
     def chopping(self):
         return self.age is not None
 
-    def frame(self, dt, over, cut, index, top, haveTool=True):
+    def frame(self, dt, over, cut, index, top, haveTool=True, reach=SNAP):
         """推进一帧。over：光标在食物顶面的点 (x, z)（离食物中心，已夹进 REACH）或 None（不在食物上）；cut：下一刀（BoardMarks.Cut）或 None；
-        index：它的序号；top：食物顶面离板面多高；haveTool：有刀可用。
+        index：它的序号；top：食物顶面离板面多高；haveTool：有刀可用；reach：离线多近吸附（缺省 SNAP，触屏是 TAP_SNAP）。
         返回刀现在的姿态 (x, 刀刃的高度, z, 角度)，不画刀时返回 None。"""
         self.overMark = -1
         self.shown = haveTool and (over is not None or self.chopping)
@@ -59,7 +60,7 @@ class Knife(object):
             self.angle = cut.angle
         if over is not None:
             wantX, wantZ = over
-            offset = snapOffset(cut, wantX, wantZ) if cut is not None else None
+            offset = snapOffset(cut, wantX, wantZ, reach) if cut is not None else None
             if offset is not None:                       # 线就在手边：刀站到线上、顺着线
                 self.overMark = index
                 wantX -= cut.normalX() * offset
@@ -76,6 +77,19 @@ class Knife(object):
             if self.age > CHOP_DOWN + CHOP_UP:
                 self.age = None
         return (self.x, height, self.z, self.angle)
+
+    def land(self, over, cut, index, reach):
+        """触屏的一下点按：手指落下的这一刻就是落点，没有悬停让刀先吸附（frame 算 overMark 用的是上一帧的光标）——按这一刻的落点现算：
+        离线 < reach（触屏给 TAP_SNAP：点在食物上就落在线上）就当场吸附上去，刀站到线上离手指最近的一点、顺着线摆正，之后的 click 就是 CHOP。
+        落刀还没完、不在食物上、没有下一刀什么也不动。"""
+        if over is None or cut is None or index < 0 or self.chopping:
+            return
+        offset = snapOffset(cut, over[0], over[1], reach)
+        if offset is None:
+            return
+        self.x, self.z = over[0] - cut.normalX() * offset, over[1] - cut.normalZ() * offset
+        self.angle = cut.angle
+        self.overMark = index
 
     def click(self, over):
         """点下去（chop，1257-1279）：不在食物上、或这一刀还没落完，什么也不是（None）；落在线上返回 (CHOP, 序号, 刀刃的 z)，

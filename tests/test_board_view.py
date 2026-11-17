@@ -429,6 +429,98 @@ def testAKnifeOnTheCursorOnlyCutsWhenItIsOnTheDashedLine():
     assert C.engine.played and C.engine.played[-1][0] == "hit.wood"
 
 
+def _offLine(behavior, cut, distance=3.0):
+    """离这一刀的线 distance 像素（超出键鼠 1.4 的吸附带）、还在食物上的一点：返回 (站点射线, 离食物中心的偏移)。"""
+    offset = (cut.x + distance * cut.normalX(), cut.z + distance * cut.normalZ())
+    draw = behavior.draw
+    return C.rayTo((draw.cx + offset[0], draw.surface(), draw.cz + offset[1])), offset
+
+
+def testOnTouchTheFirstTapOnTheFoodIsAlreadyTheNextCutEvenOffTheLine():
+    """触屏每刀要点两下：第一下手指落下时没有悬停、刀的吸附还是上一帧的（没吸附就只敲一声），手指又盖着线、±3 毫米的吸附带对不准。
+    触屏上点在食物上就按这一刻的落点现算：落在下一刀的线上（服务端只认序号），第一下就是一刀，碎屑从线上离手指最近的一点飞。"""
+    board, data = _across()
+    behavior, view = _open(board, data=data, hand=C.item(KNIFE))
+    view.input = "touch"
+    cut, icon = _lineOf()
+    ray, offset = _offLine(behavior, cut)
+    assert behavior.onPointer(C.Event("down", "mouth", ray, button=0))
+    assert [(name, data["mark"]) for name, data in view.sent] == [("chop", 0)], "没有先悬停、离线 3 像素：第一下也是第 0 刀"
+    sent = view.sent[0][1]
+    assert abs(cut.distance(sent["at_x"] - behavior.draw.cx, sent["at"] - behavior.draw.cz)) < 0.01, "刀当场站到线上，碎屑从线上飞（不是手指的位置）"
+    assert behavior.cutter.pending.count == 1 and behavior.cutter.knife.chopping
+    assert not [sound for sound in C.engine.played if sound[0] == "hit.wood"], "不是只敲一声"
+
+
+def testOnTheMouseTheSameTapOffTheLineStillOnlyKnocksAndMouseHoverIsUntouched():
+    board, data = _across()
+    behavior, view = _open(board, data=data, hand=C.item(KNIFE))
+    cut, icon = _lineOf()
+    ray, offset = _offLine(behavior, cut)
+    behavior.onPointer(C.Event("move", "surface", ray))
+    _frames(behavior)
+    assert behavior.cutter.knife.overMark == -1
+    assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)) and view.sent == [], "键鼠：离线 3 像素还是只敲一声，吸附带照 JE 的 1.4"
+    assert C.engine.played and C.engine.played[-1][0] == "hit.wood"
+
+
+def testOnTouchEachTapIsTheNextCutAndTheKnifeFollowsToTheNextLine():
+    data = dict(_across()[1], plan=3, spots=[0.25, 0.5, 0.75], angles=[0.0, 0.0, 0.0])
+    behavior, view = _open(C.item("arris:cabbage", 4), data=data, hand=C.item(KNIFE))
+    view.input = "touch"
+    icon = Marks.iconOf("arris:cabbage")
+    lines = [Marks.markOf(Marks.axisOf(icon), "across", [0.25, 0.5, 0.75], [0.0] * 3, index, 3) for index in range(3)]
+    for index in range(2):
+        ray, _ = _offLine(behavior, lines[index], 2.5)
+        assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)), index
+        _frames(behavior, 30)                                      # 落刀 0.19 秒落完
+    assert [data["mark"] for name, data in view.sent] == [0, 1], "每一下点按各是下一刀（本地先记着，不等服务端回话）"
+
+
+def testOnTouchAnAxeOnALogChopsOnTheFirstTapAndTheMouseHoveringOneDoesToo():
+    """方块类（原木、石头）没有线：HoD 的 aim 里 overMark = nextMark，工具落在方块上哪里都算这一刀。这边的 next 原来对方块类给 -1，
+    鼠标悬停着点也只会敲一声、从来没发过 chop；触屏第一下更是 snap 还没算。"""
+    for touch in (False, True):
+        behavior, view = _open(C.item("minecraft:oak_log", 3), data=_data_for_log(), hand=C.item("minecraft:iron_axe"))
+        view.input = "touch" if touch else "mouse"
+        draw = behavior.draw
+        ray = C.rayTo((draw.cx, draw.surface(), draw.cz))
+        if not touch:
+            behavior.onPointer(C.Event("move", "surface", ray))
+            _frames(behavior, 10)
+        assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)) and behavior.cutter.run.mark == 0, "touch=%s" % touch
+        for _ in range(30):
+            behavior.frame(0.02)
+        assert [(name, data["mark"]) for name, data in view.sent] == [("chop", 0)], "接触那一刻发 chop（touch=%s）" % touch
+
+
+def _data_for_log():
+    return {"plan": 1, "marks": 0, "style": "across", "spots": [0.5], "angles": [0.0], "stroke": "chop", "dish": ""}
+
+
+def testOnTouchAToolOnFoodAlsoLandsOnTheNextLineOnTheFirstTapOnlyTheMouseNeedsToBeOnIt():
+    """食物上的工具（剪刀剪皮甲）：键鼠离线 1.4 以外开始动作、接触时只敲一声；触屏点在食物上就按下一刀的线算，第一下就剪。"""
+    data = dict(_data_for_log(), stroke="snip")
+    helmet = C.item("minecraft:leather_helmet", 1)
+    results = {}
+    for touch in (False, True):
+        behavior, view = _open(helmet, data=data, hand=C.item("minecraft:shears"))
+        view.input = "touch" if touch else "mouse"
+        icon = Marks.iconOf("minecraft:leather_helmet")
+        cut = Marks.markOf(Marks.axisOf(icon), "across", [0.5], [0.0], 0, 1)
+        ray, _ = _offLine(behavior, cut, 3.0)
+        if not touch:
+            behavior.onPointer(C.Event("move", "surface", ray))
+            _frames(behavior, 10)
+        assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)), touch
+        results[touch] = behavior.cutter.run.mark
+        for _ in range(60):
+            behavior.frame(0.02)
+        results[(touch, "sent")] = [name for name, data in view.sent]
+    assert results[False] == -1 and results[(False, "sent")] == [], "键鼠：离线 3 像素没吸附上，剪下去也只是敲一声"
+    assert results[True] == 0 and results[(True, "sent")] == ["chop"], "触屏：第一下就是下一刀"
+
+
 def testTheKnockOfATapThatFoundNothingToCutBuzzesAsARefusedAction():
     board, data = _across()
     behavior, view = _open(board, data=dict(data, marks=1), hand=C.item(KNIFE))        # 一刀已经切完：没有下一刀

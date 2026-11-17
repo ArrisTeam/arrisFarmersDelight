@@ -13,6 +13,7 @@ from .Cutting import MOST_LEAN, STYLE_ACROSS, STYLE_WEDGES
 from .Mth import clamp
 
 SNAP = 1.4                       # BoardBehavior.SNAP（84）：刀离下一刀的线这么近就吸附上去
+TAP_SNAP = INFINITY              # 触屏：没有悬停（刀没有先吸附的机会）、手指又盖着线，点在食物上就落在下一刀的线上，不看吸附带（JE 没有触屏，给手机的适配）
 REACH = 4.0                      # :68 刀离食物中心最远这么远（每个方向）
 LONG = 1.4                       # :1114 比这更长的东西叫"长"
 LONG_LEAN = math.radians(20.0)   # :1112 长的东西横切时刀口最多偏离垂直这么多（鱼切成排，不会顺着脊骨切）
@@ -114,7 +115,7 @@ def overItem(x, z):
     return None
 
 
-def snapOffset(cut, x, z):
-    """刀在 (x, z) 离这一刀的线多远（带符号）；够近（< SNAP）能吸附返回它，否则 None。刀要往线上挪 offset 份法线。"""
+def snapOffset(cut, x, z, reach=SNAP):
+    """刀在 (x, z) 离这一刀的线多远（带符号）；够近（< reach，缺省 SNAP；触屏给 TAP_SNAP）能吸附返回它，否则 None。刀要往线上挪 offset 份法线。"""
     off = cut.distance(x, z)
-    return off if abs(off) < SNAP else None
+    return off if abs(off) < reach else None

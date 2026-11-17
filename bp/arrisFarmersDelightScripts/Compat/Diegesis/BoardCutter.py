@@ -8,7 +8,9 @@
 - 刀：光标栈上拿着的、或手空着借背包里的，光标在食物上时画一把立着的刀（刀尖朝下，顺着这一刀的线转），悬在光标处、吸附到线上、
   点一下下去 0.05 秒上来 0.14 秒；画着的时候 drawn 为真，BoardView 据此把内核画在光标上的那一份缩到看不见（JE 的 setCarriedHidden）；
   借来的（手空着）半透明，落下去那一下变实，拿在手里的一直是实的（BoardStand）；
-- 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）。
+- 点在线上才发 chop；没吸附上只敲一声；刀以外的工具点一下开始动作，到接触那一刻才发（BoardStroke.Run）；
+- 触屏（JE 没有，给手机的适配）：没有悬停，刀没有先吸附到线上的机会，手指又盖着线——点在食物上就按这一刻的落点现算：落在下一刀的线上（离线多远都算，
+  刀当场站到线上离手指最近的一点），第一下就是一刀，不是只敲一声。别的工具一样（吸附带也放宽）。服务端只认序号（BoardChop），位置只用来放碎屑。
 """
 import math
 
@@ -49,6 +51,13 @@ class Cutter(object):
         icon = None if isBlock else Marks.iconOf(board["newItemName"])
         return icon, isBlock, Marks.axisOf(icon, isBlock), int(owner.view.data["plan"])
 
+    def _touch(self):
+        return self.owner.view.input == self.owner.api.TOUCH
+
+    def _reach(self):
+        """刀 / 工具离下一刀的线多近算吸附：键鼠照 JE 的 SNAP；触屏点在食物上就落在线上（TAP_SNAP）。"""
+        return Marks.TAP_SNAP if self._touch() else Marks.SNAP
+
     def over(self):
         """光标在食物上的点（离食物中心，夹进 REACH），不在食物上是 None（overItem）。"""
         owner = self.owner
@@ -59,13 +68,14 @@ class Cutter(object):
         return None if found is None else Marks.overItem(found[0] - owner.draw.cx, found[2] - owner.draw.cz)
 
     def _next(self, geo, whole):
-        """下一刀：服务端说的已切刀数加上等着回话的，取第一条没切的线。"""
-        if geo is None or whole:
+        """下一刀：服务端说的已切刀数加上等着回话的，取第一条没切的线。whole（方块类、一下切整件的工具）没有线、只有序号（HoD 的 nextMark：
+        overMark = next，工具落在方块上哪里都算这一刀）。"""
+        if geo is None:
             return (-1, None, None)
         data = self.owner.view.data
         index = self.pending.next(int(data.get("marks") or 0), geo[3])
-        if index < 0:
-            return (-1, None, None)
+        if index < 0 or whole:
+            return (index, None, None)
         cut = Marks.markOf(geo[2], data.get("style"), data.get("spots") or [], data.get("angles") or [], index, geo[3])
         return (index, cut, Marks.dashOf(cut, geo[0], geo[1]))
 
@@ -84,7 +94,7 @@ class Cutter(object):
         top = owner.draw.surface() - Scene.TOP
         if geo is None or not moves:
             self._drop("tool")
-            pose = self.knife.frame(dt, over, self.next[1], self.next[0], top, geo is not None)
+            pose = self.knife.frame(dt, over, self.next[1], self.next[0], top, geo is not None, self._reach())
             self._knife(tool, pose)
             self.drawn = pose is not None and tool is not None
         else:
@@ -156,8 +166,9 @@ class Cutter(object):
         draw = self.owner.draw
         return (draw.cx + self.place[0] + u * math.cos(yaw), Scene.TOP + y, draw.cz + self.place[1] + u * math.sin(yaw))
 
-    def _aim(self, dt, kind, isBlock, over):
-        """工具悬在哪（aim，965-992）：方块在方块上任何地方，食物吸附到线上、握柄朝厨师。"""
+    def _aim(self, dt, kind, isBlock, over, jump=False):
+        """工具悬在哪（aim，965-992）：方块在方块上任何地方，食物吸附到线上、握柄朝厨师。jump：触屏点下去的这一下，工具当场到位（没有悬停，
+        不从原来的地方慢慢追过来）。"""
         index, cut, _ends = self.next
         x, z = Stroke.aimOnBlock(kind, over[0], over[1]) if isBlock else over
         self.snap = index if isBlock else -1
@@ -165,10 +176,10 @@ class Cutter(object):
             self.place[2] = 0.0
         elif cut is not None:
             self.place[2] = Stroke.towardsCook(cut.angle)
-            offset = Marks.snapOffset(cut, x, z)
+            offset = Marks.snapOffset(cut, x, z, self._reach())
             if offset is not None:
                 x, z, self.snap = x - cut.normalX() * offset, z - cut.normalZ() * offset, index
-        follow = 1.0 - math.exp(-Knife.FOLLOW * dt)
+        follow = 1.0 if jump else 1.0 - math.exp(-Knife.FOLLOW * dt)
         self.place[0] += (x - self.place[0]) * follow
         self.place[1] += (z - self.place[1]) * follow
 
@@ -185,12 +196,27 @@ class Cutter(object):
 
     # ---------------------------------------------------------------- 点一下
 
+    def _tap(self, moves, stroke, over):
+        """触屏的一下点按（点在食物上）：没有悬停，下一刀和吸附都按这一刻的落点现算——frame 里算的是上一帧的光标和上一帧的下一刀，
+        手指落下的这一下总是还没吸附上、只会敲一声。刀当场站到下一刀的线上、工具当场到位。"""
+        geo = self._geometry()
+        if geo is None:
+            return
+        self.next = self._next(geo, geo[1] and moves)
+        if moves:
+            self._aim(0.0, stroke, geo[1], over, jump=True)
+        else:
+            self.knife.land(over, self.next[1], self.next[0], self._reach())
+
     def click(self):
         """本人点了板、要落刀（chop，1257-1279）：刀按线落（吸附上了才发），别的工具开始一个动作。"""
         owner = self.owner
         stroke = owner.view.data.get("stroke") or Cutting.TOOL_CUT
         over = self.over()
-        if Stroke.isStroke(stroke) and stroke != Cutting.TOOL_CUT:
+        moves = Stroke.isStroke(stroke) and stroke != Cutting.TOOL_CUT
+        if self._touch() and over is not None and (not moves or self.run is None):
+            self._tap(moves, stroke, over)
+        if moves:
             if over is not None and self.run is None:
                 self.run = Stroke.Run(stroke, self.snap)
                 if stroke == Cutting.TOOL_SNIP and self.snap >= 0 and self.next[1] is not None and self.next[2] is not None:

@@ -60,6 +60,48 @@ def testTheIndexOfTheMarkItIsSnappedToIsWhatIsSent():
     assert knife.click((1.0, 0.5)) == (Knife.CHOP, 2, knife.z), "点在线上：发第 2 刀，带刀刃的 z"
 
 
+def testATouchTapSnapsAtTheMomentOfTheTapNotFromThePreviousFrame():
+    """触屏没有悬停：knife.frame 算 overMark 用的是上一帧的光标，手指落下的那一下它还是 -1，只会敲一声（要点两下）；手指又盖着线，±1.4 对不准。
+    land 按这一刻的落点现算：触屏的吸附带放到无限，点在食物上就落在线上，刀当场站到线上离手指最近的一点。"""
+    cut = Marks.Cut(0.0, 1.0, 0.0)                                  # 过 (0, 1)、水平的线（法线朝 +z）
+    over = (1.5, 3.0)                                               # 离线 2 像素：键鼠的吸附带（1.4）之外
+    knife = Knife.Knife()
+    assert knife.overMark == -1 and knife.click(over) == (Knife.KNOCK,), "没悬停过：照旧只敲（键鼠就是这样）"
+    knife = Knife.Knife()
+    knife.land(over, cut, 0, Marks.TAP_SNAP)
+    assert knife.overMark == 0 and _close(knife.x, 1.5) and _close(knife.z, 1.0), "当场站到线上离手指最近的一点"
+    assert knife.click(over) == (Knife.CHOP, 0, 1.0), "第一下就是一刀：序号是下一刀、刀刃的 z 在线上"
+    knife = Knife.Knife()
+    knife.land(over, cut, 0, Marks.SNAP)
+    assert knife.overMark == -1 and knife.click(over) == (Knife.KNOCK,), "键鼠的吸附带里 2 像素够不着：land 不动它"
+
+
+def testLandDoesNothingOffTheItemWithoutANextCutOrWhileTheKnifeIsComingDown():
+    cut = Marks.Cut(0.0, 0.0, 0.0)
+    knife = Knife.Knife()
+    knife.land(None, cut, 0, Marks.TAP_SNAP)
+    knife.land((1.0, 1.0), None, -1, Marks.TAP_SNAP)
+    knife.land((1.0, 1.0), cut, -1, Marks.TAP_SNAP)
+    assert knife.overMark == -1 and (knife.x, knife.z) == (0.0, Knife.REST_Z), "不在食物上 / 没有下一刀（都切完了）：什么也不动"
+    _settled(knife, (0.0, 0.0), cut)
+    assert knife.click((0.0, 0.0))[0] == Knife.CHOP and knife.chopping
+    x, z = knife.x, knife.z
+    knife.land((3.0, 3.0), cut, 0, Marks.TAP_SNAP)
+    assert (knife.x, knife.z) == (x, z), "落刀还没完：刀不挪"
+
+
+def testAHoveringKnifeWithTheTapReachStandsOnTheLineFromAnywhereOnTheFood():
+    cut = Marks.Cut(0.0, 0.0, 0.3)
+    mouse = Knife.Knife()
+    pose = _settled(mouse, (2.0, 3.8), cut, steps=200)
+    assert mouse.overMark == -1 and abs(cut.distance(pose[0], pose[2])) > 2.0, "键鼠：离线 3 像素以上够不着，刀就在光标上"
+    far = Knife.Knife()
+    pose = None
+    for _ in range(200):
+        pose = far.frame(1.0 / 60.0, (2.0, 3.8), cut, 0, TOP, True, Marks.TAP_SNAP)
+    assert far.overMark == 0 and abs(cut.distance(pose[0], pose[2])) < 1e-3 and _close(pose[3], 0.3), "触屏：吸附带放宽，刀站到线上"
+
+
 def testAClickOffTheLineOnlyKnocksAndNothingIsSent():
     knife = Knife.Knife()
     _settled(knife, (0.0, 3.0), Marks.Cut(0.0, 0.0, 0.0))
