@@ -230,6 +230,63 @@ def testPressingTheSpoonMakesItTheHoveredNodeEvenIfTheCursorJumpedThereWithoutAF
     assert behavior.hover == ("ladle", None), "冻住的不能是上一帧路过的料（它会一直卡在那里）"
 
 
+def _frame(behavior):
+    """表现的一帧，不带徽章 / 悬着的容器那两块（它们要完整的内核视图）：只看光标指着的那件怎么交给场景。"""
+    behavior.serve.frame = behavior.hud.frame = lambda dt: None
+    behavior.serve.offering = lambda: False
+    behavior.frame(1.0 / 60.0)
+
+
+def testTheFloatingItemOrTheServedSlotUnderTheCursorIsTheOneHandedToTheSceneToRise():
+    # NodeInstance.java:808-810：槽节点（item_N、served）被指着才抬；勺柄、锅口、soup、sunk 不抬
+    behavior, view = behaviorOf()
+    scene = behavior.scene
+    _frame(behavior)
+    assert scene.lift.target is None
+    for key, payload, index in (("item", 2, 2), ("item", 0, 0), ("served", None, 6)):
+        behavior.onPointer(_move(key, payload))
+        _frame(behavior)
+        assert scene.lift.target == index, (key, payload)
+    for key in ("mouth", "ladle", "soup", "sunk", None):
+        behavior.onPointer(_move(key))
+        _frame(behavior)
+        assert scene.lift.target is None, key
+    behavior.onPointer(_move("item", 1))
+    behavior.onLeave()                                          # 触屏：点完指针离开
+    _frame(behavior)
+    assert scene.lift.target is None
+    behavior.onPointer(_move("item", 1))
+    _frame(behavior)
+    behavior.onClose()
+    assert scene.lift.target is None, "关站：没有光标指着了，抬起的料自己落回去"
+
+
+def testDraggingTheSpoonOverTheItemsDoesNotRaiseThem():
+    # 勺子在手里悬停冻在勺子上（FocusInput.java:798），所以划过去的料不抬
+    behavior, view = behaviorOf()
+    behavior.onPointer(_move("ladle"))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    behavior.onPointer(_move("item", 0, RAY))
+    _frame(behavior)
+    assert behavior.scene.lift.target is None
+    behavior.clock += 0.6
+    behavior.onPointer(Event(LEFT, kind="up"))
+    behavior.onPointer(_move("item", 0))
+    _frame(behavior)
+    assert behavior.scene.lift.target == 0
+
+
+def testTheHitBoxesIgnoreTheLift():
+    # NodeInstance.java:48-52：命中盒用不含抬起的矩阵，抬起不挪点击的地方
+    behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+    boxes = lambda: [(box.key, box.lo, box.hi) for box in behavior.pickables() if box.key in ("item", "served")]
+    rest = boxes()
+    behavior.scene.lift.target = 0
+    for _ in range(60):
+        behavior.scene.lift.step(1.0 / 60.0)
+    assert behavior.scene.lift.amount[0] > 0.99 and boxes() == rest
+
+
 def testNoTooltipAtAllWhileTheSpoonIsInHand():
     # FocusScreen.java:455：isBusy() 就一个提示都不画（节点的、徽章的都算）
     behavior, view = behaviorOf()

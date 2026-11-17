@@ -17,7 +17,7 @@ from .PotModel import PotModel
 from .PotSceneFx import SceneFx, play
 from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Rules import ItemPose, PotLookState, PotModelMath, PotPiecesLook, PotTint
-from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
+from ...Shared.Rules.HandsOn import PotDrift, PotDriftExtras, PotHover, PotLiquid, PotPiecesKinds, PotPiecesPiece, PotSpoonMotion
 
 SLOTS = PotLookState.SLOTS
 ITEM_SCALE = 3.2 / ItemPose.ITEM_SPAN       # JE 的料是 3.2 像素见方
@@ -48,6 +48,7 @@ class PotScene(object):
         self.sinceCheck = 0.0
         self.progress = -1.0
         self.props = [None] * (SLOTS + 1)     # [掉落物 id, (物品名, aux)]：六格料，最后一个是产出格里装好的菜（浮在锅心）
+        self.lift = PotHover.HoverLift(SLOTS + 1)       # 光标指着的那一件（props 的下标，PotView 给 lift.target）抬起 0.6 像素
         self.hand = False
         self.aim = None
         self.onSend = None
@@ -129,7 +130,7 @@ class PotScene(object):
             self.sinceCheck = 0.0
             if self.model.check():
                 self.awake = AWAKE_SECONDS
-        busy = self.hand or look.heated or look.stirring or look.rate > 0.0 or self.fx.busy
+        busy = self.hand or look.heated or look.stirring or look.rate > 0.0 or self.fx.busy or self.lift.active
         self.awake = AWAKE_SECONDS if busy else self.awake - dt
         if self.awake <= 0.0:
             self.fx.silence()
@@ -158,6 +159,7 @@ class PotScene(object):
         for _ in range(liquid.boilCount):
             u, v, height = liquid.impulse(random.random)
             self.model.ripple(INNER_LO + INNER_SPAN * u, INNER_LO + INNER_SPAN * v, height)
+        self.lift.step(dt)
         self._moveProps(present)
         self.fx.step(dt, near)
         self.hands.step(dt, near)
@@ -204,7 +206,7 @@ class PotScene(object):
                 if not entityId:
                     continue
                 prop = self.props[slot] = [entityId, kind]
-            self.placeProp(prop[0], *pose)
+            self.placeProp(prop[0], *self.lift.raised(slot, pose))      # 抬起只动摆出来的位置；点哪里（PotPick 的盒子）用的是不含抬起的
 
     def placeProp(self, entityId, x, y, z, yaw, pitch, roll, scale=1.0):
         """把一件平躺的料摆在锅自己坐标的 (x, y, z)，按 JE 节点的欧拉角转；scale 是相对料的本来大小。"""

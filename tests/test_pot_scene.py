@@ -13,6 +13,7 @@ BrothColors = C.load("Shared.Data.BrothColors")
 PotLiquid = C.load("Shared.Rules.HandsOn.PotLiquid")
 LiquidColor = C.load("Shared.Rules.HandsOn.PotLiquidColor")
 Tint = C.load("Shared.Rules.PotTint")
+PotDriftExtras = C.load("Shared.Rules.HandsOn.PotDriftExtras")
 POS = C.POS
 DT = 1.0 / 60.0
 
@@ -248,6 +249,76 @@ def testTheOpenedEggDropsIntoTheSoupAsTheRawWhiteNotAsAFriedEgg():
         everything.update(drop["item"]["newItemName"] for drop in world.drops.values())
     assert inside == set(["arris:egg_look_0"]), "蛋液落进汤里：生蛋清"
     assert "arris:fried_egg" not in everything, "整个过程里没有煎蛋的熟样子：%r" % sorted(everything)
+
+
+def freeze(scene):
+    """让料不再漂、不再转（漂移的角度一直在变，摆出来的 pivot 相对位置跟着变一点点）：这样不抬时每一帧的偏移都一样，抬了多少看得准。"""
+    scene.drift.step = lambda *args, **kwargs: None
+
+
+def raisedBy(scene, slot, surfaceServed=False):
+    """这一件的掉落物的 pivot 比它的位置（漂移的位置 / 盛好的位置）的世界高度高出多少（方块；要先 freeze，不抬时的偏移才是定的）。"""
+    drift = scene.drift
+    if surfaceServed:
+        base = scene.world(*PotDriftExtras.servedAt(scene.liquid.surfaceY()))[1]
+    else:
+        base = scene.world(drift.x[slot], drift.y[slot], drift.z[slot])[1]
+    return world.drops[scene.props[slot][0]]["pivot"][1] - base
+
+
+def testAHoveredFloatingItemRisesPointSixPixelsAndSettlesBackWhenTheCursorLeaves():
+    # NodeInstance.java:808-810：被光标指着的槽节点 y 加 0.6 * hoverAmount；半衰期 0.06 秒追 1 / 0（HOVER_HALF_LIFE）
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1), ("minecraft:potato", 1)]))
+    run(scene, 1.0)
+    freeze(scene)
+    run(scene, 0.1)
+    rest = [raisedBy(scene, 0), raisedBy(scene, 1)]
+    scene.lift.target = 0
+    frames = 4
+    run(scene, frames * DT)
+    amount = 1.0 - 0.5 ** (frames * DT / 0.06)
+    assert abs(raisedBy(scene, 0) - rest[0] - amount * 0.6 / 16.0) < 1e-6, "悬停量按半衰期 0.06 秒追 1，抬 0.6 像素乘它"
+    run(scene, 1.0)
+    assert abs(raisedBy(scene, 0) - rest[0] - 0.6 / 16.0) < 1e-3, "最后抬 0.6 像素（1/16 格为 1 像素）"
+    assert abs(raisedBy(scene, 1) - rest[1]) < 1e-9, "没指着的那件不动"
+    scene.lift.target = None
+    run(scene, 1.0)
+    assert abs(raisedBy(scene, 0) - rest[0]) < 1e-4, "光标移开：落回去"
+
+
+def testTheServedSlotRisesToo():
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)], served=C.item("arris:pumpkin_soup"), meal=C.item("arris:pumpkin_soup", 3)))
+    run(scene, 1.0)
+    freeze(scene)
+    run(scene, 0.1)
+    rest = raisedBy(scene, 6, True)
+    scene.lift.target = 6
+    run(scene, 1.0)
+    assert abs(raisedBy(scene, 6, True) - rest - 0.6 / 16.0) < 1e-3
+
+
+def testARestingPotStillFramesWhileAnItemIsPointedAtAndWhileItFallsBack():
+    # 场景静了一阵就歇着（awake 用完）；指着一件料时要接着画，不然抬不起来
+    scene = setup()
+    scene.apply(C.look([("minecraft:carrot", 1)]))
+    run(scene, 6.0)
+    assert scene.frame(DT, True) is False, "什么都没动：歇着"
+    freeze(scene)
+    rest = raisedBy(scene, 0)
+    scene.lift.target = 0
+    assert scene.frame(DT, True) is True, "光标指着：不歇着"
+    run(scene, 0.5)
+    assert raisedBy(scene, 0) - rest > 0.6 / 16.0 * 0.99
+    scene.lift.target = None
+    run(scene, 0.2)
+    assert scene.lift.active or raisedBy(scene, 0) - rest > 0.0, "刚移开还没落回去"
+    frames = 0
+    while scene.frame(DT, True) and frames < 600:
+        frames += 1
+    assert frames < 600, "落回去之后又歇着了"
+    assert abs(raisedBy(scene, 0) - rest) < 1e-4
 
 
 def splashes(since=0):

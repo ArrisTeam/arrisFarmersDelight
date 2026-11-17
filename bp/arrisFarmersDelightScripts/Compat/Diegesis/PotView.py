@@ -24,6 +24,7 @@ from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import HandsOnOptions as Options
+from ...Shared.Rules import PotLookState
 from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotDrift, PotSpoonMotion
 
@@ -80,6 +81,7 @@ class PotViewMixin(object):
         scene, self.scene = self.scene, None
         if scene is not None:
             scene.hand, scene.aim, scene.onSend, scene.startsOf, scene.cursorOn, scene.viewFrame = False, None, None, None, None, None
+            scene.lift.target = None          # 没有光标指着了：抬起的料慢慢落回去（场景自己接着演）
             scene.model.glow(False)
 
     def onState(self, changes):
@@ -95,7 +97,16 @@ class PotViewMixin(object):
         if self.scene is not None:
             self.serve.frame(dt)
             self.hud.frame(dt)
+            self.scene.lift.target = self._lifted()
             self.scene.model.glow(self.hover[0] == "ladle" and self.view.hand is None and not self.scene.hand, self.serve.offering())
+
+    def _lifted(self):
+        """光标指着的是漂着的料或盛好的那格：它在场景道具里的下标，抬起 0.6 像素（NodeInstance.java:808-810：槽节点被指着就抬）；指着别的 None。
+        勺子在手里时悬停冻在勺子上（onPointer），所以拖着勺子划过料不会把它们抬起来。"""
+        key, payload = self.hover
+        if key == "item":
+            return int(payload)
+        return PotLookState.SLOTS if key == "served" else None
 
     # ---------------------------------------------------------------- 坐标
 
