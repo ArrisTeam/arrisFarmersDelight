@@ -117,7 +117,7 @@ class PotViewMixin(object):
         payload = event.hit.node.payload if event.hit is not None else None
         if event.kind == "move":
             self.hover, self.ray = (key, payload), event.ray
-            if key == "mouth" and self.view.hand is not None:
+            if key == "mouth" and self.view.hand is not None and not PotPick.holdsVessel(self.view):    # 盛这锅菜的容器不是往里放的：锅口不收它，不变
                 resize = getattr(self.view, "carryAs", None)        # 光标到了放东西的地方上：手上的东西变成那里的东西的大小，离开不变回去
                 if resize is not None:                              # （FocusInput.updateCarry 的 zoneItemSize；老版本的前置包没有这个接口）
                     resize(SLOT_SIZE)

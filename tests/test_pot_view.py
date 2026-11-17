@@ -129,6 +129,26 @@ def testAnythingElseInHandStillGoesIntoThePotWithTheButtonGiven():
     assert view.actions == [] and view.drops == [(Rules.GROUP_INGREDIENTS, RIGHT)]
 
 
+def testOverTheMouthTheCarriedStackTakesTheSizeOfWhatLiesThereButTheMealsContainerDoesNot():
+    """FocusInput.updateCarry 的 zoneItemSize：光标到了放东西的地方上，手上的东西变成那里的东西的大小。锅口不收盛这锅菜的容器
+    （它是来盛的，不是往里放的），所以拿着碗移到锅口上碗不缩。"""
+    behavior, view = behaviorOf()
+    sizes = []
+    view.carryAs = sizes.append
+    move = Event(LEFT, Hit("mouth"))
+    move.kind = "move"
+    view.hand = {"newItemName": "minecraft:carrot", "newAuxValue": 0, "count": 4}
+    behavior.onPointer(move)
+    assert sizes == [PotView.SLOT_SIZE], "料：变成锅里料的大小"
+    view.hand = dict(BOWL)
+    view.data = dict(SOUP_DATA)
+    behavior.onPointer(move)
+    assert sizes == [PotView.SLOT_SIZE], "盛这锅菜的碗：不变"
+    view.data = {}
+    behavior.onPointer(move)
+    assert len(sizes) == 2, "锅里没有菜时碗就是一样要放进去的东西"
+
+
 # ---------------------------------------------------------------- 哪些节点算（PotBehavior.onItemClick：任意带碰撞盒的节点）
 
 def _withMeal(items=(("minecraft:carrot", 1),), hand=BOWL):
