@@ -8,15 +8,15 @@
 烤位的位置不在这里：HoD 场景里的像素坐标（HandsOn/StoveLayout，炉灶朝北那一份）就是站点空间，站点朝炉灶的正面（StoveFacing）；
 世界里的展示用同一份换成方块内的比例（BlockDisplay.STOVE_SLOTS）。
 """
-from ..Data.Cooking import StoveList
 from ..Data.Cutting import knifeList
 from .BlockDisplay import STOVE_SLOTS
 from . import HandsOnOptions as Options
+from .GrillBlocks import GRILL_BLOCKS
 from .HandsOn import Grill
 from .PanStation import canFry as hasRecipe, friedOf as grilledOf, isOneSided  # noqa: F401 - 炉灶与煎锅同一张表
 
 STATION_ID = "arris:stove"
-STOVE_BLOCKS = StoveList          # 同一个列表对象：附属包追加的炉灶也开站
+STOVE_BLOCKS = GRILL_BLOCKS       # 活的"in"容器：点着的（StoveList，附属包追加的炉灶也开站）和熄着的炉灶都开站，HoD 的 opens 不看 LIT
 RECIPE_SECONDS = 30.0             # FD 原样烤一件要多久（Server/Stove.py 的 COOK_TIMER，JE 的营火配方 600 刻）
 PLACES = len(STOVE_SLOTS)
 GROUP_GRILL = "grill"             # 站点的槽组：六个烤位 = 方块实体数据里的 "0".."5"（一格一件）

@@ -34,7 +34,14 @@ def testWhatOpensTheGrill():
 def testSixPlacesAndTheSameTableAsTheSkillet():
     assert Rules.PLACES == 6 and not hasattr(Rules, "slotCenter"), "烤位的位置在 StoveLayout（HoD 场景的像素）和 StoveFacing，不在站点规则里"
     assert Rules.canGrill("minecraft:beef") and Rules.grilledOf("minecraft:beef") == "minecraft:cooked_beef"
-    assert Rules.STOVE_BLOCKS is Cooking.StoveList, "附属包追加的炉灶也开站：用同一个列表对象"
+    assert "arris:stove" in Rules.STOVE_BLOCKS and "arris:stove_extinguish" in Rules.STOVE_BLOCKS, "点着的和熄着的炉灶都开站（HoD 的 opens 不看 LIT）"
+    assert "minecraft:stone" not in Rules.STOVE_BLOCKS and "arris:stove_extinguish" not in Cooking.StoveList, "熄着的不进对外的 StoveList"
+    Cooking.StoveList.append("addon:big_stove")
+    try:
+        assert "addon:big_stove" in Rules.STOVE_BLOCKS, "附属包追加的炉灶也开站：前置包拿着的容器每次按 StoveList 判"
+    finally:
+        Cooking.StoveList.remove("addon:big_stove")
+    assert "addon:big_stove" not in Rules.STOVE_BLOCKS
 
 
 def testAnEggRunsThroughTheBarsButTheFoodThatStaysIsGrilled():

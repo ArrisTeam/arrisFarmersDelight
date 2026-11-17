@@ -11,7 +11,7 @@
 所以头在 direction 对面那一侧、也就是放置者面朝的方向。
 """
 from ..Data.Blocks import cabinetList
-from ..Data.Cooking import StoveList
+from .GrillBlocks import isGrill
 from .Placement import directionOfFacing, facingOfDirection, facingOfYaw, placePositions, stepFacing
 
 FOOT = "arris:tatami_full_mat"
@@ -37,7 +37,7 @@ USES_THE_CLICK = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet", "
 
 
 def usesTheClick(blockName):
-    return blockName in USES_THE_CLICK or blockName in cabinetList or blockName in StoveList
+    return blockName in USES_THE_CLICK or blockName in cabinetList or isGrill(blockName)       # 炉灶：点着的、熄着的都收食物、都能点火 / 灭火
 
 
 def isReplaceable(name):

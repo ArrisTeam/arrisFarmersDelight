@@ -2,7 +2,7 @@
 """TableMerge - 客户端把服务端发来的差异并进自己的数据表（客户端用，纯规则；两端各一份 Shared/Data，这里改的是本端那一份）
 
 收到的消息是 TableDiff 编的：{"proto", "table", "kind", "ops", "rev", ...}，一条一张表。并表规矩：
-- 就地改，不换对象：站点登记时拿着 StoveList 这个列表对象（GrillStation.STOVE_BLOCKS，前置包按"方块名 in 它"认站点方块），砧板配方的 tool 引用着 knifeList，
+- 就地改，不换对象：站点登记时拿着的 GrillStation.STOVE_BLOCKS（前置包按"方块名 in 它"认站点方块）每次都按 StoveList 这个列表对象判，砧板配方的 tool 引用着 knifeList，
   换成新列表就全断了；
 - 幂等：同一条收两遍、晚收、先收到后面的再收到前面的，结果一样——本端已经有一样的东西就不动它（同一个进程里两端共用一份表时也不会把对象换成副本）；
 - 只加和改，不删（服务端也只发这些）；ROWS 里本端已有的行就地合并（保住厨锅配方 Recipe 列表上的 slots：食谱书一格一格轮换备选要读它）；

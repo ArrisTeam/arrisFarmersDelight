@@ -152,7 +152,7 @@ def testTheGrillOpensForADownstreamStoveAndForTheKnifeAndFoodTheyBring():
         try:
             assert Registry.behaviorOf(K.STOVE) is None, "客户端先按方块名决定这一下右键是不是站点点击：不认就不会去请求开站"
             sync()
-            assert K.STOVE in Grill.STOVE_BLOCKS and Grill.STOVE_BLOCKS is Cooking.StoveList, "就地追加：前置包拿着的还是这个列表对象"
+            assert K.STOVE in Grill.STOVE_BLOCKS and K.STOVE in Cooking.StoveList, "就地追加：前置包拿着的容器每次按 StoveList（还是那个列表对象）判"
             assert Registry.behaviorOf(K.STOVE).stationId == Grill.STATION_ID
             assert Grill.opens(K.KNIFE, "sword", False) is True and Grill.opens(K.KNIFE, "sword", True) is False, "手里的刀：下游的刀也让炉灶开站（盖着东西的不开）"
             assert Grill.opens(K.COOKABLE, "", False) is True, "有营火配方的：开"
