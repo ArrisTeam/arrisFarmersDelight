@@ -129,7 +129,7 @@ def testBreakingABoardAlsoScattersTheDishBeingBuiltOnIt():
     data = _board(SOUTH)
     data["dishLayers"] = [BoardDish.stack(_item("minecraft:bread", 1)), BoardDish.stack(_item("minecraft:carrot", 40))]
     Board.OnCuttingBoardRemove({"x": POS[0], "y": POS[1], "z": POS[2], "dimension": 0, "fullName": "arris:cutting_board"})
-    assert [pop[0]["newItemName"] for pop in _pops() if pop[0]["count"] == 1] == ["minecraft:bread"]
+    assert [pop[0]["count"] for pop in _pops() if pop[0]["newItemName"] == "minecraft:bread"] == [1]
     _scattered("minecraft:carrot", 40)
     assert all(_inside(pos) and pos != (POS[0] + 0.5, POS[1] + 0.5, POS[2] + 0.5) for _item, pos, _motion in _pops())
     assert data["dishLayers"] is None, "掉出来的不再留在板上"
