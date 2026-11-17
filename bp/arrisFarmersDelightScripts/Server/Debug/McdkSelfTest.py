@@ -23,6 +23,12 @@ _async = {}
 _placed = []
 
 
+# ServerItemUseOnEvent 的处理函数按执行先后（ModServer.py 模块说明里的优先级表）；加了、删了处理函数要跟着改，
+# tests/test_selftest_registry.py 对着源码里登记的函数名核对这张表有没有漏
+ITEM_USE_ORDER = ["OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnPlaceWildCrop", "OnUseSkilletItem",
+                  "OnPlaceItemAsBlock", "OnPlaceFullMat", "OnPlaceHalfMat", "OnServerItemUse", "OnStoveFire", "OnServerStoveItemUse"]
+
+
 def _player():
     players = serverApi.GetPlayerList()
     return players[0] if players else None
@@ -52,9 +58,7 @@ def caseRegistryOrder():
     started = time.time()
     # 只看本包登记的（调试时临时挂的探针不算）；顺序就是 ModServer.py 模块说明里的优先级表
     names = [name for module, name in handlerNames("ServerItemUseOnEvent") if module.startswith(__name__.split(".")[0] + ".")]
-    expected = ["OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnPlaceWildCrop", "OnUseSkilletItem",
-                "OnPlaceItemAsBlock", "OnPlaceFullMat", "OnPlaceHalfMat", "OnServerItemUse", "OnServerStoveItemUse"]
-    return _result("registry_order", names == expected, started, actual=names)
+    return _result("registry_order", names == ITEM_USE_ORDER, started, actual=names)
 
 
 def caseLegacyModAttr():
