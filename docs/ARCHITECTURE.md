@@ -15,6 +15,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         FoodColors  BrothColors（按贴图算的颜色：切菜碎屑、汤色、碎料色、倒进锅里的液体色，tools/gen_food_colors.py / gen_broth_colors.py 生成）
                         BiomeWater（各群系的水色，tools/gen_biome_water.py 按原版资源包每个群系的 water_appearance 生成；厨锅里的清水取它）
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
+                        HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
@@ -27,7 +28,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         StoveFacing（炉灶的朝向：方块的 aux -> 站点朝向，炉灶自己的坐标 / 姿态 -> 世界，六件跟着炉灶转）
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
-                        StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数）
+                        StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数；页脚的秒数带着配置的倍率）
+                        HandsOnOptions（HoD 配置表的读法：JE 的缺省、read / readTime 的兜法、倍率夹进 0.1..10、派生规则、scaled；每次现读表，两端共用）
                         SyncTables  TableWire  TableDiff  TableMerge（下游在服务端追加的表怎么发给客户端：登记哪些表 / 编码 / 算差异 / 并表，见"联动契约与客户端的表"）
                         FoodEffects（吃喝之后的追加结算：牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤；只返回动作，Server/FoodEffects 执行）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
@@ -95,8 +97,8 @@ Compat/
                         BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools / BoardEmit（服务端）+ BoardView + BoardDraw /
                         BoardDrawEvents / BoardThing / BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter / BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
-                        PotLogic + PotSync + PotScoop（服务端）+ PotView + PotHud + PotOffer（客户端，开着站点的人：点击、徽章和提示、
-                        悬着的容器和它浸汤的动作）= 厨锅站点；
+                        PotLogic + PotSync + PotScoop（服务端）+ PotView + PotPick + PotHud + PotOffer（客户端，开着站点的人：点击、拾取盒和
+                        拿着容器时哪些点法算盛、徽章和提示、悬着的容器和它浸汤的动作）= 厨锅站点；
                         PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands + PotBiome（客户端）= 谁都看得见的锅里场景：开盖、
                         汤面（清水按所在群系取色）、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
                         PanLogic（服务端）+ PanView（客户端，开着站点的人）+ PanScenes / PanScene / PanModel / PanFx（客户端，谁都看得见的
@@ -105,6 +107,8 @@ Compat/
                         StoveWorld / GrillPieces / GrillSpace / GrillGhosts / GrillFx（客户端，谁都看得见的烤架场景：东西、落下 / 翻面 / 取走的动作、
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
+                        四个站点的开关、搅拌、食谱书、烹饪倍率读 Shared/Data/HandsOnConfig（docs/diegesis/DESIGN.md §4.1）：每个站点的 register 在配置里关了返回 None
+                        （服务端、客户端同一个条件），ServerBoot / ClientBoot 看返回值连带广播、场景、旁观声音、DishCrafts；
                         BookSources（客户端，把各站点的食谱书交给前置包）+ BookFill（服务端，照书从背包放料）；
                         未安装则不做任何事
 ```
@@ -569,4 +573,8 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   点结果格、核对剩余物和拦截，要用 mc_input 点）、`McdkBackstabTest`（背刺），调用方法写在各文件头。几个自检别同时跑（共用玩家脚边的位置）。
   `McdkTableSyncTest`（服务端 `Server/Debug/` 照下游的写法追加石剑当刀、黏土球的切菜配方、木棍 / 圆石煮钻石的厨锅配方、胡萝卜可煎烤，再补发；客户端 `Client/Debug/` 用
   `is_client` 为真的 `execute_code` 看本端的表和站点判断认不认得）。
+- HoD 的配置（对照 `HandsOnConfig.java`，期望值抄自 JE 代码）：`optkit.py`（`with Config(skillet=False, ...)` 临时改配置表、出来放回原样）、`test_handson_options.py`（随包的表等于 JE 缺省、读法、
+  派生规则、`scaled`）、`bootkit.py` + `test_handson_options_boot.py`（真的 `ServerBoot` / `ClientBoot` 和站点模块，引擎换成"什么名字都给无害替身"的模块，前置包服务端 Api 和客户端 Registry 是真的：
+  每个开关只关自己的站点和连带的东西、32 种组合两端一致）、`test_handson_options_pot.py` / `_pan.py` / `_skillet.py` / `_stove.py`（三种倍率对着 JE 的 `sideTicks` / `timeFor`、FD 右键放的不乘、站点关了的交还）、
+  `test_handson_options_book.py`（食谱书开关）；`test_pot_view.py` 里还有拿着容器点锅的哪些节点算盛。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
