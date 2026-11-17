@@ -6,7 +6,7 @@
 拦的是"配方"不是"成品"：取结果时读合成格（Server/CraftReturns.readGrid），格子里的原料正好是这道菜在砧板上的某条配方才拦
 （Shared/Rules/DishStation.isDishCraft）。同一成品的别的配方照常——切片拼回整个派只有一种原料，不是砧板菜；
 创造模式从物品栏里拿东西也发这个事件，那时合成格对不上，也不拦。
-只在前置包登记成功时由 ServerBoot 登记；没装前置时工作台一切照旧。
+只在砧板站点登记成功时由 BoardServerLink 这一步登记；没装前置时这个模块不会被导入，工作台一切照旧。
 """
 from ...Server.CraftReturns import readGrid
 from ...Server.EventRegistry import registerHandler

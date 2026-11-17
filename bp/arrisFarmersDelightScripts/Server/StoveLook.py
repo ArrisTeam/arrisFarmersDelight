@@ -6,7 +6,7 @@ HoD 的炉灶场景是 idle_visible：32 格内每个客户端都按同步来的
 同维度 32 格内的玩家，新走进 32 格的人单发一份当前的样子、样子没变时每隔 REFRESH_SECONDS 秒再单发一份（Helpers/LookWatch：广播丢了——客户端还没
 就绪、区块还没加载好——服务端当他收到了，等翻 / 烤好留在灶上这些状态又不再变，不补就永远看不到）；开站点的人开站那一刻单发一份（resend）；
 客户端 Compat/Diegesis/StoveScenes 的 OnStoveLook 去演。
-默认关着，前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。负载（Call 到 OnStoveLook）：
+默认关着，前置包在场时由 Compat/Diegesis/GrillServerLink 这一步打开（enable），没装前置包什么都不发。负载（Call 到 OnStoveLook）：
     {"dimensionId", "pos": [x, y, z], "slots": 六个烤位，每个 {}（空）或 {"item": 物品线格式, "hand": 手放的（两面分开烤）,
      "down" / "up": 贴灶面 / 朝上面烤到哪（0..1，1/32 一档）}}
 画面只看哪件东西、手放的吗、贴灶面熟没熟（冒烟等翻）、朝上面熟到哪（画熟的还是生的），所以只在这些变了时才发，不按速度往前推。

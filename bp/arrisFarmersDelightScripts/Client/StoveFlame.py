@@ -6,7 +6,7 @@ JE 的 StoveBlock.animateTick 和 StoveBlockEntity.particleTick（概率、位�
   JE 的 animateTick 也是每次轮到都放，只有噼啪声是 1/10），收到就在正面放一颗烟一颗火，1/10 的概率响一声营火噼啪。方块级的组件，旧存档里的炉灶也有；
 - 灶上每件东西的烟：方块 JSON 的 netease:block_entity 开了 client_tick（ModBlockEntityTickClientEvent，每秒 20 次，对上 JE 客户端方块实体每刻一次的 particleTick），
   灶上哪几格有东西读 BlockItems 记着的最后一份内容（经典的展示就是靠它画的）。HoD 的炉灶站点显示时取消这一个方法（StoveSmokeMixin：它自己的蒸汽和烟说烤得怎样，
-  FD 的黑烟看着像弄脏了食物），所以前置包的炉灶站点登记了（Compat/Diegesis/ClientBoot 调 muteItemSmoke）就不放；没装前置包、或者 HoD 配置里关了炉灶站点才有。
+  FD 的黑烟看着像弄脏了食物），所以前置包的炉灶站点登记了（Compat/Diegesis/GrillClientLink 这一步调 muteItemSmoke）就不放；没装前置包、或者 HoD 配置里关了炉灶站点才有。
   client_tick 是方块实体的标志，存档里的方块实体会盖过方块 JSON（ModBlockActor::load 先照组件建、再拿存的 _tickClient 盖）：这一版之前放下的炉灶要重新放（或点火 / 灭火换一次方块）才有这圈烟。
 粒子是 rp/particles 里自带的两个自动发射的（arris:stove_flame / arris:stove_smoke）：原版的 basic_flame_particle / basic_smoke_particle 用 emitter_rate_manual，
 Create 之后不调 EmitManually 一颗也不出，调了又要自己管发射器的寿命（原版 JSON 的发射器寿命是 expiration_expression 0，不会自己结束）。

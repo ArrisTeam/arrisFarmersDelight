@@ -3,7 +3,7 @@
 
 HoD 的煎锅场景是 idle_visible：32 格内每个客户端都按同步来的状态自己演全部动作（SkilletLogic 在客户端也跑，只读）。基岩版的客户端拿不到
 站点状态，靠这条广播：服务端把锅的样子发给同维度 32 格内的玩家（客户端 Compat/Diegesis/PanScenes 的 OnPanLook 去演）。默认关着，
-前置包在场时由 Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。新走进 32 格的人单发一份当前的样子、样子没变时每隔
+前置包在场时由 Compat/Diegesis/PanServerLink 这一步打开（enable），没装前置包什么都不发。新走进 32 格的人单发一份当前的样子、样子没变时每隔
 REFRESH_SECONDS 秒再单发一份（Helpers/LookWatch：等翻面、煎好留在锅里这些不再变的状态，广播丢了——客户端还没就绪、区块还没加载好——不补的话
 走近的人永远看到旧的）；开站点的人开站那一刻单发一份（resend）。负载（Call 到 OnPanLook）：
     {"dimensionId", "pos": [x, y, z], "item": 锅里的东西（物品线格式，空是 {}）, "batch": 算多少件煎, "byHand": 手放的（两面分开煎）,

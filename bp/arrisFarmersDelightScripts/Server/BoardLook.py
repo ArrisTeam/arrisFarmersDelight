@@ -5,7 +5,7 @@ HoD 的站点效果（chopped / placed / taken / carved / assembled / refused）
 基岩版前置包的 station.effect 只发给开着站点的人，旁观的人什么也听不到，原来靠服务端对所有人放一个不分工具的刀声顶着。
 这条广播补上：服务端把同一批效果发给同维度 32 格内、没开着这个站点的玩家（开着的人收站点自己的 effect，两边不重复），
 客户端 Compat/Diegesis/BoardWatch 的 OnBoardLook 按和站点里一样的声音表（Shared/Rules/BoardSounds）放声音、飞碎屑；动画不演——
-旁观的人看到的板由 Client/BlockItems 摆。默认关着，前置包在场、砧板站点登记了时由 Compat/Diegesis/ServerBoot 打开（enable），没装什么都不发。
+旁观的人看到的板由 Client/BlockItems 摆。默认关着，前置包在场、砧板站点登记了时由 Compat/Diegesis/BoardServerLink 这一步打开（enable），没装什么都不发。
 负载（Call 到 OnBoardLook）：{"dimensionId", "pos": [x, y, z], "event": 效果名, ...效果的数据}，数据里只有动画才用的大块（stack、layers）不带（assembled 带做成了几层 count）。
 refused 按玩家限速：被拒的动作每秒能来 40 个（前置包按玩家的令牌桶上限），不限的话改过的客户端发一串非法的 chop 就能把被拒的敲击声当喇叭，每个都给 32 格内每个人发一次广播；
 同一个人被拒的敲击声，旁观的人 REFUSED_GAP 秒内至多听一声（站点里的人收的 effect 不在这里，不限）。

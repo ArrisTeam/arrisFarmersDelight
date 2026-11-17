@@ -3,7 +3,7 @@
 
 站点开着的人看站点里的画面；周围没开站点的人看到的是方块——HoD 里"附近的玩家看得见汤在滚、勺子在转、料落进锅里"，
 这里靠这条广播：服务端把锅的样子发给同维度 32 格内的玩家（客户端的 OnPotLook 去画）。默认关着，前置包在场时由
-Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发。负载（Call 到 OnPotLook）：
+Compat/Diegesis/PotServerLink 这一步打开（enable），没装前置包什么都不发。负载（Call 到 OnPotLook）：
     {"dimensionId", "pos": [x, y, z], "items": [6 件料的线格式或 {}], "served": 产出格, "meal": 煮好待盛的菜, "dish": 现在这些料能做的菜,
      "sunk": [沉着的格号], "heated": 有没有热源, "support": 支架（PotSupport：0 没有 / 1 托盘 / 2 吊把手），
      "stirring": 锅算不算被搅着, "spoon": [x, z]（世界朝向，-1..1，同 spoon_x / spoon_z），
