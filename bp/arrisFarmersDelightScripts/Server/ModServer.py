@@ -17,6 +17,7 @@ from .EventRegistry import dispatch
 # 导入即登记（顺序不影响执行顺序，执行顺序只看 priority）
 from . import LegacyApi  # noqa: F401
 from . import PlayerSession  # noqa: F401
+from . import TableSync  # noqa: F401
 from . import CraftReturns  # noqa: F401
 from . import CookingPot  # noqa: F401
 from . import CookingPotHost  # noqa: F401
