@@ -491,6 +491,39 @@ def _keys(behavior):
     return [(box.key, box.payload) for box in behavior.pickables()]
 
 
+def testTakingAFloatingItemOrTheServedSlotMakesTheKernelsPickUpSound():
+    # FocusInput.java:496（Shift 点槽）、:507（从槽拿起）：厨锅的 onItemClick 不接这两种，内核出声；右键拿一半也是 PICKUP
+    for key, payload, button, quick in (("item", 0, LEFT, False), ("item", 1, RIGHT, False), ("item", 0, LEFT, True),
+                                        ("served", None, LEFT, False), ("served", None, RIGHT, False), ("served", None, LEFT, True)):
+        behavior, view = _withMeal((("minecraft:carrot", 1), ("minecraft:potato", 1)), hand=None)
+        assert behavior.onPointer(Event(button, Hit(key, payload), quick)) is True
+        assert len(view.clicks) == 1 and view.sounds == ["pick"], (key, button, quick, view.sounds)
+        assert view.clicks[0][2] == ("QUICK_MOVE" if quick else "PICKUP")
+
+
+def testTheDoubleClickThatGathersTheRestMakesNoSecondSound():
+    # FocusInput.java:498-500：PICKUP_ALL 没有声音；第一下拿起的那一声照有
+    behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+    behavior.onPointer(Event(LEFT, Hit("item", 0)))
+    behavior.onPointer(Event(LEFT, Hit("item", 0)))
+    assert [click[2] for click in view.clicks] == ["PICKUP", "PICKUP_ALL"] and view.sounds == ["pick"]
+
+
+def testTheClicksThatHaveTheirOwnSoundOrNoneStayAsTheyWere():
+    # 盛汤、取回、握勺子、放进锅口（松手才响）：这几下表现自己的声音 / 服务端的声音照旧，不再多一声拿起
+    behavior, view = _withMeal(hand=BOWL)
+    behavior.onPointer(Event(LEFT, Hit("mouth")))                              # 拿着碗盛
+    assert view.actions and view.sounds == []
+    behavior, view = _withMeal(hand=None)
+    behavior.serve.sunkClick = lambda: True
+    behavior.onPointer(Event(LEFT, Hit("sunk")))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    assert view.sounds == []
+    behavior, view = _withMeal(hand=dict(CARROTS))
+    behavior.onPointer(Event(LEFT, Hit("mouth")))                              # 放进锅口：按下不响
+    assert view.sounds == []
+
+
 def testTheMealsContainerInHandScoopsFromTheSpoonHandleTheFloatingPiecesAndTheServedOneToo():
     # cooking_pot.json 里带碰撞盒、手上有东西时还开着的节点：ladle、mouth、item_N、served；onItemClick 对它们一视同仁
     for key, payload in (("mouth", None), ("ladle", None), ("item", 0), ("item", 1), ("served", None)):

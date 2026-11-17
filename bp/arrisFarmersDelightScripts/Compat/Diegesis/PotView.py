@@ -164,6 +164,7 @@ class PotViewMixin(object):
             target = (self.api.stationTarget(Rules.GROUP_INGREDIENTS, int(payload)) if key == "item"
                       else self.api.stationTarget(Rules.GROUP_SERVED, 0))
             self.view.click(target, event.button, self.api.QUICK_MOVE if event.quick else self.api.PICKUP)
+            self.view.foley()                 # 拿起的那一声（FocusInput.java:496 Shift 点槽、:507 从槽拿起）：厨锅的 onItemClick 不接这两种，内核出声
             if event.button == 0 and not event.quick:
                 self.picked = (target, self.clock)
             return True
