@@ -50,6 +50,12 @@ EGG_LANDED = (BOARD_PLACE, 0.4, 1.4)            # 蛋液落到食物上、这一
 # 手的动作（PotServePour / PotServeHands）发的声音事件里的逻辑名 -> 基岩版的声音名；音量、音调事件自己带着（和上面几行同一个数）
 HAND_SOUNDS = {"bucket_empty": BUCKET_EMPTY, "bottle_empty": BOTTLE_EMPTY, "egg_crack": EGG_CRACK}
 
+# JE 的"再来一声材质破坏声"和"方块的破坏声"问的是 worked.getItem() instanceof BlockItem（BoardBehavior:1428、CuttingBoardBlockEntity.playProcessingSound）。
+# 基岩版门、告示牌、悬挂式告示牌的 itemType 不是 block（3.10 实机问过：wooden_door / oak_sign / oak_hanging_sign 都是 ''），可它们在 JE 里是 BlockItem
+# （DoubleHighBlockItem / SignItem / HangingSignItem）。砧板能切的东西里这样的只有这三种（蛋糕和三种派在 JE 也是 BlockItem、基岩版也不是 block，
+# 可它们只有刀切、刀切不响材质破坏声，用不着）：按名字认，后缀 _door / _sign（悬挂式告示牌的名字也以 _sign 结尾）。
+BLOCK_ITEM_SUFFIXES = ("_door", "_sign")
+
 # 被切的东西是什么做的（JE 取它的方块的 SoundType）：(材质, 名字里的词)，先到先得；黏土按砂砾算（JE 的 clay 就是砂砾的声音）
 _MATERIALS = (
     ("gravel", ("gravel", "clay")),
@@ -64,6 +70,11 @@ HIT = {"wood": "hit.wood", "stone": "hit.stone", "gravel": "hit.gravel", "sand":
        "snow": "hit.snow"}
 BREAK = {"wood": "dig.wood", "stone": "dig.stone", "gravel": "dig.gravel", "sand": "dig.sand", "grass": "dig.grass", "cloth": "dig.cloth",
          "snow": "dig.snow"}
+
+
+def isBlockItem(itemName, block):
+    """被切的东西在 JE 里是不是 BlockItem：基岩版的 itemType 是 block（block），或是门 / 告示牌（BLOCK_ITEM_SUFFIXES）。"""
+    return bool(block) or _text(itemName).split(":")[-1].endswith(BLOCK_ITEM_SUFFIXES)
 
 
 def materialOf(itemName, yields=()):
@@ -127,9 +138,9 @@ def _stroke(kind, tool, hits):
     return hits, 0.6
 
 
-def _processing(kind, tool, block, material):
+def _processing(kind, tool, blockItem, material):
     """FD 的切声（BlockEntity.playProcessingSound，最后一刀响一次）：配方自己的声音（削皮的 21 条配方都是 item.axe.strip，音量音调 1.0 / 1.0）-> 剪刀 -> 刀
-    -> 方块破坏声 -> 木头破坏声。"""
+    -> 方块破坏声（被切的是 BlockItem）-> 木头破坏声。"""
     if kind == Cutting.TOOL_STRIP:
         return (AXE_STRIP, 1.0, 1.0)
     toolKind = Cutting.toolKindOf(tool or "")
@@ -137,22 +148,23 @@ def _processing(kind, tool, block, material):
         return (SHEEP_SHEAR, 1.0, 1.0)
     if toolKind == "knife" or (kind == Cutting.TOOL_CUT and toolKind is None):
         return (KNIFE_CUT, 0.8, 1.0)
-    return (BREAK[material] if block else BREAK["wood"], 1.0, 0.8)
+    return (BREAK[material] if blockItem else BREAK["wood"], 1.0, 0.8)
 
 
 def chopped(data, rng=random.random):
     """一刀的声音（所有看得见板的人）。data 是 chopped 效果：tool、item、done、stroke、block（被切的是不是方块）、yields（切出来的东西的名字）。
     不是最后一刀：刀口上的那一声（刀、削皮 0.8，别的 0.6，音调 0.95 + 0.15 * 随机）；
-    最后一刀：FD 的切声，再（被切的不是方块、而且不是刀 / 剪 / 削皮）一声材质的破坏声，最后切好的东西飞给厨师的那一声。"""
+    最后一刀：FD 的切声，再（被切的不是 BlockItem、而且不是刀 / 剪 / 削皮）一声材质的破坏声，最后切好的东西飞给厨师的那一声。
+    "是不是 BlockItem"（isBlockItem）：block 是基岩版的物品类型，门 / 告示牌不是 block、在 JE 里却是 BlockItem，所以另按名字认。"""
     tool, item, yields = _text(data.get("tool")), _text(data.get("item")), _names(data.get("yields"))
     kind = _text(data.get("stroke")) if _text(data.get("stroke")) in Cutting.STROKES else Cutting.strokeKind([tool], yields)
-    block = bool(data.get("block"))
+    blockItem = isBlockItem(item, data.get("block"))
     material = materialOf(item, yields)
     if not data.get("done"):
         name, volume = _stroke(kind, tool, HIT[material])
         return [(name, volume, 0.95 + 0.15 * rng())]
-    sounds = [_processing(kind, tool, block, material)]
-    if not block and kind not in (Cutting.TOOL_CUT, Cutting.TOOL_SNIP, Cutting.TOOL_STRIP):
+    sounds = [_processing(kind, tool, blockItem, material)]
+    if not blockItem and kind not in (Cutting.TOOL_CUT, Cutting.TOOL_SNIP, Cutting.TOOL_STRIP):
         sounds.append((BREAK[material], 0.8, 0.95 + 0.1 * rng()))
     sounds.append(PICKUP_STROKE)
     return sounds

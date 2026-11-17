@@ -13,6 +13,8 @@ import fdtest
 
 Sounds = fdtest.load("Shared.Rules.BoardSounds")
 Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
+Table = fdtest.load("Shared.Data.Cutting")
+Station = fdtest.load("Shared.Rules.CuttingStation")
 
 VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla/sounds/sound_definitions.json"
 LOW, HIGH = (lambda: 0.0), (lambda: 1.0)
@@ -83,6 +85,37 @@ def testTheLastStrokeOfStrippingALogPlaysTheRecipesOwnSoundNotTheBlocksBreakSoun
     assert Sounds.soundsOf("chopped", {"tool": "minecraft:iron_axe", "item": "minecraft:oak_log", "stroke": "strip", "block": True, "done": True})[0] == ("use.wood", 1.0, 1.0)
     _near(_stroke("minecraft:iron_axe", "minecraft:oak_log", Cutting.TOOL_STRIP, yields=["minecraft:stripped_oak_log"]), [("use.wood", 0.8, 0.95)])
     _near(_stroke("minecraft:iron_axe", "minecraft:oak_planks", Cutting.TOOL_CHOP, done=True, block=True), [("dig.wood", 1.0, 0.8), ("random.pop", 0.35, 1.3)])
+
+
+def _chopLast(item, tool, stroke, block, yields=()):
+    return Sounds.chopped({"tool": tool, "item": item, "stroke": stroke, "block": block, "done": True, "yields": list(yields)}, LOW)
+
+
+def testADoorOrASignIsABlockItemInJavaSoTheLastStrokeHasNoSecondBreakSound():
+    """JE 的"再来一声材质破坏声"问 instanceof BlockItem：门、告示牌、悬挂式告示牌是 BlockItem，只有 FD 那一声（1.0 / 0.8）；基岩版它们的物品类型
+    不是 block（3.10 实机：wooden_door / oak_sign / oak_hanging_sign 都是 ''），原来因此多响一声 0.8 的 dig.wood。船、矿车不是 BlockItem，照旧多一声。"""
+    pickup = ("random.pop", 0.35, 1.3)
+    for name in ("minecraft:oak_door", "minecraft:wooden_door", "minecraft:bamboo_door", "minecraft:oak_sign", "minecraft:acacia_hanging_sign",
+                 "minecraft:bamboo_hanging_sign"):
+        _near(_chopLast(name, "minecraft:iron_axe", Cutting.TOOL_CHOP, False), [("dig.wood", 1.0, 0.8), pickup])
+    for name in ("minecraft:oak_boat", "minecraft:oak_chest_boat", "minecraft:chest_minecart"):
+        _near(_chopLast(name, "minecraft:iron_hoe", Cutting.TOOL_PRY, False), [("dig.wood", 1.0, 0.8), ("dig.wood", 0.8, 0.95), pickup])
+    for name in ("minecraft:oak_fence", "minecraft:wooden_button", "minecraft:oak_log", "minecraft:stone"):
+        assert len(_chopLast(name, "minecraft:iron_axe", Cutting.TOOL_CHOP, True)) == 2, "物品类型是 block 的：本来就没有第二声（%s）" % name
+
+
+def testTheBlockItemsBedrockDoesNotCallBlockAreExactlyTheDoorsAndSignsOfTheCuttingTable():
+    """砧板能切的 205 件里，JE 的 BlockItem 而基岩版的类型不是 block、又不是刀切的（刀切的不响材质破坏声，用不着）：只有门、告示牌、悬挂式告示牌 33 件，
+    按名字后缀认（BLOCK_ITEM_SUFFIXES）；别的 172 件，名字认不出它们（船、矿车、食物、皮甲……不是 BlockItem）。"""
+    named = sorted(key[0] for key in Table.CuttingBoardDict if Sounds.isBlockItem(key[0], False))
+    assert len(named) == 33, named
+    assert all(name.endswith(("_door", "_sign")) for name in named)
+    assert sum(1 for name in named if name.endswith("_hanging_sign")) == 11 and sum(1 for name in named if name.endswith("_door")) == 11
+    assert [name for name in named if Station.strokeOf(Table.CuttingBoardDict[(name, 0)]) != Cutting.TOOL_CHOP] == [], "都是斧劈的"
+    for key, recipe in Table.CuttingBoardDict.items():
+        if Station.strokeOf(recipe) == Cutting.TOOL_CUT:
+            assert not Sounds.isBlockItem(key[0], False), "刀切的（食物、蛋糕、派……）：名字认不出，也用不着认（%s）" % key[0]
+    assert Sounds.isBlockItem("minecraft:oak_log", True) and not Sounds.isBlockItem("minecraft:oak_boat", False) and not Sounds.isBlockItem(None, False)
 
 
 def testTheMaterialOfWhatIsCutComesFromItsNameThenFromWhatItYields():
