@@ -47,6 +47,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         SkilletHandRules（手持煎锅烹饪：右键按住的上报与记录、一次烹饪的计时、滋滋声概率）
                         Basket（篮子吸掉落物：收集区、往 27 格里塞的次序、冷却） RopeReel（卷绳子：整根绳子最下面一节）
                         NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
+                        StoveFlame（点着的炉灶自己的火：火口的火星 / 烟 / 噼啪声、灶上每件东西冒烟的概率和位置，JE 的 animateTick / particleTick）
                         TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
                         厨锅的表现也在这里（纯计算，Pot 开头的那些）：汤面（水位、汤色、沸腾）、勺子的手感、漂着的料、碎料、
@@ -63,6 +64,7 @@ Server/                 服务端
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
+  HeatConduct           下面是漏斗的厨锅 / 煎锅：热源在漏斗再下面一格，那一格变了没有邻居事件，每 0.5 秒自己重算、变了交给原来的邻居事件处理函数（热源规则在 Helpers/Heat，见"厨锅 / 煎锅下面的热源"）
   CropTicks FarmWorld   作物随机刻（照 JE 的生长概率）与它读写世界的那一层；OrganicCompost MushroomColony Straw 同属种植
   HandCooking           每口锅的烹饪计时（HoD PotClock）：FD 原样一份一份煮，或厨师搅着整批煮、按星多送；料换了菜进度从头来（Shared/Rules/PotRecipeMemory），有人开着经典界面也按 FD 原样
   PotLook               厨锅的世界外观广播：锅里有什么、勺子在哪、煮到哪，发给 32 格内的人，静态部分写进方块实体数据
@@ -93,6 +95,7 @@ Client/                 客户端
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
   Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
   BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
+  StoveFlame.py         点着的炉灶自己的火：BlockAnimateRandomTickEvent 在火口放烟和火、1/10 的概率噼啪；ModBlockEntityTickClientEvent 让灶上每件东西冒烟（炉灶站点在场时不放）
   CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
 Compat/
@@ -257,6 +260,30 @@ JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格
 - 没做：JE 的 `FoodServingRecipe`（带着菜的厨锅和碗一起放进合成格直接盛出一份）——基岩版的合成结果由客户端按配方 JSON 算，按物品数据变的配方写不出来；
   物品上的份数条（`isBarVisible`）；空锅的悬停文字"空"（方块物品没有地方写缺省的悬停文字）。
 
+## 厨锅 / 煎锅下面的热源（对照 JE）
+
+JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-36）：正下方一格是热源就热——标签 `heat_sources` = 岩浆块、熔岩炼药锅、炉灶、`tray_heat_sources`（熔岩、营火、火），
+带 `LIT` 状态的要点着；正下方是 `heat_conductors`（漏斗；`create:chute` 是可选项，这个引擎上没有对应的方块名）时改看再下面一格，只往下看一格。
+托盘（`SUPPORT = TRAY`，这边是方块实体模型的 `variable.mod_shelf`）只看正下方是不是 `tray_heat_sources`（`CookingPotBlock.getTrayState`、`SkilletBlock`），所以漏斗下面的火烧得热锅、不画托盘。
+这边（`Server/Helpers/Heat.py`，厨锅和煎锅经典 / 站点共用，`RefreshHeat` 把结果存进方块实体数据 `heatEnable`，站点和世界外观都读那份存着的）：
+
+- 热源表还是对外联动契约的 `CanProvideHeatBlockList`（一个字没改：岩浆块是 `minecraft:magma`，营火看 `extinguished` 状态，点着的 `arris:stove` 在表里、熄着的孪生方块不在）；
+  传热方块表 `HeatConductorList`（`Shared/Data/Cooking.py`，只有 `minecraft:hopper`）是新的，不在联动白名单里。
+- 熔岩炼药锅：引擎里没有 `lava_cauldron` 这个方块（Strata 知识库的方块表：`minecraft:cauldron` 有 `fill_level` 0..6 和 `cauldron_liquid` = water / lava / powder_snow；`lava_cauldron` 只剩在原版资源包的
+  `blocks.json` 和旧版方块号 465 里），所以不能按名字进表，`IsHeatSource` 读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算）。
+  **手持煎锅（`SkilletHand`、`Client/Input._nearHeat`）仍认不出它**：那条路只读方块名，客户端又读不到方块状态（`GetBlockStates` 只有服务端有），
+  只改服务端会让客户端放过"吃"、服务端却在煎，所以没做。
+- 状态变了怎么知道：邻居事件只来自相邻的方块，正下方变了（放漏斗、拆漏斗、点着 / 熄灭正下方的营火）有原来的处理函数（`OnCookingPotNeighborChanged`、`OnSkilletNeighborChanged`）；
+  热源在漏斗再下面一格时那一格变了没有事件，`Server/HeatConduct.py` 对"正下方是漏斗"的锅 / 煎锅每 0.5 秒（真实时间，`Pacer`）重算一次，
+  和存着的不一样就把一个"正下方变了"的 `BlockNeighborChangedServerEvent` 交给那两个处理函数（存状态、同步客户端、煎锅断热时重置计时，一个字不抄）。下面不是漏斗的什么都不查。
+- 测试：`tests/test_heat_sources.py`（JE 标签里每一种热源、看着像但不热的、漏斗传热、托盘只看正下方）、`tests/test_heat_conduct.py`（真的 `Skillet` / `CookingPot` 处理函数 + 假引擎）。
+
+待实机验证（离线 + 假引擎核对过，没进过游戏）：
+
+1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉。方块状态的名字和值（`cauldron_liquid` = lava、`fill_level` 6）是 Strata 知识库的方块表给的，
+   没在游戏里读过；如果游戏里熔岩炼药锅是别的名字（比如还有 `minecraft:lava_cauldron`），`Heat._holdsLava` / `IsHeatSource` 一处改。
+2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
+
 ## 合成与合成剩余物（对照 JE）
 
 JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶桶 / 水桶剩空桶，蜂蜜瓶、FD 的饮料剩玻璃瓶，FD 的碗装食物和番茄酱剩碗。
@@ -394,7 +421,7 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   只保留 JE 的声音分档：`PlayerAttackEntityEvent` 里按距上次挥煎锅的时间挑 `attack_strong`（够 0.8 × 22.2 刻 ≈ 0.89 秒）或 `attack_weak`（音量 0.8、音调 0.9，
   `sound_definitions.json` 里补了定义）。JE 里切物品也会重置冷却，这里不管。
 - 没做：JE 的进度条（客户端物品装饰，基岩版画不了）、翻面动作（左键翻面，纯画面）、煎锅里的食物在手上的渲染、同种食物往锅里叠加（`ItemStackHandler.insertItem`，现在锅里有东西就不收了）、
-  `minecraft:lava_cauldron`（基岩版是 `cauldron` 加 `cauldron_liquid` 状态，热源表按方块名，认不出）、含水放置（现在只往空气里放）。
+  手持煎锅认不出熔岩炼药锅（基岩版是 `cauldron` 加 `cauldron_liquid` 状态，手持这条路只读方块名、客户端读不到方块状态；放下的煎锅 / 厨锅认得，见"厨锅 / 煎锅下面的热源"）、含水放置（现在只往空气里放）。
 
 待实机验证（写完这一版时没进过游戏）：
 
@@ -446,6 +473,15 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
     `magma`、`custom` 等表外的 cause 一律落到 `death.attack.generic`（"死了"），网易的 `Hurt(…, "custom", customTag)` 只是给伤害事件打个标记、不改消息，也没有找到换死亡消息的接口。
     所以取最接近的 `magma`（JE 里岩浆块的 hot_floor 正是这个脚感）：好处是 `fire_immune` 的实体（烈焰人、岩浆怪、凋灵骷髅……）引擎本来就对 magma 无敌，对上 JE 的 `fireImmune()`；
     代价是抗火药水大概也会挡住（JE 的 stove_burn 不在 `is_fire` 标签里，抗火拦不住）。护甲照常减伤（两边都不绕过护甲）。
+- 点着的炉灶自己的火（`Client/StoveFlame.py`，概率和位置在 `Shared/Rules/StoveFlame.py`），照 FD 的两段客户端代码：`StoveBlock.animateTick`（java:38-55）点着时每次在正面
+  （FACING 那一侧 0.52 处）随机高度 0 ~ 6/16、另一个水平方向 ±0.3 放一颗烟一颗火，1/10 的概率响 `block.stove.crackle`（FD 的 `sounds.json` 指到原版 `block.campfire.crackle`，音量音调 1）；
+  `StoveBlockEntity.addSmokeParticles`（java:24-46，客户端方块实体每刻）灶上每件东西每刻 20% 的概率在头上（y + 1，位置同 `DefaultStoveRenderer` 画它的）冒 3 颗烟，
+  HoD 的 `StoveSmokeMixin` 在炉灶站点显示时取消这一段。基岩版：点着的 `arris_stove.json` 写 `netease:block_animate_random_tick`（`trigger_rate` 1.0：动画刻每次轮到这座炉灶都发
+  `BlockAnimateRandomTickEvent`，JE 也是每次轮到都放）和 `netease:block_entity.client_tick`（`ModBlockEntityTickClientEvent` 每秒 20 次，对上 JE 每刻一次）；熄着的孪生方块两样都不写（JE 都只在 LIT 时）。
+  正面朝哪读 `Shared/Rules/StoveFacing`（aux 只经 `Placement.directionOfAux` 读），灶上哪几格有东西读 `Client/BlockItems.itemsAt`（经典展示记着的最后一份内容），
+  炉灶站点登记了（`ClientBoot` 调 `StoveFlame.muteItemSmoke`，和 `StoveScenes.enable` 同一处）就不放灶上东西的烟，火口的火星和噼啪照放（`animateTick` HoD 不碰）；粒子离玩家超过 32 格不放（JE 的 `addParticleInternal`）。
+  粒子是自带的 `arris:stove_flame` / `arris:stove_smoke`（`rp/particles`，照原版 `basic_flame` / `basic_smoke` 的外观，改成放一次出一颗）。
+  JE 的 `animateTick` 离得近的方块每秒大约被轮到两三次，引擎的 `trigger_rate` 最高 1.0 时官方文档说 16 格内"几乎每秒触发一次"，所以火口的火星和噼啪的频率可能比 JE 低，实机看了再定（要加密只能一次事件放几对，`trigger_rate` 已经是上限）。
 - 外加 `tests/test_event_wiring.py`：服务端每个 `registerHandler` 的事件在 `ModServer.py` 里都要有 `@Listen`；需要触发组件的事件，方块 JSON 里要带那个组件。
 
 待实机验证（写完这一版时没进过游戏）：
@@ -459,6 +495,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
    `SetPlayerMotion` 的单位按"格/刻"用，弹得过高或过低就要重标定 `NetBounce`。
 4. 炉灶：`netease:on_stand_on` 让 `OnStandOnBlockServerEvent` 每刻来一次（对玩家和怪都来）；站在点燃的炉灶中央每 0.5 秒掉半颗心，潜行不掉，穿冰霜行者不掉，站在熄灭的炉灶上不掉，
    烈焰人 / 岩浆怪不掉；死亡信息是引擎的"死了"；点燃后亮度 13。
+5. 炉灶的火（要完整重启游戏：`arris_stove.json`、两个新粒子）：站在新放的点着的炉灶旁，火口那一侧（四个朝向都试，包括从背面看）有火星和烟往上飘、偶尔营火噼啪声，熄着的炉灶什么都没有；
+   `BlockAnimateRandomTickEvent` 的 `auxData` 是不是方块的朝向状态；火口火星的疏密合不合手感（对照 JE）。没装前置包（或 HoD 配置里关了炉灶站点）时灶上放生肉，每件头上一阵阵黑烟；
+   装了前置包时那圈黑烟没有。`client_tick` 要新放的炉灶才有（旧存档里的炉灶没有灶上东西的烟，点火 / 灭火换一次方块后有）。
 
 ## 榻榻米垫与绳栅栏（对照 JE）
 
@@ -516,7 +555,13 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - `ServerBlockUseEvent` 的取消字段是 `cancel`；`ServerItemUseOnEvent` 的是 `ret`。
 - `DestroyBlockEvent` / `BlockRemoveServerEvent` / `BlockRandomTickServerEvent` 的方块名字段是 `fullName`，其余事件是 `blockName`；
   `BlockRemoveServerEvent` 的维度字段是 `dimension`。
-- 营火点燃 / 熄灭只改 `extinguished` 状态、名字不变：判断热源要读状态（`Helpers.Heat.IsHeatSource`）。
+- 营火点燃 / 熄灭只改 `extinguished` 状态、名字不变：判断热源要读状态（`Helpers.Heat.IsHeatSource`）；熔岩炼药锅也是状态（`minecraft:cauldron` 的 `cauldron_liquid` = lava，没有 `lava_cauldron` 方块），
+  方块状态只有服务端读得到。
+- 原版的火焰 / 烟粒子（`minecraft:basic_flame_particle`、`basic_smoke_particle`、`campfire_smoke_particle`）都是 `emitter_rate_manual`：`Create` 返回非 0 的编号、却一颗粒子也不发，
+  要再调 `EmitManually`，而且原版 JSON 的发射器寿命是 `expiration_expression: 0`（不会自己结束 [推断：没有在游戏里看过它被销毁]）；一次性的粒子在资源包里写自己的
+  （`emitter_rate_instant` + `emitter_lifetime_once`，`rp/particles/arris_stove_flame.json`）。
+- `netease:block_entity` 的 `client_tick` / `tick` 是方块实体的标志，存档里的方块实体会盖过方块 JSON（`ModBlockActor::load` 先照组件建、再拿存的 `_tick` / `_tickClient` 盖）：改了方块 JSON 里这两个开关，
+  旧存档里已经放着的方块不受影响，要重新放（或换一次方块）。`netease:block_animate_random_tick` 是方块级的组件，旧存档里的方块也有。
 - 客户端读方块实体数据拿到的是 NBT 形式，每个值包成 `{"__type__": …, "__value__": …}`（`Client.Engine.unwrap`）。
 - 世界时间（`CreateTime().GetTime()`）会被 `/time set` 改、被 `doDaylightCycle false` 冻住，不能拿来做 tick 节拍：
   用 `Shared/Rules/Ticks.Pacer`（真实时间）。
