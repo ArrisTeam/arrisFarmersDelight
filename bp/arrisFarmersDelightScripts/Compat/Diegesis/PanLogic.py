@@ -22,6 +22,7 @@ from ...Server.Helpers import PanContents
 from ...Server.Helpers.BlockItems import PublishSkillet
 from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem
 from ...Shared.Rules import HandsOnOptions as Options
+from ...Shared.Rules import InventoryAdd
 from ...Shared.Rules import PanStation as Rules
 from ...Shared.Rules.HandsOn import Frying
 
@@ -180,14 +181,15 @@ class PanLogicMixin(object):
             PanLook.event(station.dimensionId, station.pos, "untossed", {})
 
     def _take(self, playerId):
-        """锅里的东西全进厨师的背包窗口（放不下的掉在脚下），两面进度清零。"""
+        """锅里的东西全进厨师的背包窗口（次序照原版 Inventory.add，见 InventoryAdd；放不下的掉在脚下），两面进度清零。"""
         station = self.station
         data = GetBlockEntityData(station.dimensionId, station.pos)
         item = data["cookingDict"] if data else None
         if not item or _count(item) <= 0:
             return
         taken = copy.deepcopy(item)
-        rest = self._toWindow(taken)
+        rest = InventoryAdd.addToWindow(self.kit.Items, self.ctx.inventory, taken, self.ctx.maxStackOf(taken),
+                                        compFactory.CreateItem(playerId).GetSelectSlotId())
         if rest is not None:
             self.dropped.append(rest)
         data["cookingDict"] = None
@@ -197,23 +199,6 @@ class PanLogicMixin(object):
         HandFrying.save(self.hand, data)
         self._count = 0
         PanLook.event(station.dimensionId, station.pos, "taken", {"stack": _wire(taken)})
-
-    def _toWindow(self, item):
-        """放进背包窗口：先并入同种未满的栈、再放进空格，都按格号（Inventory.add）；返回放不下的余量或 None。"""
-        items, window, maxStackOf = self.kit.Items, self.ctx.inventory, self.ctx.maxStackOf
-        rest, size = item, maxStackOf(item)
-        for fillEmpty in (False, True):
-            for index in range(len(window)):
-                there = window[index]
-                if rest is None:
-                    return None
-                if (there is None) != fillEmpty or (not fillEmpty and not items.sameItem(there, rest)):
-                    continue
-                moved = min(size - items.countOf(there), items.countOf(rest))
-                if moved > 0:
-                    window[index] = items.withCount(rest, moved) if fillEmpty else items.grow(there, moved)
-                    rest = items.shrink(rest, moved)
-        return rest
 
     def _look(self, data):
         """世界外观马上发（不等锅的下一步）。"""

@@ -154,6 +154,35 @@ def testScoopingFromTheInventoryUsesTheSelectedSlotFirstAndNeedsAnEmptyHand():
     assert K.do(manager, "a", K.custom("scoop", from_inventory=True)) and K.preview()["count"] == 2, "手里拿着东西时不从背包盛"
 
 
+def testAServingJoinsTheSelectedSlotsStackBeforeALowerOne():
+    # PotLogic.java:599 的 inventory.add(serving)：原版 Inventory.add 先看选中的快捷栏格里是不是同一种、没满，再按格号（Shared/Rules/InventoryAdd）
+    manager, data = K.setup()
+    K.setMeal(SAUCE, 2, data)
+    fake.give("a", 20, BOWL, 2)
+    fake.give("a", 0, SAUCE, 3)
+    fake.give("a", 5, SAUCE, 3)
+    K.opened(manager)
+    fake.world.players["a"]["selected"] = 5
+    assert K.do(manager, "a", K.custom("scoop", from_inventory=True))
+    inv = fake.world.players["a"]["inv"]
+    assert inv[5]["count"] == 4 and inv[0]["count"] == 3, "选中的 5 号格先并，不是 0 号格"
+    fake.world.players["a"]["selected"] = 3                    # 选中的是空格：不算有位置可并，按格号从 0 号并
+    assert K.do(manager, "a", K.custom("scoop", from_inventory=True))
+    assert inv[0]["count"] == 4 and inv[5]["count"] == 4 and inv[3] is None, "选中的 3 号格是空的：并进 0 号格，不占它"
+
+
+def testTakeBackJoinsTheSelectedSlotsStackBeforeALowerOne():
+    manager, data = K.setup()
+    fake.setContainer(POT, 0, "minecraft:egg", 3)
+    fake.give("a", 0, "minecraft:egg", 5)
+    fake.give("a", 4, "minecraft:egg", 5)
+    K.opened(manager)
+    fake.world.players["a"]["selected"] = 4
+    assert K.do(manager, "a", K.custom("take_back"))
+    inv = fake.world.players["a"]["inv"]
+    assert inv[4]["count"] == 8 and inv[0]["count"] == 5, "取回的蛋先并进选中的 4 号格"
+
+
 def testAServingDoesNotGoIntoAContainerThatIsNotItsOwn():
     manager, data = K.setup()
     K.setMeal(SAUCE, 2, data)

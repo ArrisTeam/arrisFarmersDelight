@@ -185,6 +185,20 @@ def testTakeMergesIntoStacksThatAreThere():
     assert inv[3]["count"] == 64 and fake.count("a", BEEF) == 65, "先并入同种没满的栈，再放进空格"
 
 
+def testTakeJoinsTheSelectedSlotsStackBeforeALowerOne():
+    # SkilletLogic.java:120 的 inventory.add(taken)：原版 Inventory.add 先看选中的快捷栏格里是不是同一种、没满（Shared/Rules/InventoryAdd）
+    manager, _ = P.setup()
+    P.opened(manager)
+    carry(manager, "a", 35, BEEF, 5)
+    P.do(manager, "a", P.custom("place"))
+    P.hold("a", 0, BEEF, 10)
+    P.hold("a", 6, BEEF, 10)
+    fake.world.players["a"]["selected"] = 6
+    assert P.do(manager, "a", P.custom("take"))
+    inv = fake.world.players["a"]["inv"]
+    assert inv[6]["count"] == 15 and inv[0]["count"] == 10, "取回的先并进选中的 6 号格，不是 0 号格"
+
+
 def testTakeWithAnEmptyPanDoesNothing():
     manager, _ = P.setup()
     P.opened(manager)
