@@ -84,7 +84,7 @@ def _getBlockStates(self, pos, dimensionId=-1):
 def _setBlockStates(self, pos, states, dimensionId=-1):
     key = (dimensionId, tuple(pos))
     fake.states[key] = dict(states)
-    fake.blockAux[key] = states.get("direction", 0)
+    fake.blockAux[key] = states.get("direction", 0) * (4 if fake.holiday else 1)      # 假日创造者实验玩法的世界里 direction 状态 1 / 2 / 3 的 aux 是 4 / 8 / 12
     return True
 
 
@@ -110,7 +110,7 @@ _install()
 def setup(events="sync", entity="now", **kwargs):
     """stovekit.setup（点着的炉灶在 STOVE，玩家 a 在北边、b 在东边）之后补上换方块要的东西；返回 (Manager, 方块实体数据)。"""
     manager, data = K.setup(**kwargs)
-    fake.states, fake.queue, fake.sneaking, fake.tips, fake.failSet = {}, [], set(), [], False
+    fake.states, fake.queue, fake.sneaking, fake.tips, fake.failSet, fake.holiday = {}, [], set(), [], False, False
     fake.mode = {"events": events, "entity": entity}
     fake.itemTypes = {SHOVEL: "shovel", PICK: "pickaxe", FLINT: "", CHARGE: "", WATER: "bucket", BUCKET: "bucket"}
     fake.durable = {FLINT: 65, SHOVEL: 250, PICK: 250}
