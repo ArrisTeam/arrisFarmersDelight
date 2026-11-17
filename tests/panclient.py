@@ -38,6 +38,9 @@ class World(object):
         self.sounds = []                # {"name", "pos", "volume", "pitch"}
         self.exData = {}                # 坐标 -> 方块实体的 exData（已经是 NBT 包过的形式）
         self.blocks = {POS: ("arris:skillet", 0)}
+        self.biomes = {}                # 坐标 -> 群系名（客户端 GetBiomeName 的回答）；没写的坐标回 biomeAll
+        self.biomeAll = None            # 其余坐标统一的群系名；None = 那里没答案（接口回 None）
+        self.biomeAsked = []            # 每次 GetBiomeName 问的坐标，按顺序
         self.dimension = 0
         self.foot = (10.5, 64.0, 7.5)
         self.screen = (960.0, 540.0)
@@ -86,6 +89,12 @@ class Comp(object):
 
     def GetBlockEntityData(self, pos):
         return {"exData": world.exData.get(tuple(pos), {})}
+
+    def GetBiomeName(self, pos):
+        """CreateBiome(levelId).GetBiomeName((x, y, z))：官方文档里参数是 tuple(int,int,int)，回群系名（不带命名空间），那里没加载回 None。"""
+        assert isinstance(pos, tuple) and len(pos) == 3 and all(isinstance(value, int) for value in pos), "要三个整数的元组：%r" % (pos,)
+        world.biomeAsked.append(pos)
+        return world.biomes.get(pos, world.biomeAll)
 
     def SetEnableBlockEntityAnimations(self, pos, on):
         world.armed.add(tuple(pos))

@@ -2,13 +2,13 @@
 """PotScenes - 本客户端全部厨锅场景的登记与调度：方块实体加载 / 卸载、服务端广播、每帧推进（客户端）
 
 装了场景交互前置才启用（ClientBoot 调 enable）；没装时厨锅照旧是合着盖的农夫乐事原样，这里的监听什么都不做。
-- 方块实体在本端加载：建场景，按方块实体数据里存的静态部分（potLook）先摆出来；重复加载（区块重载）当作重建；
+- 方块实体在本端加载：建场景（顺带问一次所在位置的群系水色，PotBiome），按方块实体数据里存的静态部分（potLook）先摆出来；重复加载（区块重载）当作重建；
 - 服务端 Server/PotLook.py 广播给 32 格内的人：OnPotLook(payload)，带 event 的是一次性的表现（盛出、出锅）；
 - 每个渲染帧：近的每帧算，远的隔几帧算一次、不放粒子和声音，太远的不算。
 """
 import time
 
-from . import PotFx
+from . import PotBiome, PotFx
 from .PotScene import PotScene
 from ...Client.Engine import compFactory, levelId, playerId, unwrapDeep, blockEntityExData
 from ...QuModLibs.Client import AllowCall, Listen
@@ -66,6 +66,7 @@ def ensure(dimensionId, pos):
             return None
         scene = _scenes[key] = PotScene(dimensionId, key[1], PotModelMath.facingOf(block[1]))
         scene.brothOf = _state["brothOf"]
+        PotBiome.bind(scene)                  # 清水取所在群系的水色（JE 的 getAverageWaterColor）：建场景时问一次，谁看都对
     return scene
 
 

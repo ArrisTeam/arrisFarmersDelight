@@ -25,7 +25,7 @@ ITEM_SCALE = 3.2 / ItemPose.ITEM_SPAN       # JE 的料是 3.2 像素见方
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
 CHECK_SECONDS = 0.5                         # 多久核对一次模型上的值还在不在（方块实体重建会清掉）
 AWAKE_SECONDS = 4.0                         # 没动静之后再跑这么久就歇着（等水位、勺子、颜色都落定）
-WATER = PotLiquid.waterColor()
+WATER = PotLiquid.waterColor()              # 清水的缺省底色（平原的蓝）：查不到所在群系的水色时用
 
 
 class PotScene(object):
@@ -35,6 +35,7 @@ class PotScene(object):
         self.facing = facing
         self.model = PotModel(self.pos, facing)
         self.liquid = PotLiquid.PotLiquid()
+        self.water = WATER                    # 没放料时水的 ARGB：PotBiome.bind 查到所在位置的群系水色后换成它（setWater）
         self.spoon = PotSpoonMotion.PotSpoonMotion()
         self.drift = PotDrift.PotDrift()
         self.fx = SceneFx(self)
@@ -92,6 +93,12 @@ class PotScene(object):
         if self.look is not None:
             self._retarget(PotLookState.progressAt(self.look, self.clock))
 
+    def setWater(self, biomeRgb):
+        """锅所在位置的水色（PotBiome 查来的 0xRRGGBB，JE 的 getAverageWaterColor）：清水的底色，已有状态的话汤色按它重算。"""
+        self.water = PotLiquid.waterColor(biomeRgb)
+        if self.look is not None:
+            self._retarget(PotLookState.progressAt(self.look, self.clock))
+
     def _amount(self):
         return PotLiquid.tankAmount(PotLookState.filledOf(self.look), PotLookState.servingsOf(self.look))
 
@@ -100,7 +107,7 @@ class PotScene(object):
         self.progress = progress
         dish = look.meal or look.dish
         broth = self.brothOf(dish["newItemName"]) if dish and self.brothOf else None
-        self.liquid.retarget(WATER, [PotTint.colorOf(item["newItemName"]) for item in PotLookState.foodOf(look)], look.meal is not None,
+        self.liquid.retarget(self.water, [PotTint.colorOf(item["newItemName"]) for item in PotLookState.foodOf(look)], look.meal is not None,
                              progress, broth, self.tint.liquids(look.items, look.sunk))     # 倒出来的牛奶染水，蛋只算食物色
 
     def world(self, x, y, z):

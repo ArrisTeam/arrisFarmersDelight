@@ -73,6 +73,7 @@ PACKS = {
             "Compat/Diegesis/PotSceneFx.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotScenes.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotModel.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/PotBiome.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotHands.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotOffer.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardGlow.py": {"forbid": {"Server"}, "engine": True},
