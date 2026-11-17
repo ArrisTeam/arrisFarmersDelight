@@ -338,7 +338,8 @@ def testAnotherPlayersScoopSplashesFourSeparateSpotsOnTheSoupThatJumpSevenPixels
     spots = set()
     for spec in found:
         assert spec["vars"]["variable.count"] == 1.0, "一颗一个点"
-        assert (spec["vars"]["variable.vx"], spec["vars"]["variable.vy"], spec["vars"]["variable.vz"]) == (0.0, 7.0, 0.0), spec["vars"]
+        for axis, want in (("variable.vx", 0.0), ("variable.vy", 7.0), ("variable.vz", 0.0)):
+            assert abs(spec["vars"][axis] - want) < 5 * 0.875, spec["vars"]       # SceneParticles.spawn：每轴再抖 gauss * max(0.3, 7 * 0.25)，标准差 0.875（分布在 test_scene_scatter.py）
         assert spec["vars"]["variable.speed_set"] == 1.0
         x, y, z = scene.local(*spec["pos"])
         assert 4.8 - 1e-6 <= x <= 11.2 + 1e-6 and 4.8 - 1e-6 <= z <= 11.2 + 1e-6, "汤面中间那一块里：%r" % ((x, z),)

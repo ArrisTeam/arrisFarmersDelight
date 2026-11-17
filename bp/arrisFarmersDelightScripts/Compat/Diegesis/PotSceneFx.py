@@ -13,7 +13,8 @@ from ...Shared.Rules.HandsOn import PotDrift, PotFinish, PotLiquid, PotServe, Po
 
 INNER_LO, INNER_SPAN = 4.0, 8.0             # 内胆 x、z 从 4 到 12
 FLOOR = PotLiquid.BROTH_FLOOR
-BUBBLE_RISE = 3.6                           # 气泡上浮的速度（像素每秒）：初速 3.5、浮力 6、阻力 0.8 的平衡速度
+RISE = (0.0, 3.5, 0.0)                      # PotBehavior.java:115：液内泡的初速（像素每秒）
+STEAM_RISE = (0.0, 3.2, 0.0)                # :116：汤面上蒸汽的初速
 STEAM_ALPHA = 0x6C / 255.0                  # PotBehavior 的蒸汽比库里的更白
 EDGE_SCALE = 0.5
 POP_RIPPLE = 0.09                           # 气泡破了在液面起的水波（SceneParticles.POP_RIPPLE）
@@ -43,13 +44,14 @@ class SceneFx(object):
         self.scene = scene
         self.sounds = PotSounds.PotSounds(random.random)
         self.loops = {}                       # HoD 的声音名 -> PotFx.Loop
-        self.pops = []                        # [还有多久浮到液面, x, z]
+        self.pops = []                        # 还在往上浮的泡：[还有多久浮到液面, x, z, 液面高度（冒出来那一刻的）]
+        self.rings = []                       # 液面上的破泡：[还有多久破完, x, z]，破完了液面起一圈水波
         self.finish = None
         self.melting = {}                     # 格号 -> 掉落物 id：一批煮好时原来浮着的料，留着演胀大缩没
 
     @property
     def busy(self):
-        return bool(self.pops) or self.finish is not None
+        return bool(self.pops) or bool(self.rings) or self.finish is not None
 
     @property
     def finishing(self):
@@ -90,16 +92,11 @@ class SceneFx(object):
     def _particles(self, dt):
         scene, liquid = self.scene, self.scene.liquid
         surface = liquid.surfaceY()
-        for _ in range(liquid.emitBubbles):
-            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), SceneScatter.liquidBubbleHeight(FLOOR, surface, random.random()))
-        for pop in list(self.pops):
-            pop[0] -= dt
-            if pop[0] <= 0.0:
-                self.pops.remove(pop)
-                PotFx.particle(PotFx.BUBBLE_POP, scene.world(pop[1], surface + 0.3, pop[2]), color=liquid.bubbleColor)
-                scene.model.ripple(pop[1], pop[2], POP_RIPPLE)
-        for _ in range(liquid.emitSteam):
-            PotFx.particle(PotFx.STEAM, scene.world(_inner(0.1, 0.9), surface + 0.2, _inner(0.1, 0.9)), alpha=STEAM_ALPHA)
+        self.bubbles(liquid.emitBubbles)
+        self._pops(dt)
+        for _ in range(liquid.emitSteam):        # spawnOnLiquid 一颗颗走 spawn：起点在液面中间那一块里，初速各抖一次
+            PotFx.particle(PotFx.STEAM, scene.world(_inner(0.1, 0.9), surface + 0.2, _inner(0.1, 0.9)), alpha=STEAM_ALPHA,
+                           velocity=SceneScatter.spawnVelocity(STEAM_RISE))
         for _ in range(liquid.emitEdge):
             inset, along, side = 0.3 + 0.8 * random.random(), INNER_SPAN * random.random(), int(random.random() * 4.0)
             x = (INNER_LO + along) if side < 2 else (INNER_LO + inset if side == 2 else INNER_LO + INNER_SPAN - inset)
@@ -112,19 +109,41 @@ class SceneFx(object):
         scene = self.scene
         for _ in range(PotServe.SPLASHES):
             where = scene.world(_inner(0.1, 0.9), scene.liquid.surfaceY(), _inner(0.1, 0.9))
-            PotFx.particle(PotFx.SPLASH, where, color=scene.liquid.brothColor, count=1, velocity=PotServe.SPLASH_UP)
+            PotFx.particle(PotFx.SPLASH, where, color=scene.liquid.brothColor, count=1, velocity=SceneScatter.spawnVelocity(PotServe.SPLASH_UP))
 
     def bubbles(self, count):
-        """锅底随处冒 count 个泡。"""
+        """水里随处冒 count 个泡（spawnInLiquid：每个的起点在液面下的下 60% 里）。"""
+        surface = self.scene.liquid.surfaceY()
         for _ in range(count):
-            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), FLOOR + 0.2)
+            self._bubble(_inner(0.15, 0.85), _inner(0.15, 0.85), SceneScatter.liquidBubbleHeight(FLOOR, surface, random.random()))
 
     def _bubble(self, x, z, y):
-        """水里冒一个泡：浮到液面的时候破掉、起一圈水波。"""
-        liquid = self.scene.liquid
-        life = max(0.05, (liquid.surfaceY() - y) / BUBBLE_RISE)
-        PotFx.particle(PotFx.BUBBLE, self.scene.world(x, y, z), color=liquid.bubbleColor, life=life)
-        self.pops.append([life, x, z])
+        """水里冒一个泡（Diegesis 的 SceneParticles.spawnInLiquid :131-156）：初速 RISE 加抖动（左右只有 0.3 倍），寿命是样式的 3 倍（1.8 ~ 4.2 秒）；
+        浮到液面（记下的是冒出来那一刻的液面）就在那里结束、换成破泡；寿命先到的泡悄悄没了（不破、不起波）。"""
+        scene = self.scene
+        ceiling = scene.liquid.surfaceY()
+        velocity = SceneScatter.liquidBubbleVelocity(RISE)
+        life = SceneScatter.liquidBubbleLife(random.random())
+        reach = SceneScatter.riseTime(ceiling - y, velocity[1])
+        PotFx.particle(PotFx.BUBBLE, scene.world(x, y, z), color=scene.liquid.bubbleColor, life=max(0.05, min(life, reach)), velocity=velocity)
+        if reach <= life:
+            self.pops.append([reach, x, z, ceiling])
+
+    def _pops(self, dt):
+        """浮到液面的泡变成破泡（SceneParticles.onSurface）；破泡的寿命到了（0.45 ~ 0.85 秒），液面才起一圈水波（update :177-182）。"""
+        scene = self.scene
+        for ring in list(self.rings):
+            ring[0] -= dt
+            if ring[0] <= 0.0:
+                self.rings.remove(ring)
+                scene.model.ripple(ring[1], ring[2], POP_RIPPLE)
+        for pop in list(self.pops):
+            pop[0] -= dt
+            if pop[0] <= 0.0:
+                self.pops.remove(pop)
+                life = SceneScatter.popLife(random.random())
+                PotFx.particle(PotFx.BUBBLE_POP, scene.world(pop[1], pop[3] + 0.3, pop[2]), color=scene.liquid.bubbleColor, life=life)
+                self.rings.append([life, pop[1], pop[2]])
 
     def _sounds(self, dt):
         scene, look = self.scene, self.scene.look
@@ -205,4 +224,5 @@ class SceneFx(object):
         self.melting = {}
         self.finish = None
         del self.pops[:]
+        del self.rings[:]
         self.silence()
