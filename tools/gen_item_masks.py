@@ -69,12 +69,16 @@ def _texture(entry):
     return textures[0] if isinstance(textures, list) else textures
 
 
+# 砧板要切的之外还要图标轴的两件：做成串 / 冰棒时片沿签子放、做成握寿司时片沿米饭的长边放（Shared/Rules/HandsOn/BoardFinish，BoardBehavior 的 skewer / freeze / shape）
+FINISH_BASES = ("minecraft:stick", "arris:cooked_rice")
+
+
 def paths(vanilla):
-    """要切的东西的物品名 -> 贴图文件（不带扩展名）；找不到的不列。"""
+    """要切的东西（和收尾动画沿着放的两件）的物品名 -> 贴图文件（不带扩展名）；找不到的不列。"""
     ours = _json(os.path.join(ROOT, "rp", "textures", "item_texture.json"))
     theirs = _json(os.path.join(vanilla, "textures", "item_texture.json")) if os.path.isdir(vanilla) else {}
     found = {}
-    for name, _aux in sorted(_data("Cutting").CuttingBoardDict):
+    for name in sorted(set(name for name, _aux in _data("Cutting").CuttingBoardDict) | set(FINISH_BASES)):
         if name.startswith("arris:") and name in ours:
             found[name] = os.path.join(ROOT, "rp", _texture(ours[name]))
         elif name in VANILLA:

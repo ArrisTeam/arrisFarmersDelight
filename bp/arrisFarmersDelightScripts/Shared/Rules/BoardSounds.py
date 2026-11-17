@@ -12,6 +12,8 @@ FD 里写了 sound 的只有削皮的 21 条配方（原木、去皮前的木头
     BOARD_PLACE / BOARD_CARVE  dig.wood（FD 的 place_item / carve_tool 就是原版木头的放置声）
     BOARD_REMOVE / WOOD_HIT    hit.wood（FD 的 remove_item 是原版木头的击打声）
     ITEM_PICKUP                random.pop
+    ARMOR_EQUIP_LEATHER / WOOL_STEP / GLASS_BREAK   armor.equip_leather / step.cloth / random.glass（收尾动画：拌沙拉、滚卷揉面压寿司、冰棒的霜，Shared/Rules/HandsOn/BoardFinish；
+                               基岩版里这三条定义的采样都不带音量音调，JE 的数原样交给引擎）
     BUCKET_EMPTY / BOTTLE_EMPTY bucket.empty_water / bottle.empty（手倒液体层：KitchenMotions.Pour，岩浆桶也是水桶那一声）
     TURTLE_EGG_CRACK           block.turtle_egg.crack（手磕蛋层：KitchenLooks.crack）
     被切东西的材质击打 / 破坏    hit.* / dig.*（按物品名里的词分类，认不出是木头，和 JE 的 material() 一样）
@@ -32,6 +34,9 @@ BOARD_CARVE = "dig.wood"
 BOARD_REMOVE = "hit.wood"
 WOOD_HIT = "hit.wood"
 ITEM_PICKUP = "random.pop"
+ARMOR_EQUIP_LEATHER = "armor.equip_leather"
+WOOL_STEP = "step.cloth"
+GLASS_BREAK = "random.glass"
 BUCKET_EMPTY = "bucket.empty_water"
 BOTTLE_EMPTY = "bottle.empty"
 EGG_CRACK = "block.turtle_egg.crack"

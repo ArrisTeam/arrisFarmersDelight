@@ -187,5 +187,34 @@ def testAShakeIsRandomInEveryDirectionAndDiesAwayLinearly():
     assert Motion.SHAKE_PIXELS == 0.25 and Motion.SHAKE_SECONDS == 0.12
 
 
+def testARotationEasesEachAngleFromWhereItIsAndStartsFromNothingTurned():
+    """Diegesis NodeInstance.rotateTo：三个角各自从现在的值缓动到目标（inOutCubic）；没转过的东西（rotation 是 None，画的人按默认朝向摆）从 (0, 0, 0) 起。"""
+    mover = Motion.Mover()
+    assert mover.rotation is None and not mover.moving
+    mover.rotateTo(40.0, 90.0, -20.0, 1.0)
+    assert mover.rotation == (0.0, 0.0, 0.0) and mover.moving and mover.busy
+    _run(mover, 0.5)
+    assert all(_close(a, b, 1e-4) for a, b in zip(mover.rotation, (20.0, 45.0, -10.0))), "一半时间走了一半"
+    _run(mover, 0.5)
+    assert mover.rotation == (40.0, 90.0, -20.0) and not mover.moving
+    mover.rotateTo(0.0, 0.0, 0.0, 1.0)
+    _run(mover, 0.25)
+    assert all(_close(a, b, 1e-4) for a, b in zip(mover.rotation, (40.0 * (1 - 0.0625), 90.0 * (1 - 0.0625), -20.0 * (1 - 0.0625)))), "从现在的值（不是从头）走，慢起"
+    mover.rotateTo(1.0, 2.0, 3.0)
+    assert mover.rotation == (1.0, 2.0, 3.0) and not mover.moving, "0 秒是转过去"
+    mover.unturn()
+    assert mover.rotation is None and not mover.moving, "回到没转过"
+
+
+def testARotationInTheMiddleOfAMoveRunsBesideItAndEitherKeepsTheMoverBusy():
+    mover = Motion.Mover()
+    mover.move(1.0, 0.0, 0.0, 0.1)
+    mover.rotateTo(0.0, 30.0, 0.0, 0.3)
+    _run(mover, 0.1)
+    assert mover.pos == (1.0, 0.0, 0.0) and mover.moving, "位置走完了，转角还在走"
+    _run(mover, 0.25)
+    assert mover.rotation == (0.0, 30.0, 0.0) and not mover.moving
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

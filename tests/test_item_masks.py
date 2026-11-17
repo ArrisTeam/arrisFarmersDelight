@@ -43,6 +43,21 @@ def testTheFlatThingsTheBoardTakesApartAreThereToo():
         assert not all(row == (1 << width) - 1 for row in rows), (name, "整格实心 = 没读到轮廓")
 
 
+def testTheIconsTheFinishAnimationsLayThingsAlongAreThereAndTheirAxesAreWhatTheJavaAlgorithmGives():
+    """串 / 冻沿着签子放、成形沿着米饭的长边放（BoardFinishPlace）：它们不是砧板要切的，也要在表里（tools/gen_item_masks.py 的 FINISH_BASES），
+    轴是 ItemVoxels.Icon.axis 在这两张图上算出来的（图标 16 格画 10 像素）：签子从左下（柄）斜到右上（尖）、方向 (-√½, √½)、占 ±5.6158；米饭是个扁的一团。"""
+    import math
+    Icon = fdtest.load("Shared.Rules.HandsOn.BoardIcon")
+    assert "minecraft:stick" in Masks and "arris:cooked_rice" in Masks
+    stick = Icon.iconOf("minecraft:stick").axis(10.0)
+    assert abs(stick.dirX + math.sqrt(0.5)) < 1.0e-9 and abs(stick.dirZ - math.sqrt(0.5)) < 1.0e-9, "尖朝右上：x 往屏幕左边长，右上是 (-, +)"
+    assert abs(stick.start + 5.6158) < 1.0e-3 and abs(stick.end - 5.6158) < 1.0e-3 and stick.elongation > 8.0
+    assert abs(stick.x + 0.3125) < 1.0e-9 and abs(stick.z + 0.3125) < 1.0e-9
+    rice = Icon.iconOf("arris:cooked_rice").axis(10.0)
+    assert abs(rice.dirX + 0.96305) < 1.0e-4 and abs(rice.dirZ - 0.26931) < 1.0e-4 and abs(math.degrees(rice.along()) - 164.377) < 1.0e-2
+    assert 1.2 < rice.elongation < 1.3, "米饭近乎圆的一团"
+
+
 def testTheTableMatchesTheTextures():
     if not os.path.isdir(VANILLA):
         print("跳过：本机没有原版资源包", VANILLA)

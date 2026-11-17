@@ -66,14 +66,16 @@ def itemHeight(count, isBlock=False, itemSize=10.0, blockSize=5.2):
 
 
 class Mover(object):
-    """一个东西的位置和缩放（Diegesis 的 NodeInstance 里的 offset / scale 两个 Tween 加上 after 的排程）。"""
+    """一个东西的位置、缩放和转角（Diegesis 的 NodeInstance 里的 offset / scale / rotation 三个 Tween 加上 after 的排程）。"""
 
     def __init__(self, x=0.0, y=0.0, z=0.0, scale=1.0, visible=True):
         self.pos = (x, y, z)
         self.scale = scale
         self.visible = visible
+        self.rotation = None        # None：没转过（画的人按平躺的默认朝向摆）；转过之后是 (x, y, z) 度，JE 节点的欧拉角（先 Y 再 X 再 Z）
         self._from, self._to, self._age, self._seconds, self._arc = self.pos, self.pos, 0.0, 0.0, 0.0
         self._scaleFrom, self._scaleTo, self._scaleAge, self._scaleSeconds = scale, scale, 0.0, 0.0
+        self._rotFrom, self._rotTo, self._rotAge, self._rotSeconds = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.0, 0.0
         self._clock = 0.0
         self._steps = []
 
@@ -88,13 +90,24 @@ class Mover(object):
         if self._scaleSeconds == 0.0:
             self.scale = factor
 
+    def rotateTo(self, x, y, z, seconds=0.0):
+        """从现在的转角往 (x, y, z) 度转 seconds 秒（NodeInstance.rotateTo：三个角各自缓动，0 秒是转过去）；没转过的从 (0, 0, 0) 起。"""
+        self.rotation = self.rotation or (0.0, 0.0, 0.0)
+        self._rotFrom, self._rotTo, self._rotAge, self._rotSeconds = self.rotation, (x, y, z), 0.0, max(0.0, seconds)
+        if self._rotSeconds == 0.0:
+            self.rotation = self._rotTo
+
+    def unturn(self):
+        """回到没转过的样子（画的人又按默认朝向摆）。"""
+        self.rotation, self._rotAge, self._rotSeconds = None, 0.0, 0.0
+
     def after(self, seconds, run):
         """seconds 秒之后做 run（HoD 的 after / Step）。"""
         self._steps.append((self._clock + seconds, run))
 
     @property
     def moving(self):
-        return self._age < self._seconds or self._scaleAge < self._scaleSeconds
+        return self._age < self._seconds or self._scaleAge < self._scaleSeconds or self._rotAge < self._rotSeconds
 
     @property
     def busy(self):
@@ -112,6 +125,10 @@ class Mover(object):
         if self._scaleAge < self._scaleSeconds:
             self._scaleAge = min(self._scaleAge + dt, self._scaleSeconds)
             self.scale = self._scaleFrom + (self._scaleTo - self._scaleFrom) * inOutCubic(self._scaleAge / self._scaleSeconds)
+        if self._rotAge < self._rotSeconds:
+            self._rotAge = min(self._rotAge + dt, self._rotSeconds)
+            t = inOutCubic(self._rotAge / self._rotSeconds)
+            self.rotation = tuple(a + (b - a) * t for a, b in zip(self._rotFrom, self._rotTo))
         due = [step for step in self._steps if step[0] <= self._clock]
         self._steps = [step for step in self._steps if step[0] > self._clock]
         for _at, run in due:
