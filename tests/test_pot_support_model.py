@@ -68,17 +68,19 @@ def testTheModelHasAHandleBoneAfterItsParentAndNothingShowsItByDefault():
 
 
 def testTheHandleCubesAreFarmersDelightsMirroredAcrossX():
+    """FD 的吊把手是四张没有厚度的面片，JE 里每张两面都贴图（JE 剔除背面，各画各的那一面）。这里的材质 entity_alphatest 不剔除背面：
+    两面都贴的话两张叠在同一个深度上、来回闪（用户在游戏里看到的），所以每张只贴一面，从两边都看得到它。"""
     cubes = [bone for bone in _bones() if bone["name"] == "handle"][0]["cubes"]
     got = [(cube["origin"], cube["size"], sorted(cube["uv"])) for cube in cubes]
     assert got == [
-        ([-15, 8, 8], [14, 8, 0], ["north", "south"]),                    # hoop：from [1,8,8] to [15,16,8]
-        ([-15, 8, 7], [0, 8, 2], ["east", "west"]),                       # 第二个 east_handle：from [15,8,7] to [15,16,9]
-        ([-1, 8, 7], [0, 8, 2], ["east", "west"]),                        # 第二个 west_handle：from [1,8,7] to [1,16,9]
-        ([-15, 15.999, 7], [14, 0, 2], ["down", "up"]),                   # top_handle：from [1,15.999,7] to [15,15.999,9]
+        ([-15, 8, 8], [14, 8, 0], ["north"]),                             # hoop：from [1,8,8] to [15,16,8]
+        ([-15, 8, 7], [0, 8, 2], ["west"]),                               # 第二个 east_handle：from [15,8,7] to [15,16,9]
+        ([-1, 8, 7], [0, 8, 2], ["west"]),                                # 第二个 west_handle：from [1,8,7] to [1,16,9]
+        ([-15, 15.999, 7], [14, 0, 2], ["up"]),                           # top_handle：from [1,15.999,7] to [15,15.999,9]
     ], got
-    assert cubes[0]["uv"]["north"] == {"uv": [1, 8 + ATLAS[1]], "uv_size": [14, 8]} == cubes[0]["uv"]["south"], "hoop 的 uv [1,8,15,16]"
-    assert cubes[1]["uv"]["east"] == {"uv": [2, ATLAS[1]], "uv_size": [-2, 8]} and cubes[1]["uv"]["west"] == {"uv": [0, ATLAS[1]], "uv_size": [2, 8]}
-    assert cubes[3]["uv"]["up"] == {"uv": [2, ATLAS[1]], "uv_size": [14, 2]} == cubes[3]["uv"]["down"], "top_handle 的 uv [2,0,16,2]"
+    assert cubes[0]["uv"]["north"] == {"uv": [1, 8 + ATLAS[1]], "uv_size": [14, 8]}, "hoop 的 uv [1,8,15,16]"
+    assert cubes[1]["uv"]["west"] == {"uv": [0, ATLAS[1]], "uv_size": [2, 8]}
+    assert cubes[3]["uv"]["up"] == {"uv": [2, ATLAS[1]], "uv_size": [14, 2]}, "top_handle 的 uv [2,0,16,2]"
 
 
 def testEveryHandleFaceReadsInsideTheHandleTextureBlockOfTheAtlas():
