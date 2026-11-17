@@ -17,6 +17,11 @@ def ToAllPlayerPlaySound(dimensionId, pos, soundName, volume=None, pitch=None):
     Call("*", "OnPlaySound", payload)
 
 
+def ToAllPlayerCrumbs(dimensionId, blockPos, itemName):
+    """砧板切了一件 itemName：方块中心上方飞出几颗它颜色的碎屑（FD 的 spawnCuttingParticles，放什么样在 Client/Endpoints.py）。"""
+    Call("*", "PlayCrumbs", {"dimensionId": dimensionId, "blockPos": blockPos, "itemName": itemName})
+
+
 def ToAllPlayerGrowthParticle(pos):
     """骨粉 / 作物生长的绿色粒子。"""
     Call("*", "PlayParticle", pos)

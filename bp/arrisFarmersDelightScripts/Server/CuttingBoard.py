@@ -3,7 +3,8 @@
 
 照 JE（FD 的 CuttingBoardBlock.use）：板空着时手里什么都能整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
 板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）就当是拿工具来切：工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），
-带 chance 的产物按概率给。空手取回，创造模式取回的东西不给玩家（:68）。
+带 chance 的产物按概率给。空手取回，创造模式取回的东西不给玩家（:68）。放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的
+FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
 板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
@@ -11,11 +12,11 @@ from .EventRegistry import registerHandler
 from .Helpers import BoardDish
 from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
-from .Helpers.Fx import ToAllPlayerPlaySound
+from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data.Cutting import CuttingBoardDict
-from ..Shared.Rules import CuttingStation
+from ..Shared.Rules import BoardSounds, CuttingStation
 from ..Shared.Rules.HandsOn import ItemData
 
 CUTTING_BOARD = "arris:cutting_board"
@@ -58,9 +59,13 @@ def OnServerCuttingBoardBlockUse(args):
     if cuttingDict:
         if not IsCreative(playerId):                       # JE CuttingBoardBlock.java:68：创造模式取回的东西不给玩家
             SetCarriedItem(playerId, ItemData.restored(cuttingDict))
-        ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
+        ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.FD_TAKE)
         blockEntityData["cuttingDict"] = None
         PublishBoard(dimensionId, blockPos, None)
+
+
+def _center(blockPos):
+    return (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5)
 
 
 def _kind(item):
@@ -102,7 +107,7 @@ def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
         left = dict(carriedDict)
         left["count"] -= moved
         SetCarriedItem(playerId, left if left["count"] > 0 else None)
-    ToAllPlayerPlaySound(dimensionId, blockPos, "dig.wood")
+    ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.FD_PLACE)
     PublishBoard(dimensionId, blockPos, stack)
 
 
@@ -118,13 +123,16 @@ def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerI
 
 
 def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId):
-    """切一件：产物掉在板上方（带 chance 的按概率），工具掉一点耐久，提示还剩几个。"""
+    """切一件：产物掉在板上方（带 chance 的按概率），飞碎屑、响切声，工具掉一点耐久，提示还剩几个。"""
     x, y, z = blockPos
     fortune = CuttingStation.fortuneOf(carriedDict)
     for name, aux, count in CuttingStation.resultsFor(result, 1, fortune=fortune):
         System.CreateEngineItemEntity({"newItemName": name, "newAuxValue": aux, "count": count}, dimensionId,
                                       (x + 0.5, y + 0.5, z + 0.5))
-    ToAllPlayerPlaySound(dimensionId, blockPos, "ambient.cutting_board.knife")
+    ToAllPlayerCrumbs(dimensionId, blockPos, cuttingDict["newItemName"])
+    yields = [entry["itemName"] for entry in result["itemList"]]
+    ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.processed(
+        carriedDict["newItemName"], cuttingDict["newItemName"], yields, CuttingStation.strokeOf(result), GetItemType(cuttingDict) == "block"))
     if not CuttingStation.ignoresWear(carriedDict):          # "耐久"附魔免掉的这一下不磨（JE 的 hurtAndBreak）
         SetCarriedDurability(playerId, carriedDict, dimensionId, blockPos)
     left = (cuttingDict.get("count") or 1) - 1

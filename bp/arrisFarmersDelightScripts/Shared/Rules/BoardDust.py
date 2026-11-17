@@ -8,6 +8,7 @@
     初速        每种工具各一个向量；Diegesis 的粒子在它上面再加随机（0.25 倍长度、至少 0.3，高斯）
     散布        起点的随机范围（高斯，标准差是它的一半）
 站点里的人按自己这边的站点坐标飞（BoardEffects），旁观的人按操作者的朝向转到世界坐标飞（BoardWatch），都由 BoardFx.puffAt 放。
+经典玩法（没有站点的 FD 原样砧板）每切一件飞的 5 颗碎屑是另一套，在文件末尾（CRUMB_*）。
 """
 from .HandsOn import Assembly
 from .HandsOn import BoardScene as Scene
@@ -70,3 +71,13 @@ def flourPuff(middleX, middleZ, frost=False):
     """菜做成时的面粉（冰棒是霜）：板面中心上方 1 像素。"""
     velocity, spread, count = FLOUR
     return (middleX, Scene.TOP + 1.0, middleZ), FROST_VELOCITY if frost else velocity, spread, count
+
+
+# 经典玩法每切一件：FD 的 CuttingBoardBlockEntity.spawnCuttingParticles（:148-150）在方块中心、高 0.2 处放 5 颗这件东西的碎屑，各方向散 0.1。
+# 基岩版没有"按物品贴图碎开"的粒子，用站点也用的 arris:board_dust 按这件东西的颜色染（Client/Endpoints.PlayCrumbs）；速度（格每秒，向上）是估的，没和 JE 对过
+CRUMB_PARTICLE = "arris:board_dust"
+CRUMB_AT = (0.5, 0.2, 0.5)             # 方块内的位置，格
+CRUMB_COUNT = 5
+CRUMB_SPREAD = 0.1                     # 起点的随机范围，格
+CRUMB_SPEED = 1.2
+CRUMB_COLOR = 0xE0D0A0                 # 没有颜色记录的东西（和 BoardFx.DEFAULT_COLOR 同一个）

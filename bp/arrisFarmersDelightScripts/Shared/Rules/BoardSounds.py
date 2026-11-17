@@ -16,6 +16,7 @@ FD 里写了 sound 的只有削皮的 21 条配方（原木、去皮前的木头
     TURTLE_EGG_CRACK           block.turtle_egg.crack（手磕蛋层：KitchenLooks.crack）
     被切东西的材质击打 / 破坏    hit.* / dig.*（按物品名里的词分类，认不出是木头，和 JE 的 material() 一样）
 随机的那一点音调由调用方传进来的 rng 给（测试里换成定值）。站点里的人（客户端 BoardView）和旁观的人（客户端 BoardWatch）用同一份，所以两边听到的一样。
+经典玩法（没装场景交互前置的 FD 原样砧板，Server/CuttingBoard.py）放的是 FD 自己的那几声（文件末尾的 FD_PLACE / FD_TAKE / processed），不带 HoD 站点的拿起声、刀口声。
 """
 import random
 
@@ -196,3 +197,17 @@ def soundsOf(name, data=None, rng=random.random):
     if name == "refused":
         return [BOUNCE]
     return []
+
+
+# ---- 经典玩法：FD 的 CuttingBoardBlock.use / CuttingBoardBlockEntity 自己放的声音（HoD 站点的那些在上面）----
+FD_PLACE = (BOARD_PLACE, 1.0, 0.8)      # CuttingBoardBlock.java:84 放上去（block.wood.place）；:217 插工具是 CARVE，同一组数
+FD_TAKE = (BOARD_REMOVE, 0.25, 0.5)     # CuttingBoardBlock.java:72 空手取回（block.wood.hit）
+
+
+def processed(tool, item, yields, stroke, block):
+    """FD 切一件时响的那一声（CuttingBoardBlockEntity.playProcessingSound，:152-168）：配方自带的声音 -> 剪刀 -> 刀 0.8 -> 方块的破坏声 -> 木头的破坏声。
+    tool 是手里工具的物品名，item 是被切的东西的物品名，yields 是配方产物的物品名，stroke 是 CuttingStation.strokeOf(配方)，block 是被切的是不是方块物品。
+    配方自带声音的只有削皮的 21 条（都写着 item.axe.strip，音量音调 1.0 / 1.0，:156），产物是 stripped_* 的那一类。返回 (声音名, 音量, 音调)。"""
+    if stroke == Cutting.TOOL_STRIP:
+        return (AXE_STRIP, 1.0, 1.0)
+    return _processing(stroke, tool, block, materialOf(item, yields))
