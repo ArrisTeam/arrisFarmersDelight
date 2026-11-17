@@ -77,7 +77,8 @@
           "variable.tint_set > 0 ? variable.tint_b : 1.0",
           "variable.alpha * math.min(1, variable.particle_age / variable.particle_lifetime / 0.4) * (1 - variable.particle_age / variable.particle_lifetime)"
         ]
-      }
+      },
+      "minecraft:particle_appearance_lighting": {}
     }
   }
 }
