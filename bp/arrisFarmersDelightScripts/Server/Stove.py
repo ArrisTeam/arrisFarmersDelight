@@ -18,7 +18,7 @@ from . import HandGrill, StoveLook, StoveSwap
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
 from .Helpers.Drops import PopOut, ScatterItem
-from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
+from .Helpers.Engine import compFactory, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
