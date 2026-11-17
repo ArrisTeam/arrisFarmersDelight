@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # runner: both
 """HoD 配置里的站点开关（cooking_pot / cutting_board / skillet / stove / remove_crafting_recipes）接到两个联动入口上
-（Compat/Diegesis 的 ServerBoot / ClientBoot 和每个站点的 register）：缺省照旧；关了的站点两端都不登记、连带的世界外观广播 /
-场景 / 旁观的声音 / 工作台拦截也不开，方块照农夫乐事原样用（前置包认不出这个方块）；两端对每一种开关组合都一致。
+（Compat/Diegesis 的 ServerBoot / ClientBoot，经 Presence 和步骤表，和每个站点的 register）：缺省照旧；关了的站点两端都不登记（它的步骤是 skipped）、
+连带的世界外观广播 / 场景 / 旁观的声音 / 工作台拦截也不开，方块照农夫乐事原样用（前置包认不出这个方块）；两端对每一种开关组合都一致；
+前置包的接口比本包要的（Presence.REQUIRED_API_VERSION）老，一个站点也不登记（OUTDATED）；没装前置包（STANDALONE）也一样。
 真的入口、真的站点模块、真的前置包服务端 Api 和客户端 Registry，引擎是 bootkit 里的无害替身。"""
 from __future__ import print_function
 
@@ -16,12 +17,15 @@ KEYS = ("cooking_pot", "cutting_board", "skillet", "stove")
 STATION_OF = {"cooking_pot": B.POT, "cutting_board": B.BOARD, "skillet": B.SKILLET, "stove": B.STOVE}
 LOOK_OF = {"cooking_pot": "pot", "cutting_board": "board", "skillet": "pan", "stove": "stove"}
 BLOCK_OF = {B.POT: B.POT_BLOCK, B.BOARD: B.BOARD_BLOCK, B.SKILLET: B.SKILLET_BLOCK, B.STOVE: B.STOVE_BLOCK}
-DEFAULT_ORDER = [B.BOARD, B.POT, B.SKILLET, B.STOVE]       # 缺省的登记顺序（原来的 tryRegister / OnLoadClientAddonScriptsAfter 照这个次序）
+STEP_OF = {"cooking_pot": "pot", "cutting_board": "board", "skillet": "pan", "stove": "grill"}      # 每个站点在步骤表里的步骤名
+DEFAULT_ORDER = [B.BOARD, B.POT, B.SKILLET, B.STOVE]       # 缺省的登记顺序（原来的 tryRegister / OnLoadClientAddonScriptsAfter 照这个次序，现在是步骤表的顺序）
 
 
 def testTheShippedDefaultsRegisterEverythingInTheOrderTheBootsAlwaysDid():
     server, client = B.bootServer(), B.bootClient()
     assert server.stations == DEFAULT_ORDER and client.stations == DEFAULT_ORDER, (server.stations, client.stations)
+    assert server.mode == client.mode == B.Mode.LINKED
+    assert server.steps == client.steps == {"board": "ok", "pot": "ok", "pan": "ok", "grill": "ok"}
     assert server.looks == {"pot": True, "pan": True, "stove": True, "board": True}
     assert client.looks == {"pot": True, "pan": True, "stove": True, "board": True}
     assert server.dishCrafts is True, "工作台拦截登记了"
@@ -36,6 +40,8 @@ def testEachSwitchTurnsOffOnlyItsOwnStationAndWhatHangsOnIt():
             server, client = B.bootServer(), B.bootClient()
         expected = [stationId for stationId in DEFAULT_ORDER if stationId != STATION_OF[key]]
         assert server.stations == expected and client.stations == expected, (key, server.stations, client.stations)
+        skipped = dict((step, "skipped" if STEP_OF[key] == step else "ok") for step in STEP_OF.values())
+        assert server.steps == client.steps == skipped, (key, server.steps, client.steps)
         for name in ("pot", "pan", "stove", "board"):
             assert server.looks[name] == client.looks[name] == (name != LOOK_OF[key]), (key, name, server.looks, client.looks)
         assert server.dishCrafts is (key != "cutting_board"), "工作台拦截跟着砧板站点走：没有砧板站点就没有地方做这些菜"
@@ -84,8 +90,10 @@ def testServerAndClientAgreeOnEveryCombinationOfTheSwitches():
                 is (stationId in on), (values, block)
 
 
-def testAnOldKernelStillKeepsTheStationsItAlwaysKept():
-    class Old(object):                # 前置包 API 2：没有厨锅 / 煎锅（要 3），有炉灶（要 2 和朝向钩子）
+def testAKernelBelowTheRequiredApiIsOutdatedAndNothingIsRegistered():
+    # 原来三个门槛（1 / 2 / 3）按站点分：API 2 的前置包上炉灶登记、厨锅 / 煎锅 / 砧板不登记。现在只有一个（Presence.REQUIRED_API_VERSION = 3）：
+    # 前置包从来没有发过比 3 低的版本，低于它的整个不联动，一个站点也不登记
+    class Old(object):
         API_VERSION = 2
         FACING_HOOK = True
         StationLogic = B.ServerApi.StationLogic
@@ -94,9 +102,25 @@ def testAnOldKernelStillKeepsTheStationsItAlwaysKept():
         SlotRules = B.ServerApi.SlotRules
         registerStation = staticmethod(B.ServerApi.registerStation)
         ControlSpec = B.ServerApi.ControlSpec
-    server = B.bootServer(Old)
-    assert server.stations == [B.STOVE] and server.looks == {"pot": False, "pan": False, "stove": True, "board": False}
-    assert server.dishCrafts is False, "砧板站点要 API 3"
+
+    class OldClient(B.ClientApi):
+        API_VERSION = 2
+    server, client = B.bootServer(Old), B.bootClient(OldClient)
+    assert server.mode == client.mode == B.Mode.OUTDATED
+    assert server.stations == [] and client.stations == [] and server.steps == client.steps == {}
+    assert server.looks == {"pot": False, "pan": False, "stove": False, "board": False} and client.looks == server.looks
+    assert server.dishCrafts is False
+    for block in (B.POT_BLOCK, B.BOARD_BLOCK, B.SKILLET_BLOCK, B.STOVE_BLOCK):
+        assert B.ServerRegistry.stationTypeOf(block) is None and B.ClientRegistry.behaviorOf(block) is None, "前置包不认这些方块：走经典玩法"
+
+
+def testWithoutThePrerequisiteBothSidesAreStandaloneAndRegisterNothing():
+    server, client = B.bootServer(B.ABSENT), B.bootClient(B.ABSENT)
+    assert server.mode == client.mode == B.Mode.STANDALONE
+    assert server.stations == [] and client.stations == [] and server.steps == client.steps == {}
+    assert server.looks == {"pot": False, "pan": False, "stove": False, "board": False} and client.looks == server.looks
+    assert server.dishCrafts is False
+    assert B.Mode.linked() is False
 
 
 if __name__ == "__main__":

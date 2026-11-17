@@ -13,6 +13,8 @@
 4. 服务端的 @AllowCall 端点必须同时 @InjectHttpPlayerId：玩家身份只认引擎注入的；端点名在同一端唯一
 5. 模块名不与 py2 会被隐式相对导入劫持的标准库 / 引擎顶层名同名（random.py、time.py、common.py……）
 6. 代码文件 ≤ 250 行（Shared/Data/ 纯数据表除外）、函数 ≤ 120 行
+7. 规则表里带 "only" 的文件只许导入那几个前缀（任何位置的相对导入都算）：场景交互前置的联动入口（ServerBoot / ClientBoot）、判定（Presence、Steps）和两张步骤表
+   只导入它们自己这一组、Shared 的 HandsOnMode、QuModLibs 和客户端入口要的 Client/Engine——站点模块在步骤里才导入，没装前置包时它们连同它们的 @Listen / @AllowCall 一个也不会被导入
 """
 from __future__ import print_function
 
@@ -31,6 +33,9 @@ GENERATED_FILES = ("dolorLayouts.py",)
 SHADOW_NAMES = {"random", "time", "math", "copy", "json", "string", "types", "traceback", "common", "mod",
                 "collections", "re", "os", "uuid", "weakref", "functools", "itertools"}
 _SHARED_RULE = {"forbid": {"Server", "Client", "Compat", "Api", "QuModLibs"}, "engine": False}
+# 联动入口、判定、步骤表只许导入这些（点分路径的前缀）：站点模块在步骤里才导入，没装前置包时它们连同 @Listen / @AllowCall 一个也不会被导入（规则 7）
+ENTRY_ONLY = ("QuModLibs", "Shared.Rules.HandsOnMode", "Client.Engine", "Compat.Diegesis.ServerBoot", "Compat.Diegesis.ClientBoot",
+              "Compat.Diegesis.Presence", "Compat.Diegesis.Steps", "Compat.Diegesis.ServerSteps", "Compat.Diegesis.ClientSteps")
 PACKS = {
     "fd": {
         "dir": os.path.join(fdtest.BP, fdtest.SCRIPTS),
@@ -56,7 +61,20 @@ PACKS = {
             "Compat/Diegesis/BoardAssemble.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardEmit.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/DishCrafts.py": {"forbid": {"Client"}, "engine": True},
-            "Compat/Diegesis/ServerBoot.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/ServerBoot.py": {"forbid": {"Client"}, "engine": True, "only": ENTRY_ONLY},
+            # 联动判定和步骤表：两端都用，不碰任何一端、不碰引擎（引擎的东西由两个入口交进来）；步骤模块按端分，自己也不碰引擎
+            "Compat/Diegesis/Presence.py": {"forbid": {"Server", "Client"}, "engine": False, "only": ENTRY_ONLY},
+            "Compat/Diegesis/Steps.py": {"forbid": {"Server", "Client"}, "engine": False, "only": ENTRY_ONLY},
+            "Compat/Diegesis/ServerSteps.py": {"forbid": {"Server", "Client"}, "engine": False, "only": ENTRY_ONLY},
+            "Compat/Diegesis/ClientSteps.py": {"forbid": {"Server", "Client"}, "engine": False, "only": ENTRY_ONLY},
+            "Compat/Diegesis/BoardServerLink.py": {"forbid": {"Client"}, "engine": False},
+            "Compat/Diegesis/PotServerLink.py": {"forbid": {"Client"}, "engine": False},
+            "Compat/Diegesis/PanServerLink.py": {"forbid": {"Client"}, "engine": False},
+            "Compat/Diegesis/GrillServerLink.py": {"forbid": {"Client"}, "engine": False},
+            "Compat/Diegesis/BoardClientLink.py": {"forbid": {"Server"}, "engine": False},
+            "Compat/Diegesis/PotClientLink.py": {"forbid": {"Server"}, "engine": False},
+            "Compat/Diegesis/PanClientLink.py": {"forbid": {"Server"}, "engine": False},
+            "Compat/Diegesis/GrillClientLink.py": {"forbid": {"Server"}, "engine": False},
             "Compat/Diegesis/BoardView.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardDraw.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardDrawEvents.py": {"forbid": {"Server"}, "engine": True},
@@ -97,7 +115,7 @@ PACKS = {
             "Compat/Diegesis/StoveWorld.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/StoveScene.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/StoveScenes.py": {"forbid": {"Server"}, "engine": True},
-            "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True, "only": ENTRY_ONLY},
         },
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},
         "endpoints": [("server", "CookingPotAddFood"), ("client", "OnPlaySound")],
@@ -161,6 +179,11 @@ def _importTargets(relPath, tree):
     return targets
 
 
+def _imported(pack, parts, node):
+    """一条相对导入真正导入的模块（点分路径的各段）：from . import X / from ...Shared.Rules import X 的 X 是子模块时是那个子模块，是名字时是 parts 这个模块。"""
+    return [parts + [alias.name] if _exists(pack, parts + [alias.name]) else parts for alias in node.names]
+
+
 def testLayering():
     problems = []
     for pack, relPath, path, source in _allSources():
@@ -173,6 +196,11 @@ def testLayering():
                 problems.append("%s/%s:%d 导入了引擎模块" % (pack, relPath, node.lineno))
             elif kind == "rel" and parts and parts[0] in rule["forbid"]:
                 problems.append("%s/%s:%d 不允许导入 %s" % (pack, relPath, node.lineno, ".".join(parts)))
+            if kind == "rel" and parts and "only" in rule:
+                for target in _imported(pack, parts, node):
+                    dotted = ".".join(target)
+                    if not any(dotted == allowed or dotted.startswith(allowed + ".") for allowed in rule["only"]):
+                        problems.append("%s/%s:%d 只许导入 %s，这里导入了 %s" % (pack, relPath, node.lineno, "、".join(rule["only"]), dotted))
     assert not problems, "\n".join(problems)
 
 

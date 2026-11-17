@@ -13,8 +13,8 @@ from optkit import Config
 StoveFlame = fdtest.load("Client.StoveFlame")
 
 
-class _NoKernel(object):
-    API_VERSION = 0                  # 前置包没装：ClientBoot 当它不在
+class _OldKernel(object):
+    API_VERSION = 2                  # 前置包比本包要的老（Presence.REQUIRED_API_VERSION 是 3）：一步也不联动
 
 
 def _boot(api=None, **options):
@@ -36,8 +36,14 @@ def testWithTheStoveSwitchedOffInHandsOnDelightsConfigFarmersDelightsSmokeStays(
 
 
 def testWithoutThePrerequisiteFarmersDelightsSmokeStays():
-    client = _boot(_NoKernel)
-    assert client.stations == [] and client.looks["stove"] is False
+    client = _boot(B.ABSENT)
+    assert client.stations == [] and client.looks["stove"] is False and client.mode == B.Mode.STANDALONE
+    assert StoveFlame.muted() is False
+
+
+def testWithATooOldPrerequisiteFarmersDelightsSmokeStaysToo():
+    client = _boot(_OldKernel)
+    assert client.stations == [] and client.looks["stove"] is False and client.mode == B.Mode.OUTDATED
     assert StoveFlame.muted() is False
 
 
