@@ -22,6 +22,7 @@ from . import CraftReturns  # noqa: F401
 from . import CookingPot  # noqa: F401
 from . import CookingPotHost  # noqa: F401
 from . import Skillet  # noqa: F401
+from . import HeatConduct  # noqa: F401
 from . import SkilletHold  # noqa: F401
 from . import Stove  # noqa: F401
 from . import StoveFire  # noqa: F401
