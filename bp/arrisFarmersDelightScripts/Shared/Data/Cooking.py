@@ -36,6 +36,12 @@ CanProvideHeatBlockList = [
     "arris:stove"
 ]
 
+# 把热传给上面一格的方块（FD 的标签 heat_conductors：漏斗；create:chute 是可选项，这个引擎上没有对应的方块名）：厨锅 / 煎锅下面是它们时，
+# 热源在再下面一格也算热（HeatableBlockEntity.isHeated，java:28-34）。不属于对外联动契约（Api/LegacyModAttr.py 的白名单里没有它）
+HeatConductorList = [
+    "minecraft:hopper"
+]
+
 # 炉灶列表
 StoveList = [
     "arris:stove"
