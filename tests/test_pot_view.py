@@ -72,6 +72,10 @@ class FakeView(object):
         self.spread = SpreadState(self, None)
         self.lifts = []                            # carryFrom(点, 大小)：拿起的一叠从哪起飞
         self.dropping = False                      # 内核正在送拖着放补的那一下点击
+        self.window = 0.25                         # doubleSeconds() 的回答（前置包有才有；键鼠 0.25，触屏 0.4）
+
+    def doubleSeconds(self):
+        return self.window
 
     def carryFrom(self, point, size=None):
         self.lifts.append((tuple(point), size))
@@ -538,6 +542,22 @@ def testTheDoubleClickThatGathersTheRestMakesNoSecondSound():
     behavior.onPointer(Event(LEFT, Hit("item", 0)))
     behavior.onPointer(Event(LEFT, Hit("item", 0)))
     assert [click[2] for click in view.clicks] == ["PICKUP", "PICKUP_ALL"] and view.sounds == ["pick"]
+
+
+def testTheDoubleClickWindowIsTheKernelsForTheCurrentInputAndTheirOwnQuarterSecondForOldKernels():
+    """触屏两下按下之间要抬手、再落准同一格：前置包按输入方式给间隔（触屏 0.4 秒，view.doubleSeconds），厨锅自己的 0.25 秒不再是唯一的数；
+    老版本的前置包没有它，照旧 0.25 秒。"""
+    for window, gaps in ((0.4, ((0.35, "PICKUP_ALL"), (0.45, "PICKUP"))), (0.25, ((0.2, "PICKUP_ALL"), (0.3, "PICKUP"))), (None, ((0.2, "PICKUP_ALL"), (0.3, "PICKUP")))):
+        for gap, want in gaps:
+            behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+            if window is None:
+                view.doubleSeconds = None                           # 老版本的前置包：没有这个方法
+            else:
+                view.window = window
+            behavior.onPointer(Event(LEFT, Hit("item", 0)))
+            behavior.clock += gap
+            behavior.onPointer(Event(LEFT, Hit("item", 0)))
+            assert view.clicks[-1][2] == want, (window, gap, view.clicks)
 
 
 def testTheClicksThatHaveTheirOwnSoundOrNoneStayAsTheyWere():

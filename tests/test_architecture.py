@@ -72,6 +72,7 @@ PACKS = {
             "Compat/Diegesis/BoardEffects.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardWatch.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardInv.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/TouchFeel.py": {"forbid": {"Server", "Client"}, "engine": False},     # 只问前置包的视图：不碰任何一端、不碰引擎
             "Compat/Diegesis/PotView.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotPick.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotHud.py": {"forbid": {"Server"}, "engine": True},

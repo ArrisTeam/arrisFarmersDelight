@@ -20,7 +20,7 @@
 徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
-from . import BookSources, PotPick, PotScenes
+from . import BookSources, PotPick, PotScenes, TouchFeel
 from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
@@ -34,7 +34,7 @@ FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
 SLOT_SIZE = 3.2                                    # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
-DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）
+DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）；前置包按输入方式给时（view.doubleSeconds，触屏 0.4）听它的
 
 
 class PotViewMixin(object):
@@ -155,7 +155,7 @@ class PotViewMixin(object):
             return True
         picked, self.picked = self.picked, None
         target = self._slotOf(key, payload)
-        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < DOUBLE_CLICK                 and target == picked[0] and not getattr(self.view, "dropping", False):
+        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < TouchFeel.doubleClick(self.view, DOUBLE_CLICK)                 and target == picked[0] and not getattr(self.view, "dropping", False):
             # 双击：同一格、左键、不按 Shift（FocusInput.clickItem 的 PICKUP_ALL）——锅里和背包里同一种的都收到手上；手上的东西服务端
             # 可能还没发回来，以"刚拿起过"为准。拖着放补的那一下点击（view.dropping）不算
             self.view.click(picked[0], 0, self.api.PICKUP_ALL)
