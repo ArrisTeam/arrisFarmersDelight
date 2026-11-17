@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""GrillFx - 炉灶站点的粒子和声音：把 HandsOn/StoveFx 的日程放出去（客户端）
+"""GrillFx - 炉灶场景的粒子和声音：把 HandsOn/StoveFx 的日程放出去（客户端）
 
 StoveFx 只说"哪一件上、偏哪、什么速度、几颗、什么色"和"哪一声、多大、多高"，这里换成前置包的粒子（arris_diegesis:steam 蒸汽、
 glint 闪光，diegesisRp/particles）和本包 / 原版的声音。JE 的粒子样式（StoveBehavior 用的 STEAM / PAN_SMOKE / HEAT / GLINT）
-在基岩版里的对应：
+在基岩版里的对应（热浪、蒸汽、烟和各种声音谁都看得见听得见，不用开着站点：StoveScene.py 里每座加载着的炉灶一份）：
 - steam：蒸汽，白色按 ARGB 的透明度，大小 1；
 - smoke（PAN_SMOKE）：同一张蒸汽的帧，灰白（0xC8C6C2）、透明度 0x58、大小放大到 JE 的 2.2 / 0.8 倍、活 2 秒；
 - glint：闪光；
