@@ -50,6 +50,19 @@ def holidayAuxMap(experimentalHoliday):
     return _HOLIDAY_AUX if experimentalHoliday else _PLAIN_AUX
 
 
+def directionOfAux(aux):
+    """方块的 aux -> direction 状态 0..3（0 南 1 西 2 北 3 东，netease:face_directional 的约定）：读方块朝向的唯一一处，
+    炉灶 / 厨锅 / 煎锅 / 砧板的站点朝向钩子（两端）、场景、世界里的展示都走它（PotModelMath.facingOf、StoveFacing.yawOfAux）。
+    普通世界 aux 就是 direction（0..3）；假日创造者实验玩法下 direction 1 / 2 / 3 的 aux 是 4 / 8 / 12（_HOLIDAY_AUX）。两种写法在 0 上一样、
+    别处不撞，所以不用先查实验玩法开没开。别的值（读不到的 None、越界、不是数）一律按 0 朝南，不返回 None：站点的几何按方块自己的空间写，
+    读不到朝向时两端也得说同一个确定的答案（钩子返回 None 站点就朝着玩家，和六件的位置对不上了）。"""
+    try:
+        value = int(aux or 0)
+    except (TypeError, ValueError):
+        return 0
+    return _HOLIDAY_AUX.get(value, value if value in _PLAIN_AUX else 0)
+
+
 def placesPumpkinPie(sneaking, sneakToPlace):
     """原版南瓜派对方块使用时，是不是放成方块（JE PlacePumpkinPieMixin.usePumpkinPie）。
 

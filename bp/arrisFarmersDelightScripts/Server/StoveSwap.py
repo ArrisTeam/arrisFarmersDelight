@@ -16,8 +16,8 @@ import time
 from . import HandGrill
 from .Helpers.BlockItems import PublishStove
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName
-from .Helpers.Placement import FacingOfAux
 from ..Shared.Rules import GrillStation
+from ..Shared.Rules.Placement import directionOfAux
 
 KEYS = tuple(str(place) for place in range(GrillStation.PLACES)) + ("cookingIndex", HandGrill.SAVE_KEY)
 GUARD_SECONDS = 0.5        # 换方块引发的移除事件，这么久以内算换方块自己的
@@ -60,11 +60,11 @@ def snapshot(blockEntityData):
 
 
 def _directionOf(blockPos, dimensionId):
-    """方块的朝向（direction 状态 0 南 1 西 2 北 3 东）：优先读状态，读不到再用 aux。"""
+    """方块的朝向（direction 状态 0 南 1 西 2 北 3 东）：优先读状态，读不到再按 aux 读（和站点朝向钩子同一个函数，Placement.directionOfAux）。"""
     states = compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId)
     if states and "direction" in states:
         return states["direction"]
-    return FacingOfAux((compFactory.CreateBlockInfo(levelId).GetBlockNew(blockPos, dimensionId) or {}).get("aux") or 0)
+    return directionOfAux((compFactory.CreateBlockInfo(levelId).GetBlockNew(blockPos, dimensionId) or {}).get("aux"))
 
 
 def swap(dimensionId, blockPos, newName, now=None):

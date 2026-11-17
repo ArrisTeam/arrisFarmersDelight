@@ -35,7 +35,8 @@ def _close(a, b, eps=1.0e-6):
 
 def testFacingFollowsTheBlockAux():
     assert [Math.facingOf(aux) for aux in (0, 1, 2, 3)] == ["south", "west", "north", "east"]
-    assert Math.facingOf(None) == "south" and Math.facingOf(6) == "north", "只看低两位"
+    assert [Math.facingOf(aux) for aux in (4, 8, 12)] == ["west", "north", "east"], "假日创造者实验玩法下 direction 1 / 2 / 3 的 aux 是 4 / 8 / 12"
+    assert Math.facingOf(None) == "south" and Math.facingOf(6) == "south", "读不到、别的值按 0 朝南（Placement.directionOfAux；原来只取低两位，8 读成朝南、6 读成朝北）"
 
 
 def testLocalAndWorldOffsetsAreInverse():

@@ -4,10 +4,13 @@
 JE 的炉灶站点是 Orientation.BLOCK（HoD 的 StoveStation）：站点的北面永远是炉灶方块的正面（FD 的 FACING 属性），场景按"炉灶朝北"写
 （stove.json），从哪一侧右键镜头都飞到正面；厨锅、砧板才是 PLAYER（朝着玩家站的那一侧）。FD 自己画烤架上的东西（DefaultStoveRenderer）、
 冒烟（StoveBlockEntity.addSmokeParticles）也都按 FACING 转，所以六件东西的位置、翻面落下的动作、粒子声音的位置全跟着炉灶转。
-基岩版的炉灶是 netease:face_directional 的 direction 状态（就是方块的 aux）：0 南、1 西、2 北、3 东，写在 north 的贴图（点着的火口）
+基岩版的炉灶是 netease:face_directional 的 direction 状态（方块的 aux）：0 南、1 西、2 北、3 东，写在 north 的贴图（点着的火口）
 出现在世界的那一面（Strata 引擎知识库 BLOCK_LEGACY_ENGINE §10.2），所以炉灶的"正面"朝哪就是 PotModelMath.facingOf(aux)；
 站点朝向（度，北 0 / 东 90 / 南 180 / 西 270，Diegesis 的 stationToWorld）就是这一面的方向。
-客户端的朝向钩子（GrillView.facingOf，读 GetBlock 的 aux）和服务端的（GrillOpen.facingOf，读 GetBlockNew 的 aux）都过 yawOfAux，说同一个答案。
+aux 怎么读成 direction 只有一处：Placement.directionOfAux（0..3 就是 direction，假日创造者实验玩法下的 4 / 8 / 12 是 1 / 2 / 3，别的值按 0 朝南，
+不返回 None：返回 None 站点会朝着玩家，和炉灶自己空间里写的六件对不上）。点着的 arris:stove 和熄着的 arris:stove_extinguish、
+下游的炉灶（arris:nether_stove、ends_delight:end_stove 同样是 face_directional）都走它。
+客户端的朝向钩子（GrillView.facingOf，读 GetBlock 的 aux）和服务端的（GrillOpen.facingOf，读 GetBlockNew 的 aux）、场景、世界里的展示都过 yawOfAux，说同一个答案。
 
 炉灶自己的坐标就是站点空间：像素（16 = 1 格），原点在方块西北下角，按"炉灶朝北"写（HoD 的 stove.json），+x 在画面左边（面朝南时世界 +x 在左），
 +z 朝远处，烤架面 y = 16。站点朝哪、炉灶就朝哪，所以开着站点的人用的坐标、谁都看得见的场景用的坐标、没装前置包时世界里的展示用的坐标
@@ -20,7 +23,8 @@ FACINGS = dict((yaw, facing) for facing, yaw in YAWS.items())
 
 
 def yawOfAux(aux):
-    """炉灶方块的 aux（direction 状态）-> 站点朝向（度）：站点的北面转到炉灶的正面那一侧。aux 读不到按 0（引擎的缺省状态，朝南）。"""
+    """炉灶方块的 aux -> 站点朝向（度）：站点的北面转到炉灶的正面那一侧。aux 0..3 是 direction 状态，4 / 8 / 12（假日创造者实验玩法）是 1 / 2 / 3，
+    读不到的、别的值按 0（引擎的缺省状态，朝南）；永远是 Protocol.YAWS 里的四个值之一，不返回 None。"""
     return YAWS[Pot.facingOf(aux)]
 
 

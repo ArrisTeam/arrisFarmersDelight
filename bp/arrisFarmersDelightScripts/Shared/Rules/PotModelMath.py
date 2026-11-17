@@ -3,14 +3,16 @@
 
 场景里的量都用"锅自己的坐标"（和 JE 的方块模型一样：朝北放的方块，+x 东、+y 上、+z 南，单位像素，原点在方块西北下角），
 这里把它换成引擎要的：
-- 朝向：netease:face_directional 的 direction（就是方块的 aux）0 南、1 西、2 北、3 东，模型正面（-z）朝那边、绕方块中心转
-  （Strata 知识库 14_block_entity_model §3.3，实机核对过朝北、朝南）；
+- 朝向：netease:face_directional 的 direction（方块的 aux；假日创造者实验玩法下是 0 / 4 / 8 / 12，Placement.directionOfAux 两种都认）
+  0 南、1 西、2 北、3 东，模型正面（-z）朝那边、绕方块中心转（Strata 知识库 14_block_entity_model §3.3，实机核对过朝北、朝南）；
 - 骨骼动画：几何文件的 x 和 JE 反着，位移是 (-x, y, z)；骨骼的 rotation 在文件空间里等价于 Rz(-rz)·Ry(ry)·Rx(-rx)
   （03_model_skeleton/GEOMETRY_ENGINE.md §5），换回 JE 的坐标是 Q = Rz(rz)·Ry(-ry)·Rx(-rx)，所以把 Q 拆成
   Rz(c)·Ry(b)·Rx(a) 之后 rotation = (-a, -b, c)。
 矩阵是 3×3 的行优先元组（右手系，作用在列向量上）。
 """
 import math
+
+from .Placement import directionOfAux
 
 NORTH, EAST, SOUTH, WEST = "north", "east", "south", "west"
 FACINGS = {0: SOUTH, 1: WEST, 2: NORTH, 3: EAST}
@@ -21,8 +23,9 @@ IDENTITY = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
 
 
 def facingOf(aux):
-    """方块的 aux（direction 状态）-> 朝向；越界按引擎的缺省当朝北。"""
-    return FACINGS.get(int(aux or 0) & 3, NORTH)
+    """方块的 aux -> 朝向（厨锅、煎锅、砧板、炉灶共用，Placement.directionOfAux 读 aux）：0..3 就是 direction 状态，假日创造者实验玩法下
+    direction 1 / 2 / 3 的 aux 是 4 / 8 / 12，别的值（读不到的 None、越界）按 0 朝南（引擎的缺省状态）。"""
+    return FACINGS[directionOfAux(aux)]
 
 
 def localToWorld(facing, dx, dz):

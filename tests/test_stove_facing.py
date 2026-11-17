@@ -70,9 +70,11 @@ def testTheStationsNorthSideIsTheStovesFrontInTheKernelsGeometry():
 
 
 def testAnAuxTheEngineCannotGiveReadsAsTheEnginesDefaultStateLikeThePotAndPan():
-    """读不到（None）按 0：引擎的缺省状态朝南；越界的位和厨锅、煎锅一样只看低两位。"""
-    assert StoveFacing.yawOfAux(None) == StoveFacing.yawOfAux(0) == 180
-    assert StoveFacing.yawOfAux(6) == StoveFacing.yawOfAux(2) == 0 and StoveFacing.yawOfAux(3.0) == 90
+    """读不到（None）、越界的值按 0：引擎的缺省状态朝南，和厨锅、煎锅同一个函数（Placement.directionOfAux；原来只取低两位，6 读成朝北）；
+    假日创造者实验玩法下的 4 / 8 / 12 是 direction 1 / 2 / 3（完整的表在 test_facing_of_aux.py）。"""
+    assert StoveFacing.yawOfAux(None) == StoveFacing.yawOfAux(0) == StoveFacing.yawOfAux(6) == 180
+    assert StoveFacing.yawOfAux(3.0) == 90
+    assert [StoveFacing.yawOfAux(aux) for aux in (4, 8, 12)] == [270, 0, 90]
 
 
 # ---------------------------------------------------------------- 六件的位置和 FD 的 Java 对上号
