@@ -98,6 +98,7 @@ def testOnlyTheEventsThatMakeSoundOrDustAreBroadcastAndWithoutTheBigAnimationDat
         assert events == ["placed", "placed", "taken", "taken"], events
         for look in _looks("b"):
             assert "stack" not in look and "layers" not in look, "动画才用的大块不带"
+        assert [(look["at"], look["item"]) for look in _looks("b") if look["event"] == "placed"] == [(0, "minecraft:bread"), (1, "arris:tomato")],             "放下一层带着层号和放的什么：旁观的人据此补手倒 / 磕的声音"
         taken = [look for look in _looks("b") if look["event"] == "taken"][0]
         assert taken["carved"] is False and taken["at"] == 1
         assert not [look for look in _looks("b") if look["event"] == "refused"]

@@ -98,6 +98,39 @@ def testAnOnlookerHearsTheSameSoundsFromTheBoard():
     assert _names() == ["random.pop", "dig.wood", "dig.wood", "random.pop"]
 
 
+def _later():
+    """排着的计时器（手倒 / 磕的声音，旁观的人补）：按时刻先后跑掉，返回 [(秒, 声音)]。"""
+    return [(seconds, args[0]) for seconds, _func, args in C.engine.run_timers()]
+
+
+def testAnOnlookerHearsTheHandPourAndCrackAtTheSameMomentsTheCookDoes():
+    """放下的一层是液体或蛋：站点里的手倒 / 磕时出声，旁观的人没有手的动画，placed 带着放的什么，按同一时刻补上同一个声音。"""
+    C.engine.reset()
+    C.BoardWatch.enable(C.Geometry)
+    C.BoardWatch.OnBoardLook(_look("placed", at=1, item="minecraft:milk_bucket"))
+    assert len(C.engine.played) == 1 and C.engine.played[0][:2] == ("dig.wood", 0.7) and abs(C.engine.played[0][2] - 1.2) < 1.0e-9, "放下那一声当场响"
+    assert _later() == [(0.5, ("bucket.empty_water", 0.45, 1.0))], "液体开始流（0.3 + 0.2 秒）：倒桶"
+    assert C.engine.played[-1] == ("bucket.empty_water", 0.45, 1.0) and C.engine.playedAt[-1] == C.BoardWatch.soundAt(tuple(POS)), "声音从板上传来"
+    C.BoardWatch.OnBoardLook(_look("placed", at=3, item="arris:milk_bottle"))
+    assert [sound for _at, sound in _later()] == [("bottle.empty", 0.45, 1.0)]
+    C.BoardWatch.OnBoardLook(_look("placed", at=2, item="minecraft:egg"))
+    later = _later()
+    assert [round(at, 6) for at, _sound in later] == [0.36, 0.9] and [sound for _at, sound in later] == [("block.turtle_egg.crack", 0.35, 1.5), ("dig.wood", 0.4, 1.4)],         "磕在板沿 0.36 秒、蛋液落到食物上 0.9 秒"
+
+
+def testAnOnlookerHearsNothingFromAHandForTheBaseOrOrdinaryOrBadLayers():
+    C.engine.reset()
+    C.BoardWatch.enable(C.Geometry)
+    cases = ({"at": 0, "item": "minecraft:milk_bucket"}, {"at": 1, "item": "minecraft:bread"}, {"at": 1}, {"item": "minecraft:egg"},
+             {"at": "1", "item": "minecraft:egg"}, {"at": 1, "item": ["minecraft:egg"]}, {"at": True, "item": "minecraft:egg"}, {})
+    for data in cases:
+        C.BoardWatch.OnBoardLook(_look("placed", **data))
+    assert len(C.engine.played) == len(cases) and _later() == [], "放下那一声照响；底座是容器照旧落下、别的东西没有手、坏数据不抛：什么也不补"
+    C.engine.reset()
+    C.BoardWatch.OnBoardLook(_look("taken", at=1, item="minecraft:egg", carved=False))
+    assert _later() == [], "只有放下才有手"
+
+
 def testAnOnlookerIgnoresWhatIsNotForThem():
     C.engine.reset()
     C.BoardWatch.enable(C.Geometry)

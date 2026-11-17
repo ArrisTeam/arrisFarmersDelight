@@ -34,6 +34,7 @@ class FakeClientEngine(object):
         self.offhand = None
         self.played = []
         self.playedAt = []                                # 每一声放在哪（和 played 一一对应）
+        self.timers = []                                  # AddTimer 排下的 (秒, 函数, 参数)：run_timers 一起跑掉
         self.molang = {}                                  # 方块实体的 molang 变量（砧板的描边）
         self.block = ("arris:cutting_board", 2)          # direction 2 = 朝北
         self.dimension = 0
@@ -76,6 +77,17 @@ class FakeClientEngine(object):
     def SetVariable(self, particleId, name, value):
         self.particles[particleId - 1]["vars"][name] = value
         return True
+
+    def AddTimer(self, seconds, func, *args):
+        self.timers.append((seconds, func, args))
+        return len(self.timers)
+
+    def run_timers(self):
+        """把排着的计时器按时刻先后都跑掉，返回 [(秒, 函数, 参数)]。"""
+        due, self.timers = sorted(self.timers, key=lambda timer: timer[0]), []
+        for _seconds, func, args in due:
+            func(*args)
+        return due
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, entityId):
         self.played.append((name, volume, pitch))

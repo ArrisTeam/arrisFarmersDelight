@@ -93,11 +93,23 @@ def testAFoodNoBowlOrBreadIsRefusedOnABareBoard():
     assert _place(_item("minecraft:crimson_fungus", 5)).moved == 0, "菌不是碗"
 
 
+def testThePlacedEventSaysWhichLayerAndWhatWasLaid():
+    """placed 的数据：层号和放的东西（旁观的人不开站点、看不到状态，靠它知道放的是液体还是蛋：BoardWatch）；放在板上等着切的那一下没有层号也没有物品。"""
+    wheat = _place(_item("minecraft:wheat", 3)).layers
+    result = _place(_item("minecraft:milk_bucket", 1), layers=wheat)
+    assert result.events == [("placed", {"at": 1, "item": "minecraft:milk_bucket"})], "派皮：小麦、奶桶……"
+    result = _place(_item("minecraft:egg", 1), layers=wheat)
+    assert result.events == [("placed", {"at": 1, "item": "minecraft:egg"})], "面团：小麦、小麦、小麦、蛋"
+    assert _place(_item("arris:cabbage", 2)).events == [("placed", {})], "板上等着切的：没有层号"
+    named = _place(_item(u"minecraft:milk_bucket", 1), layers=wheat).events[0][1]["item"]
+    assert named == "minecraft:milk_bucket" and type(named) is str, "事件走线格式只收 str：py2 的 unicode 名字要换成 str"
+
+
 def testABurgerIsBuiltFromTheBreadUp():
     layers = []
     result = _place(_item("minecraft:bread", 3))
     assert _kinds(result.layers) == [("minecraft:bread", 3)] and result.moved == 3 and result.finish, "三个面包整叠当第 0 层"
-    assert result.events == [("placed", {"at": 0})]
+    assert result.events == [("placed", {"at": 0, "item": "minecraft:bread"})], "放的是第 0 层，事件带着放的什么（旁观的人据此补手倒 / 磕的声音）"
     layers = result.layers
     for name in ("arris:beef_patty", "arris:cabbage_leaf", "arris:tomato"):
         result = _place(_item(name), None, layers)

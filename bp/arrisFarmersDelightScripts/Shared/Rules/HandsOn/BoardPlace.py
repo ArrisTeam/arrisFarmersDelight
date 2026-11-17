@@ -94,7 +94,7 @@ def place(carried, board, layers, one, byUse, env):
             return result.refuse(carried, byUse)
         batch = BATCH if not result.layers else result.layers[0]["count"]
         count = 1 if one else min(carried["count"], batch)
-        result.events.append((PLACED, {"at": len(result.layers)}))
+        result.events.append((PLACED, {"at": len(result.layers), "item": eventStack(carried, 1)["newItemName"]}))   # item：旁观的人据此补手倒 / 磕的声音（BoardWatch）；事件的名字要是 str
         result.layers.append(stackOf(carried, count))
         result.moved, result.finish = count, True
         return result
