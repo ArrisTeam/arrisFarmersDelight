@@ -4,8 +4,8 @@
 取代旧版的 arris:item_display 服务端实体：服务端只广播"这个方块上有什么"，各客户端按这里的摆法用客户端掉落物画
 （与机械动力的置物台、传送带同一种做法）。坐标是方块内的格（原点在方块西北下角），方向是世界的 (dx, dz)。
 - 砧板：一件。食物平躺在板的底座中间（FD 的板底座 x 1..12，柄在旁边：offset 是从方块中心挪过去的量，随方块朝向由调用方算）、一叠不止一个时底下
-  再垫一张；方块类立在板上；工具竖着、刀尖朝下扎在板上（同 FD 原版）。大小、层的偏转偏移都和砧板站点里本人看到的一样（HandsOn/BoardScene），
-  开站、关站时板上的东西不跳。
+  再垫一张；方块类立在板上；插着的工具（BoardStation.Env.isCarving）画在方块正中心、贴图平行于板的正面、按类型转角度（镐 / 锄 225 度、三叉戟 135、
+  别的 180，同 FD 的 renderItemCarved）。大小、层的偏转偏移都和砧板站点里本人看到的一样（HandsOn/BoardScene），开站、关站时板上的东西不跳。
 - 煎锅：一叠按数量叠几层（1 个 1 层，2-16 两层，之后每 16 个加一层，最多 5 层），每层错开一点、转个角度。
 - 炉灶：六个烤位（3 x 2，位置照 HoD 的炉灶场景），每格一件小号的平躺食物；位置和每件的转角跟着炉灶朝向转（StoveFacing：FD 的
   DefaultStoveRenderer 按 FACING 转、HoD 的炉灶站点是 Orientation.BLOCK），开着站点、谁都看得见的场景、这里的展示是同一套。
@@ -27,7 +27,6 @@ SKILLET_FLOOR = 1.5 / 16.0
 STOVE_TOP = 1.0
 LAYER_STEP = 0.037
 STOVE_SLOTS = StoveLayout.blockFractions()        # 照 HoD 炉灶场景里六个烤位的位置（炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
-TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 FOOD_SCALE = 1.2
 BLOCK_SCALE = BoardScene.itemScale(True)     # 方块类在板上是棱长 5.2 像素的立方体（HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西）
@@ -36,7 +35,6 @@ CARVED_SCALE = BoardScene.scaleOf(BoardScene.CARVED_SCALE * 16.0)
 PILE_TURN = 17.0                              # 一叠的底下那张转的角度（scene 里 pile 节点的 rotation）
 SKILLET_SCALE = 1.0
 STOVE_SCALE = StoveLayout.SIZE / 8.0         # 一件 5 像素宽（贴图缩放 1 时边长 8 像素）
-TOOL_ROLL = 135.0          # 竖立的工具在贴图平面内顺时针转 135 度：刀尖朝下（实机标定）
 
 
 class Placement(object):
@@ -81,17 +79,24 @@ def _jitter(seed, index, span):
     return (value / 65535.0 * 2.0 - 1.0) * span
 
 
-def boardLayout(item, itemType, offset=(0.0, 0.0)):
-    """板上等着切的东西 / 做好的菜 / 插着的工具。offset 是从方块中心挪到板底座中间的量（方块分数，x 往东 z 往南）。"""
+def carvedFront(yaw):
+    """板上插着的工具的贴图正面朝哪（世界方向 dx, dz）：FD 的 renderItemCarved 比摆平的东西多转半圈，贴图正面朝板 FACING 的反方向（站在板正面的人看到的是背面），
+    板的 FACING（模型的正面）在板自己的坐标里是 -z，所以正面是板自己坐标里的 +z。yaw 是板的朝向（度，StoveFacing.yawOfAux）。"""
+    return StoveFacing.turnOffset(yaw, 0.0, 1.0)
+
+
+def boardLayout(item, itemType, carving, offset=(0.0, 0.0), yaw=0):
+    """板上等着切的东西 / 做好的菜 / 插着的工具。carving(物品) 说是不是插着的工具（BoardStation.Env.isCarving，站点里问的是同一个）；
+    offset 是从方块中心挪到板底座中间的量（方块分数，x 往东 z 往南）；yaw 是板的朝向（度），插着的工具跟着它转。"""
     if not isItem(item):
         return []
     shown = _single(item)
+    if carving(item):
+        return [Placement(shown, (BoardScene.CARVED_X / 16.0, BoardScene.CARVED_HEIGHT / 16.0, BoardScene.CARVED_X / 16.0), False, carvedFront(yaw),
+                          BoardScene.carvedRoll(itemType), CARVED_SCALE)]
     cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if itemType == "block":
         return [Placement(shown, (cx, BOARD_TOP + BoardScene.blockLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
-    if itemType in TOOL_TYPES:
-        return [Placement(shown, (cx, (BoardScene.CARVED_Y + BoardScene.TOP) / 16.0, cz), False, (0.7071, -0.7071), TOOL_ROLL,
-                          CARVED_SCALE)]
     flat = [Placement(shown, (cx, BOARD_TOP + 0.02 + BoardScene.pileLift(item.get("count", 1) or 1) / 16.0, cz), True, (1.0, 0.0), 0.0,
                       BOARD_FOOD_SCALE)]
     if (item.get("count", 1) or 1) > 1:
@@ -154,15 +159,16 @@ def stoveLayout(slots, yaw=0):
     return placements
 
 
-def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0), yaw=0):
+def layout(kind, items, itemTypeOf, pos, offset=(0.0, 0.0), yaw=0, carving=None):
     """kind 方块种类、items {"槽": 物品}、itemTypeOf(物品) -> 物品类型（客户端查 GetItemBasicInfo）、pos 方块坐标；
-    offset 只有砧板用：板底座中间离方块中心的量（方块分数）；yaw 只有炉灶用：炉灶朝向（度，StoveFacing.yawOfAux）。"""
+    offset 只有砧板用：板底座中间离方块中心的量（方块分数）；yaw 炉灶和砧板用：方块的朝向（度，StoveFacing.yawOfAux），炉灶转烤位、砧板转插着的工具；
+    carving 只有砧板用：carving(物品) 说是不是插着的工具（BoardStation.Env.isCarving）。"""
     if kind == KIND_BOARD:
         layers = [items.get(layerKey(index)) for index in range(DISH_LAYERS)]
         if isItem(items.get(DISH_KEY)) or any(isItem(layer) for layer in layers):
             return boardDishLayout(layers, items.get(DISH_KEY), posHash(pos), offset)
         item = items.get("0")
-        return boardLayout(item, itemTypeOf(item), offset) if isItem(item) else []
+        return boardLayout(item, itemTypeOf(item), carving, offset, yaw) if isItem(item) else []
     if kind == KIND_SKILLET:
         return skilletLayout(items.get("0"), posHash(pos))
     if kind == KIND_STOVE:

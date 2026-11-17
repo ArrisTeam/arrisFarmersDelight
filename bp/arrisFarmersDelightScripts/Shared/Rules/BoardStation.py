@@ -19,7 +19,8 @@ from .HandsOn.Items import keyOf  # noqa: F401 - 站点和测试从这里取
 MIN_API_VERSION = 3          # 前置包 API：砧板站点用到光标栈 / 托盘 / 站点逻辑的 ctx（2）和输入方式、半透明悬着的东西（3）；更老的前置包上砧板走经典玩法
 GROUP_BOARD = "board"
 GROUP_LAYERS = "layers"
-STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))   # FD 潜行使用会把这些插进空板
+# FD 潜行使用会把这些插进空板（Cutting.canStick，216-218：TieredItem 是刀 / 剑 / 斧 / 镐 / 锹 / 锄，再加 TridentItem、ShearsItem）；键是引擎的物品类型
+STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe", "trident", "shears"))
 
 _cache = {"stamp": None, "tools": frozenset(), "types": frozenset()}
 
@@ -126,10 +127,11 @@ class Env(object):
         key = keyOf(item)
         if key is None or not self.canHold(item):
             return False
-        return self.typeOf(item) in STICKABLE_TYPES or key[0] == "minecraft:shears" or bool(self.isKnife(key[0]))
+        return self.typeOf(item) in STICKABLE_TYPES or bool(self.isKnife(key[0]))
 
     def isCarving(self, item):
-        """板上这件是不是插着的工具（不是等着切的食物）。我们没有单独的标记：板上有、却是能插的工具就是。"""
+        """板上这件是不是插着的工具（不是等着切的食物）。我们没有 FD 的 IsItemCarved 标记：板上有、却是能插的工具就是。
+        板上怎么画（站点里 Compat/Diegesis/BoardDraw、没开站时 Shared/Rules/BlockDisplay）、取回要不要拔出来的动作都问它，说同一个答案。"""
         return keyOf(item) is not None and not self.cuttable(item) and self.canStick(item)
 
     def isDone(self, onBoard):

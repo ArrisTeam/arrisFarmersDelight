@@ -9,15 +9,18 @@
 """
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import addDropItem, compFactory, levelId, unwrapDeep, blockEntityExData
-from ..Shared.Rules import BlockDisplay, GrillBlocks, ItemPose, PotModelMath, StoveFacing
+from ..Shared.Data.Cutting import knifeList
+from ..Shared.Rules import BlockDisplay, BoardStation, GrillBlocks, ItemPose, PotModelMath, StoveFacing
 from ..Shared.Rules.HandsOn import BoardScene
 
 BOARD_BLOCKS = ("arris:cutting_board",)
 SKILLET_BLOCKS = ("arris:skillet",)
+KNIFE_TAG = "arris:knife"
 _shown = {}        # (维度, 坐标) -> [掉落物 id]
 _last = {}         # (维度, 坐标) -> (kind, items)：最后一份内容
 _hidden = set()    # 站点在画、本端不画的方块
 _itemTypes = {}    # (名字, aux) -> 物品类型
+_knifeTags = {}    # 物品名 -> 带不带 arris:knife 标签
 
 
 def kindOf(blockName):
@@ -42,6 +45,20 @@ def _itemType(item):
     return _itemTypes[key]
 
 
+def isKnife(name):
+    """刀：登记在 knifeList 里的，或带 arris:knife 物品标签的（客户端读不到标签时只认前者）。砧板站点（Compat/Diegesis/BoardView）问的也是它：
+    插着的刀站点里画成什么、没开站时画成什么，用的是同一个答案（BoardStation.Env.isCarving）。"""
+    if name in knifeList:
+        return True
+    if name not in _knifeTags:
+        reader = getattr(compFactory.CreateItem(levelId), "GetItemTags", None)
+        _knifeTags[name] = KNIFE_TAG in ((reader(name) if reader is not None else None) or [])
+    return _knifeTags[name]
+
+
+_boardEnv = BoardStation.Env(isKnife, _itemType)      # 板上的东西是不是插着的工具：站点里的画面（BoardView 的 Env）问的是同一件事
+
+
 def _boardOffset(pos):
     """板底座中间离方块中心的量（方块分数）：FD 的板底座 x 1..12、柄在旁边，中心在方块自己坐标的 (6.5, 8)，随方块朝向转。"""
     block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
@@ -49,8 +66,9 @@ def _boardOffset(pos):
     return (dx / 16.0, dz / 16.0)
 
 
-def _stoveYaw(pos):
-    """炉灶的朝向（度）：烤位的位置和每件的转角跟着炉灶转（FD 的 DefaultStoveRenderer 按 FACING 转）；方块读不到按 aux 0。"""
+def _facingYaw(pos):
+    """炉灶、砧板的朝向（度）：炉灶的烤位和每件的转角（FD 的 DefaultStoveRenderer 按 FACING 转）、砧板上插着的工具（FD 的 renderItemCarved 按 FACING 转）
+    都跟着方块转；方块读不到按 aux 0。"""
     block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
     return StoveFacing.yawOfAux(block[1] if block else 0)
 
@@ -93,6 +111,13 @@ def release(dimensionId, pos):
     _hidden.discard(key)
 
 
+def _layoutOf(kind, items, pos):
+    """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：砧板要板底座的偏移、朝向和"是不是插着的工具"，炉灶要朝向。"""
+    offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
+    yaw = _facingYaw(pos) if kind in (BlockDisplay.KIND_BOARD, BlockDisplay.KIND_STOVE) else 0
+    return BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw, _boardEnv.isCarving)
+
+
 def show(dimensionId, pos, kind, items):
     """按摆法画出这个方块上的物品（先清掉旧的）。"""
     pos = (int(pos[0]), int(pos[1]), int(pos[2]))
@@ -102,9 +127,7 @@ def show(dimensionId, pos, kind, items):
         return
     itemComp = compFactory.CreateItem(levelId)
     shown = []
-    offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
-    yaw = _stoveYaw(pos) if kind == BlockDisplay.KIND_STOVE else 0
-    for placement in BlockDisplay.layout(kind, items, _itemType, pos, offset, yaw):
+    for placement in _layoutOf(kind, items, pos):
         center = (pos[0] + placement.center[0], pos[1] + placement.center[1], pos[2] + placement.center[2])
         if placement.flat:
             matrix = ItemPose.flatMatrix(placement.direction[0], placement.direction[1])

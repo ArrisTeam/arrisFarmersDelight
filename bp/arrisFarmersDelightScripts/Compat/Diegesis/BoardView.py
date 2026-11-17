@@ -17,7 +17,7 @@ from .BoardCutter import Cutter
 from .BoardDraw import Draw
 from .BoardFx import KNOCK, play
 from .BoardGlow import BoardGlow, placeable
-from .BoardInv import isKnife, offhand, selectedSlot, typeOf
+from .BoardInv import offhand, selectedSlot, typeOf
 from ...Client import BlockItems
 from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
@@ -40,7 +40,7 @@ class BoardViewMixin(object):
 
     def __init__(self, view):
         super(BoardViewMixin, self).__init__(view)
-        self.env = Rules.Env(isKnife, typeOf, view.ports.maxStack)
+        self.env = Rules.Env(BlockItems.isKnife, typeOf, view.ports.maxStack)
         self.draw = None
         self.cutter = None
         self.screen = None
@@ -116,7 +116,7 @@ class BoardViewMixin(object):
 
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
-        self.draw = Draw(self.view, self.center(), typeOf, self.api.Geometry)
+        self.draw = Draw(self.view, self.center(), self.env, self.api.Geometry)
         self.cutter = Cutter(self)
         self.redraw()
         BookSources.attach(self.view, "board")

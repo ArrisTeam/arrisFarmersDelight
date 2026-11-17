@@ -11,27 +11,29 @@ HoD 把图标切成体素、按刀口分开；这里是客户端掉落物，整�
 """
 import math
 
+from . import BoardFx
 from .BoardDrawEvents import CARVED_SCALE, GHOSTS, DrawEvents
 from .BoardHandDraw import Hand
 from .BoardThing import FLAT, UPRIGHT, Thing
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Data.Cutting import CuttingBoardDict
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import FromPlayer
 
 BLOCK_TYPE = "block"
-TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
 
 
 class Draw(DrawEvents):
-    """一个打开着的砧板的画面。view 是 StationView，center 是板面中心（站点像素 x, z），typeOf(物品) 问物品类型，geometry 是内核的 Geometry。"""
+    """一个打开着的砧板的画面。view 是 StationView，center 是板面中心（站点像素 x, z），env 是站点的 BoardStation.Env（问物品类型、是不是插着的工具），
+    geometry 是内核的 Geometry。"""
 
-    def __init__(self, view, center, typeOf, geometry):
+    def __init__(self, view, center, env, geometry):
         self.view = view
         self.cx, self.cz = center
-        self.typeOf = typeOf
+        self.env = env
+        self.typeOf = env.typeOf
+        self.front = BoardFx.frontOf(view)              # 插着的工具的贴图正面朝哪（站点方向）
         self.geometry = geometry
         self.item = Thing(self)
         self.pile = Thing(self)
@@ -58,14 +60,10 @@ class Draw(DrawEvents):
         return self.typeOf(item) == BLOCK_TYPE
 
     def kindOf(self, item):
-        """这件东西躺在板上是什么样：flat 平躺、block 立着的方块、tool 插着的工具。"""
-        if self.typeOf(item) in TOOL_TYPES and keyOf(item) not in CuttingBoardDict:
+        """这件东西躺在板上是什么样：flat 平躺、block 立着的方块、tool 插着的工具（BoardStation.Env.isCarving：没开站时 Client/BlockItems 问的是同一个规矩）。"""
+        if self.env.isCarving(item):
             return "tool"
         return "block" if self.isBlock(item) else "flat"
-
-    def rolled(self, item, upright):
-        """立着的东西里，哪些要顺时针转 135 度（工具刀尖朝下）；方块不转。"""
-        return upright and not self.isBlock(item)
 
     # ---------------------------------------------------------------- 位置
 
@@ -127,8 +125,9 @@ class Draw(DrawEvents):
         kind = key[2]
         if kind == "tool":
             self.pile.hide()
-            self.item.set(board, UPRIGHT, CARVED_SCALE)
-            self.item.put(0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - Scene.uprightLift(CARVED_SCALE), 0.0)
+            home, facing, roll = self.carved(board)
+            self.item.set(board, UPRIGHT, CARVED_SCALE, facing=facing, roll=roll)
+            self.item.put(*home)
             return
         isBlock = kind == "block"
         self.item.set(board, UPRIGHT if isBlock else FLAT, Scene.itemScale(isBlock))

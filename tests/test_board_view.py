@@ -18,8 +18,12 @@ Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
 KNIFE = "arris:iron_knife"
 
 
-def _open(board=None, layers=(), data=None, hand=None):
+def _open(board=None, layers=(), data=None, hand=None, aux=None, yaw=0):
+    """开站。aux 给了就是板的朝向（方块的 aux，缺省朝北），yaw 是站点转到哪一侧（玩家站的那边）。"""
     behavior, view, api = C.station()
+    if aux is not None:
+        C.engine.block = ("arris:cutting_board", aux)
+    view.yaw = yaw
     view.state.board, view.state.layers = board, list(layers)
     view.data, view.hand = dict(data or {}), hand
     behavior.onOpen()
@@ -209,8 +213,7 @@ def _stationPlaces(view):
 
 
 def _blockPlaces(items):
-    offset = C.BlockItems._boardOffset(C.STATION_POS)
-    placed = C.BlockItems.BlockDisplay.layout(C.BlockItems.BlockDisplay.KIND_BOARD, items, C.BlockItems._itemType, C.STATION_POS, offset)
+    placed = C.BlockItems._layoutOf(C.BlockItems.BlockDisplay.KIND_BOARD, items, C.STATION_POS)
     return sorted((round(p.center[1], 4), round(p.center[0], 4), round(p.center[2], 4), round(p.scale, 4)) for p in placed)
 
 
@@ -229,6 +232,94 @@ def testTheStationAndTheBlockItemsPutEverythingAtTheSamePlaceAndSize():
         assert len(station) == len(outside) and station, (items, station, outside)
         for here, there in zip(station, outside):
             assert all(abs(a - b) < 0.004 for a, b in zip(here, there)), (items, here, there)
+
+
+STUCK = ("arris:iron_knife", "minecraft:iron_pickaxe", "minecraft:iron_hoe", "minecraft:iron_axe", "minecraft:iron_shovel", "minecraft:shears", "minecraft:trident")
+
+
+def _worldDirection(view, prop):
+    """站点里一个立着的道具的贴图正面朝哪，换成世界方向（ItemProp 就是这样换的）。"""
+    x, y, z = prop.center
+    a, b = view.toWorld(x, y, z), view.toWorld(x + prop.facing[0], y, z + prop.facing[1])
+    length = math.hypot(b[0] - a[0], b[2] - a[2])
+    return ((b[0] - a[0]) / length, (b[2] - a[2]) / length)
+
+
+def testAStuckToolIsDrawnInTheMiddleOfTheBlockTurnedWithTheBoardAndLooksTheSameWhetherTheStationIsOpenOrNot():
+    """插着的工具（FD 的 renderItemCarved）：方块正中心、贴图平行于板的正面、按类型转（镐 / 锄 225、三叉戟 135、别的 180）；站点里（BoardDraw）和没开站时
+    世界里摆的（Client/BlockItems）是同一个位置、朝向、角度、大小，板朝哪、玩家站在哪一侧都一样，开站关站不跳。"""
+    C.TYPES["minecraft:iron_hoe"], C.TYPES["minecraft:trident"] = "hoe", "trident"
+    try:
+        for aux in (0, 1, 2, 3):
+            for yaw in (0, 90, 180, 270):
+                for name in STUCK:
+                    behavior, view = _open(C.item(name), aux=aux, yaw=yaw)
+                    _frames(behavior, 3)
+                    props = _live(view, name)
+                    outside, = C.BlockItems._layoutOf("board", {"0": C.item(name)}, C.STATION_POS)
+                    assert len(props) == 1 and not props[0].flat and not outside.flat, (aux, yaw, name)
+                    here = view.toWorld(*props[0].center)
+                    assert all(abs(a - b) < 0.004 for a, b in zip((here[0] - C.STATION_POS[0], here[1] - C.STATION_POS[1], here[2] - C.STATION_POS[2]), outside.center)), (aux, yaw, name)
+                    assert abs(props[0].scale - outside.scale) < 1e-9 and props[0].roll == outside.roll, (aux, yaw, name)
+                    front = _worldDirection(view, props[0])
+                    assert abs(front[0] - outside.direction[0]) < 1e-6 and abs(front[1] - outside.direction[1]) < 1e-6, (aux, yaw, name, front, outside.direction)
+                    behavior.onClose()
+    finally:
+        C.TYPES.pop("minecraft:iron_hoe"), C.TYPES.pop("minecraft:trident")
+
+
+def testAStuckToolSitsWhereFarmersDelightPutsItAndIsTurnedByItsKind():
+    """CuttingBoardRenderer.renderItemCarved：translate(0.5, 0.23, 0.5)——方块中心，不是板底座的中间；贴图正面朝板 FACING 的反方向；类型决定在贴图平面里转多少度。"""
+    C.TYPES["minecraft:iron_hoe"], C.TYPES["minecraft:trident"] = "hoe", "trident"
+    try:
+        for name, turn in ((KNIFE, 180.0), ("minecraft:iron_axe", 180.0), ("minecraft:iron_pickaxe", 225.0), ("minecraft:iron_hoe", 225.0),
+                           ("minecraft:shears", 180.0), ("minecraft:trident", 135.0)):
+            behavior, view = _open(C.item(name), aux=2)
+            _frames(behavior, 3)
+            prop, = _live(view, name)
+            world = view.toWorld(*prop.center)
+            assert abs(world[0] - (C.STATION_POS[0] + 0.5)) < 1e-6 and abs(world[2] - (C.STATION_POS[2] + 0.5)) < 1e-6 and abs(world[1] - (C.STATION_POS[1] + 0.23)) < 0.004, name
+            assert prop.roll == turn and abs(prop.scale - 1.2) < 1e-6, name
+            assert abs(_worldDirection(view, prop)[0]) < 1e-6 and abs(_worldDirection(view, prop)[1] - 1.0) < 1e-6, "朝北的板（FACING 朝北）：贴图的正面朝南"
+            behavior.onClose()
+    finally:
+        C.TYPES.pop("minecraft:iron_hoe"), C.TYPES.pop("minecraft:trident")
+
+
+def testShearsAndATridentOnTheBoardAreDrawnAsStuckToolsNotLyingFlat():
+    """原来站点里只有五种类型当插着的工具画：剪刀平躺在板上、三叉戟插不进去。现在两样都是插着的工具（JE 的 canStick）。"""
+    C.TYPES["minecraft:trident"] = "trident"
+    try:
+        behavior, view = _open(C.item("minecraft:shears"))
+        assert behavior.draw.kindOf(C.item("minecraft:shears")) == "tool" and behavior.draw.kindOf(C.item("minecraft:trident")) == "tool"
+        assert behavior.env.isCarving(C.item("minecraft:shears")) and behavior.env.canStick(C.item("minecraft:trident"))
+        _frames(behavior, 3)
+        assert not _live(view, "minecraft:shears")[0].flat
+        behavior.onClose()
+        behavior, view = _open(hand=C.item("minecraft:trident"))
+        assert behavior.onPointer(C.Event("down", "mouth", button=0, quick=True)) and view.sent == [("carve", {})], "Shift 点空板：三叉戟插得进"
+    finally:
+        C.TYPES.pop("minecraft:trident")
+
+
+def testAStuckToolPulledOutRisesFromTheSamePlaceWithTheSamePose():
+    """拔出来的虚影（HoD 的 pulledOut）画在插着时的位置、同一个朝向和角度，往上升着缩没。"""
+    for name, turn in ((KNIFE, 180.0), ("minecraft:iron_pickaxe", 225.0)):
+        behavior, view = _open(C.item(name), aux=1)
+        _frames(behavior, 3)
+        resting, = _live(view, name)
+        pose = (resting.center, resting.facing, resting.roll)
+        view.state.board = None
+        behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+        behavior.onEffect("taken", {"stack": C.item(name), "at": -1, "carved": True})
+        behavior.frame(0.0)                                      # 道具在每帧里建
+        ghost, = _live(view, name)
+        assert ghost.facing == pose[1] and ghost.roll == pose[2] == turn and all(abs(a - b) < 1e-6 for a, b in zip(ghost.center, pose[0])), name
+        _frames(behavior, 6)
+        assert _live(view, name)[0].center[1] > pose[0][1] + 1.0, "往上拔"
+        _frames(behavior, 40)
+        assert not _live(view, name)
+        behavior.onClose()
 
 
 def testLayersAreStackedEachWithItsOwnTurnAndTheFirstIsTheBigOne():

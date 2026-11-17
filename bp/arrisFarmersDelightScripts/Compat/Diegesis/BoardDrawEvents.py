@@ -6,7 +6,7 @@
 refresh 末尾凑成一道菜时各层落定（490-506）、drawWear（516-544）、impact 的 shake（1045-1047）、dress / arrives（1963-2027：液体层、蛋层交给手）。
 """
 from . import BoardFx
-from .BoardThing import FLAT, UPRIGHT
+from .BoardThing import FLAT, TO_CAMERA, UPRIGHT
 from ...Shared.Rules import BoardSounds as Sounds
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardHands as Hands
@@ -42,10 +42,17 @@ class DrawEvents(object):
         else:
             Motion.land(thing.mover, home, self.fromCursor(home, Motion.DROP_HEIGHT))
 
-    def _ghost(self, item, kind, scale, turn=0.0):
+    def carved(self, item):
+        """插着的工具怎么摆（FD 的 renderItemCarved，HoD 拔出的虚影用同一套，pulledOut）：画在方块的正中心（不是板底座的中间）、贴图平行于板的正面（朝板的背面）、
+        在贴图平面里按类型转角度（镐 / 锄 225、三叉戟 135、别的 180）。返回 (离板面中心的偏移 (x, y, z), 贴图的正面朝哪, roll)；没开站时世界里摆的
+        （Shared/Rules/BlockDisplay.boardLayout）是同一个位置、朝向和角度。"""
+        home = (Scene.CARVED_X - self.cx, Scene.CARVED_HEIGHT - Scene.TOP - Scene.uprightLift(CARVED_SCALE), Scene.CARVED_X - self.cz)
+        return home, self.front, Scene.carvedRoll(self.typeOf(item))
+
+    def _ghost(self, item, kind, scale, turn=0.0, facing=TO_CAMERA, roll=0.0):
         self.ghost = (self.ghost + 1) % GHOSTS
         thing = self.ghosts[self.ghost]
-        thing.set(item, kind, scale, turn)
+        thing.set(item, kind, scale, turn, facing, roll)
         thing.mover.scaleTo(1.0)
         thing.mover.visible = True
         return thing
@@ -57,8 +64,9 @@ class DrawEvents(object):
             ghost = self._ghost(stack, FLAT, Scene.scaleOf(Scene.layerSize(layer)), pose["turn"])
             Motion.lift(ghost.mover, (pose["x"], pose["y"], pose["z"]))
         elif carved:
-            ghost = self._ghost(stack, UPRIGHT, CARVED_SCALE)
-            Motion.pullOut(ghost.mover, (0.0, Scene.CARVED_Y + 1.01 - Scene.TOP - Scene.uprightLift(CARVED_SCALE), 0.0))
+            home, facing, roll = self.carved(stack)
+            ghost = self._ghost(stack, UPRIGHT, CARVED_SCALE, facing=facing, roll=roll)
+            Motion.pullOut(ghost.mover, home)
         else:
             isBlock = self.isBlock(stack)
             ghost = self._ghost(stack, UPRIGHT if isBlock else FLAT, Scene.itemScale(isBlock))

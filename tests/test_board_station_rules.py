@@ -15,8 +15,10 @@ Data = fdtest.load("Shared.Data.Cutting")
 
 
 def _typeOf(item):
+    """引擎的 itemType（3.10 实机问过：剪刀是 shears、三叉戟是 trident，刀和剑是 sword）。"""
     name = item["newItemName"]
-    for word, kind in (("pickaxe", "pickaxe"), ("axe", "axe"), ("shovel", "shovel"), ("hoe", "hoe"), ("knife", "sword"), ("sword", "sword")):
+    for word, kind in (("pickaxe", "pickaxe"), ("axe", "axe"), ("shovel", "shovel"), ("hoe", "hoe"), ("knife", "sword"), ("sword", "sword"),
+                       ("shears", "shears"), ("trident", "trident")):
         if word in name:
             return kind
     return "food"
@@ -75,6 +77,9 @@ def testShiftClickInTheTrayPlacesFoodButNeverATool():
 def testToolsAreStuckInWithTheirDataUnlessTheDataCannotBeKept():
     assert ENV.canStick(_item("arris:iron_knife")) and ENV.canStick(_item("minecraft:iron_sword")) and ENV.canStick(_item("minecraft:iron_axe"))
     assert ENV.canStick(_item("minecraft:shears")) and ENV.canStick(_item("othermod:jade_knife"))
+    assert ENV.canStick(_item("minecraft:trident")), "三叉戟也插得进（JE 的 canStick：TieredItem、TridentItem、ShearsItem）"
+    for kind in ("pickaxe", "hoe", "shovel"):
+        assert ENV.canStick(_item("minecraft:iron_" + kind)), kind
     assert not ENV.canStick(_item("arris:cabbage")) and not ENV.canStick(_item("minecraft:bowl")) and not ENV.canStick(None)
     enchanted = _item("arris:iron_knife")
     enchanted["enchantData"] = [(9, 1)]
@@ -96,6 +101,16 @@ def testWhatIsNoWorkInHandGivesWayToFood():
 
 def testTheDishAMadeBeforeIsNotCarving():
     assert not ENV.isCarving(_item("arris:hamburger")) and ENV.isDone(_item("arris:hamburger"))
+
+
+def testShearsAndATridentOnTheBoardAreStuckToolsLikeAnyKnife():
+    """板上插着的工具只有 isCarving 一个说法（站点里画成什么、没开站时画成什么都问它）：剪刀、三叉戟也算，食物、做好的菜、什么也没有不算。"""
+    for name in ("arris:iron_knife", "minecraft:iron_axe", "minecraft:iron_pickaxe", "minecraft:iron_hoe", "minecraft:iron_shovel", "minecraft:iron_sword",
+                 "minecraft:shears", "minecraft:trident", "othermod:jade_knife"):
+        assert ENV.isCarving(_item(name)), name
+    for name in ("arris:cabbage", "arris:hamburger", "minecraft:bread", "minecraft:oak_log"):
+        assert not ENV.isCarving(_item(name)), name
+    assert not ENV.isCarving(None) and not ENV.isCarving(_item("minecraft:shears", 0))
 
 
 def testAnAddonCanTeachTheBoardANewToolAndTheCacheFollows():

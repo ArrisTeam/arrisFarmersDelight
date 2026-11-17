@@ -64,3 +64,20 @@ def testTheCarvedToolIsPlantedAtTheJavaHeightAndTheKnifeTipPointsDown():
     assert _close(Scene.CARVED_Y, 0.23 * 16.0 - 1.01) and Scene.CARVED_SCALE == 0.6
     assert Scene.KNIFE_ROLL == 135.0 and Scene.KNIFE_TIP > 0.0
     assert _close(Scene.KNIFE_SCALE, 0.45 * 2.0), "刀画 0.45 个图标大：7.2 像素 = 缩放 0.9"
+
+
+def testTheCarvedToolStandsInTheMiddleOfTheBlockNotOfTheBoardsBase():
+    """BoardBehavior.CARVED_X = 8（方块正中心），FD 的 translate(0.5, 0.23, 0.5)；板底座的中间是 (6.5, 8)，它不在那儿。"""
+    assert Scene.CARVED_X == 8.0 and (Scene.BASE_X, Scene.BASE_Z) == (6.5, 8.0) and Scene.CARVED_X != Scene.BASE_X
+    assert _close(Scene.CARVED_HEIGHT, 3.68) and _close(Scene.CARVED_Y + 1.01, Scene.CARVED_HEIGHT), "同一个高度的两种说法（HoD 从放东西的高度算起）"
+
+
+def testTheCarvedToolIsTurnedInThePictureByItsKindLikeFarmersDelightsRenderer():
+    """CuttingBoardRenderer.java:101-109：镐、锄 225 度，三叉戟 135 度，别的 180 度；键是引擎的物品类型，掉落物的 roll 经 dropRoll 换（数一样）。"""
+    assert Scene.carvedRoll("pickaxe") == 225.0 and Scene.carvedRoll("hoe") == 225.0 and Scene.carvedRoll("trident") == 135.0
+    for kind in ("sword", "axe", "shovel", "shears", "", None):
+        assert Scene.carvedRoll(kind) == 180.0, kind
+    assert Scene.CARVED_TURNS == {"pickaxe": 225.0, "hoe": 225.0, "trident": 135.0} and Scene.CARVED_TURN == 180.0
+    assert Scene.dropRoll(135.0) == Scene.KNIFE_ROLL == 135.0, "实机标定过：roll 135 刀尖朝下，就是 JE 里三叉戟（135）的样子"
+    assert Scene.dropRoll(225.0) == 225.0 and Scene.dropRoll(180.0) == 180.0
+

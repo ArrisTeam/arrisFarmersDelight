@@ -27,8 +27,14 @@ FLAT_LIFT = 0.32             # 平躺的贴图中心离它躺着的面多高
 KNIFE_SCALE = 0.45 * 16.0 / SPRITE_SPAN     # 刀（和别的工具）画 0.45 个图标大：7.2 像素
 KNIFE_ROLL = 135.0           # 竖着的刀顺时针转 135 度：刀柄朝上、刀尖朝下（实机标定）
 KNIFE_TIP = KNIFE_SCALE * SPRITE_SPAN / 2.0 * math.sqrt(2.0)       # 刀尖在图标中心正下方多远（贴图对角线的一半）
-CARVED_Y = 0.23 * 16.0 - 1.01      # 插着的工具画在方块中间、0.23 格高（BoardBehavior.CARVED_Y，从放东西的高度算起）
+CARVED_X = 8.0               # 插着的工具画在方块的正中心（方块自己的坐标 8, 8；BoardBehavior.CARVED_X），不是板底座的中间（6.5, 8）
+CARVED_HEIGHT = 0.23 * 16.0  # 它的中心离方块底多高（FD CuttingBoardRenderer.renderItemCarved 的 translate(0.5, 0.23, 0.5)）
+CARVED_Y = CARVED_HEIGHT - 1.01    # 同一个高度，HoD 从放东西的高度算起（BoardBehavior.CARVED_Y）
 CARVED_SCALE = 0.6
+# FD renderItemCarved（CuttingBoardRenderer.java:99-109）把插着的工具在贴图平面里转这么多度（Axis.ZP.rotationDegrees）：镐、锄 225，三叉戟 135，
+# 别的（剑、刀、斧、锹、剪刀……）180。键是引擎的物品类型（GetItemBasicInfo 的 itemType：pickaxe / hoe / trident / shears / sword / axe / shovel）
+CARVED_TURNS = {"pickaxe": 225.0, "hoe": 225.0, "trident": 135.0}
+CARVED_TURN = 180.0
 
 
 def scaleOf(size):
@@ -40,6 +46,19 @@ def uprightLift(scale):
     """立着的贴图物品（插着的工具）的道具中心离它底边多高：贴图轴心在底边中点、缩放 1 时边长 SPRITE_SPAN，中心在边长一半处。
     方块类的东西是立方体，用 blockLift。砧板站点（BoardThing）和没开站时的 Client/BlockItems 都按这两个摆。"""
     return scale * SPRITE_SPAN / 2.0
+
+
+def dropRoll(javaTurn):
+    """JE 里在贴图平面内转的度数（FD 的 Axis.ZP.rotationDegrees(javaTurn)）-> 客户端掉落物的 roll：JE 换成客户端掉落物的这一处，实机看着不对只改这里。
+    推导：FD 的渲染器先把贴图的正面转到朝板 FACING 的反方向（物品的 FIXED 显示变换自带半圈，再加 renderItemCarved 的 +180），再绕 Z 正向转 javaTurn；
+    从正面看（Z 轴指向看的人的背后）正向就是顺时针。掉落物的 roll 也是"从正面看顺时针转几度"（PropMath.uprightMatrix 的 Rz(roll)），所以数一样；
+    实机标定过的一点也对得上：roll 135 刀尖朝下（贴图的刀尖在右上、顺时针 135 度到正下），JE 里三叉戟的 135 度就是笔直朝下。"""
+    return float(javaTurn)
+
+
+def carvedRoll(itemType):
+    """插着的工具（引擎的物品类型 itemType）的 roll：镐 / 锄 225、三叉戟 135、别的 180 度（CARVED_TURNS），经 dropRoll 换成掉落物的 roll。"""
+    return dropRoll(CARVED_TURNS.get(itemType, CARVED_TURN))
 
 
 def itemScale(isBlock=False):

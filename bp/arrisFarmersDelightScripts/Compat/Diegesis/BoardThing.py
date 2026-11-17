@@ -11,6 +11,7 @@ from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
 FLAT, UPRIGHT = "flat", "upright"
+TO_CAMERA = (0.0, -1.0)            # 立着的东西缺省正面朝镜头（站点里玩家在北面，镜头在 -z）
 
 
 def _one(item):
@@ -27,6 +28,8 @@ class Thing(object):
         self.kind = FLAT
         self.size = Scene.itemScale()
         self.turn = 0.0
+        self.facing = TO_CAMERA              # 立着的：贴图的正面朝哪（站点方向 x, z）
+        self.roll = 0.0                      # 立着的：在贴图平面里顺时针转多少度
         self.prop = None
         self.dirty = True
         self.shaking = None                  # [幅度, 总时间, 剩下的时间]：抖一下（shake）
@@ -37,14 +40,15 @@ class Thing(object):
         """抖一下：每帧在 ±幅度里随机偏一点，幅度线性变小（NodeInstance.shake）。"""
         self.shaking = [max(0.0, pixels), max(0.01, seconds), max(0.01, seconds)]
 
-    def set(self, item, kind=FLAT, scale=None, turn=0.0):
-        """换成 item（只留名字和 aux）。位置、缩放另外用 mover 摆。"""
+    def set(self, item, kind=FLAT, scale=None, turn=0.0, facing=TO_CAMERA, roll=0.0):
+        """换成 item（只留名字和 aux）。位置、缩放另外用 mover 摆。facing / roll 只有立着的用：插着的工具朝着板的背面、按类型转角度（Draw.carved）。"""
         one = _one(item)
         if self.item != one or self.kind != kind:
             self.drop()
             self.item, self.kind = one, kind
         self.size = scale if scale is not None else self.size
         self.turn = turn
+        self.facing, self.roll = facing, roll
         self.dirty = True
 
     def blank(self):
@@ -96,7 +100,6 @@ class Thing(object):
         center = (self.draw.cx + x, Scene.TOP + y + lift, self.draw.cz + z)
         along = (math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn)))
         if self.prop is None:
-            self.prop = self.draw.view.props.item(self.item, center, flat=not upright, along=along, facing=(0.0, -1.0),
-                                                  roll=Scene.KNIFE_ROLL if self.draw.rolled(self.item, upright) else 0.0, scale=scale)
+            self.prop = self.draw.view.props.item(self.item, center, flat=not upright, along=along, facing=self.facing, roll=self.roll, scale=scale)
         else:
-            self.prop.move(center=center, along=along, scale=scale)
+            self.prop.move(center=center, along=along, facing=self.facing, roll=self.roll, scale=scale)

@@ -12,8 +12,8 @@ arris_diegesis:glint。站点里的人和旁观的人（BoardWatch，没有站�
 from . import PotFx
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.FoodColors import FoodColors
+from ...Shared.Rules import BlockDisplay, PotModelMath, StoveFacing
 from ...Shared.Rules import BoardDust as Dust
-from ...Shared.Rules import PotModelMath
 from ...Shared.Rules.BoardSounds import BOUNCE, KNOCK, snipBite  # noqa: F401 （别的模块从这里拿）
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
@@ -85,6 +85,16 @@ def centerOf(blockPos):
     """板面中心的世界坐标：FD 的板底座在方块自己坐标的 (6.5, 8)，按方块朝向换算（BoardView.center 和旁观的人共用）。"""
     block = compFactory.CreateBlockInfo(levelId).GetBlock(tuple(blockPos))
     return PotModelMath.localPoint(PotModelMath.facingOf(block[1] if block else 0), blockPos, Scene.BASE_X, 0.0, Scene.BASE_Z)
+
+
+def frontOf(view):
+    """板上插着的工具的贴图正面朝哪（站点里的方向 x, z）：世界里是 BlockDisplay.carvedFront（没开站时 Client/BlockItems 摆的就是它），
+    这里换到站点里（两点做差，和站点朝向的符号约定无关）：站点里画的和世界里摆的朝着同一边，开站、关站不转。"""
+    block = compFactory.CreateBlockInfo(levelId).GetBlock(tuple(view.pos))
+    dx, dz = BlockDisplay.carvedFront(StoveFacing.yawOfAux(block[1] if block else 0))
+    x, y, z = view.pos[0] + 0.5, view.pos[1], view.pos[2] + 0.5
+    here, there = view.toStation(x, y, z), view.toStation(x + dx, y, z + dz)
+    return (there[0] - here[0], there[2] - here[2])
 
 
 def _text(value):

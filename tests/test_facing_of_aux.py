@@ -94,11 +94,11 @@ def testTheStoveSceneAndTheWorldDisplayTurnWithTheSameTable():
             StoveScenes._scenes.clear()
             StoveScenes.enable()
             assert StoveScenes.ensure(0, POS).yaw == yaw, (name, aux)
-            assert BlockItems._stoveYaw(POS) == yaw, (name, aux)
+            assert BlockItems._facingYaw(POS) == yaw, (name, aux)
         for aux in T.UNKNOWN:
             _block(name, aux)
             StoveScenes._scenes.clear()
-            assert StoveScenes.ensure(0, POS).yaw == T.UNKNOWN_YAW and BlockItems._stoveYaw(POS) == T.UNKNOWN_YAW, (name, aux)
+            assert StoveScenes.ensure(0, POS).yaw == T.UNKNOWN_YAW and BlockItems._facingYaw(POS) == T.UNKNOWN_YAW, (name, aux)
 
 
 def testAReloadedStoveBlockEntityIsTurnedByTheSameTable():

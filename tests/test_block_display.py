@@ -9,10 +9,15 @@ import fdtest
 
 BD = fdtest.load("Shared.Rules.BlockDisplay")
 Pose = fdtest.load("Shared.Rules.ItemPose")
+Station = fdtest.load("Shared.Rules.BoardStation")
+Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 
 
 def _item(name, count=1, aux=0):
     return {"newItemName": name, "newAuxValue": aux, "count": count}
+
+
+TOOLS = {"pickaxe": "pickaxe", "hoe": "hoe", "axe": "axe", "shovel": "shovel", "shears": "shears", "trident": "trident"}
 
 
 def _typeOf(item):
@@ -21,27 +26,67 @@ def _typeOf(item):
         return "block"
     if name.endswith("_knife") or name.endswith("_sword"):
         return "sword"
-    return "food"
+    return TOOLS.get(name.split(":")[-1].split("_")[-1], "food")
+
+
+ENV = Station.Env(lambda name: name.endswith("_knife"), _typeOf)       # 板上的东西是不是插着的工具：站点里问的同一个规矩
+
+
+def _board(items, **extra):
+    """砧板上的东西怎么摆（板在 (1, 64, 1)，要问"是不是插着的工具"：站点里问的同一个 Env.isCarving）。"""
+    return BD.layout(BD.KIND_BOARD, items, _typeOf, (1, 64, 1), carving=ENV.isCarving, **extra)
 
 
 def testABoardShowsOneItemAndTheRightPose():
-    food, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 1)}, _typeOf, (1, 64, 1))
+    food, = _board({"0": _item("minecraft:beef", 1)})
     assert food.flat and food.item["count"] == 1 and food.center[0] == 0.5 and food.center[2] == 0.5
     assert BD.BOARD_TOP < food.center[1] < BD.BOARD_TOP + 0.05, "食物平躺在板面上"
-    pile = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 5)}, _typeOf, (1, 64, 1))
+    pile = _board({"0": _item("minecraft:beef", 5)})
     assert len(pile) == 2 and pile[1].center[1] - pile[0].center[1] > 0.03, "一叠不止一个：底下再垫一张，上面那张抬高 0.65 像素"
     assert pile[0].direction != pile[1].direction, "底下那张转个角度"
-    moved = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:beef", 1)}, _typeOf, (1, 64, 1), offset=(-1.5 / 16.0, 0.0))
+    moved = _board({"0": _item("minecraft:beef", 1)}, offset=(-1.5 / 16.0, 0.0))
     assert abs(moved[0].center[0] - (0.5 - 1.5 / 16.0)) < 1e-9 and moved[0].center[2] == 0.5, "挪到板底座中间"
-    block, = BD.layout(BD.KIND_BOARD, {"0": _item("minecraft:oak_log")}, _typeOf, (1, 64, 1))
+    block, = _board({"0": _item("minecraft:oak_log")})
     assert not block.flat, "方块类立在板上"
     assert abs(block.scale - 5.2 / 4.0) < 1e-9, "方块的掉落物是立方体（缩放 1 棱长 4 像素）：棱长 5.2 像素要缩放 1.3"
     pivot = block.center[1] - block.scale * 8.0 / 2.0 / 16.0                 # 道具按贴图物品摆：轴心在"中心"下方半个贴图边长
     assert abs(pivot + 3.2 / 16.0 - (BD.BOARD_TOP + 2.6 / 16.0)) < 1e-9, "引擎把立方体画在轴心上方 3.2 像素：它的中心在板面上方半个棱长"
-    tool, = BD.layout(BD.KIND_BOARD, {"0": _item("arris:iron_knife")}, _typeOf, (1, 64, 1))
-    assert not tool.flat and tool.roll == BD.TOOL_ROLL, "工具竖着、刀尖朝下"
-    assert BD.layout(BD.KIND_BOARD, {"0": {}}, _typeOf, (1, 64, 1)) == []
-    assert BD.layout(BD.KIND_BOARD, {"0": None}, _typeOf, (1, 64, 1)) == []
+    tool, = _board({"0": _item("arris:iron_knife")})
+    assert not tool.flat and tool.roll == Scene.carvedRoll("sword") == 180.0, "插着的工具竖着、刀身朝板的正面斜着（FD 的 180 度）"
+    assert _board({"0": {}}) == []
+    assert _board({"0": None}) == []
+
+
+def _stuck(name, yaw=0, offset=(0.0, 0.0)):
+    placed = _board({"0": _item(name)}, offset=offset, yaw=yaw)
+    assert len(placed) == 1 and not placed[0].flat, name
+    return placed[0]
+
+
+def testAStuckToolStandsInTheMiddleOfTheBlockAndNotOnTheBoardsBase():
+    """FD 的 renderItemCarved：translate(0.5, 0.23, 0.5)——方块正中心、0.23 格高；板底座的中间（offset）只管躺着的食物。"""
+    for offset in ((0.0, 0.0), (-1.5 / 16.0, 0.0), (0.0, 1.5 / 16.0)):
+        tool = _stuck("arris:iron_knife", offset=offset)
+        assert abs(tool.center[0] - 0.5) < 1e-9 and abs(tool.center[2] - 0.5) < 1e-9 and abs(tool.center[1] - 0.23) < 1e-9, offset
+        assert abs(tool.scale - Scene.scaleOf(0.6 * 16.0)) < 1e-9, "画 0.6 个图标大：9.6 像素"
+    food, = _board({"0": _item("minecraft:beef")}, offset=(-1.5 / 16.0, 0.0))
+    assert abs(food.center[0] - (0.5 - 1.5 / 16.0)) < 1e-9, "食物还躺在底座中间"
+
+
+def testAStuckToolTurnsWithTheBoardItsPictureFacingAwayFromTheBoardsFacing():
+    """贴图的正面朝板 FACING 的反方向（renderItemCarved 比摆平的东西多转半圈），所以随方块的朝向转：朝北的板（yaw 0）正面朝南，朝东的朝西，朝南的朝北，朝西的朝东。"""
+    fronts = dict((yaw, _stuck("arris:iron_knife", yaw).direction) for yaw in (0, 90, 180, 270))
+    for yaw, want in ((0, (0.0, 1.0)), (90, (-1.0, 0.0)), (180, (0.0, -1.0)), (270, (1.0, 0.0))):
+        assert abs(fronts[yaw][0] - want[0]) < 1e-9 and abs(fronts[yaw][1] - want[1]) < 1e-9, (yaw, fronts[yaw])
+    assert BD.carvedFront(0) == fronts[0]
+    assert _stuck("arris:iron_knife").direction == fronts[0], "不给朝向就是朝北"
+
+
+def testAStuckToolIsTurnedByItsKindPicksAndHoesMoreAndTheTridentLess():
+    """CuttingBoardRenderer.java:101-109：镐、锄 225 度，三叉戟 135 度，别的 180 度。剪刀、三叉戟也是插着的工具（不再平躺）。"""
+    assert [_stuck("minecraft:iron_" + kind).roll for kind in ("pickaxe", "hoe", "axe", "shovel")] == [225.0, 225.0, 180.0, 180.0]
+    assert _stuck("arris:iron_knife").roll == _stuck("minecraft:iron_sword").roll == 180.0
+    assert _stuck("minecraft:shears").roll == 180.0 and _stuck("minecraft:trident").roll == 135.0
 
 
 def testTheSkilletStacksLayersByCount():
