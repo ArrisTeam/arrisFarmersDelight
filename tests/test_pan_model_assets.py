@@ -14,7 +14,6 @@ import fdtest
 import pngkit
 
 RP = os.path.join(fdtest.ROOT, "rp")
-DG = os.path.join(fdtest.ROOT, "diegesisRp")
 
 
 def load(*parts):
@@ -125,7 +124,8 @@ def testTheMaterialsAndTexturesExist():
     for texture in ("textures/entity/skillet_item", "textures/entity/outline_solid"):
         assert os.path.isfile(os.path.join(RP, texture + ".png")), texture
     assert description["textures"]["oil"] == "textures/handson/block/oil_film"
-    assert os.path.isfile(os.path.join(DG, "textures", "handson", "block", "oil_film.png")), "油膜的图在前置包的资源里（HoD 的 block/oil_film）"
+    assert os.path.isfile(os.path.join(RP, "textures", "handson", "block", "oil_film.png")), \
+        "油膜的图（HoD 的 block/oil_film）在本包自己的资源里：前置包不在这个仓库里，没装它时这张图也不能缺"
 
 
 def testTheOutlineShellIsTheColourDiegesisDrawsItsOutlinesIn():
@@ -151,7 +151,7 @@ def testTheHeatParticleIsTheOneThePanFxSpawns():
     particle = load("particles", "arris_pan_heat.json")["particle_effect"]
     assert particle["description"]["identifier"] == "arris:pan_heat"
     assert particle["description"]["basic_render_parameters"]["texture"] == "textures/handson/particle/heat"
-    assert os.path.isfile(os.path.join(DG, "textures", "handson", "particle", "heat.png"))
+    assert os.path.isfile(os.path.join(RP, "textures", "handson", "particle", "heat.png")), "热浪的图（HoD 的 particle/heat）同样在本包的资源里"
     flipbook = particle["components"]["minecraft:particle_appearance_billboard"]["uv"]["flipbook"]
     assert flipbook["max_frame"] == 4 and flipbook["size_UV"] == [8, 8] and flipbook["step_UV"] == [0, 8], "heat.png 是 8x32 的四帧竖条"
     with io.open(os.path.join(fdtest.BP, fdtest.SCRIPTS, "Compat", "Diegesis", "PanFx.py"), encoding="utf-8") as handle:
