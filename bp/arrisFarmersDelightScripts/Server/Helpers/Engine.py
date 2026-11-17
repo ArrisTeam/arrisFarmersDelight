@@ -26,6 +26,13 @@ def GetBlockName(blockPos, dimensionId):
     return compFactory.CreateBlockInfo(levelId).GetBlockNew(blockPos, dimensionId)["name"]
 
 
+def GetBlockAux(blockPos, dimensionId):
+    """方块的 aux（方块状态打包出来的附加值；只有朝向状态的方块就是 direction 状态 0 南 1 西 2 北 3 东）；读不到按 0。
+    和客户端 GetBlock 的第二项是同一个值：站点的朝向钩子两端读它，经 Shared/Rules/StoveFacing 说同一个答案。"""
+    info = compFactory.CreateBlockInfo(levelId).GetBlockNew(blockPos, dimensionId)
+    return (info.get("aux") if info else None) or 0
+
+
 def GetEngineTypeStr(entityId):
     return compFactory.CreateEngineType(entityId).GetEngineTypeStr()
 

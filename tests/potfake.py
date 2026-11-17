@@ -164,6 +164,7 @@ class Fake(object):
         self.extra = {}
         self.attrs = {}
         self.stacks = dict(DEFAULT_STACKS)
+        self.blockAux = {}                # (维度, 坐标) -> 方块的 aux（GetBlockNew 给的；没有的是 0）
         return self
 
     def stackOf(self, name):
@@ -223,6 +224,7 @@ def install():
     engine.DestroyEntity = lambda entityId: None
     engine.GetBlockEntityData = lambda dim, pos: fake.blockEntities.get((dim, tuple(pos)))
     engine.GetBlockName = lambda pos, dim: fake.world.blocks.get((dim, tuple(pos)), "minecraft:air")
+    engine.GetBlockAux = lambda pos, dim: fake.blockAux.get((dim, tuple(pos)), 0)
     engine.GetCarriedItem = lambda playerId, getUserData=False: _carried(fake, playerId)
     engine.SetCarriedItem = lambda playerId, item: _setCarried(fake, playerId, item)
     sys.modules[helpers + ".Engine"] = engine

@@ -112,6 +112,36 @@ def testALogicThatCoversIsTheSameAnswerAsTheHook():
     assert GrillOpen.isCovered(0, (K.STOVE[0] + 5, K.STOVE[1], K.STOVE[2])) is False
 
 
+# ---------------------------------------------------------------- 站点朝哪（JE 的 Orientation.BLOCK）
+
+YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}      # direction 状态 0 南 1 西 2 北 3 东：站点的北面转到炉灶的正面那一侧
+
+
+def testTheStationIsRegisteredWithTheBlockFacingHook():
+    K.setup()
+    assert Api.getStationType(Rules.STATION_ID).facing is GrillOpen.facingOf
+
+
+def testTheStationFacesTheStovesFrontWhicheverSideTheCookOpensFrom():
+    """Opened 里的 yaw 就是炉灶朝哪：厨师 a 在炉灶北面、b 在东面，炉灶朝哪都是同一个答案（站点的北面是方块的正面）。"""
+    for aux, yaw in sorted(YAW_OF_AUX.items()):
+        manager, data = K.setup()
+        fake.blockAux[(0, K.STOVE)] = aux
+        assert [K.opened(manager, player)["yaw"] for player in ("a", "b")] == [yaw, yaw], aux
+        assert manager.sessions["a"].yaw == manager.sessions["b"].yaw == yaw
+        assert GrillOpen.facingOf(0, K.STOVE) == yaw
+
+
+def testTheServerHookReadsTheBlocksAuxFromTheEngineAndGivesTheSameAnswerAsTheClientsRule():
+    StoveFacing = K.fdtest.load("Shared.Rules.StoveFacing")
+    manager, data = K.setup()
+    for aux in range(4):
+        fake.blockAux[(0, K.STOVE)] = aux
+        assert GrillOpen.facingOf(0, K.STOVE) == StoveFacing.yawOfAux(aux) == YAW_OF_AUX[aux]
+    del fake.blockAux[(0, K.STOVE)]
+    assert GrillOpen.facingOf(0, K.STOVE) == 180, "读不到 aux 按 0：引擎的缺省状态朝南"
+
+
 def testAnOlderKernelWhoseStationTypeKnowsNoCanOpenStillGetsTheStove():
     """前置包是老版本（StationType 没有 canOpen 参数、也不读它）：登记照常成功，炉灶照旧只靠客户端预判。"""
     registered = []

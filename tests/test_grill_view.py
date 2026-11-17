@@ -106,6 +106,7 @@ class Api(object):
     registerBehavior = staticmethod(Registry.registerBehavior)
     box = staticmethod(View.box)
     API_VERSION = 2
+    FACING_HOOK = True                            # 这一版的前置包认站点的朝向钩子（Shared/Protocol.FACING_HOOK）
     Schema = Schema
 
 
@@ -226,6 +227,54 @@ def testTheStationHandsItsHandToTheSceneAndTakesItBackWhenItCloses():
     view.behavior.onClose()
     assert not scene.focused and scene.space.starts is None and scene.space.turner is None
     assert len(drops()) == 1, "站点关了，烤架上的东西还在场景里"
+
+
+# ---------------------------------------------------------------- 站点朝哪（JE 的 Orientation.BLOCK）
+
+FRONT = {0: (0.0, 1.0), 1: (-1.0, 0.0), 2: (0.0, -1.0), 3: (1.0, 0.0)}     # direction 状态 -> 炉灶的正面朝哪（世界 (dx, dz)）
+YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}
+SIDES = {0: (10.5, 64.0, 5.0), 90: (15.0, 64.0, 10.5), 180: (10.5, 64.0, 15.0), 270: (5.0, 64.0, 10.5)}     # 玩家站在炉灶的北 / 东 / 南 / 西
+
+
+def testTheStationIsRegisteredWithTheBlockFacingHookThatSaysWhereTheStovesFrontIs():
+    make()
+    entry = Registry.getBehavior("arris:stove")
+    assert entry.facing is GrillView.facingOf
+    for aux, yaw in sorted(YAW_OF_AUX.items()):
+        world.blockAux[STOVE] = aux
+        assert entry.facing(STOVE, 0) == yaw, aux
+    del world.blockAux[STOVE]
+    assert entry.facing(STOVE, 0) == 180, "读到的 aux 是 0：引擎的缺省状态朝南"
+
+
+def testTheCameraIsAtTheStovesFrontWhicheverSideThePlayerOpensFrom():
+    """前置包取朝向时问登记的钩子：炉灶朝哪，镜头就在哪一面（JE 的 StoveStation 是 Orientation.BLOCK），玩家从背面、侧面右键都一样。"""
+    Facing, Shot = dgstation.load("Client.Facing"), dgtest.load("Client.Shot")
+    for aux, front in sorted(FRONT.items()):
+        view = make()
+        world.blockAux[STOVE] = aux
+        entry = Registry.getBehavior("arris:stove")
+        for foot in SIDES.values():
+            world.foot = foot
+            assert Facing.yawOf(entry, STOVE, 0) == YAW_OF_AUX[aux], (aux, foot)
+        pose = Shot.stationShot(view.behavior.camera, YAW_OF_AUX[aux], STOVE)[0]
+        cam = (pose[0] - (STOVE[0] + 0.5), pose[2] - (STOVE[2] + 0.5))
+        assert abs(cam[0] - front[0] * 29.0 / 16.0) < 1.0e-6 and abs(cam[1] - front[1] * 29.0 / 16.0) < 1.0e-6, (aux, cam)
+
+
+def testAnOlderFrontDoorWithoutTheFacingHookStillRegistersAndFacesThePlayerAsBefore():
+    """FACING_HOOK 是新版前置包才有的名字；老版本的 registerBehavior 不认 facing 参数，传了会 TypeError：这时不传。"""
+    def oldRegister(stationId, blocks, factory=None, schema=None, sneakFallback=True, canOpen=None):
+        return Registry.registerBehavior(stationId, blocks, factory, schema, sneakFallback, canOpen)
+
+    class OldApi(object):
+        StationBehavior, box, API_VERSION, Schema = Registry.StationBehavior, staticmethod(View.box), 2, Schema
+        registerBehavior = staticmethod(oldRegister)
+
+    Registry.clearAll()
+    assert GrillView.register(OldApi) is not None
+    entry = Registry.getBehavior("arris:stove")
+    assert entry.facing is None and entry.canOpen is GrillView.opensStation, "朝着玩家所在的一侧，别的照旧"
 
 
 def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():

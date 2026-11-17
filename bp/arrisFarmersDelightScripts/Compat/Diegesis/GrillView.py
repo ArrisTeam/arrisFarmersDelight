@@ -12,13 +12,15 @@
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
   既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
-坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.Space）；命中盒、世界里的展示和这里画的对得上。
+站点朝哪：炉灶是 JE 的 Orientation.BLOCK，登记时给前置包 facing 钩子（facingOf）：站点的北面永远是炉灶方块的正面，镜头永远在正面，
+从背面、侧面右键也一样（服务端的 GrillOpen.facingOf 说同一个答案）。件的位置固定在方块里（炉灶朝北的那一份），换到站点空间（GrillSpace.Space）；
+命中盒、世界里的展示和这里画的对得上。
 开站时场景交给本人的有三样：从屏幕下沿飞来的起点、站点方向换成场景方向的法子（被拒的虚影往自己这边弹）、"我开着站点"（自己翻的不重复演）。
 """
 from . import BookSources, StoveScenes
 from .GrillSpace import Space
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
-from ...Shared.Rules import GrillStation as Rules, StoveCover
+from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
 from ...Shared.Rules.HandsOn import StoveLayout
 
 CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target"], "fov": StoveLayout.CAMERA["fov"],
@@ -138,12 +140,21 @@ def opensStation(pos, dimensionId):
     return Rules.opens(name, (info or {}).get("itemType") or "", StoveCover.covers(above[0] if above else None))
 
 
+def facingOf(pos, dimensionId):
+    """registerBehavior 的 facing(pos, dimensionId)：这座炉灶的站点朝哪（度，北 0 / 东 90 / 南 180 / 西 270）：站点的北面是炉灶方块的正面。
+    读的是客户端的引擎，规则（StoveFacing.yawOfAux）和服务端的 GrillOpen.facingOf 同一份。"""
+    block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
+    return StoveFacing.yawOfAux(block[1] if block else 0)
+
+
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
-    炉灶站点要前置包 API 2（托盘、手上的物品栈）：太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。"""
+    炉灶站点要前置包 API 2（托盘、手上的物品栈）：太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。
+    朝向钩子（FACING_HOOK）是新版前置包才有的可选参数：老版本的 registerBehavior 不认 facing，这时不传，站点朝着玩家所在的一侧。"""
     if getattr(api, "API_VERSION", 0) < 2:
         return None
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
-    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation)
+    hooks = {"facing": facingOf} if getattr(api, "FACING_HOOK", False) else {}
+    api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation, **hooks)
     return behaviorClass

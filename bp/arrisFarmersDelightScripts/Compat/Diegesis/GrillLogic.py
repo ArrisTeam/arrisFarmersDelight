@@ -221,11 +221,13 @@ class GrillLogicMixin(object):
 
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 GrillStation.buildSchema）。
-    炉灶站点要前置包 API 2（光标栈随状态同步、站点逻辑的 ctx / dropped）：太旧的前置包上炉灶照旧走经典玩法，返回 None。"""
+    炉灶站点要前置包 API 2（光标栈随状态同步、站点逻辑的 ctx / dropped）：太旧的前置包上炉灶照旧走经典玩法，返回 None。
+    站点朝哪：登记时给 facing（GrillOpen.facingOf），站点的北面永远是炉灶方块的正面，不看开站的人站在哪一侧。"""
     if getattr(api, "API_VERSION", 0) < 2:
         return None
     logicClass = type("StoveLogic", (GrillLogicMixin, api.StationLogic), {"kit": api})
     stationType = api.StationType(Rules.STATION_ID, Rules.STOVE_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH)
     stationType.canOpen = GrillOpen.opensStation     # 服务端开站前复查（K30）；老版本的前置包不读这个属性，行为同从前
+    stationType.facing = GrillOpen.facingOf          # 站点朝炉灶的正面（JE 的 Orientation.BLOCK）；老版本的前置包不读它，站点照旧朝着玩家
     api.registerStation(stationType)
     return logicClass
