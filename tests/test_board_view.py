@@ -168,10 +168,10 @@ def testTheBoardIsOutlinedWhileWhatIsCarriedCanBeLaidOnIt():
     assert lit() == 0.0, "关站收掉"
 
 
-def testAFlowerAWildCropAndAMushroomColonyLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
+def testAFlowerAndAWildCropLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
     """JE（HoD 的 ItemVoxels.icon、FD 的 isGui3d）：模型是一张贴图的方块类物品像食物一样平躺；引擎的 itemType 对它们也是 block，按名字认（Data/FlatBlockItems）。
-    原木这样的真方块照旧立着。"""
-    for name in ("minecraft:poppy", "arris:wild_cabbages", "arris:red_mushroom_colony"):
+    原木这样的真方块照旧立着；蘑菇丛的掉落物是方块模型缩小的立体小蘑菇（3.10 实机），不是一张贴图，也立着。"""
+    for name in ("minecraft:poppy", "arris:wild_cabbages"):
         assert C.engine.GetItemBasicInfo(name)["itemType"] == "block"
         behavior, view = _open(C.item(name, 1))
         _frames(behavior, 2)
@@ -184,6 +184,30 @@ def testAFlowerAWildCropAndAMushroomColonyLieFlatOnTheBoardThoughTheEngineCallsT
     behavior, view = _open(C.item("minecraft:oak_log", 1))
     _frames(behavior, 2)
     assert behavior.draw.kindOf(C.item("minecraft:oak_log")) == "block" and not _live(view, "minecraft:oak_log")[0].flat, "原木是真的方块：立着"
+    behavior, view = _open(C.item("arris:red_mushroom_colony", 1))
+    _frames(behavior, 2)
+    assert behavior.draw.kindOf(C.item("arris:red_mushroom_colony")) == "block" and not _live(view, "arris:red_mushroom_colony")[0].flat, "蘑菇丛：立着"
+
+
+def testAFlatFlowerSitsOnTheBoardLikeFoodAndDoesNotFloatAboveIt():
+    """实机（3.10）：花、野生作物的掉落物引擎照方块物品的规矩整体抬高 0.2 格（3.2 像素）、轴心在离贴图底边 5/16 处；照贴图物品的规矩摆会浮在板上
+    （用户报的"浮空了"）。交给前置包的中心先反着挪：按引擎的画法算回去，画出来的中心和同样摆着的食物是同一个点。食物自己不挪。"""
+    Pose = ItemPose
+    for count in (1, 5):
+        behavior, view = _open(C.item("arris:cabbage", count))
+        _frames(behavior, 2)
+        foods = sorted(_live(view, "arris:cabbage"), key=lambda prop: prop.center[1])
+        behavior, view = _open(C.item("minecraft:poppy", count))
+        _frames(behavior, 2)
+        flowers = sorted(_live(view, "minecraft:poppy"), key=lambda prop: prop.center[1])
+        assert len(flowers) == len(foods)
+        for flower, food in zip(flowers, foods):
+            assert abs(food.center[1] - flower.center[1] - Pose.BLOCK_LIFT) < 1e-6, "平躺：交出去的中心比食物低 3.2 像素"
+            up = [row[1] for row in flower.matrix]                       # 贴图自己的上方向（站点空间）
+            reach = (Pose.ITEM_SPAN / 2.0 - Pose.RAISED_PIVOT) * flower.scale
+            pivot = [c - u * Pose.ITEM_SPAN / 2.0 * flower.scale for c, u in zip(flower.center, up)]      # 前置包照贴图物品的规矩算的轴心
+            drawn = (pivot[0] + up[0] * reach, pivot[1] + Pose.BLOCK_LIFT + up[1] * reach, pivot[2] + up[2] * reach)   # 引擎画出来的中心
+            assert all(abs(a - b) < 1e-6 for a, b in zip(drawn, food.center)), (count, drawn, food.center)
 
 
 def testTheKnifeLinesOnAFlowerFollowItsOutlineNotTheSquareOfABlock():

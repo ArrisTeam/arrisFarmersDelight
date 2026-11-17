@@ -142,6 +142,12 @@ class Env(object):
         key = keyOf(item)
         return key is not None and self.typeOf(item) == "block" and key[0] not in FlatBlockItems
 
+    def isRaised(self, item):
+        """平躺着画的这件东西，引擎是不是照方块物品的规矩抬高着画的（物品类型是 block、掉落物却是一张贴图：花、野生作物）：
+        摆的时候要把这段扣掉（Shared/Rules/ItemPose.raisedShift），不然浮在板上。站点里和没开站时的世界展示都问它。"""
+        key = keyOf(item)
+        return key is not None and self.typeOf(item) == "block" and key[0] in FlatBlockItems
+
     def isDone(self, onBoard):
         """板上的东西是不是"没活干"，该给新的食物让位（BoardLogic.isDone，245-248）：插着的工具，或没有刀切得了的东西（做好的菜）。"""
         return keyOf(onBoard) is not None and (self.isCarving(onBoard) or not self.cuttable(onBoard))

@@ -58,6 +58,10 @@ class Draw(DrawEvents):
         """画成立着的方块还是平躺的图标（BoardStation.Env.isBlock：物品类型是 block、而且 JE 里的模型是立体的；花、野生作物、蘑菇丛是一张贴图，平躺）。"""
         return self.env.isBlock(item)
 
+    def isRaised(self, item):
+        """平躺着画的这件，引擎是不是照方块物品的规矩抬高着画的（BoardStation.Env.isRaised：花、野生作物）。"""
+        return self.env.isRaised(item)
+
     def kindOf(self, item):
         """这件东西躺在板上是什么样：flat 平躺、block 立着的方块、tool 插着的工具（BoardStation.Env.isCarving：没开站时 Client/BlockItems 问的是同一个规矩）。"""
         if self.env.isCarving(item):

@@ -22,7 +22,7 @@ TOOLS = {"pickaxe": "pickaxe", "hoe": "hoe", "axe": "axe", "shovel": "shovel", "
 
 def _typeOf(item):
     name = item["newItemName"]
-    if name.endswith("_log") or name in ("minecraft:poppy", "arris:wild_cabbages", "arris:brown_mushroom_colony"):      # 花、野生作物、蘑菇丛：引擎也说是 block
+    if name.endswith("_log") or name.endswith("_mushroom_colony") or name in ("minecraft:poppy", "arris:wild_cabbages"):      # 花、野生作物、蘑菇丛：引擎也说是 block
         return "block"
     if name.endswith("_knife") or name.endswith("_sword"):
         return "sword"
@@ -57,17 +57,33 @@ def testABoardShowsOneItemAndTheRightPose():
     assert _board({"0": None}) == []
 
 
-def testAFlowerAWildCropAndAMushroomColonyLieFlatLikeAnyFoodThoughTheEngineCallsThemBlocks():
+def testAFlowerAndAWildCropLieFlatLikeAnyFoodThoughTheEngineCallsThemBlocks():
     """JE 的物品模型是一张贴图（item/generated，HoD 的 ItemVoxels.icon / FD 的 isGui3d 都按它判），所以像别的食物一样平躺着切、一叠底下垫一张；
-    基岩版的 itemType 对它们也是 block，所以按名字认（Data/FlatBlockItems）。真的方块（原木）照旧立着。"""
-    for name in ("minecraft:poppy", "arris:wild_cabbages", "arris:brown_mushroom_colony"):
+    基岩版的 itemType 对它们也是 block，所以按名字认（Data/FlatBlockItems）。真的方块（原木）照旧立着；蘑菇丛的掉落物是缩小的立体模型，也立着。"""
+    for name in ("minecraft:poppy", "arris:wild_cabbages"):
         lone, = _board({"0": _item(name, 1)})
         assert lone.flat and lone.direction == (1.0, 0.0) and abs(lone.scale - BD.BOARD_FOOD_SCALE) < 1e-9, name
-        assert BD.BOARD_TOP < lone.center[1] < BD.BOARD_TOP + 0.05, "平躺在板面上：%s" % name
         pile = _board({"0": _item(name, 5)})
         assert len(pile) == 2 and all(p.flat for p in pile) and pile[1].center[1] > pile[0].center[1], "一叠：底下再垫一张：%s" % name
-    log, = _board({"0": _item("minecraft:oak_log")})
-    assert not log.flat and abs(log.scale - BD.BLOCK_SCALE) < 1e-9, "原木是真的方块：立着"
+    for name in ("minecraft:oak_log", "arris:brown_mushroom_colony", "arris:red_mushroom_colony"):
+        block, = _board({"0": _item(name)})
+        assert not block.flat and abs(block.scale - BD.BLOCK_SCALE) < 1e-9, "立着：%s" % name
+
+
+def testAFlatFlowerIsReportedWhereTheEngineWillDrawItOnTheBoardNotFloatingAboveIt():
+    """实机（3.10）：花、野生作物的掉落物引擎照方块物品的规矩整体抬高 0.2 格、轴心在离贴图底边 5/16 处。照贴图物品的规矩报中心，它会浮在板上 0.2 格
+    （用户报的"浮空了"）。报出去的中心先反着挪：按引擎的画法算回去，画出来的中心和同样摆着的食物是同一个点。"""
+    for count in (1, 5):
+        flowers = _board({"0": _item("minecraft:poppy", count)})
+        foods = _board({"0": _item("minecraft:beef", count)})
+        assert len(flowers) == len(foods)
+        for flower, food in zip(flowers, foods):
+            matrix = Pose.flatMatrix(flower.direction[0], flower.direction[1])
+            pivot = Pose.pivotFor(flower.center, matrix, flower.scale)
+            reach = (Pose.ITEM_SPAN / 2.0 - Pose.RAISED_PIVOT) * flower.scale / 16.0       # 引擎：轴心到贴图中心，沿贴图自己的上方向
+            drawn = (pivot[0] + matrix[0][1] * reach, pivot[1] + Pose.BLOCK_LIFT / 16.0 + matrix[1][1] * reach, pivot[2] + matrix[2][1] * reach)
+            assert all(abs(a - b) < 1e-9 for a, b in zip(drawn, food.center)), (count, drawn, food.center)
+            assert abs(food.center[1] - flower.center[1] - 0.2) < 1e-9, "平躺：报的中心比食物低 0.2 格"
 
 
 def _stuck(name, yaw=0, offset=(0.0, 0.0)):

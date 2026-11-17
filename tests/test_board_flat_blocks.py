@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""砧板上花、野生作物、蘑菇丛是平躺的图标，不是立着的方块（Shared/Data/FlatBlockItems、BoardStation.Env.isBlock、图标掩码）。
+"""砧板上花、野生作物是平躺的图标，不是立着的方块（Shared/Data/FlatBlockItems、BoardStation.Env.isBlock / isRaised、图标掩码）；蘑菇丛照旧立着。
 
 JE：HoD 的 ItemVoxels.icon / FD 的 CuttingBoardRenderer 都看物品模型立不立体（isGui3d）：花、野生作物、蘑菇丛的物品模型是 item/generated（一张贴图），
 像别的食物一样平躺着切；基岩版的 itemType 对它们也是 block（3.10 实机问过），引擎画的也是一张平面的图，所以按名字认。
 这张表是照 JE 1.20.1 的物品模型（原版 assets/minecraft/models/item、农夫乐事 data 生成的 assets/farmersdelight/models/item）逐件查出来的：
 砧板配方里模型是 item/generated 的方块类物品正好 23 件；FD 自己的 flat_on_cutting_board 标签（三叉戟、望远镜、别的模组的火鸡 / 箭袋）一件也不在砧板配方里。
+23 件里的两种蘑菇丛不在表里：实机（3.10，2026-11-18）它们的掉落物是方块模型缩小的立体小蘑菇，不是一张贴图，放平是侧躺的一小撮，所以照旧当方块立着。
+表里的 21 件引擎照方块物品的规矩抬高着画（Env.isRaised），摆的时候要扣掉（tests/test_item_pose_raised.py）。
 """
 from __future__ import print_function
 
@@ -23,6 +25,7 @@ FLOWERS = ("allium", "azure_bluet", "blue_orchid", "cornflower", "dandelion", "l
            "poppy", "red_tulip", "torchflower", "white_tulip", "wither_rose")
 CROPS = ("wild_beetroots", "wild_cabbages", "wild_carrots", "wild_onions", "wild_potatoes", "wild_rice", "wild_tomatoes")
 COLONIES = ("brown_mushroom_colony", "red_mushroom_colony")
+MUSHROOMS = tuple("arris:" + name for name in COLONIES)
 # 图标上实心（alpha >= 128）的像素数，数自 JE 的贴图：原版 assets/minecraft/textures/block/<名>.png、农夫乐事 textures/block/<名>.png
 # （野生稻是 wild_rice_top，蘑菇丛是 stage3：JE 的物品模型用的就是它们）
 JE_SOLID = {"minecraft:allium": 38, "minecraft:azure_bluet": 43, "minecraft:blue_orchid": 44, "minecraft:cornflower": 35, "minecraft:dandelion": 32,
@@ -37,7 +40,7 @@ BLOCKS = ("minecraft:oak_log", "minecraft:stone", "minecraft:oak_fence", "minecr
 def _type(item):
     """引擎的物品类型：花、野生作物、蘑菇丛、方块都说 block（3.10 实机），别的是食物。"""
     name = item["newItemName"]
-    return "block" if name in Flat or name in BLOCKS or name == "x:downstream_flower" else "food"
+    return "block" if name in Flat or name in BLOCKS or name in MUSHROOMS or name == "x:downstream_flower" else "food"
 
 
 ENV = Station.Env(lambda name: False, _type)
@@ -47,9 +50,9 @@ def _item(name, count=1):
     return {"newItemName": name, "newAuxValue": 0, "count": count}
 
 
-def testTheFlatListIsTheFlowersWildCropsAndMushroomColoniesTheBoardCuts():
-    expected = set(["minecraft:" + name for name in FLOWERS] + ["arris:" + name for name in CROPS + COLONIES])
-    assert set(Flat) == expected and len(Flat) == 23
+def testTheFlatListIsTheFlowersAndWildCropsTheBoardCuts():
+    expected = set(["minecraft:" + name for name in FLOWERS] + ["arris:" + name for name in CROPS])
+    assert set(Flat) == expected and len(Flat) == 21
     for name in Flat:
         assert (name, 0) in Table.CuttingBoardDict, "表里的每一件都是砧板能切的：%s" % name
         assert CuttingStation.strokeOf(Table.CuttingBoardDict[(name, 0)]) == Cutting.TOOL_CUT, "都是刀切的：不响材质破坏声，所以切一刀效果里的 block 变了声音不变：%s" % name
@@ -61,9 +64,23 @@ def testOnlyBlocksTheEngineCallsBlocksAndJavaDrawsAsBlocksStandUp():
     for name in BLOCKS:
         assert ENV.isBlock(_item(name)), "立着：%s" % name
     assert ENV.isBlock(_item("x:downstream_flower")), "下游往配方里追加的方块类东西不在表里：照旧立着"
+    for name in MUSHROOMS:
+        assert ENV.isBlock(_item(name)) and (name, 0) in Table.CuttingBoardDict, "蘑菇丛的掉落物是缩小的立体模型，不是一张贴图：立着（%s）" % name
     assert not ENV.isBlock(_item("arris:cabbage")) and not ENV.isBlock(_item("minecraft:beef")), "食物本来就平躺"
     assert not ENV.isBlock(None) and not ENV.isBlock({}) and not ENV.isBlock({"newItemName": "", "count": 1}), "没有东西不是方块"
     assert ENV.isBlock(dict(_item("minecraft:oak_log", 5), newAuxValue=2)) and not ENV.isBlock(dict(_item("minecraft:poppy", 5), newAuxValue=2)), "数量和 aux 不影响"
+
+
+def testOnlyTheFlatOnesTheEngineCallsBlocksAreDrawnRaised():
+    """花、野生作物：物品类型是 block、掉落物却是一张贴图，引擎照方块物品的规矩抬高着画（Env.isRaised），摆的时候要扣掉。
+    真的方块（立方体，另有它的算法）、蘑菇丛、食物都不是；引擎不说它是 block 的也不是（没有那段抬高）。"""
+    for name in Flat:
+        assert ENV.isRaised(_item(name)) and ENV.isRaised(dict(_item(name, 7), newAuxValue=3)), name
+    for name in BLOCKS + MUSHROOMS + ("x:downstream_flower", "arris:cabbage", "minecraft:beef"):
+        assert not ENV.isRaised(_item(name)), name
+    assert not ENV.isRaised(None) and not ENV.isRaised({}) and not ENV.isRaised({"newItemName": "", "count": 1})
+    food = Station.Env(lambda name: False, lambda item: "food")
+    assert not any(food.isRaised(_item(name)) for name in Flat), "引擎不把它当方块画，就没有那段抬高"
 
 
 def testTheTypeTheEngineGivesIsStillWhatDecidesWhetherSomethingCanBeABlockAtAll():

@@ -15,7 +15,7 @@
 """
 import math
 
-from . import StoveFacing
+from . import ItemPose, StoveFacing
 from .HandsOn import BoardHands, BoardScene, StoveLayout
 from .Ticks import posHash
 
@@ -100,12 +100,21 @@ def boardLayout(item, itemType, carving, isBlock, offset=(0.0, 0.0), yaw=0):
     cx, cz = 0.5 + offset[0], 0.5 + offset[1]
     if isBlock(item):
         return [Placement(shown, (cx, BOARD_TOP + BoardScene.blockLift(BLOCK_SCALE) / 16.0, cz), False, (0.0, -1.0), 0.0, BLOCK_SCALE)]
-    flat = [Placement(shown, (cx, BOARD_TOP + 0.02 + BoardScene.pileLift(item.get("count", 1) or 1) / 16.0, cz), True, (1.0, 0.0), 0.0,
-                      BOARD_FOOD_SCALE)]
+    raised = itemType == "block"          # 走到这里的方块类是平躺着画的那几样（花、野生作物）：引擎照方块物品的规矩抬高着画
+    flat = [_lying(shown, (cx, BOARD_TOP + 0.02 + BoardScene.pileLift(item.get("count", 1) or 1) / 16.0, cz), (1.0, 0.0), raised)]
     if (item.get("count", 1) or 1) > 1:
         angle = math.radians(PILE_TURN)
-        flat.insert(0, Placement(shown, (cx, BOARD_TOP + 0.02, cz), True, (math.cos(angle), math.sin(angle)), 0.0, BOARD_FOOD_SCALE))
+        flat.insert(0, _lying(shown, (cx, BOARD_TOP + 0.02, cz), (math.cos(angle), math.sin(angle)), raised))
     return flat
+
+
+def _lying(shown, center, along, raised):
+    """板上平躺的一件：center 是它该在的中心。raised（花、野生作物）：引擎把它整体抬高、轴心也不在底边，报出去的中心先反着挪（ItemPose.raisedShift），
+    和方块那一支把立方体的抬高算进中心是同一个做法——摆的人（Client/BlockItems）只管照贴图物品的规矩摆。"""
+    if raised:
+        shift = ItemPose.raisedShift(ItemPose.flatMatrix(along[0], along[1]), BOARD_FOOD_SCALE)
+        center = tuple(a + b / 16.0 for a, b in zip(center, shift))
+    return Placement(shown, center, True, along, 0.0, BOARD_FOOD_SCALE)
 
 
 DISH_LAYERS = 9                # 砧板摆盘最多几层（HandsOn/Assembly.MOST_LAYERS）
