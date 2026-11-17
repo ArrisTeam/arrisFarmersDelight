@@ -11,6 +11,7 @@ import os
 import re
 
 import fdtest
+import molangkit
 import pngkit
 
 RP = os.path.join(fdtest.ROOT, "rp")
@@ -159,6 +160,17 @@ def testTheHeatParticleIsTheOneThePanFxSpawns():
     creation = particle["components"]["minecraft:emitter_initialization"]["creation_expression"]
     for name in ("tint_set", "alpha", "scale", "count", "life", "speed_set", "vx", "vy", "vz"):
         assert "variable.%s" % name in creation, "PotFx.particle 会设的变量，粒子里要有初值：%s" % name
+
+
+def testTheHeatFadesInOverFourTenthsOfItsLifeAndOutWithOneMinusTSquared():
+    """HoD 的 HEAT（HandsOnDelightClient.java:95-96）：fadeIn(0.4)，fade 没关（缺省真）。Diegesis 画的时候 alpha = 颜色的 alpha * (1 - t * t)，
+    再乘 min(1, t / fadeIn)（SceneParticles.java:233-236）——淡出是二次的（前半段几乎不淡），不是线性的。"""
+    tint = load("particles", "arris_pan_heat.json")["particle_effect"]["components"]["minecraft:particle_appearance_tinting"]["color"]
+    base = 0x48 / 255.0
+    for t in (0.0, 0.2, 0.4, 0.5, 0.9, 1.0):
+        got = molangkit.value(tint[3], alpha=base, particle_age=t * 1.1, particle_lifetime=1.1)
+        want = base * min(1.0, t / 0.4) * (1.0 - t * t)
+        assert abs(got - want) < 1e-9, (t, got, want)
 
 
 if __name__ == "__main__":
