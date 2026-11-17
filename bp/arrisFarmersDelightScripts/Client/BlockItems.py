@@ -55,6 +55,12 @@ def _stoveYaw(pos):
     return StoveFacing.yawOfAux(block[1] if block else 0)
 
 
+def itemsAt(dimensionId, pos):
+    """这个方块上最后一份内容的 {"槽": 物品}，没有记录是 {}（别的客户端模块只想知道上面有什么，比如点着的炉灶上哪几格有东西、冒不冒烟）。"""
+    last = _last.get((dimensionId, (int(pos[0]), int(pos[1]), int(pos[2]))))
+    return last[1] if last else {}
+
+
 def clear(dimensionId, pos):
     itemComp = compFactory.CreateItem(levelId)
     for entityId in _shown.pop((dimensionId, tuple(pos)), ()):

@@ -3,6 +3,8 @@
 """炉灶的两个方块的 JSON（bp/netease_blocks/arris_stove.json 点着的、arris_stove_extinguish.json 熄着的）：熄着的是同一座灶的另一个方块，
 照 JE 熄着的炉灶也收食物、冷却、拆了掉东西（AbstractStoveBlockEntity.serverTick / onRemove），所以它要有和点着的一样的方块实体（每刻 tick 才冷却）、
 朝向、监听移除；不要烫脚（netease:on_stand_on 只有点着的）；拆了掉的是点着的炉灶物品，不是它自己这个隐藏的方块物品。
+火口的火星 / 烟 / 噼啪声（FD 的 StoveBlock.animateTick）和灶上东西的烟（StoveBlockEntity.particleTick）都只在 LIT 时：只有点着的方块写
+netease:block_animate_random_tick 和客户端 tick（Client/StoveFlame.py 收这两个事件）。
 这些 JSON / 战利品表的改动都要完整重启游戏才生效，离线只能核对写法（实机见 docs/diegesis/DESIGN.md 第 11 节的清单）。"""
 from __future__ import print_function
 
@@ -23,8 +25,16 @@ def _block(fileName):
 
 def testTheUnlitBlockHasTheSameBlockEntityAsTheLitOneAndTicksToCool():
     lit, unlit = _block("arris_stove")["components"], _block("arris_stove_extinguish")["components"]
-    assert lit["netease:block_entity"] == {"client_tick": False, "movable": False, "tick": True}
-    assert unlit["netease:block_entity"] == lit["netease:block_entity"], "熄着的也要有方块实体，也要 tick（每步冷却 FD 的件），其余标志照点着的"
+    assert lit["netease:block_entity"] == {"client_tick": True, "movable": False, "tick": True}
+    assert unlit["netease:block_entity"] == dict(lit["netease:block_entity"], client_tick=False), \
+        "熄着的也要有方块实体，也要服务端 tick（每步冷却 FD 的件），其余标志照点着的；客户端不 tick：没有火就没有烟（particleTick 只在 LIT 时）"
+
+
+def testOnlyTheLitBlockAsksTheEngineForTheFlameAndSmokeOfFarmersDelightsAnimateTick():
+    lit, unlit = _block("arris_stove")["components"], _block("arris_stove_extinguish")["components"]
+    tick = lit["netease:block_animate_random_tick"]
+    assert tick == {"send_event": True, "trigger_rate": 1.0}, "JE 的 animateTick 每次轮到都放（只有噼啪声是 1/10），所以每次轮到都发事件，1.0 是引擎能给的最高"
+    assert "netease:block_animate_random_tick" not in unlit, "StoveBlock.animateTick 开头 !LIT 就返回"
 
 
 def testTheUnlitBlockFacesAndListensToItsRemovalLikeTheLitOne():

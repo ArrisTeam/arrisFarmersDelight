@@ -5,6 +5,7 @@
 HoD 的配置（Shared/Data/HandsOnConfig.py，和服务端是同一份）里关了的站点，它的 View.register 返回 None（和服务端的 Logic.register 同一个条件），
 这里就不登记它、也不开它的场景和旁观的声音：方块照农夫乐事原样用，右键开经典界面或放料取料。
 """
+from ...Client import StoveFlame
 from ...QuModLibs.Client import Listen, clientApi
 from . import BoardView, BoardWatch, GrillView, PanScenes, PanView, PotScenes, PotView, StoveScenes
 from ...Shared.Data.BrothColors import BrothColors
@@ -27,3 +28,4 @@ def OnLoadClientAddonScriptsAfter(args=None):
                 PanScenes.enable()                # 煎锅从此按 HoD 的样子画：食物落进来、颠锅翻面、油星热气（谁都看得见）
         if GrillView.register(api) is not None:
             StoveScenes.enable()                      # 炉灶从此按 HoD 的样子画：烤架上的东西、冒烟等翻、翻面落下取走（谁都看得见）
+            StoveFlame.muteItemSmoke()                # HoD 的 StoveSmokeMixin：场景在，FD 灶上东西的黑烟就取消（火口的火星和噼啪声照旧）
