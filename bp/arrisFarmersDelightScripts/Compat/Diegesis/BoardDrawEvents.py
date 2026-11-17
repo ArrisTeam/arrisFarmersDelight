@@ -90,10 +90,13 @@ class DrawEvents(object):
 
     def assembled(self, made):
         """层凑成了菜（assembled 效果，状态已经是层清空、菜躺在板上）：made 是做成的各层（物品，底座在前）。板上原来就摆着的在原位，
-        没摆过的（书里点的菜一气呵成：放好、做成）先从玩家那边一层隔一层飞来（JE 的 arrive）；都落了各层缩小沉进去，菜弹出来。
+        没摆过的（书里点的菜一气呵成：放好、做成）先从玩家那边一层隔一层飞来（JE 的 arrive）；都落了各层缩小沉进去，菜同一刻弹出来
+        （JE 的 pop：两件事一起开始），层沉完（MELT_TIME）才收起来、菜底下垫的那一张才露出来。这一会儿里又来的状态（又放了一层、
+        菜被取走了）先记着（Draw.refresh 的 late）：板上的东西在弹出来那一刻、层在沉完那一刻照最新的画。
         返回各层都落完要多久：落完那一刻放做成的声音和面粉。"""
         seen, arrive, order, homes = self._seen(), self.hand.remaining(), 0, []         # 手还在倒 / 磕的先等它放好（pourUntil，1526）
         self.item.hide()
+        self.pile.hide()                                      # 垫的那一张不和正在沉的层抢位置（1638）
         for index, layer in enumerate(made[:MOST_LAYERS]):
             thing = self.layers[index]
             home = self._dress(thing, index, layer)
@@ -108,25 +111,34 @@ class DrawEvents(object):
             thing.hide()
             self.after(delay, lambda t=thing, h=home, i=index, n=name: self.land(t, h, i, n, True, lambda: True))
         self.melting = arrive + Motion.MELT_TIME + 0.05
-        board = self.shown["board"]
-        lift = 0.0 if not board or board[2] == "block" else Scene.pileLift(board[1])
-
-        def melt():
-            for thing, home in homes:
-                Motion.melt(thing.mover, home)
 
         def pop():
+            for thing, home in homes:
+                Motion.melt(thing.mover, home)
+            if self.late is not None:
+                self._board(self.late[0])
+                self.pile.hide()
+            board = self.shown["board"]
+            if board is not None:
+                Motion.popUp(self.item.mover, (0.0, 0.0 if board[2] != "flat" else Scene.pileLift(board[1]), 0.0))
+
+        def done():
             self.melting = 0.0
             for thing in self.layers:
                 thing.hide()
-            if self.shown["board"] is not None:
-                self.item.mover.visible = True
-                Motion.popUp(self.item.mover, (0.0, lift, 0.0))
+            late, self.late = self.late, None
+            if late is not None:
+                self._board(late[0])
+            board = self.shown["board"]
+            if board is not None and board[1] > 1 and board[2] == "flat":
+                self.pile.put(0.0, 0.0, 0.0)
+            if late is not None:
+                self._layers(late[1])
         if arrive > 0.0:
-            self.after(arrive, melt)
+            self.after(arrive, pop)
         else:
-            melt()
-        self.after(arrive + Motion.MELT_TIME, pop)
+            pop()
+        self.after(arrive + Motion.MELT_TIME, done)
         self.frame(0.0)                                  # 不用等的（第一层飞来、都摆着的马上沉）这一刻就开始
         return arrive
 

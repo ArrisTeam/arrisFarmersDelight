@@ -122,10 +122,68 @@ def testADishPickedInTheBookFliesInBeforeItMeltsAndItsSoundsWaitForTheLanding():
     assert C.engine.particles, "面粉"
     _frames(behavior, 0.1)
     assert _layer(behavior, 0).mover.scale < 1.0, "开始沉"
-    assert not [prop for prop in view.props.live() if prop.item["newItemName"] == "arris:egg_sandwich"], "菜还没弹出来"
+    dish = behavior.draw.item.mover
+    assert [prop for prop in view.props.live() if prop.item["newItemName"] == "arris:egg_sandwich"] and 0.3 < dish.scale < 1.0 and dish.pos[1] > 0.0,         "菜同一刻弹出来（JE 的 pop：层往里沉和菜长出来一起开始），不是等层沉完"
     _frames(behavior, 1.0)
     assert [prop.item["newItemName"] for prop in view.props.live()] == ["arris:egg_sandwich"], "菜弹出来，层都没了"
     assert behavior.draw.melting == 0.0
+
+
+def _made(behavior, view, dish="arris:egg_sandwich", count=1, made=(BREAD, EGG), before=(BREAD, EGG)):
+    """板上摆着 before 这几层；状态变成"层清空、菜在板上"，随后 assembled 效果到。"""
+    view.state.layers = []
+    view.state.board = C.item(dish, count)
+    behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+    behavior.onEffect("assembled", {"layers": [C.item(name) for name in made], "finish": "sandwich", "block": False})
+
+
+def _shown(view):
+    return sorted(prop.item["newItemName"] for prop in view.props.live())
+
+
+def testALayerLaidWhileTheLayersSinkIsDrawnOnceTheyAreGone():
+    """层往菜里沉的这一会儿里服务端又来了状态（菜被拿走、板上又放了一层）：原来整个丢掉，那一层一直不画，要等下一次状态变化。
+    JE 每刻都 refresh，层那一半等 melting 走完再照当时的状态画。"""
+    for wait in (0.05, 0.2):
+        behavior, view = _open(layers=[C.item(BREAD), C.item(EGG)])
+        _frames(behavior, 1.0)
+        _made(behavior, view)
+        _frames(behavior, wait)
+        view.state.board, view.state.layers = None, [C.item(TOMATO)]       # 菜拿走了，又放了一层番茄
+        behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+        assert behavior.draw.melting > 0.0, "还在沉：层这时是动画的"
+        _frames(behavior, 2.0)
+        assert _shown(view) == [TOMATO], (wait, _shown(view))
+        assert behavior.draw.shown == {"board": None, "layers": [(TOMATO, 0)]} and behavior.draw.late is None, behavior.draw.shown
+        assert _near(_layer(behavior, 0).mover.pos, _home(0)), "落在第一层的位置"
+
+
+def testADishTakenWhileTheLayersSinkDoesNotPopUpAfterwards():
+    """层还没落完（书里点的菜：各层要飞一秒多）菜就被拿走了：到弹出来那一刻照最新的状态，板上不画一道已经不在的菜。"""
+    behavior, view = _open()
+    behavior.draw.quiet = False
+    view.state.board = C.item("arris:egg_sandwich", 1)
+    behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+    behavior.onEffect("assembled", {"layers": [C.item(BREAD), C.item(EGG), C.item(TOMATO)], "finish": "sandwich", "block": False})
+    _frames(behavior, 0.5)                                                # 各层还在飞
+    view.state.board = None
+    behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
+    _frames(behavior, 3.0)
+    assert _shown(view) == [] and behavior.draw.shown["board"] is None and behavior.draw.item.prop is None, _shown(view)
+
+
+def testTheSheetUnderAStackOfDishesWaitsUntilTheLayersHaveSunk():
+    """一次做成好几个的（曲奇 8 块）：底下垫的那一张不和正在沉的层抢位置，层沉完才露出来（JE 的 pop：after(MELT_TIME) 才 pile.setVisible）。"""
+    behavior, view = _open(layers=[C.item(BREAD), C.item(EGG)])
+    _frames(behavior, 1.0)
+    _made(behavior, view, dish="arris:sweet_berry_cookie", count=8)
+    draw = behavior.draw
+    assert not draw.pile.mover.visible, "层还在：垫的那一张先收着"
+    _frames(behavior, Motion.MELT_TIME - 0.05)
+    assert not draw.pile.mover.visible and draw.item.mover.visible
+    _frames(behavior, 0.2)
+    assert draw.pile.mover.visible and draw.melting == 0.0
+    assert _shown(view) == ["arris:sweet_berry_cookie"] * 2, _shown(view)
 
 
 def testLayersThatLayOnTheBoardStayAndOnlyTheLastOneComesFromThePlayer():

@@ -42,7 +42,8 @@ class Draw(DrawEvents):
         self.shown = {"board": None, "layers": []}      # 现在画着的：板上的 (身份, 数量, 种类)、各层的身份
         self.clock = 0.0
         self.steps = []
-        self.melting = 0.0                              # 层正在沉进做好的菜：这么久之内不理状态里的东西
+        self.melting = 0.0                              # 层正在沉进做好的菜：这么久之内层是动画的，状态先记着（late）
+        self.late = None                                # 这一会儿里收到的最新状态 (板上的东西, 各层)：菜弹出来、层沉完时照它画
         self.cursor = None                              # 光标射线（站点射线）：落下的东西从光标上方来
         self.bouncing = 0.0                             # 板不收的东西正弹回手上：这么久之内光标栈上的那份先收起来
         self.quiet = True                               # 刚开站的第一眼：板上有的就是有的，不落下
@@ -105,7 +106,9 @@ class Draw(DrawEvents):
     def refresh(self, board, layers):
         """服务端状态变了：板上的东西、各层。board 是物品或 None，layers 是物品列表（底座在前）。"""
         self.landUntil = 0.0
-        if self.melting <= 0.0:
+        if self.melting > 0.0:
+            self.late = (board, layers)                  # JE 每刻都 refresh：板上的东西照旧跟着状态，层那一半等沉完（Float.isNaN(melting)）
+        else:
             self._board(board)
             self._layers(layers)
         self.quiet = False

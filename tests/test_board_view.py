@@ -475,10 +475,10 @@ def testAssemblingMeltsTheLayersAndPopsTheDishUp():
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
     behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "sandwich", "block": False})
     _frames(behavior, 5)
-    assert len(_live(view, "minecraft:bread")) == 1 and not _live(view, "arris:egg_sandwich"), "先沉：层还在，菜还没出来"
+    assert len(_live(view, "minecraft:bread")) == 1 and len(_live(view, "arris:egg_sandwich")) == 1, "层往里沉，菜同一刻弹出来（JE 的 pop）"
     assert view.dust and view.dust[-1][0] == "arris_diegesis:glint"
     _frames(behavior, 40)
-    assert not _live(view, "minecraft:bread") and len(_live(view, "arris:egg_sandwich")) == 1, "再弹出来"
+    assert not _live(view, "minecraft:bread") and len(_live(view, "arris:egg_sandwich")) == 1, "层沉完收起来，只剩菜"
 
 
 def testAStackLetGoLandsFromAboveTheCursor():
