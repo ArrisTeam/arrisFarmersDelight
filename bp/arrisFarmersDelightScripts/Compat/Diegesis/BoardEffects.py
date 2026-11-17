@@ -23,7 +23,6 @@ def onEffect(owner, name, data):
             owner.redraw()
         if data.get("stack"):
             draw.bounced(data["stack"])
-        BoardFx.play(Sounds.BOUNCE, world)
     elif name == "taken":
         if (data.get("stack") or {}).get("newItemName"):
             draw.taken(data["stack"], int(data.get("at", -1)), bool(data.get("carved")))

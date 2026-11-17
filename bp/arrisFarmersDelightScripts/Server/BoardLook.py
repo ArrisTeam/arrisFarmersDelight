@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BoardLook - 砧板的世界外观广播：附近没开着站点的人也听得到切菜声、放东西的声音、看得到碎屑（服务端）
 
-HoD 的站点效果（chopped / placed / taken / carved / assembled）对所有看得见这块板的人都演（声音、碎屑；动画只有本人看得到）；
+HoD 的站点效果（chopped / placed / taken / carved / assembled / refused）对所有看得见这块板的人都演（声音、碎屑；动画只有本人看得到）；
 基岩版前置包的 station.effect 只发给开着站点的人，旁观的人什么也听不到，原来靠服务端对所有人放一个不分工具的刀声顶着。
 这条广播补上：服务端把同一批效果发给同维度 32 格内、没开着这个站点的玩家（开着的人收站点自己的 effect，两边不重复），
 客户端 Compat/Diegesis/BoardWatch 的 OnBoardLook 按和站点里一样的声音表（Shared/Rules/BoardSounds）放声音、飞碎屑；动画不演——
@@ -12,7 +12,7 @@ from .Helpers.Engine import Call
 from .PanLook import nearby
 
 ENDPOINT = "OnBoardLook"
-OBSERVED = frozenset(("chopped", "placed", "taken", "carved", "assembled"))     # 旁观的人只关心出声、出碎屑的这几种
+OBSERVED = frozenset(("chopped", "placed", "taken", "carved", "assembled", "refused"))     # 旁观的人只关心出声、出碎屑的这几种（refused：被拒的敲击声，JE 里人人听得到）
 _ANIMATION_ONLY = ("stack", "layers")
 _enabled = [False]
 

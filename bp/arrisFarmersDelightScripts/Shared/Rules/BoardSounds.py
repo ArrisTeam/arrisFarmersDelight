@@ -36,7 +36,7 @@ BOTTLE_EMPTY = "bottle.empty"
 EGG_CRACK = "block.turtle_egg.crack"
 
 KNOCK = (WOOD_HIT, 0.25, 1.6)                   # 刀敲在食物上、没落在刀口线上（本人）
-BOUNCE = (WOOD_HIT, 0.4, 1.4)                   # 板不收：弹回的那一声（本人）
+BOUNCE = (WOOD_HIT, 0.4, 1.4)                   # 板不收（refused）：弹回的那一声，JE 的效果发给所有看得见这块板的人，旁观的人也听得到
 SETTLE = (BOARD_PLACE, 0.5, 0.8)                # 层凑成一道等点的菜：各层落定
 PICKUP_TAKEN = (ITEM_PICKUP, 0.3, 1.5)          # 取走一样
 PICKUP_STROKE = (ITEM_PICKUP, 0.35, 1.3)        # 最后一刀：切好的东西飞给厨师
@@ -164,7 +164,7 @@ def taken(data):
 
 
 def soundsOf(name, data=None, rng=random.random):
-    """一个站点效果该放哪些声音：[(声音名, 音量, 音调)]。不出声的效果（refused 由本人自己放，book 之类）是空表。"""
+    """一个站点效果该放哪些声音：[(声音名, 音量, 音调)]。不出声的效果（book 之类）是空表。"""
     data = data or {}
     if name == "chopped":
         return chopped(data, rng)
@@ -176,4 +176,6 @@ def soundsOf(name, data=None, rng=random.random):
         return [CARVE]
     if name == "assembled":
         return list(ASSEMBLED)
+    if name == "refused":
+        return [BOUNCE]
     return []

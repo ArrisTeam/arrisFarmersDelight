@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BoardWatch - 旁观砧板的人：听得到切菜声、放东西的声音、手倒液体 / 磕蛋的声音，看得到碎屑（客户端）
 
-装了场景交互前置、砧板站点登记成功才启用（ClientBoot 调 enable）。服务端 Server/BoardLook 把站点的表现事件（chopped / placed / taken / carved / assembled）
+装了场景交互前置、砧板站点登记成功才启用（ClientBoot 调 enable）。服务端 Server/BoardLook 把站点的表现事件（chopped / placed / taken / carved / assembled / refused）
 发给同维度 32 格内、没开着这个站点的人（开着的人收站点自己的 effect，两边不重复）；这里按和站点里一样的声音表（Shared/Rules/BoardSounds）放，
 所以刀声按工具和材质分、最后一刀有收尾声、放第几层音调高几分，旁观的人和站点里的人听到的一样；碎屑也是（BoardFx.chopPuffs：起点和初速是操作者那边的站点
 像素，按他的朝向转到世界）。动画不演：旁观的人看到的板是 Client/BlockItems 摆的；放下的一层要是液体（桶、瓶）或蛋，站点里的手倒、磕时出的声音
@@ -13,7 +13,7 @@ from ...QuModLibs.Client import AllowCall
 from ...Shared.Rules import BoardSounds as Sounds
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
-OBSERVED = frozenset(("chopped", "placed", "taken", "carved", "assembled"))     # 和服务端 Server/BoardLook.OBSERVED 同一份
+OBSERVED = frozenset(("chopped", "placed", "taken", "carved", "assembled", "refused"))     # 和服务端 Server/BoardLook.OBSERVED 同一份
 _state = {"on": False, "geometry": None}
 
 

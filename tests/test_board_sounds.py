@@ -109,7 +109,9 @@ def testTakenCarvedAssembledAndTheRest():
     assert Sounds.soundsOf("taken", {"carved": True}) == [("hit.wood", 0.6, 0.9), ("random.pop", 0.3, 1.5)], "拔出插着的工具：拔出声 + 拿起声"
     assert Sounds.soundsOf("carved") == [("dig.wood", 1.0, 0.8)]
     assert Sounds.soundsOf("assembled", {}) == [("dig.wood", 0.8, 0.75), ("random.pop", 0.35, 1.4)]
-    assert Sounds.soundsOf("refused", {}) == [] and Sounds.soundsOf("board_book") == [] and Sounds.soundsOf("nonsense", None) == []
+    assert Sounds.soundsOf("refused", {}) == [("hit.wood", 0.4, 1.4)] == [Sounds.BOUNCE], "被拒：弹回那一声，旁观的人也听得到（JE 的效果发给所有看得见板的人）"
+    assert Sounds.soundsOf("refused", {"stack": {"newItemName": "arris:tomato"}}) == [Sounds.BOUNCE] and Sounds.soundsOf("refused") == [Sounds.BOUNCE]
+    assert Sounds.soundsOf("board_book") == [] and Sounds.soundsOf("nonsense", None) == []
     assert Sounds.SETTLE == ("dig.wood", 0.5, 0.8) and Sounds.KNOCK == ("hit.wood", 0.25, 1.6) and Sounds.BOUNCE == ("hit.wood", 0.4, 1.4)
     assert abs(Sounds.snipBite(LOW)[2] - 1.25) < 1.0e-9 and Sounds.snipBite(HIGH)[:2] == ("mob.sheep.shear", 0.3)
 

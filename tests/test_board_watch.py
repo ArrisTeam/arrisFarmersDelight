@@ -136,12 +136,28 @@ def testAnOnlookerIgnoresWhatIsNotForThem():
     C.BoardWatch.enable(C.Geometry)
     good = _look("placed", at=1)
     for bad in (dict(good, dimensionId=1), dict(good, pos=[1, 2]), dict(good, pos=[1, 2, "3"]), dict(good, pos=[True, 2, 3]), dict(good, pos="x"),
-                dict(good, event="refused"), dict(good, event="board_book"), dict(good, event=["placed"]), dict(good, event=None), "junk", None, 5, [good]):
+                dict(good, event="board_book"), dict(good, event=["placed"]), dict(good, event=None), "junk", None, 5, [good]):
         C.BoardWatch.OnBoardLook(bad)
-    assert C.engine.played == [], "别的维度、坏位置、不出声的事件、坏数据：都不放"
+    assert C.engine.played == [], "别的维度、坏位置、不是这几种的事件、坏数据：都不放"
     for junk in ({"tool": 5, "item": None, "yields": "x", "stroke": "nonsense"}, {}):
         C.BoardWatch.OnBoardLook(_look("chopped", **junk))
     assert len(C.engine.played) == 2 and _names() == ["ambient.cutting_board.knife"] * 2, "事件里的数据坏了：按刀声放，不抛"
+
+
+def testAnOnlookerHearsTheKnockOfARefusedStackTheSameAsTheCook():
+    """JE 的 refused 效果发给所有看得见板的人，每个人都响 WOOD_HIT 0.4 / 1.4；旁观的人和本人听到的是同一声，从板上传来。"""
+    behavior, view = _open(C.item("arris:cabbage", 2))
+    C.engine.played[:], C.engine.playedAt[:] = [], []
+    behavior.onEffect("refused", {"stack": C.item("arris:tomato")})
+    cook = list(C.engine.played)
+    assert cook == [("hit.wood", 0.4, 1.4)], "本人只响一声（声音表里的，不再另放一遍）"
+    C.engine.reset()
+    C.BoardWatch.enable(C.Geometry)
+    C.BoardWatch.OnBoardLook(_look("refused"))
+    assert C.engine.played == cook, "旁观的人：同一声"
+    x, y, z = C.engine.playedAt[0]
+    assert (x, z) == (POS[0] + 0.5, POS[2] + 0.5) and POS[1] < y < POS[1] + 1, "声音从板上传来"
+    assert "refused" in C.BoardWatch.OBSERVED and C.BoardWatch.OBSERVED >= set(["chopped", "placed", "taken", "carved", "assembled"])
 
 
 def testTheBroadcastIsDeadUntilTheBoardStationIsRegisteredByTheBoot():

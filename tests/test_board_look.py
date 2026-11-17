@@ -102,10 +102,32 @@ def testOnlyTheEventsThatMakeSoundOrDustAreBroadcastAndWithoutTheBigAnimationDat
         taken = [look for look in _looks("b") if look["event"] == "taken"][0]
         assert taken["carved"] is False and taken["at"] == 1
         assert not [look for look in _looks("b") if look["event"] == "refused"]
-        K.do(manager, "a", K.custom("take"))                             # 板空了再取：被拒的事件旁观的人用不着
+        K.do(manager, "a", K.custom("take"))                             # 板空了再取：没有东西被拒，什么事件也没有
         assert [look["event"] for look in _looks("b")] == events
         assert BoardLook.payloadOf(0, (1, 2, 3), "assembled", {"layers": [1], "finish": "sandwich", "block": False}) == \
             {"dimensionId": 0, "pos": [1, 2, 3], "event": "assembled", "finish": "sandwich", "block": False}
+    finally:
+        BoardLook.enable(False)
+
+
+def testARefusedPlaceChopOrAssembleIsHeardByOnlookersToo():
+    """JE 的 refused 效果（放不上去、没有刀、两刀间隔太近、凑不成菜……每一种）发给所有看得见板的人，旁观的人也听得到那一声敲击；负载只有名字，弹回的那一叠（stack）不带。"""
+    manager, data = _setup()
+    try:
+        K.opened(manager)
+        assert _place(manager, "arris:tomato", 1)                          # 板不收番茄
+        refused = [look for look in _looks("b") if look["event"] == "refused"]
+        assert len(refused) == 1 and "stack" not in refused[0] and refused[0]["pos"] == list(K.BOARD), "放不上去：弹回，旁观的人听到敲击"
+        assert _looks("a") == [], "开着站点的人收 effect，不再收一份广播"
+        assert K.effects("a")[0][0] == "refused"
+        before = len(_looks("b"))
+        assert K.do(manager, "a", K.custom("assemble")) is False
+        assert [look["event"] for look in _looks("b")[before:]] == ["refused"], "凑不成菜：拒绝"
+        K.do(manager, "a", K.click(K.inv(0), kind="PUT_AWAY"))
+        assert _place(manager, CABBAGE, 1, slot=5)
+        K.advance(0.2)
+        before = len(_looks("b"))
+        assert _chop(manager) and [look["event"] for look in _looks("b")[before:]] == ["refused"], "没有刀：这一刀被拒"
     finally:
         BoardLook.enable(False)
 

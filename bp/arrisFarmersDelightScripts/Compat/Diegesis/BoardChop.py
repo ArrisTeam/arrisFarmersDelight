@@ -38,7 +38,7 @@ def _name(value):
 
 
 def refuse(logic):
-    logic.station.effect("refused", {})
+    emit(logic, "refused", {})                 # 和别的事件一样：开着站点的人收 effect、旁观的人收广播（被拒的敲击声人人听得到）
     return True
 
 

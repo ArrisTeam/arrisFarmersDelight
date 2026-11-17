@@ -40,7 +40,7 @@ def assemble(logic, playerId):
     stacks = [(keyOf(layer), layer["count"]) for layer in layers]
     dish = Dishes.completed([kind for kind, _count in stacks]) if layers else None
     if dish is None:
-        logic.station.effect("refused", {})
+        emit(logic, "refused", {})
         return False
     plan = Dishes.makeOf(dish, stacks)
     logic.setLayers([])
