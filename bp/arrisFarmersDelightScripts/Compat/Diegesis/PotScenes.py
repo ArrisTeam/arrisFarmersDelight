@@ -30,6 +30,10 @@ def enable(brothOf=None):
     _state["brothOf"] = brothOf
 
 
+def enabled():
+    return _state["on"]
+
+
 def sceneAt(dimensionId, pos):
     return _scenes.get((dimensionId, (int(pos[0]), int(pos[1]), int(pos[2]))))
 

@@ -8,9 +8,13 @@
 砧板、厨锅、煎锅站点要前置包 API 3（2：光标栈随状态同步、站点逻辑的 ctx / dropped / userData、托盘；3：客户端悬着的半透明容器和输入方式），
 炉灶要 2：更老的前置包上它们照旧走经典玩法（砧板没登记，工作台也就照旧出那些菜）。装了新前置包时顺手打开厨锅、煎锅的世界外观广播（Server/PotLook.py、Server/PanLook.py）。
 炉灶站点登记上了就打开炉灶的世界外观广播（Server/StoveLook.py），客户端的 StoveScenes 照它画。
+HoD 的配置（Shared/Data/HandsOnConfig.py）在这里只问一次站点开不开：每个站点的 register 在配置里关了就返回 None（客户端的 View.register 同一个条件，
+两端一起有、一起没有），这个站点连带的东西——世界外观广播、砧板的旁观声音、工作台拦截——也都不开，方块照农夫乐事原样用。
+工作台拦截（DishCrafts）还要看 remove_crafting_recipes（没有砧板站点时 Options.removeCraftingRecipes 本来就是假）。
 """
 from ...QuModLibs.Server import Listen, serverApi
 from ...Server import BoardLook, PanLook, PotLook, StoveLook
+from ...Shared.Rules import HandsOnOptions as Options
 from . import BoardLogic, DishCrafts, GrillLogic, PanLogic, PotLogic
 
 API_MODULE = "arrisDiegesisScripts.Api.Server"
@@ -31,16 +35,17 @@ def tryRegister():
     api = getApi()
     if api is None:
         return False
-    board = BoardLogic.register(api)       # API 不够新返回 None：砧板和它的工作台拦截一起没有
+    board = BoardLogic.register(api)       # API 不够新、或配置里关了砧板站点返回 None：砧板和它的工作台拦截一起没有
     if getattr(api, "API_VERSION", 0) >= POT_API_VERSION:
-        PotLogic.register(api)
-        PotLook.enable()
-        PanLogic.register(api)
-        PanLook.enable()
+        if PotLogic.register(api) is not None:
+            PotLook.enable()
+        if PanLogic.register(api) is not None:
+            PanLook.enable()
     if GrillLogic.register(api) is not None:
         StoveLook.enable()
     if board is not None:
-        DishCrafts.register()        # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）；砧板站点不在就一切照旧
+        if Options.removeCraftingRecipes():
+            DishCrafts.register()    # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）；配置里关了 remove_crafting_recipes 就照旧
         BoardLook.enable()           # 附近没开站点的人也听得到切菜声（站点里的人收站点自己的 effect）
     _state["registered"] = True
     return True

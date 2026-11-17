@@ -24,6 +24,7 @@ from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarr
 from ...Server.Helpers.StoveSlots import StoveSlots
 from ...Server.Stove import EnsureStoveData
 from ...Shared.Rules import GrillStation as Rules
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.HandsOn import Frying, Grill
 
 REACH = 6.0
@@ -223,9 +224,9 @@ class GrillLogicMixin(object):
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 GrillStation.buildSchema）。
     炉灶站点要前置包 API 2（光标栈随状态同步、站点逻辑的 ctx / dropped）和朝向钩子（FACING_HOOK）：太旧的前置包上炉灶照旧走经典玩法，返回 None
-    （和客户端的 GrillView.register 同一个条件，两端一起有、一起没有）。
+    （和客户端的 GrillView.register 同一个条件，两端一起有、一起没有）；配置里关了炉灶站点（stove）也一样什么都不登记、返回 None，炉灶照农夫乐事原样用。
     站点朝哪：登记时给 facing（GrillOpen.facingOf），站点的北面永远是炉灶方块的正面，不看开站的人站在哪一侧。"""
-    if getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
+    if not Options.stove() or getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
         return None
     logicClass = type("StoveLogic", (GrillLogicMixin, api.StationLogic), {"kit": api})
     stationType = api.StationType(Rules.STATION_ID, Rules.STOVE_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH)

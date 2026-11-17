@@ -6,7 +6,8 @@ Server/CookingPot.py 照旧推进；本模块让库的方块宿主接管对厨�
 并把方块实体数据里的热源、烹饪计时、预览格读成界面数据。
 
 右键盛菜：手里拿着这道菜的容器（只比物品名）、预览槽里有煮好的菜时，拿走一个容器、给一份菜（Server/PotServe.py，算做过一份、不给经验）；
-前置包在场时普通右键被客户端取消、到不了这里，站点开站那一下（Compat/Diegesis/PotLogic.py 的 onOpen）做同一件事。
+前置包在场、厨锅站点登记着时普通右键被客户端取消、到不了这里，站点开站那一下（Compat/Diegesis/PotLogic.py 的 onOpen）做同一件事；
+HoD 配置（Shared/Data/HandsOnConfig.py）里关了 cooking_pot，站点就不登记，普通右键不再被取消，到这里开经典界面。
 宿主登记时由库在运行期让引擎报厨锅的移除（ListenOnBlockRemoveEvent），所以方块 JSON 里不再写 netease:listen_block_remove
 （两处同时开会让方块和物品图标都不画）；OnCookingPotRemove 照常经 BlockRemoveServerEvent 收到事件。
 """

@@ -23,6 +23,7 @@ from ...Server.Helpers import PotContainer
 from ...Server.Helpers.Engine import GetBlockEntityData
 from ...Server.Helpers.Player import GiveOrDropItem
 from ...Shared.Rules import CookingPot as CookingPotRules
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PotStation as Rules
 
 REACH = 6.0
@@ -219,7 +220,10 @@ class PotLogicMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PotStation.buildSchema）。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PotStation.buildSchema）。
+    配置里关了厨锅站点（cooking_pot）什么也不登记、返回 None：锅照农夫乐事原样用（右键开经典界面），和客户端的 PotView.register 同一个条件。"""
+    if not Options.cookingPot():
+        return None
     logicClass = type("CookingPotLogic", (PotLogicMixin, api.StationLogic), {"kit": api})
     api.registerStation(api.StationType(Rules.STATION_ID, Rules.POT_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
     return logicClass

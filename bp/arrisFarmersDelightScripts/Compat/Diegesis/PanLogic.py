@@ -20,6 +20,7 @@ from ...Server import HandFrying, PanLook
 from ...Server.Helpers import PanContents
 from ...Server.Helpers.BlockItems import PublishSkillet
 from ...Server.Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanStation as Rules
 from ...Shared.Rules.HandsOn import Frying
 
@@ -218,7 +219,10 @@ class PanLogicMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PanStation.buildSchema）。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 PanStation.buildSchema）。
+    配置里关了煎锅站点（skillet）什么也不登记、返回 None：煎锅照农夫乐事原样用，和客户端的 PanView.register 同一个条件。"""
+    if not Options.skillet():
+        return None
     logicClass = type("SkilletLogic", (PanLogicMixin, api.StationLogic), {"kit": api})
     api.registerStation(api.StationType(Rules.STATION_ID, Rules.PAN_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))
     return logicClass

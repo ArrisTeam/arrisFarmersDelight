@@ -22,6 +22,7 @@ from ...Client import BlockItems
 from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
 from ...Shared.Rules import BoardStation as Rules
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
@@ -225,8 +226,8 @@ class BoardViewMixin(object):
 
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
-    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None。"""
-    if getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
+    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None；配置里关了砧板站点（cutting_board）也一样，和服务端的 BoardLogic.register 同一个条件。"""
+    if not Options.cuttingBoard() or getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
         return None
     behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)

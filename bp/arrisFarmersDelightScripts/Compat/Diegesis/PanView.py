@@ -19,6 +19,7 @@ import math
 
 from . import BookSources, PanScenes
 from ...Client.Engine import clientApi, compFactory, levelId
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanModelMath as Math
 from ...Shared.Rules import PanStation as Rules
 
@@ -210,8 +211,9 @@ class PanViewMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
-    if getattr(api, "API_VERSION", 0) < MIN_API_VERSION:
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
+    配置里关了煎锅站点（skillet）什么也不登记、返回 None，和服务端的 PanLogic.register 同一个条件。"""
+    if not Options.skillet() or getattr(api, "API_VERSION", 0) < MIN_API_VERSION:
         return None
     behaviorClass = type("SkilletBehavior", (PanViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)

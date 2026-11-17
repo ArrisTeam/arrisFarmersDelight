@@ -26,6 +26,7 @@ from ...Shared.Data.Cutting import CuttingBoardDict
 from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules import CuttingStation
 from ...Shared.Rules import DishStation as Dishes
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.BoardStation import GROUP_BOARD, GROUP_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardPlace as Place
 from ...Shared.Rules.HandsOn import Cutting
@@ -185,8 +186,8 @@ class BoardLogicMixin(object):
 
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationLogic 拼成逻辑类并登记站点（站点声明两端同一份，见 BoardStation.buildSchema）。
-    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None。"""
-    if getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
+    太旧的前置包（API < BoardStation.MIN_API_VERSION）上砧板照旧走经典玩法，返回 None；配置里关了砧板站点（cutting_board）也一样，和客户端的 BoardView.register 同一个条件。"""
+    if not Options.cuttingBoard() or getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
         return None
     logicClass = type("CuttingBoardLogic", (BoardLogicMixin, api.StationLogic), {"kit": api})
     api.registerStation(api.StationType(Rules.STATION_ID, Rules.BOARD_BLOCKS, logicClass, schema=Rules.buildSchema(api), reach=REACH))

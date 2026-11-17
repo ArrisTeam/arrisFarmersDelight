@@ -22,6 +22,7 @@ from . import BookSources, StoveScenes
 from .GrillSpace import Space
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.HandsOn import StoveLayout
 
 CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target"], "fov": StoveLayout.CAMERA["fov"],
@@ -154,8 +155,8 @@ def facingOf(pos, dimensionId):
 def register(api):
     """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
     炉灶站点要前置包 API 2（托盘、手上的物品栈）和朝向钩子（FACING_HOOK，站点的北面是炉灶的正面：场景、命中盒、世界里的展示都按这个空间写）：
-    太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None。"""
-    if getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
+    太旧的前置包上什么也不登记，炉灶照旧走经典玩法，返回 None；配置里关了炉灶站点（stove）也一样，和服务端的 GrillLogic.register 同一个条件。"""
+    if not Options.stove() or getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
         return None
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)

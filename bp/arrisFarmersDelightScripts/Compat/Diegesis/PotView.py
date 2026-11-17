@@ -23,6 +23,7 @@ from . import BookSources, PotPick, PotScenes
 from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
+from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PotStation as Rules
 from ...Shared.Rules.HandsOn import PotDrift, PotSpoonMotion
 
@@ -208,7 +209,10 @@ class PotViewMixin(object):
 
 
 def register(api):
-    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。"""
+    """前置包在场时调用：把 mixin 和前置包的 StationBehavior 拼成表现类并登记（schema 和服务端同一份）。
+    配置里关了厨锅站点（cooking_pot）什么也不登记、返回 None，和服务端的 PotLogic.register 同一个条件。"""
+    if not Options.cookingPot():
+        return None
     behaviorClass = type("CookingPotBehavior", (PotViewMixin, api.StationBehavior), {"api": api})
     kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
     api.registerBehavior(Rules.STATION_ID, Rules.POT_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit),
