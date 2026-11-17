@@ -11,7 +11,8 @@ import boardkit as K
 from boardkit import fake
 
 BoardLook = K.potfake.load("Server.BoardLook")
-REFUSED_GAP = BoardLook.REFUSED_GAP
+LookWatch = K.potfake.load("Server.Helpers.LookWatch")             # 被拒的敲击声的限速在这里（砧板、煎锅、炉灶共用）
+REFUSED_GAP = LookWatch.REFUSED_GAP
 PAUSE = REFUSED_GAP + 0.05                                  # 隔够了（浮点的边界上不比）
 KNIFE, CABBAGE = "arris:iron_knife", "arris:cabbage"
 BOARD_SOUNDS = ("ambient.cutting_board.knife", "dig.wood", "armor.equip_leather", "random.pop")
@@ -19,8 +20,8 @@ BOARD_SOUNDS = ("ambient.cutting_board.knife", "dig.wood", "armor.equip_leather"
 
 def _setup(enabled=True):
     manager, data = K.setup()
-    BoardLook.time = K.potfake.Clock(fake.world)             # 被拒的敲击声按玩家限速（真实时间）：测试里读假世界的钟
-    BoardLook._refusedAt.clear()
+    LookWatch.time = K.potfake.Clock(fake.world)             # 被拒的敲击声按玩家限速（真实时间）：测试里读假世界的钟
+    LookWatch._refusedAt.clear()
     fake.addPlayer("c", (200.5, 64.0, 10.5))                 # 太远
     fake.addPlayer("d", (10.5, 64.0, 10.5), dim=1)           # 别的维度
     BoardLook.enable(enabled)
@@ -184,18 +185,18 @@ def testTheRefusalLimitIsPerPlayerAndOnlyForRefusedNotForTheOtherSounds():
 
 
 def testOnlyThePlayersRefusedAMomentAgoAreRemembered():
-    BoardLook._refusedAt.clear()
-    clock = BoardLook.time = K.potfake.Clock(fake.world)
+    LookWatch._refusedAt.clear()
+    clock = LookWatch.time = K.potfake.Clock(fake.world)
     try:
         for index in range(300):
             clock.world.time += PAUSE
-            assert BoardLook._mayHearRefusal("player%d" % index)
-        assert len(BoardLook._refusedAt) <= 65, len(BoardLook._refusedAt)
-        assert not BoardLook._mayHearRefusal("player299"), "刚听过的还在"
+            assert LookWatch.mayHearRefusal("player%d" % index)
+        assert len(LookWatch._refusedAt) <= 65, len(LookWatch._refusedAt)
+        assert not LookWatch.mayHearRefusal("player299"), "刚听过的还在"
         clock.world.time -= 1000.0                                         # 时钟倒着走：当作隔够了
-        assert BoardLook._mayHearRefusal("player299")
+        assert LookWatch.mayHearRefusal("player299")
     finally:
-        BoardLook._refusedAt.clear()
+        LookWatch._refusedAt.clear()
 
 
 def testAnAssembledDishIsBroadcastWithItsFinishAndLayerCountButNotItsLayers():

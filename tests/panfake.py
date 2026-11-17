@@ -77,6 +77,7 @@ def setup(heated=True, fireAspect=0, creative=False, refresh=DEFAULT_REFRESH):
     HandFrying._hands.clear()
     PanLook._sent.clear()
     LookWatch.reset()
+    LookWatch.time = potfake.Clock(fake.world)        # 被拒的敲击声给旁观的人听的限速用真实时间：测试里读假世界的钟
     LookWatch.REFRESH_SECONDS = refresh
     PanLook.enable(True)
     PanLogic.time = potfake.Clock(fake.world)

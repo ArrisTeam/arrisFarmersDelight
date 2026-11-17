@@ -10,19 +10,25 @@ PanLook / StoveLook 把"锅里、灶上现在是什么样"发给附近的人，�
 客户端收到同样的样子是幂等的（画面不变），丢了的下一轮就补上。给了 most 的名单每补一次把间隔加倍、到 most 为止：丢是进世界那一阵的事，
 几秒内补上就行，站久了的人不用一直每几秒收一份（样子变了、人走出去再回来，间隔从头算）。
 谁在哪是引擎的调用（每个玩家两次），每口锅每一步都问太贵：带时钟问的在 SNAPSHOT_SECONDS 内共用上一份快照。
+被拒的敲击声（refused）按玩家限速（mayHearRefusal）：砧板 / 煎锅 / 炉灶三种站点的旁观广播共用一份，站点里的人收到的不在这里管（他们的客户端要靠每一个演弹开 / 撤回）。
 """
+import time
+
 from .Engine import compFactory, serverApi
 
 RANGE = 32.0               # 与前置包的 WATCH_RANGE 一致（两个包互不导入）
 SNAPSHOT_SECONDS = 0.5     # 玩家位置的快照多久换一次
 REFRESH_SECONDS = 5.0      # 样子没变时，隔多久把当前的样子再单发给附近的人一份（丢了的就这么补上）；一份几百字节，附近每人每 5 秒一份
 REFRESH_MOST = 60.0        # 间隔加倍的名单（Audience 的 most）最长隔这么久：5、10、20、40、60、60……
+REFUSED_GAP = 0.3          # 秒：同一个人被拒的敲击声，旁观的人这么久之内至多听一声（真实时间，不受 /time 影响）
 _cache = {"at": None, "players": []}
+_refusedAt = {}            # 玩家 id -> 上一次把他被拒的敲击声放给旁观的人听的时刻
 
 
 def reset():
-    """清掉快照（测试和重载用）。"""
+    """清掉快照和被拒的记录（测试和重载用）。"""
     _cache["at"], _cache["players"] = None, []
+    _refusedAt.clear()
 
 
 def _take():
@@ -42,6 +48,21 @@ def players(now=None):
     if at is None or not 0.0 <= now - at < SNAPSHOT_SECONDS:      # 时钟倒着走（换了世界、测试）也重取
         _cache["at"], _cache["players"] = now, _take()
     return _cache["players"]
+
+
+def mayHearRefusal(actor):
+    """这个人（actor，被拒的动作是他发的；没有就算一个人）被拒的敲击声，这一次旁观的人该不该听到：被拒的动作每秒能来 40 个（前置包按玩家的令牌桶上限），
+    不限的话改过的客户端发一串非法的动作，就能把被拒的敲击声当喇叭、给 32 格内每个人各发一次广播。离他上一次被听到不到 REFUSED_GAP 秒就不发；
+    时钟倒着走（换了世界、测试）当作隔够了；记录只留这一阵里被听到过的人，不随玩家来来去去涨。"""
+    now = time.time()
+    last = _refusedAt.get(actor)
+    if last is not None and 0.0 <= now - last < REFUSED_GAP:
+        return False
+    _refusedAt[actor] = now
+    if len(_refusedAt) > 64:
+        for key in [key for key, at in _refusedAt.items() if not 0.0 <= now - at < REFUSED_GAP]:
+            del _refusedAt[key]
+    return True
 
 
 def nearby(dimensionId, blockPos, now=None):

@@ -56,6 +56,52 @@ def testAtMostABatchOfSixteenGoesIn():
     assert len(P.events("refused")) == 1, "被拒：那一件落到锅心又弹开，大家都看得见（EFFECT_REFUSED）"
 
 
+PAUSE = P.LookWatch.REFUSED_GAP + 0.05          # 隔够了（浮点的边界上不比）
+
+
+def _refuseSticks(manager, playerId, times, gap=0.07):
+    """playerId 光标栈上拿着木棍，一连点 times 下 place（煎锅不收木棍：每下都被拒），每下隔 gap 秒（假世界的钟）。"""
+    for _ in range(times):
+        fake.world.time += gap
+        assert P.do(manager, playerId, P.custom("place"))
+
+
+def testARefusedPlacementIsNotAHornTheCooksOwnClientCanBlowAtEveryoneNearby():
+    """被拒的动作每秒能来 40 个：改过的客户端发一串非法的 place，每个都给 32 格内每个旁观的人广播一次、放一声敲击。同一个人被拒的敲击声，旁观的人 0.3 秒内至多听一声；
+    站点里的人一个不少（他的客户端据此演被拒的东西弹开，连点几下弹几下）。"""
+    manager, _ = P.setup()
+    P.opened(manager)                                                  # a 开着站点，b 在 32 格内没开：旁观的人
+    carry(manager, "a", 30, STICK, 3)
+    before = len(P.events("refused"))
+    _refuseSticks(manager, "a", 20)                                    # 20 个，每个隔 0.07 秒（一秒多一点）
+    refused = P.events("refused")[before:]
+    assert len(refused) == 20 and all("a" in players for _name, _payload, players in refused), "站点里的人 20 个都收到"
+    assert sum(1 for _name, _payload, players in refused if "b" in players) == 4, "旁观的人只听到第 1、6、11、16 个（每隔 0.35 秒）"
+    _refuseSticks(manager, "a", 1, gap=PAUSE)
+    assert "b" in P.events("refused")[-1][2], "隔够了又能听到"
+
+
+def testTheRefusalLimitIsPerPlayerAndLeavesPlacingAlone():
+    manager, _ = P.setup()
+    fake.addPlayer("c", (11.5, 64.0, 8.5))                             # 第三个人：旁观
+    P.opened(manager, "a")
+    P.opened(manager, "b")
+    carry(manager, "a", 30, STICK, 3)
+    carry(manager, "b", 30, STICK, 3)
+    before = len(P.events("refused"))
+    for _ in range(3):                                                 # 两个人各发三个非法的 place，同一时刻
+        for playerId in ("a", "b"):
+            assert P.do(manager, playerId, P.custom("place"))
+    refused = P.events("refused")[before:]
+    assert len(refused) == 6 and sum(1 for _n, _p, players in refused if "c" in players) == 2, "旁观的人一个人一声，不是两个人共用一声"
+    assert all("a" in players and "b" in players for _n, _p, players in refused), "站点里的两个人每个都收到"
+    assert P.do(manager, "a", P.click(P.inv(30)))                      # 木棍放回，换成牛肉放进锅：刚被拒完（0.3 秒内），合法的动作照样人人收到
+    carry(manager, "a", 31, BEEF, 2)
+    assert P.do(manager, "a", P.custom("place"))
+    placed = P.events("placed")
+    assert len(placed) == 1 and "c" in placed[0][2], "放进锅不受限"
+
+
 def testEggsStackToSixteenButAnEggStackOfSixteenIsOneBatch():
     manager, _ = P.setup()
     P.opened(manager)

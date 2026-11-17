@@ -197,8 +197,8 @@ class GrillLogicMixin(object):
     # ---------------------------------------------------------------- 同步
 
     def _tell(self, name, data):
-        """表现事件：发给附近所有人（StoveLook 广播），开着站点的人也在里面。"""
-        StoveLook.event(self.station.dimensionId, self.station.pos, name, data)
+        """表现事件：发给附近所有人（StoveLook 广播），开着站点的人也在里面（refused 旁观的人按发动作的人限速，站点里的人不限）。"""
+        StoveLook.event(self.station.dimensionId, self.station.pos, name, data, users=list(self.station.users), actor=self.actor)
 
     def _blockData(self):
         return GetBlockEntityData(self.station.dimensionId, self.station.pos)

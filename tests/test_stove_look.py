@@ -9,6 +9,7 @@ import stovekit as K
 from stovekit import BEEF, STICK, fake
 
 COOKED = "minecraft:cooked_beef"
+PAUSE = K.LookWatch.REFUSED_GAP + 0.05          # 隔够了（浮点的边界上不比）
 
 
 def beef(count=1):
@@ -96,6 +97,54 @@ def testPlacingTakingAndBeingRefusedAreEventsForEveryone():
     assert K.do(manager, "a", K.custom("place"))
     refused = K.broadcasts("refused")
     assert len(refused) == 1 and refused[0][1]["stack"] == {"newItemName": STICK, "newAuxValue": 0, "count": 1}
+
+
+def _refuseSticks(manager, playerId, times, gap=0.07):
+    """playerId 手上拿着木棍，一连点 times 下 place（炉灶不收木棍：每下都被拒），每下隔 gap 秒（假世界的钟）。"""
+    for _ in range(times):
+        fake.world.time += gap
+        assert K.do(manager, playerId, K.custom("place"))
+
+
+def _holdSticks(manager, playerId):
+    fake.give(playerId, 4, STICK, 3)
+    K.opened(manager, playerId)
+    assert K.do(manager, playerId, K.click(K.inv(4)))
+
+
+def testARefusedPlacementIsNotAHornTheCooksOwnClientCanBlowAtEveryoneNearby():
+    """被拒的动作每秒能来 40 个：改过的客户端发一串非法的 place，每个都给 32 格内每个旁观的人广播一次、放一声敲击。同一个人被拒的敲击声，旁观的人 0.3 秒内至多听一声；
+    站点里的人一个不少（他的客户端据此演被拒的东西弹开，连点几下弹几下）。"""
+    manager, data = K.setup(look=True)
+    fake.addPlayer("c", (11.5, 64.0, 8.5))                             # 旁观的人：32 格内，没开站点
+    _holdSticks(manager, "a")
+    before = len(K.broadcasts("refused"))
+    _refuseSticks(manager, "a", 20)                                    # 20 个，每个隔 0.07 秒（一秒多一点）
+    refused = K.broadcasts("refused")[before:]
+    assert len(refused) == 20 and all("a" in players for _name, _payload, players in refused), "站点里的人 20 个都收到"
+    assert sum(1 for _name, _payload, players in refused if "c" in players) == 4, "旁观的人只听到第 1、6、11、16 个（每隔 0.35 秒）"
+    _refuseSticks(manager, "a", 1, gap=PAUSE)
+    assert "c" in K.broadcasts("refused")[-1][2], "隔够了又能听到"
+
+
+def testTheRefusalLimitIsPerPlayerAndLeavesPlacingAlone():
+    manager, data = K.setup(look=True)
+    fake.addPlayer("c", (11.5, 64.0, 8.5))
+    _holdSticks(manager, "a")
+    _holdSticks(manager, "b")
+    before = len(K.broadcasts("refused"))
+    for _ in range(3):                                                 # 两个人各发三个非法的 place，同一时刻
+        for playerId in ("a", "b"):
+            assert K.do(manager, playerId, K.custom("place"))
+    refused = K.broadcasts("refused")[before:]
+    assert len(refused) == 6 and sum(1 for _n, _p, players in refused if "c" in players) == 2, "旁观的人一个人一声，不是两个人共用一声"
+    assert all("a" in players and "b" in players for _n, _p, players in refused), "站点里的两个人每个都收到"
+    assert K.do(manager, "a", K.click(K.inv(4)))                       # 木棍放回背包，换成牛肉放上去：刚被拒完（0.3 秒内），合法的动作照样人人收到
+    fake.give("a", 5, BEEF, 2)
+    assert K.do(manager, "a", K.click(K.inv(5)))
+    assert K.do(manager, "a", K.custom("place"))
+    placed = K.broadcasts("placed")
+    assert len(placed) == 1 and "c" in placed[0][2], "放上去不受限"
 
 
 def testAFarmersDelightPieceShowsUpWithNobodyAtAStation():

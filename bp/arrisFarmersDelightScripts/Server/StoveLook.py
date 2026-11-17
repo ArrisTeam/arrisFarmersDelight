@@ -11,7 +11,7 @@ HoD 的炉灶场景是 idle_visible：32 格内每个客户端都按同步来的
      "down" / "up": 贴灶面 / 朝上面烤到哪（0..1，1/32 一档）}}
 画面只看哪件东西、手放的吗、贴灶面熟没熟（冒烟等翻）、朝上面熟到哪（画熟的还是生的），所以只在这些变了时才发，不按速度往前推。
 一次性的事件（placed / refused / turned / unturned / taken / grilled）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，发给附近所有人
-（包括正在用站点的人：他的客户端按"自己刚翻过"去重）。
+（包括正在用站点的人：他的客户端按"自己刚翻过"去重）；refused 例外：站点里的人一个不少，旁观的人按发动作的人限速（Helpers/LookWatch.mayHearRefusal，砧板、煎锅同一份）。
 """
 from . import HandGrill
 from .Helpers import LookWatch
@@ -97,10 +97,14 @@ def _send(players, payload):
         Call(playerId, ENDPOINT, payload)
 
 
-def event(dimensionId, blockPos, name, data=None):
-    """一次性的事件发给附近所有人。"""
+def event(dimensionId, blockPos, name, data=None, users=(), actor=None):
+    """一次性的事件发给附近所有人。被拒的（refused）按玩家限速：站点里的人（users）一个不少——他的客户端靠它演被拒的东西弹开——，
+    旁观的人这个人（actor）被拒的敲击声 LookWatch.REFUSED_GAP 秒内至多听一声（和煎锅、砧板同一份，不限的话改过的客户端就能把它当喇叭）。"""
     if not _enabled[0]:
         return
     payload = {"dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])], "event": name}
     payload.update(data or {})
-    _send(LookWatch.nearby(dimensionId, blockPos), payload)
+    players = LookWatch.nearby(dimensionId, blockPos)
+    if name == "refused" and not LookWatch.mayHearRefusal(actor):
+        players = [playerId for playerId in players if playerId in users]
+    _send(players, payload)

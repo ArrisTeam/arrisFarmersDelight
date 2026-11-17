@@ -45,6 +45,7 @@ def setup(creative=False, covered=None, look=True, refresh=DEFAULT_REFRESH):
     HandGrill._hands.clear()
     StoveLook._sent.clear()
     LookWatch.reset()
+    LookWatch.time = potfake.Clock(fake.world)        # 被拒的敲击声给旁观的人听的限速用真实时间：测试里读假世界的钟
     LookWatch.REFRESH_SECONDS = refresh
     StoveLook.enable(look)
     Stove._pacer = Stove.Pacer(Stove.TICK_STEP)

@@ -9,8 +9,9 @@ REFRESH_SECONDS 秒再单发一份（Helpers/LookWatch：等翻面、煎好留�
     {"dimensionId", "pos": [x, y, z], "item": 锅里的东西（物品线格式，空是 {}）, "batch": 算多少件煎, "byHand": 手放的（两面分开煎）,
      "heated": 有没有热源, "down" / "up": 贴锅面 / 朝上面熟到哪（0..1）, "rate": 每秒往前走多少（0 = 停着）, "both": 两面一起走（蛋）}
 状态变了（东西、批量、手放、热源、开始 / 停止走、颠了一下）马上发；在走的时候每 KEYFRAME_SECONDS 秒补一次，客户端按 rate 往前推。
-一次性的事件（placed / tossed / untossed / taken / fried）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，发给附近所有人
-（包括正在用站点的人：他的客户端按"自己刚颠过"去重）。锅的计时和这里一样用真实时间，不受 /time 影响。
+一次性的事件（placed / refused / tossed / untossed / taken / fried）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，发给附近所有人
+（包括正在用站点的人：他的客户端按"自己刚颠过"去重）；refused 例外：站点里的人一个不少，旁观的人按发动作的人限速（Helpers/LookWatch.mayHearRefusal，砧板的 BoardLook 同一份）。
+锅的计时和这里一样用真实时间，不受 /time 影响。
 """
 from .Helpers import LookWatch
 from .Helpers.Engine import Call
@@ -111,10 +112,14 @@ def _send(players, payload):
         Call(playerId, ENDPOINT, payload)
 
 
-def event(dimensionId, blockPos, name, data=None):
-    """一次性的事件发给附近所有人。"""
+def event(dimensionId, blockPos, name, data=None, users=(), actor=None):
+    """一次性的事件发给附近所有人。被拒的（refused）按玩家限速：站点里的人（users）一个不少——他的客户端靠它演被拒的东西弹开，连点几下就弹几下——，
+    旁观的人这个人（actor）被拒的敲击声 LookWatch.REFUSED_GAP 秒内至多听一声（被拒的动作每秒能来 40 个，不限的话改过的客户端就能把它当喇叭）。"""
     if not _enabled[0]:
         return
     payload = {"dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])], "event": name}
     payload.update(data or {})
-    _send(nearby(dimensionId, blockPos), payload)
+    players = nearby(dimensionId, blockPos)
+    if name == "refused" and not LookWatch.mayHearRefusal(actor):
+        players = [playerId for playerId in players if playerId in users]
+    _send(players, payload)

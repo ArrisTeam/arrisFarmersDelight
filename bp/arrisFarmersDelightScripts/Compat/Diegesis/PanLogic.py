@@ -137,7 +137,7 @@ class PanLogicMixin(object):
         if Rules.mayPlace(inPan, hand) and not PanContents.isWaterlogged(station.dimensionId, station.pos):
             moved = Frying.placeCount(hand["count"], _count(inPan), ctx.maxStackOf(hand), one)
         if moved <= 0:
-            PanLook.event(station.dimensionId, station.pos, "refused", {"stack": _wire(dict(hand, count=1))})
+            PanLook.event(station.dimensionId, station.pos, "refused", {"stack": _wire(dict(hand, count=1))}, users=list(station.users), actor=self.actor)
             return
         merged = copy.deepcopy(inPan or hand)
         merged["count"] = _count(inPan) + moved
