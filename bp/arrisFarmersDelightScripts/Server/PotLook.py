@@ -11,23 +11,24 @@ Compat/Diegesis/ServerBoot 打开（enable），没装前置包什么都不发�
 锅的 5 Hz 步里查；写进去的是同一份，只是空的几项（served / meal / dish 是 {}、sunk 是 []）不写，读的人缺键当空
 （引擎文档只说列表各项要同类型，空列表和空字典放不放得下没说，不碰）。
 勺子每个被接受的搅拌发一次（每口锅每秒最多 8 次）；进度在走时每 2 秒补一次，客户端按 rate 往前推。
+样子没变的时候，刚走进 32 格的人单发一份当前的样子：别人做菜时他在 32 格外（区块却加载着），客户端的场景停在老样子上，走近了也没有下一次
+变化来纠正（煮好等着盛的锅不再变）；发出去的那一份也可能丢（客户端还没就绪），所以过几秒再补，间隔逐次加倍（Helpers/LookWatch.Audience）。
 一次性的事件（盛出 scooped、整批出锅 served）走同一个端点，负载是 {"dimensionId", "pos", "event": 名字, ...}，只发给没开站点的旁观者
 （开站点的人从站点的表现事件里拿到；站点每刻用 attend 告诉这里现在有谁在用它）。
 """
-from .Helpers import PotContainer
-from .Helpers.Engine import compFactory, serverApi
+from .Helpers import LookWatch, PotContainer
 from ..QuModLibs.Server import MultiClientsCall
 from ..Shared.Rules import PotStation
 from ..Shared.Rules.HandsOn import PotCooking
 
 ENDPOINT = "OnPotLook"
-RANGE = 32.0               # 与前置包的 WATCH_RANGE 一致（两个包互不导入）
+RANGE = LookWatch.RANGE    # 32 格，与前置包的 WATCH_RANGE 一致（两个包互不导入）
 LOOK_KEY = "potLook"       # 方块实体数据里静态部分的镜像
 STROKE_INTERVAL = 0.125    # 搅拌时每口锅最多每秒发 8 次
 MOVING_INTERVAL = 2.0      # 进度在走时每 2 秒补一次
 _enabled = [False]
 _sent = {}                 # (维度, 坐标) -> {"static": 签名, "at": 上次发的时刻, "stroke": 上次搅拌发的时刻, "stirring", "moving",
-                           #                  "served": 上次见到的出锅批数, "users": 正在用站点的人}
+                           #                  "served": 上次见到的出锅批数, "users": 正在用站点的人, "audience": 收到当前样子的人}
 
 
 def enable(on=True):
@@ -102,34 +103,31 @@ def _signatureOf(static):
             _signature(static["dish"]), tuple(static["sunk"]), static["heated"])
 
 
-def _nearby(dimensionId, blockPos):
-    """同维度、离方块 RANGE 格内的玩家。"""
-    cx, cy, cz = blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5
-    near = []
-    for playerId in serverApi.GetPlayerList():
-        if compFactory.CreateDimension(playerId).GetEntityDimensionId() != dimensionId:
-            continue
-        at = compFactory.CreatePos(playerId).GetFootPos()
-        if at is not None and (at[0] - cx) ** 2 + (at[1] - cy) ** 2 + (at[2] - cz) ** 2 <= RANGE * RANGE:
-            near.append(playerId)
-    return near
+def _nearby(dimensionId, blockPos, now=None):
+    """同维度、离方块 RANGE 格内的玩家（给了 now 就用 LookWatch 半秒内的快照）。"""
+    return LookWatch.nearby(dimensionId, blockPos, now)
 
 
 def _entry(dimensionId, blockPos):
-    return _sent.setdefault((dimensionId, tuple(blockPos)), {"static": None, "at": -1.0e12, "stroke": -1.0e12,
-                                                             "stirring": None, "moving": False, "served": None, "users": []})
+    entry = _sent.get((dimensionId, tuple(blockPos)))
+    if entry is None:
+        entry = _sent[(dimensionId, tuple(blockPos))] = {
+            "static": None, "at": -1.0e12, "stroke": -1.0e12, "stirring": None, "moving": False, "served": None, "users": [],
+            "audience": LookWatch.Audience(LookWatch.REFRESH_SECONDS, LookWatch.REFRESH_MOST)}
+    return entry
 
 
 def _send(payload, entry, now):
     entry["at"], entry["stirring"], entry["moving"] = now, payload["stirring"], payload["rate"] > 0.0
-    players = _nearby(payload["dimensionId"], payload["pos"])
+    players = _nearby(payload["dimensionId"], payload["pos"], now)
+    entry["audience"].sent(players, now)
     if players:
         MultiClientsCall(players, ENDPOINT, payload)
 
 
 def tick(dimensionId, blockPos, blockEntityData, hand, slots, now):
-    """锅的 5 Hz 步之后：静态的部分变了就写方块实体数据并广播；被搅着的状态变了、进度停了或开始走也发；进度在走时每 2 秒补一次。
-    slots 是这一步刚读的 6 个食材格。"""
+    """锅的 5 Hz 步之后：静态的部分变了就写方块实体数据并广播；被搅着的状态变了、进度停了或开始走也发；进度在走时每 2 秒补一次；
+    都没有的时候，刚走进 32 格的人、隔够了的人单发一份当前的样子。slots 是这一步刚读的 6 个食材格。"""
     if not _enabled[0] or blockEntityData is None:
         return
     entry = _entry(dimensionId, blockPos)
@@ -148,6 +146,10 @@ def tick(dimensionId, blockPos, blockEntityData, hand, slots, now):
     if changed or payload["stirring"] != entry["stirring"] or moving != entry["moving"] or \
             (moving and now - entry["at"] >= MOVING_INTERVAL):
         _send(payload, entry, now)
+    else:
+        late = entry["audience"].arrivals(_nearby(dimensionId, blockPos, now), now)
+        if late:
+            MultiClientsCall(late, ENDPOINT, payload)
 
 
 def stroke(dimensionId, blockPos, blockEntityData, hand, now):

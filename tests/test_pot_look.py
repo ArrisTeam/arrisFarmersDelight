@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # runner: both
 """厨锅的世界外观广播（Server/PotLook.py）：默认不发、32 格内同维度的玩家才收、静态部分镜像进方块实体数据、搅拌限频、
-一次性事件只给没开站点的旁观者。引擎是 potfake.py 里的假的。"""
+一次性事件只给没开站点的旁观者；样子没变时刚走进 32 格的人单发一份，发出去的过几秒再补（间隔加倍）。引擎是 potfake.py 里的假的。"""
 from __future__ import print_function
 
 import dgtest
@@ -176,6 +176,66 @@ def testForgettingAPotMakesTheNextStepSendItAgain():
     PotLook.forget(0, POT)
     K.run(manager, 0.5)
     assert len(_looks()) == count + 1, "方块拆了再放：从头发"
+
+
+# ---------------------------------------------------------------- 走近的人、丢了的
+
+def testAPlayerWhoWalksIntoRangeGetsTheCurrentLookAlthoughNothingChanged():
+    """别人做菜时他在 32 格外（区块却加载着，客户端的场景是老样子）：走近之后锅不再变，没有下一次广播来纠正，要单发给他一份。"""
+    manager, data = K.setup()
+    _watched()
+    K.feed(manager, TOMATO, 16)
+    K.run(manager, 1.0)
+    count = len(_looks())
+    assert count == 1 and _looks()[0][0] == ["a", "b"]
+    fake.world.players["c"]["pos"] = (20.5, 64.0, 10.5)             # c 从 200 格外走到 10 格外
+    K.run(manager, 1.0)
+    looks = _looks()
+    assert len(looks) == count + 1 and looks[-1][0] == ["c"], "只单发给刚走进来的人：%r" % [look[0] for look in looks]
+    assert looks[-1][1]["items"] == looks[0][1]["items"] and looks[-1][1]["dish"] == looks[0][1]["dish"], "是锅现在的样子"
+    K.run(manager, 1.0)
+    assert len(_looks()) == count + 1, "发过了：不重复"
+    fake.world.players["c"]["pos"] = (200.5, 64.0, 200.5)
+    K.run(manager, 1.0)
+    fake.world.players["c"]["pos"] = (20.5, 64.0, 10.5)
+    K.run(manager, 1.0)
+    assert _looks()[-1][0] == ["c"] and len(_looks()) == count + 2, "走出去再回来：又算新来的"
+
+
+def testALookThatDidNotChangeIsSentAgainAfterAFewSecondsAndThenLessAndLessOften():
+    """发出去就不管收没收到（客户端脚本还没就绪时整份丢掉）：过 5 秒再单发一份，之后间隔加倍（10、20……），站久了的人不会一直每 5 秒一份。"""
+    manager, data = K.setup()
+    _watched()
+    K.feed(manager, TOMATO, 16)
+    K.run(manager, 1.0)
+    start, base = fake.world.time, len(_looks())
+    K.run(manager, 4.0)
+    assert len(_looks()) == base, "还没到 5 秒"
+    K.run(manager, 1.5)
+    looks = _looks()
+    assert len(looks) == base + 1 and sorted(looks[-1][0]) == ["a", "b"], "过了 5 秒：给近处的人各补一份"
+    assert looks[-1][1]["items"] == looks[0][1]["items"]
+    K.run(manager, 8.0)
+    assert len(_looks()) == base + 1, "补过一次：下一份要再隔 10 秒，离上一份才 8 秒"
+    K.run(manager, 3.0)
+    assert len(_looks()) == base + 2, "隔了 10 秒：第二份"
+    assert all("c" not in players and "d" not in players for players, _ in _looks()), "32 格外的、别的维度的什么都收不到"
+    assert fake.world.time - start < 20.0
+
+
+def testAChangedLookGoesToEveryoneAndStartsTheGapOver():
+    manager, data = K.setup()
+    _watched()
+    K.feed(manager, TOMATO, 16)
+    K.run(manager, 6.5)                                             # 第一份补发已经发过了
+    count = len(_looks())
+    fake.setContainer(POT, 2, "minecraft:carrot", 1)                # 锅里多了一样东西：变了
+    K.alone(0.4)
+    assert len(_looks()) == count + 1 and _looks()[-1][0] == ["a", "b"], "变了：发给近处所有人"
+    K.alone(4.0)
+    assert len(_looks()) == count + 1
+    K.alone(1.5)
+    assert len(_looks()) == count + 2, "间隔从头算：5 秒后补一份"
 
 
 def testTheSunkItemsAreListedAndAStationClosingMeansNoOneIsAttending():
