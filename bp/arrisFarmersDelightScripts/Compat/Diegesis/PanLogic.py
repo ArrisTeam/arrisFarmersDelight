@@ -16,6 +16,7 @@ Server/HandFrying.py 的 PanHand 里（站点关了它还在：接着煎、等�
 import copy
 import time
 
+from . import Arrival
 from ...Server import HandFrying, PanLook
 from ...Server.Helpers import PanContents
 from ...Server.Helpers.BlockItems import PublishSkillet
@@ -71,7 +72,8 @@ class PanLogicMixin(object):
         self.hand = HandFrying.handOf(station.dimensionId, station.pos, data)
         PanLook.resend(station.dimensionId, station.pos, data, self.hand, playerId)       # 他的客户端要用当前的样子，先单发一份
         self._count = _count(PanContents.itemOf(station.dimensionId, station.pos))
-        self._fromHand(playerId, data)
+        if Arrival.byUse(station, playerId):          # 从相邻的站点走过来的：主手上的东西不是给这口锅的（openedByUse）
+            self._fromHand(playerId, data)
         return True
 
     def mayPlace(self, ref, item):

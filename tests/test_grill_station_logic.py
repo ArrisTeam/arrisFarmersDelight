@@ -390,6 +390,15 @@ def testOpeningWithFoodInTheMainHandLaysItOnAtOnce():
     assert fake.world.players["b"]["inv"][0]["count"] == 1, "没有空位了：留在手里"
 
 
+def testComingOverFromANeighbouringStationLaysNothingFromTheMainHand():
+    """JE 的 StoveBehavior.onOpen:110-113 先看 view.openedByUse()：从相邻的站点走过来的，主手里的东西不是给这座灶的。"""
+    manager, data = K.setup()
+    fake.give("a", 0, BEEF, 8)
+    assert manager.open("a", list(K.STOVE), False)
+    assert K.items(data) == [None] * 6 and fake.world.players["a"]["inv"][0]["count"] == 8
+    assert not [effect for effect in K.effects() if effect[0] == "placed"]
+
+
 def testOpeningWithAnEggOrANonFoodThingLaysNothing():
     manager, data = K.setup()
     fake.give("a", 0, EGG, 5)

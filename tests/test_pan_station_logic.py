@@ -254,6 +254,16 @@ def testOpeningWithFoodInTheMainHandPutsTheWholeStackIn():
     assert HandFrying.peek(0, P.PAN).frying.byHand and len(P.events("placed")) == 1
 
 
+def testComingOverFromANeighbouringStationLeavesTheMainHandAlone():
+    """JE 的 SkilletBehavior.onOpen:197-204 先看 view.openedByUse()：从砧板按 A / D 走到煎锅，主手里的生肉不是给这口锅的，不自己进锅。"""
+    manager, _ = P.setup()
+    P.hold("a", 0, BEEF, 6)
+    fake.world.players["a"]["selected"] = 0
+    assert manager.open("a", list(P.PAN), False)
+    assert P.inPan() is None and fake.world.players["a"]["inv"][0]["count"] == 6 and P.events("placed") == []
+    assert manager.stations[(0, P.PAN)].openedByUse("a") is False
+
+
 def testOpeningWithTooMuchFoodOnlyFillsABatch():
     manager, _ = P.setup()
     P.hold("a", 0, BEEF, 20)

@@ -11,7 +11,7 @@
 - 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
-from . import BookSources
+from . import Arrival, BookSources
 from . import BoardEffects, BoardFx
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
@@ -120,7 +120,8 @@ class BoardViewMixin(object):
         self.cutter = Cutter(self)
         self.redraw()
         BookSources.attach(self.view, "board")
-        self._useHeld()
+        if Arrival.byUse(self.view):                  # 从相邻的站点走过来的：主手上的东西不是给这块板的（openedByUse）
+            self._useHeld()
 
     def _useHeld(self):
         """右键开站那一下手里拿着的：不是工具就当点了一下板放上去，板不收就留在手里一声不吭（useHeld，376-385）。"""

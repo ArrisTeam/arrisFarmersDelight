@@ -128,6 +128,11 @@ def testTheStackHeldAsTheStationOpensIsPlacedByUseUnlessItIsATool():
     behavior, view, api = C.station()
     behavior.onOpen()
     assert view.sent == [], "空手"
+    behavior, view, api = C.station()
+    C.engine.inventory[3], C.engine.selected = C.item("arris:cabbage", 4), 3
+    view.openedByUse = False
+    behavior.onOpen()
+    assert view.sent == [], "从相邻的站点走过来的（BoardBehavior:365 的 openedByUse）：主手上的东西不是给这块板的"
 
 
 def testTheBoardIsOutlinedWhileWhatIsCarriedCanBeLaidOnIt():

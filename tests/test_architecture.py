@@ -50,6 +50,7 @@ PACKS = {
             "Compat/Diegesis/PanLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/GrillLogic.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/GrillOpen.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Diegesis/Arrival.py": {"forbid": {"Server", "Client"}, "engine": False},     # 两端都用：不碰任何一端、不碰引擎
             "Compat/Diegesis/BoardTools.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardSlots.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Diegesis/BoardGive.py": {"forbid": {"Client"}, "engine": True},

@@ -17,7 +17,7 @@
 """
 import time
 
-from . import GrillOpen
+from . import Arrival, GrillOpen
 from ...Server import HandGrill, StoveLook
 from ...Server.Helpers.BlockItems import PublishStove
 from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem
@@ -80,7 +80,8 @@ class GrillLogicMixin(object):
         EnsureStoveData(data)            # /setblock、结构放出的炉灶没走放置事件
         self.hand = HandGrill.handOf(self.station.dimensionId, self.station.pos, data)
         StoveLook.resend(self.station.dimensionId, self.station.pos, data, self.hand, playerId)     # 他的客户端要用当前的样子摆命中盒，先单发一份
-        self._layHeld(playerId)
+        if Arrival.byUse(self.station, playerId):     # 从相邻的站点走过来的：主手上的东西不是给这座灶的（openedByUse）
+            self._layHeld(playerId)
         self._flush()
         return True
 
