@@ -12,18 +12,30 @@ from .HandsOn.Frying import syncStep
 
 PLACES = StoveLayout.PLACES
 INTS = (int, type(2 ** 64))      # py2 的 int / long（网络来的整数可能是 long）
+TEXT = (str, type(u""))          # py2 的 str / unicode，py3 的 str
 SAVE_KEY = "handGrill"          # 方块实体数据里存手放进度的键（Server/HandGrill.SAVE_KEY）
+
+
+def _name(value):
+    """物品名：非空的文字，转成 str（py2 里不是 ASCII 的当不合法：物品名都是 ASCII）；不是文字的是 None。"""
+    if not isinstance(value, TEXT) or not value:
+        return None
+    try:
+        return str(value)
+    except UnicodeError:
+        return None
 
 
 def _item(raw):
     """物品字典 -> {"newItemName", "newAuxValue", "count"}；空的或不合法的是 None。"""
     if not isinstance(raw, dict):
         return None
-    name, count = raw.get("newItemName"), raw.get("count")
-    if not name or not isinstance(count, INTS + (float,)) or isinstance(count, bool) or count <= 0:
+    name, count = _name(raw.get("newItemName")), raw.get("count")
+    if name is None or not isinstance(count, INTS + (float,)) or isinstance(count, bool) or count != count or count <= 0:
         return None
     aux = raw.get("newAuxValue") or 0
-    return {"newItemName": str(name), "newAuxValue": int(aux) if isinstance(aux, INTS + (float,)) and not isinstance(aux, bool) else 0, "count": int(count)}
+    return {"newItemName": name, "newAuxValue": int(aux) if isinstance(aux, INTS + (float,)) and not isinstance(aux, bool) and aux == aux else 0,
+            "count": int(count)}
 
 
 def _number(value, default=0.0):

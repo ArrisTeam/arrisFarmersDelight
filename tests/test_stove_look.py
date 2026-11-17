@@ -23,7 +23,7 @@ def lay(manager, count=2):
 
 
 def testNothingIsSentWithoutThePrerequisiteSwitch():
-    manager, data = K.setup()
+    manager, data = K.setup(look=False)
     lay(manager)
     K.step(1.0, manager=manager)
     assert not [call for call in fake.calls if call[1] == K.StoveLook.ENDPOINT]
@@ -135,6 +135,24 @@ def testOnlyPlayersWithin32BlocksGetItAndANewcomerGetsTheCurrentLookOnce():
     fake.world.players["far"]["pos"] = (10.5, 64.0, 20.5)
     K.tick(fake.world.time + 6.0)
     assert K.looks()[-1][1] == ["far"] and K.looks()[-1][0]["slots"][0] == {}, "走远又回来：补到的是现在的样子"
+
+
+def testNothingIsBuiltWhileNobodyIsInRangeAndTheFirstToComeBackGetsTheCurrentLook():
+    """范围里没人：样子不用算（每座灶每 0.25 秒一次，不能白算），也不发；人回来了单发一份。"""
+    manager, data = K.setup(look=True)
+    for playerId in ("a", "b"):
+        fake.world.players[playerId]["pos"] = (10.5, 64.0, 200.5)
+    data["3"] = {"itemDict": beef(), "cookTimer": 30}
+    built, original = [], K.StoveLook.build
+    K.StoveLook.build = lambda *args: built.append(args) or original(*args)
+    try:
+        K.step(1.0)
+    finally:
+        K.StoveLook.build = original
+    assert built == [] and not K.looks(), "没人在 32 格内：不算也不发"
+    fake.world.players["a"]["pos"] = (10.5, 64.0, 8.5)
+    K.step(1.0)
+    assert [players for _, players in K.looks()] == [["a"]] and K.looks()[-1][0]["slots"][3]["item"]["newItemName"] == BEEF
 
 
 def testAStoveWithAPotOnTopThrowsItsFoodOffAndEveryoneSeesItEmpty():

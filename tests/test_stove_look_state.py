@@ -36,6 +36,13 @@ def testGarbageFromTheNetworkIsTreatedAsNothing():
     assert look.hand[5] is True and look.down[5] == 1.0 and look.up[5] == 0.0, "夹进 0..1"
 
 
+def testAnItemNameMustBeText():
+    look = State.decode({"slots": [{"item": {"newItemName": 5, "count": 1}}, {"item": {"newItemName": ["minecraft:beef"], "count": 1}},
+                                   {"item": {"newItemName": u"minecraft:beef", "count": 2.0}}, {"item": {"newItemName": None, "count": 1}}]})
+    assert look.items[0] is None and look.items[1] is None and look.items[3] is None, "名字不是文字：不算物品"
+    assert look.items[2] == {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 2} and type(look.items[2]["newItemName"]) is str
+
+
 def testWhatTheBlockEntitySavedIsTheSameLook():
     saved = {"byHand": [1, 0, 1, 0, 0, 0], "down": [1.0, 0.0, 0.3, 0.0, 0.0, 0.0], "up": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}
     look = State.fromBlockData({"0": {"itemDict": item(), "cookTimer": 30}, "1": {"itemDict": None, "cookTimer": 30}, "2": {"itemDict": item("minecraft:cod"), "cookTimer": 5},

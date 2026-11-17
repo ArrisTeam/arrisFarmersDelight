@@ -51,8 +51,8 @@ def build(dimensionId, blockPos, blockEntityData, hand):
             slots.append({})
             continue
         slots.append({"item": wire(item), "hand": bool(grill and grill.byHand(place)),
-                      "down": round(Frying.syncStep(grill.down(place)), 4) if grill else 0.0,
-                      "up": round(Frying.syncStep(grill.up(place)), 4) if grill else 0.0})
+                      "down": Frying.syncStep(grill.down(place)) if grill else 0.0,
+                      "up": Frying.syncStep(grill.up(place)) if grill else 0.0})
     return {"dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])], "slots": slots}
 
 
@@ -67,9 +67,12 @@ def tick(dimensionId, blockPos, blockEntityData, hand, now):
     if not _enabled[0] or blockEntityData is None:
         return
     entry = _sent.setdefault((dimensionId, tuple(blockPos)), {"sig": None, "audience": LookWatch.Audience()})
+    near = LookWatch.nearby(dimensionId, blockPos, now)
+    if not near:
+        entry["audience"].sent(near)                  # 范围里没人：样子不用算，名单清空（谁回来都算新来的）
+        return
     payload = build(dimensionId, blockPos, blockEntityData, hand)
     signature = _signature(payload)
-    near = LookWatch.nearby(dimensionId, blockPos, now)
     if signature != entry["sig"]:
         entry["sig"] = signature
         entry["audience"].sent(near)
