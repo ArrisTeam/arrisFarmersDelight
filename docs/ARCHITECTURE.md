@@ -13,6 +13,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Remainders（原料用掉后剩下的容器：JE 的合成剩余物 + 厨锅的特例表）
                         CraftReturns（无序合成配方补还的剩余物，tools/gen_crafts.py 从合成配方生成）
                         FoodColors  BrothColors（按贴图算的颜色：切菜碎屑、汤色、碎料色、倒进锅里的液体色，tools/gen_food_colors.py / gen_broth_colors.py 生成）
+                        BiomeWater（各群系的水色，tools/gen_biome_water.py 按原版资源包每个群系的 water_appearance 生成；厨锅里的清水取它）
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
@@ -20,6 +21,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
                         PotLookState（厨锅"看上去是什么样"的广播怎么读）  PotModelMath（方块朝向、勺子骨骼的位移和欧拉角）
                         PotPiecesLook（汤里的碎料交给着色器的数：配料槽、出现 / 缩走的钟）  PotItem（拆下来的锅带着菜）
+                        PotWater（厨锅里清水的颜色：锅所在区块里 5x5 列的群系水色取平均，群系名由客户端 Compat/Diegesis/PotBiome 问来）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
                         GrillStation（炉灶站点：六个烤位在哪、能放什么、一面多久、这一下右键开不开）  StoveCover（炉灶上面盖没盖东西：锅、煎锅、砧板、别的方块）
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
@@ -90,8 +92,8 @@ Compat/
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotHud + PotOffer（客户端，开着站点的人：点击、徽章和提示、
                         悬着的容器和它浸汤的动作）= 厨锅站点；
-                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands（客户端）= 谁都看得见的锅里场景：开盖、
-                        汤面、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
+                        PotScenes + PotScene + PotSceneFx + PotModel + PotFx + PotHands + PotBiome（客户端）= 谁都看得见的锅里场景：开盖、
+                        汤面（清水按所在群系取色）、漂着的料、碎料、勺子、气泡蒸汽和声音、倒 / 磕 / 抖进锅的手部动作（docs/diegesis/DESIGN.md §10）；
                         PanLogic（服务端）+ PanView（客户端，开着站点的人）+ PanScenes / PanScene / PanModel / PanFx（客户端，谁都看得见的
                         锅里场景：食物落进来、颠锅、油膜热气）= 煎锅站点，世界外观由 Server/PanLook 广播；
                         GrillLogic（服务端）+ GrillView（客户端，开着站点的人：机位、托盘、命中盒、点击变动作）+ StoveScenes / StoveScene /
