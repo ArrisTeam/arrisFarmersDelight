@@ -4,7 +4,7 @@
 对应 Hands-On Delight：client/PotBehavior.java 的 goesIn / wentIn（812-848 行）和 KitchenMotions 的 Pour / Crack / Shake。每一刻的姿态和
 那一刻该发生的事在 Shared/Rules/HandsOn/PotServeHands.py / PotServePour.py（纯计算，逐条照 Java），这里只管画：
 - 手里的东西是一件立着的客户端掉落物：正面朝镜头、往后仰 16 度、在贴图平面里倾（倒、抖）；倒空了换成空容器（桶、玻璃瓶）；
-  蛋磕开之后蛋液是一件平躺的煎蛋；
+  蛋磕开之后蛋液是一件平躺的、半透明发灰的生蛋清（煎蛋的图标按 RAW_EGG 着色，烤好的小图标 EggLook 第 0 档）；
 - 流出来的液体：JE 是一股连着的水柱，这里每帧从瓶口朝落点撒几滴染了色的水滴；粉末是往下掉的小粒；蛋壳是溅开的碎屑，用前置包的
   dust 粒子（HoD 的 DiegesisParticles.DUST，壳的颜色）；
 - 涟漪、水花、气泡、声音照事件放。
@@ -18,11 +18,13 @@ from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Data import PotSunk, Remainders
 from ...Shared.Data.BrothColors import MainColors, PouredColors
 from ...Shared.Rules import ItemPose
+from ...Shared.Rules.EggLook import itemOf as eggLookOf
 from ...Shared.Rules.HandsOn import PotDrift, PotLiquid, PotServeHands
 from ...Shared.Rules.HandsOn.PotServeMath import ITEM_DRAWN, LEAN
 
 RIM_TOP = 10.0              # 锅沿的高度（像素）：蛋磕在这里
-EGG_INSIDE = "arris:fried_egg"      # 磕开之后落进汤里的蛋液画成什么
+EGG_INSIDE = eggLookOf(0.0)         # 磕开之后落进汤里的蛋液画成什么：JE 是煎蛋的图标按 RAW_EGG 着色（KitchenMotions.java:447-452），
+#                                     也就是刚打进来的蛋清（EggLook 第 0 档 arris:egg_look_0，砧板、煎锅同一个）
 STREAM_TIME = 0.16          # 水滴从瓶口到汤面大约走这么久（定初速）
 STREAM_RIPPLES = 0.14       # 流着的时候每隔这么久在落点起一圈水波
 STREAM_RIPPLE = 0.1

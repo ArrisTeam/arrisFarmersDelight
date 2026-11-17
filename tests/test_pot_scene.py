@@ -211,6 +211,21 @@ def testTheShellBitsOfACrackedEggAreTheDiegesisDustParticleInTheShellColour():
     assert not [spec for spec in world.particles if spec["id"] == "arris_diegesis:droplet" and spec["vars"].get("variable.scale") == 0.6]
 
 
+def testTheOpenedEggDropsIntoTheSoupAsTheRawWhiteNotAsAFriedEgg():
+    # KitchenMotions.java:447-452：Crack 的蛋液是煎蛋的图标按 RAW_EGG（0xC8E6E2D8，半透明发灰）着色；烤好的小图标 egg_look_0 就是这一档
+    scene = setup()
+    withEgg(scene)
+    inside, everything = set(), set()
+    for _ in range(int(3.0 / DT)):
+        scene.frame(DT, True)
+        for entry in scene.hands.going.values():
+            if "inside" in entry["props"]:
+                inside.add(entry["props"]["inside"][1])
+        everything.update(drop["item"]["newItemName"] for drop in world.drops.values())
+    assert inside == set(["arris:egg_look_0"]), "蛋液落进汤里：生蛋清"
+    assert "arris:fried_egg" not in everything, "整个过程里没有煎蛋的熟样子：%r" % sorted(everything)
+
+
 def testAParticleTheEngineDidNotMakeIsNotTouched():
     """进世界头几秒粒子系统还没好、或者没有这个粒子：Create 回 0（不是 None）——不能拿 0 当编号去设变量（内核的 view.particles 同一个规矩）。"""
     PotFx = C.load("Compat.Diegesis.PotFx")
