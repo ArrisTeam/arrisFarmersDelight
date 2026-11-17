@@ -70,6 +70,12 @@ class FakeView(object):
     def click(self, target, button=0, kind="PICKUP"):
         self.clicks.append((target, button, kind))
 
+    def plate(self, model):
+        pass
+
+    def tooltip(self, lines):
+        pass
+
     def dropInto(self, group, button):
         self.drops.append((group, button))
         return 0
@@ -149,6 +155,27 @@ def testAnotherButtonPressedWhileDraggingTheSpoonDoesNothing():
     behavior.clock += 0.6
     behavior.onPointer(Event(LEFT, kind="up"))
     assert not behavior.scene.hand, "松开按着的那个键，笔画结束"
+
+
+def testTheBehaviourIsBusyExactlyWhileTheSpoonIsInTheHand():
+    # FocusInput.isBusy（有笔画就忙）：内核的 mayGoOver 和托盘的按下都问它（表现的 busy() 钩子）
+    behavior, view = behaviorOf()
+    assert behavior.busy() is False, "空闲"
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    assert behavior.busy() is True, "按着勺柄拖"
+    behavior.clock += 0.6
+    behavior.onPointer(Event(LEFT, kind="up"))
+    assert behavior.busy() is False, "拖完松手：勺子放下了"
+    behavior.onPointer(Event(RIGHT, Hit("ladle")))
+    behavior.clock += 0.1
+    behavior.onPointer(Event(RIGHT, kind="up"))
+    assert behavior.busy() is True and behavior.gesture.heldByClick, "点一下：勺子留在手里，还没放下就还忙着"
+    behavior.onPointer(Event(LEFT, Hit("mouth")))
+    assert behavior.busy() is False, "下一按放下了"
+    behavior.onPointer(Event(LEFT, kind="up"))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    behavior.onClose()
+    assert behavior.busy() is False, "关站：勺子放下"
 
 
 def testTouchStillNeverKeepsTheSpoonInHandWhicheverButtonTheTapWasSentAs():

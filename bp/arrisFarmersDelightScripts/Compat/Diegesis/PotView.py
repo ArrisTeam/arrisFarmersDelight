@@ -166,6 +166,11 @@ class PotViewMixin(object):
             return self.serve.soupClick(event)
         return False
 
+    def busy(self):
+        """勺子还在手里（按着拖，或点了一下留着）：内核据此不让光标停在屏幕边上就飞去相邻的站点，也不让托盘接下一次按下——
+        那一下只是把勺子放下（JE 的 FocusInput.isBusy 是"有笔画"：mayGoOver 要它为假，press 开头先结束留在手里的笔画）。"""
+        return self.gesture.stroking
+
     def onLeave(self):
         """触屏：一下点完、手指抬起，没有悬着的光标——悬停才有的东西收起；刚盛过 / 取回过的留着，下一只还悬在老地方。"""
         if self.scene is not None and self.serve.dip is None:
