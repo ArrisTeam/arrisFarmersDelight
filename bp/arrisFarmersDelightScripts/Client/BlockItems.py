@@ -74,6 +74,14 @@ def hide(dimensionId, pos, hidden):
             show(key[0], key[1], _last[key][0], _last[key][1])
 
 
+def release(dimensionId, pos):
+    """这个方块没了（场景收掉、拆了）：忘掉它最后一份内容和"本端不画"的标记，以后别的东西放在这个位置不会被误当成还在隐藏。"""
+    key = (dimensionId, (int(pos[0]), int(pos[1]), int(pos[2])))
+    clear(key[0], key[1])
+    _last.pop(key, None)
+    _hidden.discard(key)
+
+
 def show(dimensionId, pos, kind, items):
     """按摆法画出这个方块上的物品（先清掉旧的）。"""
     pos = (int(pos[0]), int(pos[1]), int(pos[2]))

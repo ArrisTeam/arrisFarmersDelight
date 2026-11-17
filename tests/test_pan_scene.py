@@ -249,9 +249,10 @@ def testRemovingTheBlockDropsTheSceneAndTheDimensionChangeDropsAll():
     run(scene, 0.1)
     Scenes.OnBlockEntityRemoved({"dimensionId": 0, "posX": POS[0], "posY": POS[1], "posZ": POS[2]})
     assert Scenes.sceneAt(0, POS) is None and not world.drops
+    assert (0, POS) not in BlockItems._hidden, "方块没了：以后别的东西（砧板……）放在这个位置不会被当成还在隐藏"
     Scenes.ensure(0, POS)
     Scenes.OnDimensionChange()
-    assert not Scenes._scenes
+    assert not Scenes._scenes and (0, POS) not in BlockItems._hidden
 
 
 class Clock(object):

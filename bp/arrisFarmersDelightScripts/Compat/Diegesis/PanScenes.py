@@ -57,7 +57,9 @@ def _drop(key, blockGone):
     scene = _scenes.pop(key, None)
     if scene is not None:
         scene.destroy(blockGone)
-        if not blockGone:
+        if blockGone:
+            BlockItems.release(key[0], key[1])           # 方块没了：以后别的东西放在这个位置不会被当成还在隐藏
+        else:
             BlockItems.hide(key[0], key[1], False)
 
 
