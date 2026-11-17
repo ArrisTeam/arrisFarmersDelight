@@ -7,12 +7,14 @@ from __future__ import print_function
 
 import io
 import json
+import math
 import re
 import os
 
 import dgtest  # noqa: F401 - 把 diegesisBp 放进 sys.path（boardclient 要它的 Geometry / Schema）
 import boardclient as C
 import fdtest
+import molangkit
 
 Dust = fdtest.load("Shared.Rules.BoardDust")
 Assembly = fdtest.load("Shared.Rules.HandsOn.Assembly")
@@ -20,6 +22,7 @@ Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
 Scene = fdtest.load("Shared.Rules.HandsOn.BoardScene")
 KNIFE = "arris:iron_knife"
 POS = C.STATION_POS
+ENGINE_VARIABLES = set(["particle_random_1", "particle_random_2", "particle_age", "particle_lifetime"])      # 引擎自己给的，不用缺省
 
 
 def _near(a, b):
@@ -74,11 +77,51 @@ def testTheOwnParticleFileMatchesWhatTheScriptSetsAndIsValidJson():
     defined = set(re.findall(r"variable\.(\w+)\s*=", creation))
     for name in ("tint_set", "tint_r", "tint_g", "tint_b", "count", "vx", "vy", "vz", "spread"):
         assert name in defined, "脚本会 SetVariable 的变量要在粒子的创建表达式里有缺省：%s" % name
-    used = set(re.findall(r"variable\.(\w+)", text)) - set(["particle_random_1"])
+    used = set(re.findall(r"variable\.(\w+)", text)) - ENGINE_VARIABLES
     assert used <= defined, "粒子里用到的变量都要有缺省：%r" % sorted(used - defined)
     components = effect["components"]
     assert "minecraft:emitter_shape_box" in components and components["minecraft:particle_motion_dynamic"]["linear_drag_coefficient"] == 3.0
     assert effect["description"]["basic_render_parameters"]["texture"] == "textures/particle/particles"
+
+
+def _dustParticle():
+    path = os.path.join(fdtest.ROOT, "rp", "particles", "arris_board_dust.json")
+    with io.open(path, encoding="utf-8") as handle:
+        return json.load(handle)["particle_effect"]["components"]
+
+
+def testTheSpecksAreJavasDustSizeNotThreeTimesAsBig():
+    """JE 的 DUST 样式（DiegesisParticles.java:69-70）边长 0.15 ~ 0.3 像素；SceneParticles.render（:232）画出来的方块边长就是 size。
+    基岩版的 size 是半边长：0.075 ~ 0.15 像素 = 0.0046875 ~ 0.009375 格（原来 0.015 ~ 0.035，是 JE 的 3 ~ 4 倍）。"""
+    size = _dustParticle()["minecraft:particle_appearance_billboard"]["size"]
+    assert size[0] == size[1], "方形"
+    assert abs(molangkit.value(size[0], particle_random_1=0.0) - 0.075 / 16.0) < 1e-9
+    assert abs(molangkit.value(size[0], particle_random_1=1.0) - 0.15 / 16.0) < 1e-9
+
+
+def testTheSpecksFadeOutByOneMinusTSquaredLikeJavas():
+    """SceneParticles.java:233：alpha = 颜色的 alpha × (1 - t²)，t = 年龄 / 寿命（尘的 fade 是 true）。染了色的（JE 里颜色的 alpha 是 0xFF）从 1 起，
+    没染色的从 JE 样式颜色的 0x99 起。"""
+    components = _dustParticle()
+    alpha = components["minecraft:particle_appearance_tinting"]["color"][3]
+    base = 0x99 / 255.0
+    for t in (0.0, 0.25, 0.5, 0.8, 1.0):
+        assert abs(molangkit.value(alpha, tint_set=1.0, base_a=base, particle_age=t * 1.7, particle_lifetime=1.7) - (1.0 - t * t)) < 1e-9, t
+        assert abs(molangkit.value(alpha, tint_set=0.0, base_a=base, particle_age=t * 1.7, particle_lifetime=1.7) - base * (1.0 - t * t)) < 1e-9, t
+    creation = components["minecraft:emitter_initialization"]["creation_expression"]
+    assert abs(float(re.search(r"variable\.base_a = ([0-9.]+);", creation).group(1)) - base) < 1e-3, "没染色时的 alpha 是 JE 样式颜色 0x99C0B090 的 0x99"
+
+
+def testTheSpecksWobbleSidewaysLikeJavas():
+    """SceneParticles.update（:187-191，dust 的 wobble 是 0.3 像素）：t = 年龄 × 6 + 种子；vel.x += sin(t) × wobble × dt × 6，vel.z += cos(t × 1.3) × wobble × dt × 6，
+    也就是水平加速度 sin(t) × 1.8 像素每二次方秒 = 0.1125 格每二次方秒。种子是每颗粒子自己的 0 ~ 100。"""
+    accel = _dustParticle()["minecraft:particle_motion_dynamic"]["linear_acceleration"]
+    assert accel[1] == -1.0 / 16.0, "重力 1 像素每二次方秒，不变"
+    for age in (0.0, 0.2, 0.7, 1.3, 1.9):
+        for seed in (0.0, 0.31, 0.77):
+            t = age * 6.0 + seed * 100.0
+            assert abs(molangkit.value(accel[0], particle_age=age, particle_random_2=seed) - math.sin(t) * 0.3 * 6.0 / 16.0) < 1e-3, (age, seed)
+            assert abs(molangkit.value(accel[2], particle_age=age, particle_random_2=seed) - math.cos(t * 1.3) * 0.3 * 6.0 / 16.0) < 1e-3, (age, seed)
 
 
 def testOwnDustIsPlacedWithColourCountAndVelocityVariables():
