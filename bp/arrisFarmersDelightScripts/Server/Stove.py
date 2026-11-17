@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Stove - 炉灶顶上的 6 个烤位：放入、逐个烤熟弹出、破坏时掉落（服务端）
+"""Stove - 炉灶顶上的 6 个烤位：放入、逐个烤熟弹出、熄火时冷却、破坏时掉落（服务端）
 
-只有点燃的炉灶（StoveList，下游可追加自己的炉灶）会烤；熄灭的炉灶是另一个方块。
+点着的（StoveList，下游可追加自己的炉灶）和熄着的（arris:stove_extinguish，Shared/Rules/GrillBlocks）炉灶都收食物、都掉东西，JE 的 AbstractStoveBlock.use
+放食物不看 LIT；只有点着的会烤，熄着的 FD 原样的件每一步冷却（AbstractStoveBlockEntity.coolItems：进度每刻 -2，不低于 0），手放的件不动（HoD）。
+点火 / 灭火换方块、数据带过去在 StoveSwap.py（用打火石、铲子等在 StoveFire.py）。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
 炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
 右键放上去的照这里每件 30 秒烤好弹出。
@@ -11,14 +13,15 @@
 """
 import time
 
-from . import HandGrill, StoveLook
+from . import HandGrill, StoveLook, StoveSwap
 from .EventRegistry import registerHandler
 from .Helpers.BlockItems import DropLegacyDisplays, Publish, PublishStove
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetBlockName, GetEngineTypeStr, IsLiving, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
+from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
-from ..Shared.Rules import StoveBurn, StoveCover
+from ..Shared.Rules import GrillBlocks, StoveBurn, StoveCover
 from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
@@ -47,11 +50,14 @@ def EnsureStoveData(blockEntityData):
         InitStoveData(blockEntityData)
 
 
-@registerHandler("ServerPlaceBlockEntityEvent", match=StoveList)
+@registerHandler("ServerPlaceBlockEntityEvent", match=GrillBlocks.isGrill)
 def OnServerStoveCreate(args):
-    blockEntityData = GetBlockEntityData(args["dimension"], (args["posX"], args["posY"], args["posZ"]))
+    blockPos = (args["posX"], args["posY"], args["posZ"])
+    if StoveSwap.apply(args["dimension"], blockPos):        # 点火 / 灭火换过来的：快照里的东西原样带过来，不是新放的空炉灶
+        return
+    blockEntityData = GetBlockEntityData(args["dimension"], blockPos)
     if blockEntityData:
-        InitStoveData(blockEntityData)
+        EnsureStoveData(blockEntityData)                      # 已经有数据的（带过来的）不覆盖；新放的是空的，补上默认值
 
 
 def _freeSlot(blockEntityData):
@@ -66,7 +72,7 @@ def _freeSlot(blockEntityData):
 
 
 # 优先级 10：ServerItemUseOnEvent 里最后处理（与旧版模块加载顺序一致，见 Server/ModServer.py）
-@registerHandler("ServerItemUseOnEvent", match=StoveList, priority=10)
+@registerHandler("ServerItemUseOnEvent", match=GrillBlocks.isGrill, priority=10)
 def OnServerStoveItemUse(args):
     itemDict = args["itemDict"]
     x, y, z = args["x"], args["y"], args["z"]
@@ -102,7 +108,7 @@ def OnServerStoveItemUse(args):
             StoveLook.tick(dimensionId, (x, y, z), blockEntityData, hand, time.time())
         else:
             ToAllPlayerPlaySound(dimensionId, (x, y, z), "armor.equip_leather")
-    elif itemDict["newItemName"] not in _PASS_ITEMS:
+    elif itemDict["newItemName"] not in _PASS_ITEMS and not GrillBlocks.isTool(itemDict["newItemName"], GetItemType(itemDict)):
         ShowTip(playerId, "这东西可不能被烹饪……")
 
 
@@ -133,27 +139,41 @@ def _announceGrilled(dimensionId, blockPos, blockEntityData, hand):
         StoveLook.event(dimensionId, blockPos, "grilled", {"place": place, "stack": StoveLook.wire(HandGrill.slotItem(blockEntityData, place))})
 
 
-@registerHandler("ServerBlockEntityTickEvent", match=StoveList)
+def _cool(blockEntityData, index, data):
+    """熄着的炉灶上 FD 原样的一件冷却一步（GrillBlocks.cooledTimer）；没烤过的、已经凉透的不写。"""
+    timer = data.get("cookTimer")
+    cooled = GrillBlocks.cooledTimer(timer, TICK_STEP, COOK_TIMER)
+    if cooled != timer:
+        data["cookTimer"] = cooled
+        blockEntityData[str(index)] = data
+
+
+@registerHandler("ServerBlockEntityTickEvent", match=GrillBlocks.isGrill)
 def OnStoveTick(args):
     dimensionId = args["dimension"]
     blockPos = (args["posX"], args["posY"], args["posZ"])
     now = time.time()
     if not _pacer.due((dimensionId, blockPos), now):
         return
+    StoveSwap.apply(dimensionId, blockPos)               # 点火 / 灭火换过来、放置事件还没到的：先把带过来的东西写进去
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData:
         return
     EnsureStoveData(blockEntityData)
+    lit = GrillBlocks.isLit(args.get("blockName") or GetBlockName(blockPos, dimensionId))
     hand = HandGrill.peek(dimensionId, blockPos) or HandGrill.restore(dimensionId, blockPos, blockEntityData)
     if _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):
         StoveLook.tick(dimensionId, blockPos, blockEntityData, hand, now)
         return
-    handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP) if hand is not None else (set(), False)
+    handled, finished = HandGrill.grill(hand, blockEntityData, TICK_STEP, lit) if hand is not None else (set(), False)
     if hand is not None:
         HandGrill.save(hand, blockEntityData)
     for index in range(STOVE_SLOTS):
         data = blockEntityData[str(index)]
         if index in handled or not (data and data.get("itemDict")):
+            continue
+        if not lit:
+            _cool(blockEntityData, index, data)              # 熄着：不烤，FD 原样的件冷却（AbstractStoveBlockEntity.serverTick:107 coolItems）
             continue
         data["cookTimer"] = (data.get("cookTimer") or COOK_TIMER) - TICK_STEP
         blockEntityData[str(index)] = data
@@ -166,8 +186,11 @@ def OnStoveTick(args):
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}
         System.CreateEngineItemEntity(output, dimensionId, (args["posX"] + 0.5, args["posY"] + 1.3, args["posZ"] + 0.5))
         finished = True
-    if finished:
+    settling = StoveSwap.settling(dimensionId, blockPos, now)
+    if finished or settling:
         PublishStove(dimensionId, blockPos, blockEntityData)
+    if settling:
+        StoveLook.forget(dimensionId, blockPos)           # 刚换过方块的这一秒里每一步都重发：客户端的方块实体和场景在换方块时重建，先到的广播可能被盖掉
     if (blockEntityData["cookingIndex"] or 0) >= STOVE_SLOTS:
         blockEntityData["cookingIndex"] = 0
     if StoveLook.enabled():
@@ -193,10 +216,12 @@ def OnStandOnStove(args):
         compFactory.CreateHurt(entityId).Hurt(StoveBurn.DAMAGE, BURN_CAUSE, None, None, False)
 
 
-@registerHandler("BlockRemoveServerEvent", match=StoveList)
+@registerHandler("BlockRemoveServerEvent", match=GrillBlocks.isGrill)
 def OnStoveRemove(args):
     blockPos = (args["x"], args["y"], args["z"])
     dimensionId = args["dimension"]
+    if StoveSwap.claims(dimensionId, blockPos, args["fullName"], time.time()):
+        return                                                # 点火 / 灭火换方块：东西跟着带过去，不是拆了（StoveSwap）
     _pacer.forget((dimensionId, blockPos))
     HandGrill.forget(dimensionId, blockPos)
     StoveLook.forget(dimensionId, blockPos)

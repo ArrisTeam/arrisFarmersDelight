@@ -73,8 +73,9 @@ def handOver(hand, blockEntityData, place, item):
     blockEntityData[str(place)] = {"itemDict": item, "cookTimer": Grill.handOverSeconds(GrillStation.RECIPE_SECONDS, done, Options.stoveTime())}
 
 
-def grill(hand, blockEntityData, dt):
-    """手放的烤位烤 dt 秒（炉灶的 tick 调用）。返回 (这些烤位归手工管、FD 原样别碰, 有没有烤位换成了成品)。
+def grill(hand, blockEntityData, dt, lit=True):
+    """手放的烤位烤 dt 秒（炉灶的 tick 调用）；lit 假（熄着的炉灶）不烤，进度也不凉（HoD 的 StoveCooking.tick：!lit 就 continue），空位复位的记账照走。
+    返回 (这些烤位归手工管、FD 原样别碰, 有没有烤位换成了成品)。
     炉灶站点关了（配置里 stove 为假）：手放的都交给 FD 原样烤（StoveCooking.tick 的 !HandsOnConfig.stove()），这里一件也不管。"""
     handled, changed, side = set(), False, GrillStation.sideSeconds()
     for place in range(GrillStation.PLACES):
@@ -91,7 +92,7 @@ def grill(hand, blockEntityData, dt):
         grilled = GrillStation.grilledOf(item["newItemName"])
         if grilled is None:
             continue                     # 已经烤好，留在灶台上等人取
-        if hand.grill.step(place, dt, side, GrillStation.isOneSided(item["newItemName"])):
+        if hand.grill.step(place, dt, side, GrillStation.isOneSided(item["newItemName"]), lit):
             done = {"newItemName": grilled, "newAuxValue": item.get("newAuxValue", 0), "count": 1}
             blockEntityData[str(place)] = {"itemDict": done, "cookTimer": COOK_TIMER}
             hand.grill.done(place)
