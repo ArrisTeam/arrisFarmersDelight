@@ -553,5 +553,31 @@ def testNothingIsResentOnOpenWithoutThePrerequisiteSwitch():
     assert not [call for call in fake.calls if call[1] == P.PanLook.ENDPOINT]
 
 
+def testPlacingInAPanWhoseBlockEntityIsGoneKeepsTheStackInTheHand():
+    """方块实体不在时写煎锅不能悄悄返回：放进去了、手上扣了、存储却没写，肉就没了。抛：动作作废，光标栈上的还在。"""
+    manager, data = P.setup()
+    P.opened(manager)
+    carry(manager, "a", 35, BEEF, 5)
+    del fake.blockEntities[(0, P.PAN)]
+    assert not P.do(manager, "a", P.custom("place")), "动作作废"
+    hand = manager.sessions["a"].hand
+    assert hand["newItemName"] == BEEF and hand["count"] == 5, "光标栈上的五块一块没少"
+    assert len(fake.world.errors) == 1 and "block entity missing" in fake.world.errors[0]
+    assert P.events("placed") == [], "没有放进锅的声音"
+    fake.blockEntities[(0, P.PAN)] = data
+    assert P.do(manager, "a", P.custom("place")) and P.inPan() == (BEEF, 5) and manager.sessions["a"].hand is None
+
+
+def testPanSlotsRefuseToWriteWhereThereIsNoBlockEntity():
+    slots = P.PanContents.PanSlots(0, (99, 64, 99))
+    assert slots.get(0) is None, "读：空"
+    try:
+        slots.set(0, {"newItemName": BEEF, "newAuxValue": 0, "count": 2})
+    except RuntimeError as error:
+        assert "block entity missing" in str(error)
+    else:
+        raise AssertionError("悄悄吞了")
+
+
 if __name__ == "__main__":
     raise SystemExit(P.dgtest.run(globals()))

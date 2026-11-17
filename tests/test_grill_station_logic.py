@@ -489,5 +489,34 @@ def testTheStationStillOpensWhenTheBlockHasNoEntityDataYet():
     assert K.fake.blockEntities[(0, K.STOVE)]["5"] == {"itemDict": None, "cookTimer": 30}
 
 
+def testPlacingOnAStoveWhoseBlockEntityIsGoneKeepsTheStackInTheHand():
+    """方块实体不在（换方块的那几刻、没加载）时写烤位不能悄悄返回：站点里放下了、手上扣了、存储却没写，东西就没了。抛：动作作废，手上的还在。"""
+    manager, data = K.setup()
+    fake.give("a", 3, BEEF, 4)
+    K.opened(manager)
+    assert K.do(manager, "a", K.click(K.inv(3)))
+    fake.world.take()
+    del fake.blockEntities[(0, K.STOVE)]
+    assert not K.do(manager, "a", K.custom("place")), "动作作废"
+    hand = manager.sessions["a"].hand
+    assert hand["newItemName"] == BEEF and hand["count"] == 4, "光标栈上的四块牛肉一块没少"
+    assert len(fake.world.errors) == 1 and "block entity missing" in fake.world.errors[0]
+    assert K.effects() == [], "没有放下去的表现"
+    fake.blockEntities[(0, K.STOVE)] = data                    # 方块实体回来了：同一个动作照常放上去
+    assert K.do(manager, "a", K.custom("place"))
+    assert K.items(data).count((BEEF, 1)) == 4 and manager.sessions["a"].hand is None
+
+
+def testStoveSlotsRefuseToWriteWhereThereIsNoBlockEntity():
+    slots = K.potfake.load("Server.Helpers.StoveSlots").StoveSlots(0, (99, 64, 99), 6, 30)
+    assert slots.get(0) is None, "读：空"
+    try:
+        slots.set(0, beef())
+    except RuntimeError as error:
+        assert "block entity missing" in str(error)
+    else:
+        raise AssertionError("悄悄吞了")
+
+
 if __name__ == "__main__":
     raise SystemExit(K.dgtest.run(globals()))
