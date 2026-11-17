@@ -18,3 +18,11 @@ def SkilletUseHeld(playerId, data):
         SkilletHand.onHeld(playerId)
     elif held is False:
         SkilletHand.onRelease(playerId)
+
+
+@AllowCall
+@InjectHttpPlayerId
+def SkilletFlip(playerId, data):
+    """按住右键煎的时候点了一下左键（JE 的 FlipSkilletMessage）：是不是在煎、在不在翻由 SkilletHand 核对。"""
+    if playerId:
+        SkilletHand.onFlip(playerId)

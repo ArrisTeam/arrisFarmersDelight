@@ -8,6 +8,8 @@ JE SkilletItem.use / getUseDuration / onUseTick / releaseUsing / finishUsingItem
 - 另一只手没有能煎的食物：提示"用另一只手拿着原料！"；头泡在水里：提示"在水里可没法煎啊……"（潜行时不提示：潜行右键方块是放煎锅，
   那一下 JE 不走 use()，总不能每放一次煎锅都冒一句）；
 - 按住期间每刻 1/50 的概率响一声滋滋（JE 是本地声音，只有自己听得到）；
+- 按住时点一下左键翻面（FlipSkilletMessage）：13 刻之后响一声下料（音量 0.4，音调 0.9 ~ 1.1，所有人听得到，JE 是服务端放的声音），翻的过程中再点不算；
+  JE 翻的是煎锅里的 Flipped 记号、画面上手里的锅翻一下，这里画不了（物品模型是静态的），只有那一声；
 - 松手什么都不发生。JE 把那一件放回背包；这里食物到做好那一刻才从拿原料的那只手拿走，所以掉线、死亡、换物品都不会丢东西；
 - 做好：原料少 1 件（创造模式也扣，JE 就是这样）、成品进背包（满了掉在脚下）、煎锅不磨损；
   按住不放就接着煎下一件（JE 里按住右键会每 4 刻重新使用一次，这里是客户端下一次"按着"的报告）。
@@ -18,6 +20,7 @@ import random
 import time
 
 from .Helpers.Engine import compFactory, levelId, Call, ItemPosType, GetBlockName, GetCarriedItem, ShowTip
+from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import GiveOrDropItem
 from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
 from ..Shared.Rules import SkilletHandRules as Hand
@@ -28,6 +31,7 @@ STEP = 0.25
 # 站着时眼睛比脚高多少（判断头泡没泡在水里）
 EYE_HEIGHT = 1.62
 SIZZLE_SOUND = "ambient.skillet.sizzle"
+FLIP_SOUND = "ambient.skillet.addfood"          # FD 的 block.skillet.add_food（放进煎锅的下料声）
 _WATER = ("minecraft:water", "minecraft:flowing_water")
 
 _holds = Hand.HoldTracker()
@@ -93,6 +97,25 @@ def _begin(playerId, now):
     seconds = Rules.cookingSeconds(Rules.CAMPFIRE_TICKS, Rules.fireAspectLevel(held))
     _sessions[playerId] = Hand.HandCook(food["newItemName"], result, seconds, now)
     compFactory.CreateGame(levelId).AddTimer(STEP, _step, playerId)
+
+
+def onFlip(playerId):
+    """客户端报告按住时点了一下左键（JE 的 FlipSkilletMessage）：正在煎、而且不在翻面中才算，13 刻后翻一次、响一声。"""
+    session = _sessions.get(playerId)
+    if session is None or session.flipping:
+        return
+    session.flipping = True
+    compFactory.CreateGame(levelId).AddTimer(Hand.FLIP_SECONDS, _flipped, playerId, session)
+
+
+def _flipped(playerId, session):
+    """翻面到点：还在煎同一件（中途松手、做好了就不翻，JE 的 onUseTick 只在使用中才走）才响一声；位置是玩家脚下（x、z 各加 0.5，FD 原样）。"""
+    if _sessions.get(playerId) is not session:
+        return
+    session.flipping = False
+    footPos = compFactory.CreatePos(playerId).GetFootPos()
+    dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
+    ToAllPlayerPlaySound(dimensionId, (footPos[0] + 0.5, footPos[1], footPos[2] + 0.5), FLIP_SOUND, Hand.FLIP_VOLUME, Hand.flipPitch(random.random()))
 
 
 def _step(playerId):

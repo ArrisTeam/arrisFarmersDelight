@@ -78,6 +78,13 @@ def OnRightClickUp(args=None):
     _reportSkilletHold(_skilletHold.release())
 
 
+@Listen("LeftClickBeforeClientEvent")
+def OnLeftClickDown(args=None):
+    # JE 的 KeybindEvents：用着煎锅（按住右键煎）时点攻击键就是翻面，由服务端核对是不是真在煎、在不在翻（Server/SkilletHold.SkilletFlip）
+    if _skilletHold.down and _carryingSkillet():
+        Call("SkilletFlip", {})
+
+
 @Listen("OnScriptTickClient")
 def OnSkilletHoldTick(args=None):
     # 每帧一次，引擎不带参数

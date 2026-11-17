@@ -15,6 +15,11 @@ HOLD_BEAT = 0.2
 HOLD_TIMEOUT = 0.8
 # JE onUseTick：每刻 1/50 的概率播一声滋滋
 SIZZLE_PER_TICK = 1.0 / 50
+# JE 的翻面（SkilletItem.FLIP_TIME = 12，ModNetworking.FlipSkilletMessage 记 FlipTimeStamp，onUseTick 里 gameTime - 记号 > 12 才翻）：点一下左键，过 13 刻（0.65 秒）
+# 翻一次、响一声下料（BLOCK_SKILLET_ADD_FOOD，音量 0.4，音调 0.9 ~ 1.1），翻的过程中再点不算
+FLIP_SECONDS = 13.0 / TICKS_PER_SECOND
+FLIP_VOLUME = 0.4
+FLIP_PITCH = (0.9, 0.2)
 
 
 MAIN, OFF = "main", "off"
@@ -32,6 +37,11 @@ def skilletHand(mainName, offName, skilletName):
 def cooksInsteadOfEating(mainName, offName, skilletName, cookable, nearHeat):
     """主手这件东西右键时该不该取消"吃"、改成煎：副手是煎锅、主手是有营火配方的原料、身边有热源。"""
     return skilletHand(mainName, offName, skilletName) == OFF and bool(cookable) and bool(nearHeat)
+
+
+def flipPitch(roll):
+    """翻面那一声下料的音调：roll 是 [0, 1) 的随机数（JE 的 random.nextFloat() * 0.2F + 0.9F）。"""
+    return FLIP_PITCH[0] + roll * FLIP_PITCH[1]
 
 
 def sizzleChance(seconds):
@@ -90,14 +100,15 @@ class HoldTracker(object):
 
 
 class HandCook(object):
-    """一次手持烹饪：从开始起 seconds 秒做好一件 food -> result（JE：按住 getUseDuration 刻，煎一件）。"""
-    __slots__ = ("food", "result", "seconds", "started")
+    """一次手持烹饪：从开始起 seconds 秒做好一件 food -> result（JE：按住 getUseDuration 刻，煎一件）。flipping 是正在翻面（JE 的 FlipTimeStamp 记着）。"""
+    __slots__ = ("food", "result", "seconds", "started", "flipping")
 
     def __init__(self, food, result, seconds, now):
         self.food = food
         self.result = result
         self.seconds = seconds
         self.started = now
+        self.flipping = False
 
     def finished(self, now):
         return now - self.started >= self.seconds

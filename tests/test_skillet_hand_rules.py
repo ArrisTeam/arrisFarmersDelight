@@ -33,6 +33,14 @@ def testHandCookFinishesAfterItsSeconds():
     assert not cook.finished(105.9) and cook.finished(106.0)
 
 
+def testTheFlipTakesThirteenTicksAndMakesTheAddFoodSoundLikeFarmersDelight():
+    """SkilletItem.onUseTick（java:185-194）：gameTime - FlipTimeStamp > FLIP_TIME(12) 才翻，也就是点完之后第 13 刻；声音 BLOCK_SKILLET_ADD_FOOD 音量 0.4、
+    音调 random.nextFloat() * 0.2F + 0.9F。"""
+    assert Hand.FLIP_SECONDS == 13.0 / 20 == 0.65 and Hand.FLIP_VOLUME == 0.4
+    assert abs(Hand.flipPitch(0.0) - 0.9) < 1e-12 and abs(Hand.flipPitch(0.5) - 1.0) < 1e-12 and abs(Hand.flipPitch(0.999999) - 1.1) < 1e-5
+    assert Hand.HandCook("minecraft:beef", "minecraft:cooked_beef", 6.0, 0.0).flipping is False, "开始煎的时候没有在翻（JE 的 Flipped = false）"
+
+
 def testSizzleChanceAccumulatesTheJePerTickChance():
     assert abs(Hand.sizzleChance(1.0 / 20) - 0.02) < 1e-9
     assert abs(Hand.sizzleChance(0.25) - (1 - 0.98 ** 5)) < 1e-9

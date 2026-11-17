@@ -250,6 +250,91 @@ def testSizzleSoundIsPlayedOnlyToTheCook():
     assert world.sounds == []
 
 
+def _flipTimers():
+    return [(seconds, params) for seconds, func, params in world.timers if func == SkilletHand._flipped]
+
+
+def testAClickOfTheLeftButtonWhileCookingFlipsThirteenTicksLaterWithTheAddFoodSoundForEveryone():
+    """JE：KeybindEvents 在用着煎锅时点攻击键发 FlipSkilletMessage，服务端记 FlipTimeStamp，SkilletItem.onUseTick 在 gameTime - 记号 > 12 时翻一次、
+    level.playSound(null, x + 0.5, y, z + 0.5, BLOCK_SKILLET_ADD_FOOD, 0.4, 0.9 ~ 1.1)：服务端放的声音，附近的人都听得到。"""
+    _setUp()
+    _press()
+    SkilletHand.onFlip("p1")
+    timers = _flipTimers()
+    assert len(timers) == 1 and abs(timers[0][0] - 0.65) < 1e-9, "13 刻后"
+    assert world.sounds == [], "还没到时候"
+    heard = []
+    Fx = fdtest.load("Server.Helpers.Fx")
+    original = Fx.Call
+    Fx.Call = lambda target, endpoint, data=None: heard.append((target, endpoint, data))
+    dice.value = 0.0
+    try:
+        world.runTimers()
+    finally:
+        Fx.Call = original
+    assert [(target, endpoint) for target, endpoint, data in heard] == [("*", "OnPlaySound")], "Call(*)：每个客户端按维度过滤、引擎按距离衰减"
+    payload = heard[0][2]
+    assert payload["soundName"] == "ambient.skillet.addfood" and payload["pos"] == (1.0, 64.0, 1.0), "玩家 (0.5, 64, 0.5) 脚下，x、z 各加 0.5（FD 原样）"
+    assert abs(payload["volume"] - 0.4 / 2.0) < 1e-9 and abs(payload["pitch"] - 0.9) < 1e-9, "定义里每个采样自带 2 倍音量，除回去：听到的是 0.4；骰子 0 = 音调 0.9"
+    assert not SkilletHand._sessions["p1"].flipping, "翻完了：又能点"
+
+
+def testTheFlipSoundPitchIsRandomBetweenPointNineAndOnePointOne():
+    pitches = []
+    for roll in (0.0, 0.5, 0.999):
+        _setUp()
+        _press()
+        SkilletHand.onFlip("p1")
+        dice.value = roll
+        world.runTimers()
+        pitches.append(round(world.soundArgs[-1]["pitch"], 4))
+    assert pitches == [0.9, 1.0, 1.0998]
+
+
+def testAnotherClickWhileFlippingDoesNotCountAndOneAfterwardsDoes():
+    _setUp()
+    _press()
+    SkilletHand.onFlip("p1")
+    SkilletHand.onFlip("p1")
+    assert len(_flipTimers()) == 1, "FlipTimeStamp 记着时再点不算（服务端 tag.contains 和客户端 == 0L 都拦）"
+    world.runTimers()
+    assert len(world.sounds) == 1
+    SkilletHand.onFlip("p1")
+    assert len(_flipTimers()) == 1, "翻完了再点：又翻一次"
+    world.runTimers()
+    assert len(world.sounds) == 2
+
+
+def testNoFlipUnlessCookingAndNoneIfLetGoBeforeItLands():
+    _setUp()
+    SkilletHand.onFlip("p1")
+    assert _flipTimers() == [] and world.sounds == [], "没在煎（没按住 / 没热源 / 没原料）：点左键什么都不是"
+    _setUp(heat=False)
+    _press()
+    SkilletHand.onFlip("p1")
+    assert _flipTimers() == []
+    _setUp()
+    _press()
+    _advance(1)
+    SkilletHand.onFlip("p1")
+    SkilletHand.onRelease("p1")
+    _advance(2, beat=False)
+    assert not SkilletHand._sessions, "松手：这一件不煎了"
+    world.runTimers()
+    assert world.sounds == [], "JE 的 onUseTick 只在使用中才走：松手之后到点也不翻、不响"
+
+
+def testAFlipThatFinishesTheCookAtTheSameInstantIsLost():
+    _setUp()
+    _press()
+    _advance(23)
+    SkilletHand.onFlip("p1")
+    _advance(1)
+    assert _cooked() == [("minecraft:cooked_beef", 1)] and "p1" not in SkilletHand._sessions
+    world.runTimers()
+    assert [name for name, pos in world.sounds] == [], "做好了：没有翻的下料声"
+
+
 def testEveryCampfireRecipeCanBeCookedInHand():
     cases = {"minecraft:kelp": "minecraft:dried_kelp", "arris:minced_beef": "arris:beef_patty", "minecraft:egg": "arris:fried_egg"}
     for raw, cooked in sorted(cases.items()):
