@@ -118,6 +118,12 @@ def testAPieceDoneOnBothSidesSteamsGlintsAndChimes():
     assert sound.volume == 0.3 and sound.pitch == 1.3
 
 
+def testLayingOnAndTakingOffEachMakeTheirOwnOneSound():
+    """StoveBehavior.onEffect 的 EFFECT_PLACED（灯笼放下 0.4 / 1.1）和 taken（拾取 0.3 / 1.5）：一回事件一声。"""
+    assert [(s.name, s.volume, s.pitch) for s in X.placed()] == [("lantern_place", 0.4, 1.1)]
+    assert [(s.name, s.volume, s.pitch) for s in X.taken()] == [("item_pickup", 0.3, 1.5)]
+
+
 def testARefusedPieceBouncesBackWithAClink():
     assert [(s.name, s.volume, s.pitch) for s in X.refused()] == [("lantern_hit", 0.4, 1.3)]
 

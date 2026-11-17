@@ -39,9 +39,11 @@ class StoveScene(object):
         self.known = True
 
     def event(self, name, payload):
-        """一次性的表现：放不上去、翻、没翻成、取走、烤好。payload 是 StoveLookState.eventData 清过的。"""
+        """一次性的表现：放上去、放不上去、翻、没翻成、取走、烤好。payload 是 StoveLookState.eventData 清过的。"""
         pieces, place = self.pieces, payload["place"]
-        if name == "refused":
+        if name == "placed":
+            pieces.placed()
+        elif name == "refused":
             pieces.refused(payload["stack"])
         elif name == "turned" and place is not None and not (self.focused and pieces.clock - pieces.turnedAt[place] <= AGAIN):
             pieces.turned(place, payload["up"])

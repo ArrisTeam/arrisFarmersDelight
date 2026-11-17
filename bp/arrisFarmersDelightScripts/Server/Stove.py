@@ -131,7 +131,6 @@ def _announceGrilled(dimensionId, blockPos, blockEntityData, hand):
     while hand is not None and hand.just:
         place = hand.just.pop(0)
         StoveLook.event(dimensionId, blockPos, "grilled", {"place": place, "stack": StoveLook.wire(HandGrill.slotItem(blockEntityData, place))})
-        ToAllPlayerPlaySound(dimensionId, blockPos, "random.pop")
 
 
 @registerHandler("ServerBlockEntityTickEvent", match=StoveList)

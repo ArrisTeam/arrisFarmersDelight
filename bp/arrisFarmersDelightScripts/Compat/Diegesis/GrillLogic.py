@@ -21,7 +21,6 @@ from . import GrillOpen
 from ...Server import HandGrill, StoveLook
 from ...Server.Helpers.BlockItems import PublishStove
 from ...Server.Helpers.Engine import GetBlockEntityData, GetCarriedItem, SetCarriedItem
-from ...Server.Helpers.Fx import ToAllPlayerPlaySound
 from ...Server.Helpers.StoveSlots import StoveSlots
 from ...Server.Stove import EnsureStoveData
 from ...Shared.Rules import GrillStation as Rules, StoveCover
@@ -137,7 +136,6 @@ class GrillLogicMixin(object):
         else:
             ctx.setHand(rest)
         self._tell("placed", {"places": laid})
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _turn(self, playerId, place):
         item = self.station.state.getItem((Rules.GROUP_GRILL, place)) if place is not None else None
@@ -160,7 +158,6 @@ class GrillLogicMixin(object):
             self.dropped.append(rest)
         self._publishStove = True
         self._tell("taken", {"place": place, "stack": StoveLook.wire(item)})
-        ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _layHeld(self, playerId):
         """右键时主手拿着烤得了的食物：整叠摆到每个空位上（JE 的 onOpen 里的 onInventoryShiftClick）。放不下的留在手里。"""
@@ -171,7 +168,6 @@ class GrillLogicMixin(object):
         if laid:
             SetCarriedItem(playerId, self._lay(held, laid, playerId))
             self._tell("placed", {"places": laid})
-            ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "armor.equip_leather")
 
     def _laidPlaces(self, carried, place):
         """carried 这叠能摆在哪些位置（StoveCooking.place 的规划）：烤得了、上面没盖东西，才摆；place 为 -1 是每个空位一件（够这叠的件数为止）。"""

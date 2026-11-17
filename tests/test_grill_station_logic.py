@@ -208,7 +208,7 @@ def testAPieceGrillsInHalvesWaitsToBeTurnedThenIsDone():
     done = [(name, body) for name, body in K.effects() if name == "grilled"]
     assert done and done[0][1]["place"] == 0 and done[0][1]["stack"]["newItemName"] == "minecraft:cooked_beef"
     assert grill.byHand(0) and not grill.waits(0), "烤好的留在烤架上，等人取"
-    assert [c for c in fake.calls if c[1] == "OnPlaySound" and c[2][0]["soundName"] == "random.pop"], "烤好了的叮一声"
+    assert not [c for c in fake.calls if c[1] == "OnPlaySound"], "烤好了的叮一声现在由客户端的场景放（谁都听得见），服务端不再广播声音"
 
 
 def testAPieceThatIsDoneWhileNobodyHasTheStationOpenIsAnnouncedToEveryoneNearby():
@@ -228,6 +228,18 @@ def testAPieceThatIsDoneWhileNobodyHasTheStationOpenIsAnnouncedToEveryoneNearby(
     K.opened(manager)
     K.step(0.5, manager=manager)
     assert K.effects() == [] and not [c for c in fake.calls if c[1] == "OnPlaySound"], "站点开了不再补一遍"
+
+
+def testTheStationMakesNoWorldSoundsOfItsOwnTheScenesPlayThem():
+    """放上去、取下、烤好的声音是 JE 的灯笼放置声 / 拾取声，在每个客户端的场景里放（StoveFx.placed / taken / grilled）；服务端不再放原版的皮革声和 pop。"""
+    manager, data = K.setup()
+    fake.give("a", 0, BEEF, 8)
+    K.opened(manager)                                           # 开站：主手的食物摆上去
+    fake.give("a", 3, BEEF, 1)
+    K.do(manager, "a", K.custom("take", place=0))
+    K.do(manager, "a", K.custom("place", **{"from": 3}))
+    assert not [c for c in fake.calls if c[1] == "OnPlaySound"]
+    assert [name for name, _, _ in K.broadcasts()].count("placed") >= 2 and "taken" in [name for name, _, _ in K.broadcasts()]
 
 
 def testTheStationSendsNoEffectsOfItsOwnTheNearbyBroadcastCarriesThemAll():

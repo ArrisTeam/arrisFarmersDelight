@@ -11,7 +11,7 @@ view 是 StoveWorld.WorldView，space 是 GrillSpace.WorldSpace：
 - 点一件翻面：跳起 3 px、转到立起来、换成另一面的样子、转回来落下；别人翻的也这么演（服务端发 turned），自己翻的不重复；
 - 取走：虚影升起缩没（GrillGhosts）；放不上去：虚影从上面落下往后弹开；
 - 点着的烤架：热浪、在烤的冒蒸汽、该翻的冒烟，嗞嗞声。离得远（near 假）时只算画面，不放粒子和声音。
-放上去、取下、烤好的"叮"这几声，世界里的广播（服务端的 ToAllPlayerPlaySound）已经有了，这里不重复。
+放上去（灯笼放下的一声）、取走（拾取声）、烤好（汽、金光、拾取声）、被拒（敲击声）的声音也都在这里放，谁都听得见。
 """
 import random
 
@@ -205,6 +205,8 @@ class Pieces(object):
         self.shown[place] = None
         self.motion[place].timers = []
         self.draw(place)
+        if stack:
+            self._play(StoveFx.taken())
 
     def refused(self, stack):
         """放不上去的一件：虚影从烤架中心上方落下，往后弹开（往开着站点的人这边弹，旁观的人看它往北弹）。"""
@@ -212,8 +214,12 @@ class Pieces(object):
         self._play(StoveFx.refused())
 
     def grilled(self, place):
-        """一件两面都烤好了：蒸汽和闪光。"""
-        self._play([effect for effect in StoveFx.grilled(place, random.random) if not isinstance(effect, StoveFx.Sound)])
+        """一件两面都烤好了：蒸汽、闪光和拾取声。"""
+        self._play(StoveFx.grilled(place, random.random))
+
+    def placed(self):
+        """放上去了（一回事件一声，不管放了几件）：灯笼放下的一声。落下的动作和落地的汽、下料声照状态里新来的演（refresh）。"""
+        self._play(StoveFx.placed())
 
     def clear(self):
         """所有道具和虚影收掉、样子清空（场景收掉、方块实体重建）：下一份状态来了按"刚加载"画，不演落下。"""

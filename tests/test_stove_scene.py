@@ -272,16 +272,36 @@ def testARefusedStackBouncesAGhostBackAndTheGrillHits():
     Scenes.OnStoveLook(event("refused", stack=item(BEEF)))
     assert len(drops()) == 1
     run(scene, 0.1)
-    assert sounds("block.lantern.hit")
+    assert [(s["volume"], s["pitch"]) for s in sounds("block.lantern.hit")] == [(0.4, 1.3)]
     run(scene, 0.4)
     assert drops() == []
 
 
-def testAPieceDoneOnBothSidesSteamsAndGlintsForEveryoneNearby():
+def testLayingOnPlaysTheLanternSoundOncePerEventWhateverTheNumberOfPieces():
+    """JE 的 EFFECT_PLACED：灯笼放下 0.4 / 1.1，一回一声；基岩版的 block.lantern.place 自带 1.1 倍音调，所以传 1.0 才是 JE 的 1.1。"""
+    scene = setup({})
+    Scenes.OnStoveLook(event("placed", places=[0, 1, 2, 3]))
+    heard = sounds("block.lantern.place")
+    assert len(heard) == 1 and abs(heard[0]["volume"] - 0.4) < 1.0e-9 and abs(heard[0]["pitch"] - 1.0) < 1.0e-9
+    assert abs(heard[0]["pos"][0] - (POS[0] + 0.5)) < 0.01 and abs(heard[0]["pos"][2] - (POS[2] + 0.5)) < 0.01, "在烤架中心"
+
+
+def testTakingOffMakesTheLittlePickUpSoundAndAMalformedTakeMakesNone():
+    scene = setup({3: slot(BEEF)})
+    Scenes.OnStoveLook(event("taken", 3, stack=item(BEEF)))
+    assert [(s["name"], s["volume"], s["pitch"]) for s in world.sounds if s["name"] == "random.pop"] == [("random.pop", 0.3, 1.5)]
+    del world.sounds[:]
+    Scenes.OnStoveLook(event("taken", 4))
+    assert [s for s in world.sounds if s["name"] == "random.pop"] == [], "没有东西的取走（JE 的 taken 里栈是空的直接返回）：不响"
+
+
+def testAPieceDoneOnBothSidesSteamsGlintsAndChimesForEveryoneNearby():
     scene = setup({4: slot(COOKED, True, 1.0, 1.0)})
+    del world.sounds[:]
     Scenes.OnStoveLook(event("grilled", 4, stack=item(COOKED)))
     kinds = [p["id"] for p in world.particles]
     assert kinds.count("arris_diegesis:steam") == 3 and kinds.count("arris_diegesis:glint") == 3
+    assert [(s["name"], s["volume"], s["pitch"]) for s in world.sounds] == [("random.pop", 0.3, 1.3)], "烤好的一声（ITEM_PICKUP 0.3 / 1.3）"
 
 
 # ---------------------------------------------------------------- 热气、烟、声音

@@ -2,8 +2,8 @@
 """StoveFx - 烤架上的热气、蒸汽、烟、嗞嗞声和各个动作的声音与粒子：什么时候放、放在哪、多大声（双端，纯计算）
 
 移植自 Hands-On Delight：client/StoveBehavior.java 的 heat（257-306）、hitsTheGrill（309-312）、onPiece / roundPiece / randomly（319-332）、
-turned 里的声音与蒸汽（394-398）、onEffect 里 refused / grilled（482-497）。放上去 / 取下的声音（JE 是灯笼的放置声和拾取声，
-480-481、516 行）本移植由服务端的世界广播顶替（Compat/Diegesis/GrillLogic.py），所有人都听得到，这里不放。
+turned 里的声音与蒸汽（394-398）、onEffect 里 placed / refused / grilled（480-497）、taken 里的拾取声（516）。
+放上去是灯笼的放置声（0.4 / 1.1，一回 placed 一声，不管放了几件），取走和烤好是拾取声（0.3 / 1.5 和 0.3 / 1.3），被拒是灯笼的敲击声。
 烤架点着时：架子上空一阵阵热浪；每件在烤的（贴烤架那面还没熟）冒一点蒸汽、轻轻嗞；贴烤架那面熟了等着翻的冒烟、嗞得更尖，
 告诉厨师该翻了；烤好的只是躺着。粒子和声音在这里只是"一条条要放的东西"，客户端拿去放（Compat/Diegesis/GrillFx.py）。
 位置是相对一件自己的落点（place 是序号）或相对烤架中心（place 是 None）的偏移，px；速度 px 每秒；color 是 ARGB（0 = 粒子自己的颜色）。
@@ -140,3 +140,13 @@ def grilled(place, rand):
 def refused():
     """放不上去：弹回来时的一声（490 行）。"""
     return [Sound("lantern_hit", 0.4, 1.3)]
+
+
+def placed():
+    """放上去了：灯笼放下的一声（481 行，一回 placed 事件一声，放了几件都是一声）。"""
+    return [Sound("lantern_place", 0.4, 1.1)]
+
+
+def taken():
+    """一件被取走：拾取的一声（516 行，和客户端内核飞进托盘时那一声轻响是两回事，JE 里两样都有）。"""
+    return [Sound("item_pickup", 0.3, 1.5)]
