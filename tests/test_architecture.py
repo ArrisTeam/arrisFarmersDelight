@@ -311,6 +311,22 @@ def testRpcEndpoints():
     assert not problems, "\n".join(problems)
 
 
+def testEveryFarmersDelightBroadcastHasItsClientEndpoint():
+    """服务端的每个广播（模块里的 ENDPOINT = "OnXxx"：世界外观、方块上的展示、表同步）在客户端都有同名的 @AllowCall 函数。
+    名字对不上时服务端照发、客户端查不到这个端点，只在客户端日志里报一行，画面就是"服务端认、客户端不认"。"""
+    seen, _ = _endpoints("fd")
+    names = []
+    for relPath, path, source in _sources("fd"):
+        if relPath.startswith("QuModLibs") or relPath.startswith("dolorContainer"):
+            continue
+        for node in ast.parse(source).body:
+            if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "ENDPOINT" for target in node.targets):
+                names.append((relPath, ast.literal_eval(node.value)))
+    assert len(names) >= 6, "至少有这几个：OnPotLook、OnPanLook、OnStoveLook、OnBoardLook、OnBlockItems、OnTableSync；找到 %r" % (names,)
+    missing = ["%s 的 %s" % found for found in names if ("client", found[1]) not in seen]
+    assert not missing, "客户端没有同名的 @AllowCall 函数: %s" % missing
+
+
 def testDiegesisProtocolEndpointsExistOnTheRightSide():
     Protocol = dgtest.load("Shared.Protocol")
     seen, _ = _endpoints("diegesis")
