@@ -250,7 +250,9 @@ def OnServerSkilletBlockUse(args):
   （`tests/test_presence_standalone.py` 核对 `sys.modules` 和假加载器记下的监听 / 端点；`tests/test_architecture.py` 规则表里的 `only` 清单守着入口、判定和步骤表不导入站点模块）。
   核心（`Server/`、`Client/`）里和 HoD 沾边的几处也不再看配置：`HandsOnOptions` 的取值函数没联动时一律说 HoD 不在（站点开关假、不要搅拌、没有食谱书、三个倍率 1.0），所以厨锅按配方自己的时间煮、
   不看 `cooking_pot_time`，手放的厨锅料（存档里留着的）不等勺子，存档里留着手放的煎锅 / 炉灶（以前装过前置包）交还给农夫乐事原样煎 / 烤；`HandCooking.addMade` 没联动时不往玩家数据里写
-  "做过几份"。四个世界外观广播（`PotLook` 等）本来就默认关着、由步骤打开。砧板 / 炉灶经典展示用的摆法常量（`Shared/Rules/BlockDisplay` 取自 HoD 的场景布局）只是几何、不是 HoD 的逻辑，没联动时照用。
+  "做过几份"。四个世界外观广播（`PotLook` 等）本来就默认关着、由步骤打开。砧板 / 煎锅 / 炉灶上东西的世界展示（`Shared/Rules/BlockDisplay` + `Client/BlockItems`）没联动时是 FD 自己的渲染器（`CuttingBoardRenderer` / `SkilletRenderer` / `DefaultStoveRenderer`：位置、高度、大小、错开、朝向、一叠几张逐项对过 Java，
+  `tests/test_classic_block_display.py`），联动着但配置里关了砧板站点时一样；只有砧板站点在场（`HandsOnOptions.cuttingBoard()`）时板上的东西才摆成站点里的样子（HoD 的 `BoardScene`），开站、关站不跳。
+  煎锅、炉灶不分模式：站点在场时场景接管、这份展示收起来。
 - **前置包太旧的提醒**（`ClientBoot`）：客户端的模式是 `outdated` 时，本地玩家进了世界（`OnLocalPlayerStopLoading`）在左上角（`CreateTextNotifyClient(levelId).SetLeftCornerNotify`，文字是 `str`）
   提醒"前置模组场景交互 · 前置版本过旧，亲手做菜的站点不会启用，请更新"，隔 8 秒再提醒，共三次。没装前置包（`standalone`）不提醒、不打扰玩家；服务端没有这个提醒（日志里有一行）。
 - **看现在的状况**：每次判定在日志里留一行（`[arrisFarmersDelight] 联动（server 端）：linked，前置包接口 3，board=ok，pot=ok，pan=ok，grill=ok`）；游戏里用 `execute_code`
