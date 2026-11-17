@@ -14,7 +14,11 @@
 表现事件（给站点里的人，附近旁观的人也收一份声音 / 碎屑用的，BoardEmit）：chopped {at, at_x, spot, angle, tool, item, yaw, stroke, block, yields, count, done}、
 placed {at}、refused {stack}、taken {stack, at, carved}、carved、assembled {layers, finish, block}。声音由两边的客户端按 Shared/Rules/BoardSounds 自己放。站点数据 data：marks（已切几刀）、plan / style / spots / angles / stroke（板上的东西怎么切）、
 dish（层现在能做成的那道菜的物品名，没有是空串）。
+动作中途抛了异常：前置包的 Undo 只放回站点自己的东西（槽、数据、表现事件）和背包窗口，刀口进度（cut）、配方、板上东西的键、书里点的菜是本逻辑自己的字段，Undo 不认识，
+所以 onCustomAction 在动作之前存一份、抛了就放回去再抛：不然落了一刀才出的错会留下一个已经加一的刀口数，板子拒绝之后每一刀，要把东西拿下来再放上去才好。
 """
+import copy
+
 from . import BoardAssemble, BoardChop, BoardGive, BoardSlots, BoardTools
 from .BoardEmit import emit
 from .BookFill import setsOf
@@ -80,22 +84,31 @@ class BoardLogicMixin(object):
     def onCustomAction(self, playerId, name, data):
         if self._data() is None:
             return False
+        saved = (copy.copy(self.cut), self.recipe, self.itemKey, self.picked)
+        try:
+            accepted = self._act(playerId, name, data)
+            if accepted is not None:
+                self._publish()
+        except Exception:
+            self.cut, self.recipe, self.itemKey, self.picked = saved       # 动作作废了，本逻辑自己的字段也回到动作之前（Undo 管不到它们）
+            raise
+        return False if accepted is None else accepted
+
+    def _act(self, playerId, name, data):
+        """一个动作；不认识的名字返回 None。"""
         if name == "place":
-            accepted = self._place(playerId, data)
-        elif name == "carve":
-            accepted = self._apply(playerId, Place.carve(self.ctx.getHand(), self.boardItem(), self.layers(), self.env()), None)
-        elif name == "chop":
-            accepted = BoardChop.chop(self, playerId, data)
-        elif name == "take":
-            accepted = self._apply(playerId, Place.take(self.boardItem(), self.layers(), self.env()), None)
-        elif name == "assemble":
-            accepted = BoardAssemble.assemble(self, playerId)
-        elif name == "bookFill":
-            accepted = BoardAssemble.fill(self, playerId, data.get("key"), setsOf(data.get("sets")))
-        else:
-            return False
-        self._publish()
-        return accepted
+            return self._place(playerId, data)
+        if name == "carve":
+            return self._apply(playerId, Place.carve(self.ctx.getHand(), self.boardItem(), self.layers(), self.env()), None)
+        if name == "chop":
+            return BoardChop.chop(self, playerId, data)
+        if name == "take":
+            return self._apply(playerId, Place.take(self.boardItem(), self.layers(), self.env()), None)
+        if name == "assemble":
+            return BoardAssemble.assemble(self, playerId)
+        if name == "bookFill":
+            return BoardAssemble.fill(self, playerId, data.get("key"), setsOf(data.get("sets")))
+        return None
 
     # ---------------------------------------------------------------- 动作
 
