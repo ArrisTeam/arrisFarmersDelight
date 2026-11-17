@@ -5,6 +5,7 @@
 平躺的贴图中心离它躺着的面 FLAT_LIFT。看得见才有道具，看不见就删。
 """
 import math
+import random
 
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
@@ -28,6 +29,13 @@ class Thing(object):
         self.turn = 0.0
         self.prop = None
         self.dirty = True
+        self.shaking = None                  # [幅度, 总时间, 剩下的时间]：抖一下（shake）
+        self.offset = (0.0, 0.0, 0.0)        # 抖动现在的偏移
+        self.rng = random.random
+
+    def shake(self, pixels=Motion.SHAKE_PIXELS, seconds=Motion.SHAKE_SECONDS):
+        """抖一下：每帧在 ±幅度里随机偏一点，幅度线性变小（NodeInstance.shake）。"""
+        self.shaking = [max(0.0, pixels), max(0.01, seconds), max(0.01, seconds)]
 
     def set(self, item, kind=FLAT, scale=None, turn=0.0):
         """换成 item（只留名字和 aux）。位置、缩放另外用 mover 摆。"""
@@ -59,13 +67,19 @@ class Thing(object):
         if self.mover.busy:
             self.mover.update(dt)
             self.dirty = True
+        if self.shaking is not None:
+            self.shaking[2] = max(0.0, self.shaking[2] - dt)
+            self.offset = Motion.shakeOffset(self.shaking[0], self.shaking[1], self.shaking[2], self.rng)
+            self.dirty = True
+            if self.shaking[2] <= 0.0:
+                self.shaking = None
         if not self.dirty:
             return
         self.dirty = False
         if not self.mover.visible or self.item is None or self.mover.scale <= 0.02:
             self.drop()
             return
-        x, y, z = self.mover.pos
+        x, y, z = (a + b for a, b in zip(self.mover.pos, self.offset))
         scale = self.size * self.mover.scale
         upright = self.kind == UPRIGHT
         center = (self.draw.cx + x, Scene.TOP + y + (Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale),

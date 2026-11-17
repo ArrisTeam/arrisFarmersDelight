@@ -9,6 +9,7 @@ from ...Shared.Rules import BoardDust as Dust
 from ...Shared.Rules import BoardSounds as Sounds
 from ...Shared.Rules.HandsOn import Assembly
 from ...Shared.Rules.HandsOn import BoardScene as Scene
+from ...Shared.Rules.HandsOn import Cutting
 
 
 def onEffect(owner, name, data):
@@ -21,7 +22,7 @@ def onEffect(owner, name, data):
         _chopped(owner, data)
     elif name == "refused":
         if owner.cutter.pending.refused():
-            draw.refresh(owner.board(), owner.layers())
+            owner.redraw()
         if data.get("stack"):
             draw.bounced(data["stack"])
         BoardFx.play(Sounds.BOUNCE, world)
@@ -36,8 +37,13 @@ def onEffect(owner, name, data):
 
 
 def _chopped(owner, data):
-    """一刀（所有看得见板的人）：碎屑（起点和初速是操作者那边的站点像素，按他的朝向转到世界，BoardFx.chopPuffs）；最后一刀切开的食物飘走。"""
+    """一刀（所有看得见板的人）：碎屑（起点和初速是操作者那边的站点像素，按他的朝向转到世界，BoardFx.chopPuffs）；最后一刀：切开的食物飘走，
+    方块类不飘——削皮切出东西的，削出来的去皮原木从方块的位置升起，别的在方块中心炸开（碎屑里已经有了）。"""
     draw, view = owner.draw, owner.view
-    BoardFx.chopPuffs(owner.api.Geometry, view.pos, data, view)
-    if data.get("done"):
+    stroke, yields = BoardFx.chopPuffs(owner.api.Geometry, view.pos, data, view)
+    if not data.get("done"):
+        return
+    if not data.get("block"):
         draw.gone({"newItemName": data.get("item") or "", "newAuxValue": 0, "count": 1})
+    elif stroke == Cutting.TOOL_STRIP and yields:
+        draw.stripped({"newItemName": yields[0], "newAuxValue": 0, "count": 1})

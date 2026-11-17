@@ -145,5 +145,47 @@ def testTheLastCutLiftsTheCutFoodAwayAndShrinksIt():
     assert not mover.visible
 
 
+def testTheStrippedLogRisesThreePixelsAndShrinksAwayInThreeTenthsOfASecond():
+    mover = Motion.Mover()
+    Motion.stripAway(mover, (0.0, 0.0, 0.0))
+    assert mover.visible and mover.scale == 1.0 and mover.pos == (0.0, 0.0, 0.0)
+    _run(mover, 0.15)
+    assert 1.0 < mover.pos[1] < 2.0 and 0.2 < mover.scale < 0.8, "走到一半"
+    _run(mover, 0.15)
+    assert _close(mover.pos[1], 3.0, 1e-4) and mover.scale == 0.0 and Motion.STRIP_RISE == 3.0 and Motion.STRIP_TIME == 0.3
+    _run(mover, 0.01)
+    assert not mover.visible
+    tall = Motion.Mover()
+    Motion.stripAway(tall, (0.0, 0.5, 0.0), 2.6)
+    _run(tall, 0.3)
+    assert _close(tall.pos[1], 0.5 + 3.0 + 2.6, 1e-4), "立着的东西绕底边缩：底边多升一个中心的高，缩到点时就在升了 3 像素的中心上"
+
+
+def testTheLayersHopInPlaceWhenTheyAddUpToADish():
+    mover = Motion.Mover(0.1, 1.3, -0.2)
+    Motion.settle(mover, (0.1, 1.3, -0.2))
+    _run(mover, Motion.SETTLE_TIME / 2.0)
+    assert _close(mover.pos[1], 1.3 + Motion.SETTLE_HOP, 0.02), "弧的最高点：SETTLE_HOP 0.25"
+    _run(mover, Motion.SETTLE_TIME / 2.0 + 0.01)
+    assert all(_close(a, b, 1e-6) for a, b in zip(mover.pos, (0.1, 1.3, -0.2))), "落回原位"
+    assert Motion.SETTLE_TIME == 0.12 and Motion.SETTLE_HOP == 0.25
+
+
+def testAShovelfulShrinksABlockByFourteenPercentAndNothingElseDoes():
+    assert Motion.wornScale(True, 0) == 1.0 and _close(Motion.wornScale(True, 1), 0.86) and _close(Motion.wornScale(True, 3), 0.58)
+    assert Motion.wornScale(False, 5) == 1.0, "斧、镐不缩（它们是换裂纹，这里不画）"
+    assert Motion.wornScale(True, -2) == 1.0, "坏数据不放大"
+
+
+def testAShakeIsRandomInEveryDirectionAndDiesAwayLinearly():
+    ones, zeros = (lambda: 1.0), (lambda: 0.5)
+    assert Motion.shakeOffset(0.25, 0.12, 0.12, ones) == (0.25, 0.25, 0.25), "刚抖时：±幅度"
+    assert all(_close(v, 0.125) for v in Motion.shakeOffset(0.25, 0.12, 0.06, ones)), "过了一半：幅度减半"
+    assert Motion.shakeOffset(0.25, 0.12, 0.06, zeros) == (0.0, 0.0, 0.0), "随机数在中间：没有偏移"
+    assert Motion.shakeOffset(0.25, 0.12, 0.0, ones) == (0.0, 0.0, 0.0), "抖完了回到原位"
+    assert Motion.shakeOffset(0.25, 0.12, 0.12, lambda: 0.0) == (-0.25, -0.25, -0.25)
+    assert Motion.SHAKE_PIXELS == 0.25 and Motion.SHAKE_SECONDS == 0.12
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

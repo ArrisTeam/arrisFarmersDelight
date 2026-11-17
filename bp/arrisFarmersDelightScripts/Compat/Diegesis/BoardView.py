@@ -23,6 +23,7 @@ from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
 from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules.HandsOn import BoardScene as Scene
+from ...Shared.Rules.HandsOn import Cutting
 
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
 CARRY_SIZE, CARRY_HIDDEN = 3.2, 0.01                    # 光标栈上的东西画多大；收起来时缩成一个点（不为 0：零矩阵不稳）
@@ -107,7 +108,7 @@ class BoardViewMixin(object):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
         self.draw = Draw(self.view, self.center(), typeOf, self.api.Geometry)
         self.cutter = Cutter(self)
-        self.draw.refresh(self.board(), self.layers())
+        self.redraw()
         BookSources.attach(self.view, "board")
         self._useHeld()
 
@@ -133,7 +134,7 @@ class BoardViewMixin(object):
         if self.draw is None:
             return
         self.cutter.pending.state(int(self.view.data.get("marks") or 0), changes.hasSlot((Rules.GROUP_BOARD, 0)))
-        self.draw.refresh(self.board(), self.layers())
+        self.redraw()
         BookSources.refresh(self.view)
 
     def frame(self, dt):
@@ -145,7 +146,7 @@ class BoardViewMixin(object):
         over = self.over == "mouth" or self.view.input == self.api.TOUCH       # 触屏没有悬停：拿着放得上的东西就描
         self.glow.frame(dt, over and placeable(self.env, self.view.hand, self.board(), self.layers()))
         if self.cutter.pending.expire(self.cutter.clock):
-            self.draw.refresh(self.board(), self.layers())
+            self.redraw()
 
     # ---------------------------------------------------------------- 点
 
@@ -197,7 +198,14 @@ class BoardViewMixin(object):
         """落刀：mark 是第几刀，(x, z) 是刀刃在板面上的位置（离食物中心），换成站点像素给服务端画碎屑用。"""
         self.view.sendAction("chop", {"mark": int(mark), "at": round(self.draw.cz + z, 3), "at_x": round(self.draw.cx + x, 3),
                                       "yaw": int(self.view.yaw)})
+        self.redraw()
+
+    def redraw(self):
+        """板上的东西、层、铲磨损、凑成菜的落定：状态变了或自己落了刀以后都重画一遍。"""
+        data = self.view.data
         self.draw.refresh(self.board(), self.layers())
+        self.draw.wear(data.get("stroke") == Cutting.TOOL_DIG, min(int(data.get("plan") or 0), int(data.get("marks") or 0) + self.cutter.pending.count))
+        self.draw.settle(self.ready())
 
     # ---------------------------------------------------------------- 服务端的表现事件
 

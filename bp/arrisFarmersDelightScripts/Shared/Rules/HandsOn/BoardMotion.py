@@ -32,6 +32,12 @@ POP_TIME = 0.35            # 做好的菜弹出来
 POP_HEIGHT = 1.6
 GONE_TIME = 0.25           # 最后一刀：切开的食物往上飘、缩没
 GONE_LIFT = 2.5
+STRIP_TIME = 0.3           # 最后一刀削皮：削出来的去皮原木从方块的位置升起、缩没（block_gone，1459-1475）
+STRIP_RISE = 3.0
+WEAR_TIME = 0.12           # 铲一铲，方块缩一点（drawWear，516-544）
+DUG = 0.14                 # 每铲缩这么多（占原来的比例）
+SHAKE_PIXELS = 0.25        # 工具点到活上，活抖一下（impact，1045-1047）
+SHAKE_SECONDS = 0.12
 LAYER_STEP = 0.65          # 层与层相隔
 PILE_LIFT = 0.65           # 一叠不止一个时，上面那个抬高这么多
 
@@ -184,6 +190,35 @@ def popUp(mover, home):
     mover.scaleTo(0.3)
     mover.scaleTo(1.0, POP_TIME)
     mover.move(home[0], home[1], home[2], POP_TIME, POP_HEIGHT)
+
+
+def stripAway(mover, home, lift=0.0):
+    """削皮的最后一刀（blockDone，1459-1470）：削出来的去皮原木从 home 升 STRIP_RISE、缩没，用 STRIP_TIME 秒。JE 的节点绕中心缩，这边的东西
+    立着时绕底边缩（BoardThing），所以底边要多升一个中心离底边的高度 lift，两边缩到点时才在同一个地方（升了 STRIP_RISE 的中心）。"""
+    mover.visible = True
+    mover.scaleTo(1.0)
+    mover.move(*home)
+    mover.move(home[0], home[1] + STRIP_RISE + lift, home[2], STRIP_TIME)
+    mover.scaleTo(0.0, STRIP_TIME)
+    mover.after(STRIP_TIME, lambda: _hide(mover))
+
+
+def settle(mover, home):
+    """层凑成一道等点的菜时各层落定（settle，490-506）：在原位弹一下。"""
+    mover.move(home[0], home[1], home[2], SETTLE_TIME, SETTLE_HOP)
+
+
+def wornScale(digging, done):
+    """切了 done 刀以后方块的缩放（drawWear，533）：铲每铲缩 DUG，别的工具不缩。"""
+    return 1.0 - DUG * max(0, done) if digging else 1.0
+
+
+def shakeOffset(amplitude, seconds, left, rng):
+    """抖动的偏移 (x, y, z)（Diegesis 的 NodeInstance.shake）：每个方向在 ±幅度里随机，幅度随剩下的时间线性变小；抖完是 (0, 0, 0)。"""
+    if left <= 0.0:
+        return (0.0, 0.0, 0.0)
+    amount = amplitude * left / max(0.01, seconds)
+    return tuple((rng() * 2.0 - 1.0) * amount for _ in range(3))
 
 
 def floatAway(mover, home):

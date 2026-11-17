@@ -18,7 +18,8 @@ import fdtest
 PACKAGE = fdtest.SCRIPTS
 STATION_POS = (10, 64, 10)
 TYPES = {"arris:iron_knife": "sword", "arris:flint_knife": "sword", "minecraft:iron_axe": "axe", "minecraft:cobblestone": "block",
-         "minecraft:oak_log": "block"}
+         "minecraft:oak_log": "block", "minecraft:stripped_oak_log": "block", "minecraft:gravel": "block", "minecraft:stone": "block",
+         "minecraft:iron_shovel": "shovel", "minecraft:iron_pickaxe": "pickaxe", "minecraft:shears": "shears"}
 
 
 class FakeClientEngine(object):

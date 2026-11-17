@@ -88,7 +88,7 @@ def _number(value):
 
 def chopPuffs(geometry, blockPos, data, view=None):
     """chopped 效果的碎屑（所有看得见板的人）：一刀一阵；最后一刀切的是方块，再在方块中心炸开一阵（削皮切出了东西的除外：那根去皮原木往上升，
-    由 BoardDraw 画）。data 是 chopped 效果；起点的 x / z 是操作者落刀的位置（站点像素，没带就是板面中心）。返回这一刀的 (笔画, 是不是削出东西来的方块收尾)。"""
+    由 BoardDraw 画）。data 是 chopped 效果；起点的 x / z 是操作者落刀的位置（站点像素，没带就是板面中心）。返回这一刀的 (笔画, 切出来的东西的名字)。"""
     item, tool = _text(data.get("item")), _text(data.get("tool"))
     yields = [name for name in (data.get("yields") if isinstance(data.get("yields"), (list, tuple)) else ()) if _text(name)]
     yaw = data["yaw"] if data.get("yaw") in (0, 90, 180, 270) else 0
@@ -102,4 +102,4 @@ def chopPuffs(geometry, blockPos, data, view=None):
     stripped = stroke == Cutting.TOOL_STRIP and bool(yields)
     if data.get("done") and block and not stripped:
         puffAt(geometry, yaw, blockPos, Dust.blockDonePuff(stroke, mx, mz), color, view)
-    return stroke, stripped
+    return stroke, yields

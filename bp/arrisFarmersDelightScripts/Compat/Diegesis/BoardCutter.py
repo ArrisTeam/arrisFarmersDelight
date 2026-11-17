@@ -180,7 +180,9 @@ class Cutter(object):
         self.place[1] += (z - self.place[1]) * follow
 
     def _impact(self):
-        """接触（impact，1040-1060）：落在线上才发 chop；没吸附上只敲一声。"""
+        """接触（impact，1040-1060）：除削皮、剪刀以外活抖一下；落在线上才发 chop；没吸附上只敲一声。"""
+        if (self.owner.view.data.get("stroke") or Cutting.TOOL_CUT) not in (Cutting.TOOL_STRIP, Cutting.TOOL_SNIP):
+            self.owner.draw.shake()
         if self.run is None or self.run.mark < 0:
             BoardFx.play(BoardFx.KNOCK, self.owner.view.toWorld(*self._at(0.0, 2.0)))
             return
