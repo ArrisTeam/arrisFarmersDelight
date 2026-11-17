@@ -59,6 +59,9 @@ class FakeClientEngine(object):
     def GetCurrentDimension(self):
         return self.dimension
 
+    def GetScreenSize(self):
+        return (1920.0, 1080.0)
+
     def SetEnableBlockEntityAnimations(self, pos, enable):
         return True
 
@@ -201,6 +204,11 @@ class FakeView(object):
 
     def overUi(self, pos):
         return False
+
+    def rayAt(self, screen):
+        """屏幕上一点的站点射线（假的：相机 (7.5, 35.5, -21) 看向板，屏幕越靠下俯得越陡，所以下沿的点投到板面上更靠近玩家一侧）。"""
+        fx, fy = screen[0] / 1920.0, screen[1] / 1080.0
+        return Geometry.makeRay(ORIGIN, ((fx - 0.5) * 8.0, -34.5 - (fy - 0.5) * 20.0, 29.0))
 
     def toWorld(self, x, y, z):
         return Geometry.stationPointToWorld(self.yaw, x, y, z, self.pos[0], self.pos[1], self.pos[2])

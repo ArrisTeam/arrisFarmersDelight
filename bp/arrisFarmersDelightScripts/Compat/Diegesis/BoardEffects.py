@@ -16,7 +16,7 @@ def onEffect(owner, name, data):
     """owner 是 BoardViewMixin：要它的 draw、cutter、view、board()、layers()。"""
     draw, view = owner.draw, owner.view
     world = view.toWorld(draw.cx, Scene.TOP, draw.cz)
-    for sound in Sounds.soundsOf(name, data):
+    for sound in ([] if name == "assembled" else Sounds.soundsOf(name, data)):         # 做成的声音等各层落完（assembled 里放）
         BoardFx.play(sound, world)
     if name == "chopped":
         _chopped(owner, data)
@@ -30,10 +30,23 @@ def onEffect(owner, name, data):
         if (data.get("stack") or {}).get("newItemName"):
             draw.taken(data["stack"], int(data.get("at", -1)), bool(data.get("carved")))
     elif name == "assembled":
-        draw.assembled([layer for layer in data.get("layers") or [] if layer])
-        frost = data.get("finish") == Assembly.FINISH_FREEZE
-        BoardFx.puffAt(owner.api.Geometry, int(view.yaw), view.pos, Dust.flourPuff(draw.cx, draw.cz, frost), BoardFx.FROST if frost else BoardFx.FLOUR, view)
-        BoardFx.flourAt(view, (draw.cx, Scene.TOP + 1.0, draw.cz))
+        arrive = draw.assembled([layer for layer in data.get("layers") or [] if layer])
+        if arrive > 0.0:
+            draw.after(arrive, lambda: _popped(owner, data))
+        else:
+            _popped(owner, data)
+
+
+def _popped(owner, data):
+    """层都落完、开始沉进去、菜弹出来的那一刻：做成的两声、面粉（冰棒是霜）和一点闪光。"""
+    draw, view = owner.draw, owner.view
+    if draw is None:
+        return
+    for sound in Sounds.soundsOf("assembled", data):
+        BoardFx.play(sound, view.toWorld(draw.cx, Scene.TOP, draw.cz))
+    frost = data.get("finish") == Assembly.FINISH_FREEZE
+    BoardFx.puffAt(owner.api.Geometry, int(view.yaw), view.pos, Dust.flourPuff(draw.cx, draw.cz, frost), BoardFx.FROST if frost else BoardFx.FLOUR, view)
+    BoardFx.flourAt(view, (draw.cx, Scene.TOP + 1.0, draw.cz))
 
 
 def _chopped(owner, data):

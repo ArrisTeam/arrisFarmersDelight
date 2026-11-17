@@ -69,6 +69,9 @@ def testPlacedGetsHigherWithTheLayerTakenHasOneSoundAndCarvedAndAssembledTheirOw
     assert C.engine.played == [("dig.wood", 1.0, 0.8)]
     C.engine.played[:] = []
     behavior.onEffect("assembled", {"layers": [C.item("minecraft:bread"), C.item("arris:egg")], "finish": "sandwich", "block": False})
+    assert C.engine.played == [], "板上没摆过这两层（书里点的菜）：先飞来，做成的声音等它们落完（test_board_arrival 细查）"
+    for _ in range(60):
+        behavior.frame(1.0 / 60.0)
     assert C.engine.played == [("dig.wood", 0.8, 0.75), ("random.pop", 0.35, 1.4)]
 
 

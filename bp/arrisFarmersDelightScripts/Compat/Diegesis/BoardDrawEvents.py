@@ -8,12 +8,13 @@ refresh 末尾凑成一道菜时各层落定（490-506）、drawWear（516-544�
 from . import BoardFx
 from .BoardThing import FLAT, UPRIGHT
 from ...Shared.Rules import BoardSounds as Sounds
-from ...Shared.Rules.BoardStation import MOST_LAYERS
+from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 
 GHOSTS = 3                  # 同时飘着几个"拿走 / 弹回"的替身（scene 的 lift_N）
 CARVED_SCALE = Scene.scaleOf(Scene.CARVED_SCALE * 16.0)       # 插着的工具画 0.6 个图标大：9.6 像素
+CLEARED_WINDOW = 1.0         # 层刚被清空这么久之内收到的 assembled 才认"原来摆着的层"（状态先到、效果随后，隔不了多久）
 
 
 class DrawEvents(object):
@@ -57,19 +58,38 @@ class DrawEvents(object):
         ghost = self._ghost(item, UPRIGHT, Scene.itemScale(True))
         Motion.stripAway(ghost.mover, (0.0, 0.0, 0.0), Scene.uprightLift(Scene.itemScale(True)))
 
+    def _seen(self):
+        """刚被清空的层原来摆着哪些（状态先到、assembled 效果随后，所以这时 shown 已经空了）；隔太久的不算。"""
+        stamp, before = self.cleared if self.cleared is not None else (None, [])
+        self.cleared = None
+        return before if stamp is not None and self.clock - stamp <= CLEARED_WINDOW else []
+
     def assembled(self, made):
-        """层凑成了菜（assembled 效果，状态已经是层清空、菜躺在板上）：把各层重新摆出来，缩小沉进去，菜弹出来。made 是做成的各层（物品，底座在前）。"""
-        self.melting = Motion.MELT_TIME + 0.05
+        """层凑成了菜（assembled 效果，状态已经是层清空、菜躺在板上）：made 是做成的各层（物品，底座在前）。板上原来就摆着的在原位，
+        没摆过的（书里点的菜一气呵成：放好、做成）先从玩家那边一层隔一层飞来（JE 的 arrive）；都落了各层缩小沉进去，菜弹出来。
+        返回各层都落完要多久：落完那一刻放做成的声音和面粉。"""
+        seen, arrive, order, homes = self._seen(), 0.0, 0, []
         self.item.hide()
         for index, layer in enumerate(made[:MOST_LAYERS]):
             pose = Scene.layerPose(index)
             thing = self.layers[index]
             thing.set(layer, FLAT, Scene.scaleOf(Scene.layerSize(index)), pose["turn"])
             home = (pose["x"], pose["y"], pose["z"])
-            thing.put(*home)
-            Motion.melt(thing.mover, home)
+            homes.append((thing, home))
+            if index < len(seen) and seen[index] == keyOf(layer):
+                thing.put(*home)
+                continue
+            delay, order = order * Motion.LAYER_STAGGER, order + 1
+            arrive = max(arrive, delay + Motion.PLAYER_LAND_TIME + Motion.SETTLE_TIME)
+            thing.hide()
+            self.after(delay, lambda t=thing, h=home: Motion.landFromPlayer(t.mover, h, self.fromPlayer()))
+        self.melting = arrive + Motion.MELT_TIME + 0.05
         board = self.shown["board"]
         lift = 0.0 if not board or board[2] == "block" else Scene.pileLift(board[1])
+
+        def melt():
+            for thing, home in homes:
+                Motion.melt(thing.mover, home)
 
         def pop():
             self.melting = 0.0
@@ -78,7 +98,13 @@ class DrawEvents(object):
             if self.shown["board"] is not None:
                 self.item.mover.visible = True
                 Motion.popUp(self.item.mover, (0.0, lift, 0.0))
-        self.after(Motion.MELT_TIME, pop)
+        if arrive > 0.0:
+            self.after(arrive, melt)
+        else:
+            melt()
+        self.after(arrive + Motion.MELT_TIME, pop)
+        self.frame(0.0)                                  # 不用等的（第一层飞来、都摆着的马上沉）这一刻就开始
+        return arrive
 
     def settle(self, whole):
         """层凑成了一道等点的菜（站点数据 dish 从空变成有）：各层在原位弹一下、放一声落定；那几层要是一起从玩家飞来的，等它们都落了再弹。"""

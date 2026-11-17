@@ -4,18 +4,20 @@
 对应 Hands-On Delight：client/BoardBehavior.java 的 refresh / drawItem / land / taken / pulledOut / bounced / assembled 的 pop（409-510、595-727、1620-1652）。
 HoD 把图标切成体素、按刀口分开；这里是客户端掉落物，整张图：食物平躺（一叠不止一个时底下再垫一张、转一个角度），方块类立着，
 摆盘的层一层层叠起来（每层带一点固定的偏转偏移），插着的工具刀尖朝下。每样东西一个 Thing（Mover 管位置 / 缩放，道具跟着）：
-手放下的东西从光标上方弧着落下、再落定；拿走的抬起来缩没；板不收的落在板顶又弹回；最后一刀切开的食物往上飘着缩没；
-层凑成菜时各层缩小沉进去、菜弹出来。开站期间本端不画 Client/BlockItems 那份（hide），关站还原。位置是离板面中心的偏移 (x, 离板面的高, z)，
+手放下的东西从光标上方弧着落下、再落定；书里一次放好几层的，从屏幕下沿（玩家那边）一层隔一层飞来；拿走的抬起来缩没；板不收的落在板顶又弹回；
+最后一刀切开的食物往上飘着缩没；层凑成菜时各层缩小沉进去、菜弹出来。开站期间本端不画 Client/BlockItems 那份（hide），关站还原。位置是离板面中心的偏移 (x, 离板面的高, z)，
 中心由 BoardView 按方块朝向算好交进来。
 """
 import math
 
 from .BoardDrawEvents import CARVED_SCALE, GHOSTS, DrawEvents
 from .BoardThing import FLAT, UPRIGHT, Thing
+from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.Cutting import CuttingBoardDict
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
+from ...Shared.Rules.HandsOn import FromPlayer
 
 BLOCK_TYPE = "block"
 TOOL_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe"))
@@ -44,6 +46,7 @@ class Draw(DrawEvents):
         self.whole = False                              # 层凑成了一道等点的菜（凑成的那一刻各层落定）
         self.worn = 1.0                                 # 铲了几铲以后方块缩到多少
         self.landUntil = 0.0                            # 一起从玩家飞来的几层，要这么久才落完
+        self.cleared = None                             # (时刻, 刚被清空的层的身份)：assembled 效果要知道哪些层原来就摆着
 
     # ---------------------------------------------------------------- 类型
 
@@ -81,10 +84,24 @@ class Draw(DrawEvents):
     def after(self, seconds, run):
         self.steps.append((self.clock + seconds, run))
 
+    def fromPlayer(self, height=Scene.TOP + Motion.DROP_HEIGHT):
+        """书里放的层从哪飞来，相对它落点的水平偏移 (x, z)（FromPlayer.offset(view, height, 0, 1)）：屏幕下沿正中那点投到 height 高的水平面上，
+        减去屏幕正中投到同一个面上的点；拿不到屏幕或相机时是 (0, 0)，从正上方落下。"""
+        size = compFactory.CreateGame(levelId).GetScreenSize()
+        if not size:
+            return (0.0, 0.0)
+        fx, fy = FromPlayer.startAt(0, 1)
+        points = []
+        for x, y in ((fx, fy), FromPlayer.MIDDLE):
+            ray = self.view.rayAt((size[0] * x, size[1] * y))
+            points.append(FromPlayer.planeAt(ray, height) if ray is not None else None)
+        return FromPlayer.offsetOf(points[0], points[1])
+
     # ---------------------------------------------------------------- 状态来了
 
     def refresh(self, board, layers):
         """服务端状态变了：板上的东西、各层。board 是物品或 None，layers 是物品列表（底座在前）。"""
+        self.landUntil = 0.0
         if self.melting <= 0.0:
             self._board(board)
             self._layers(layers)
@@ -124,6 +141,10 @@ class Draw(DrawEvents):
         if keys == self.shown["layers"]:
             return
         old, self.shown["layers"] = self.shown["layers"], keys
+        if old and not keys:
+            self.cleared = (self.clock, old)
+        arriving = [] if self.quiet else list(range(len(old), len(layers)))
+        together = len(arriving) > 1                       # 书里点一道菜一次放好几层：从玩家那边一层隔一层飞来，不是全从光标上落下
         for index in range(MOST_LAYERS):
             thing = self.layers[index]
             if index >= len(layers):
@@ -132,13 +153,24 @@ class Draw(DrawEvents):
             pose = Scene.layerPose(index)
             thing.set(layers[index], FLAT, Scene.scaleOf(Scene.layerSize(index)), pose["turn"])
             home = (pose["x"], pose["y"], pose["z"])
-            if index >= len(old) and not self.quiet:
-                thing.hide()                                             # 新放的一层：从光标上方落下（书里一次放好几层时依次来）
-                self.after((index - len(old)) * Motion.LAYER_STAGGER, lambda t=thing, h=home: Motion.land(t.mover, h, self.fromCursor(h, Motion.DROP_HEIGHT)))
+            if index in arriving:
+                thing.hide()                                             # 新放的一层：先藏着，到时候再落下
+                self.after(arriving.index(index) * Motion.LAYER_STAGGER, lambda t=thing, h=home, i=index, k=keys[index]: self._arrive(t, h, i, k, together))
             elif index < len(old) and old[index] == keys[index]:
                 continue
             else:
                 thing.put(*home)
+        if together:
+            self.landUntil = (len(arriving) - 1) * Motion.LAYER_STAGGER + Motion.PLAYER_LAND_TIME     # 最后一层落完要这么久（凑成菜的落定等它）
+
+    def _arrive(self, thing, home, index, key, fromPlayer):
+        """一层落到位：书里一次放好几层的从玩家那边飞来（弧高 2.5 倍），手放的从光标上方落下。排队等的时候这一层已经换了就不演。"""
+        if index >= len(self.shown["layers"]) or self.shown["layers"][index] != key:
+            return
+        if fromPlayer:
+            Motion.landFromPlayer(thing.mover, home, self.fromPlayer())
+        else:
+            Motion.land(thing.mover, home, self.fromCursor(home, Motion.DROP_HEIGHT))
 
     # ---------------------------------------------------------------- 每帧与收场
 
