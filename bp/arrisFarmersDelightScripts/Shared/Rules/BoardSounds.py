@@ -2,10 +2,12 @@
 """BoardSounds - 砧板站点各种事件放什么声音、多大声、什么音调（双端，纯规则）
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 chopped / onEffect / pop（1350-1490、1650-1651），加上 FD 自己的切声
-（CuttingBoardBlockEntity.playProcessingSound：配方的 sound -> 剪刀 -> 刀 0.8 -> 方块的破坏声 1.0 / 0.8 -> 木头破坏声 1.0 / 0.8，最后一刀响一次）。
+（CuttingBoardBlockEntity.playProcessingSound：配方的 sound 1.0 / 1.0 -> 剪刀 -> 刀 0.8 -> 方块的破坏声 1.0 / 0.8 -> 木头破坏声 1.0 / 0.8，最后一刀响一次）。
+FD 里写了 sound 的只有削皮的 21 条配方（原木、去皮前的木头、菌柄、菌丝体、竹块，都是 item.axe.strip）；本包的配方表没有 sound 这个字段，
+削皮的最后一刀（stroke 是 strip）就是它。
 每条声音是 (声音名, 音量, 音调)。JE 的声音事件换成基岩版的名字（都在原版 sound_definitions.json 里，刀声是本包自己的）：
     KNIFE_CUT                  ambient.cutting_board.knife
-    AXE_STRIP / SHOVEL_FLATTEN use.wood / use.grass
+    AXE_STRIP / SHOVEL_FLATTEN use.wood / use.grass（基岩版的 use.wood 采样就是 sounds/item/axe/strip1..4，削皮的声音；FD 配方的 item.axe.strip 也是它）
     SHEEP_SHEAR                mob.sheep.shear
     BOARD_PLACE / BOARD_CARVE  dig.wood（FD 的 place_item / carve_tool 就是原版木头的放置声）
     BOARD_REMOVE / WOOD_HIT    hit.wood（FD 的 remove_item 是原版木头的击打声）
@@ -126,7 +128,10 @@ def _stroke(kind, tool, hits):
 
 
 def _processing(kind, tool, block, material):
-    """FD 的切声（BlockEntity.playProcessingSound，最后一刀响一次）：剪刀 -> 刀 -> 方块破坏声 -> 木头破坏声。"""
+    """FD 的切声（BlockEntity.playProcessingSound，最后一刀响一次）：配方自己的声音（削皮的 21 条配方都是 item.axe.strip，音量音调 1.0 / 1.0）-> 剪刀 -> 刀
+    -> 方块破坏声 -> 木头破坏声。"""
+    if kind == Cutting.TOOL_STRIP:
+        return (AXE_STRIP, 1.0, 1.0)
     toolKind = Cutting.toolKindOf(tool or "")
     if toolKind == "shears" or kind == Cutting.TOOL_SNIP:
         return (SHEEP_SHEAR, 1.0, 1.0)

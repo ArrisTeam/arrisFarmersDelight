@@ -60,7 +60,7 @@ def testTheLastStrokeIsFarmersDelightsOwnCutSoundThenTheBreakThenThePickup():
     pickup = ("random.pop", 0.35, 1.3)
     _near(_stroke("arris:iron_knife", "arris:cabbage", done=True), [("ambient.cutting_board.knife", 0.8, 1.0), pickup])
     _near(_stroke("minecraft:shears", "minecraft:leather_helmet", Cutting.TOOL_SNIP, done=True), [("mob.sheep.shear", 1.0, 1.0), pickup])
-    _near(_stroke("minecraft:iron_axe", "minecraft:oak_log", Cutting.TOOL_STRIP, done=True, block=True), [("dig.wood", 1.0, 0.8), pickup])
+    _near(_stroke("minecraft:iron_axe", "minecraft:oak_log", Cutting.TOOL_STRIP, done=True, block=True), [("use.wood", 1.0, 1.0), pickup])
     _near(_stroke("minecraft:iron_pickaxe", "minecraft:stone", Cutting.TOOL_SMASH, done=True, block=True), [("dig.stone", 1.0, 0.8), pickup])
     _near(_stroke("minecraft:iron_pickaxe", "minecraft:brick_block", Cutting.TOOL_SMASH, done=True, block=True), [("dig.stone", 1.0, 0.8), pickup])
     _near(_stroke("minecraft:iron_hoe", "minecraft:oak_chest_boat", Cutting.TOOL_PRY, done=True, block=False),
@@ -69,6 +69,20 @@ def testTheLastStrokeIsFarmersDelightsOwnCutSoundThenTheBreakThenThePickup():
           [("dig.wood", 1.0, 0.8), ("dig.gravel", 0.8, 0.95), pickup])
     _near(_stroke("minecraft:iron_pickaxe", "minecraft:stone", Cutting.TOOL_SMASH, done=True, block=False, rng=HIGH),
           [("dig.wood", 1.0, 0.8), ("dig.stone", 0.8, 1.05), pickup])
+
+
+def testTheLastStrokeOfStrippingALogPlaysTheRecipesOwnSoundNotTheBlocksBreakSound():
+    """FD 的 21 条削皮配方都写 "sound": "minecraft:item.axe.strip"，playProcessingSound 第一支就是它（1.0 / 1.0）：最后一刀响的和前几刀同一个削皮声
+    （基岩版是 use.wood，采样就是 sounds/item/axe/strip1..4），不是方块（原木）的破坏声 dig.wood。每种能削的木头都一样，菌柄、菌丝体、竹块也是。"""
+    for log in ("minecraft:oak_log", "minecraft:crimson_stem", "minecraft:warped_hyphae", "minecraft:bamboo_block", "minecraft:cherry_wood"):
+        for block in (True, False):
+            _near(_stroke("minecraft:iron_axe", log, Cutting.TOOL_STRIP, done=True, block=block, yields=["minecraft:stripped_oak_log"]),
+                  [("use.wood", 1.0, 1.0), ("random.pop", 0.35, 1.3)])
+    _near(_stroke("minecraft:iron_axe", "minecraft:oak_log", done=True, block=True, yields=["minecraft:stripped_oak_log", "arris:tree_bark"]),
+          [("use.wood", 1.0, 1.0), ("random.pop", 0.35, 1.3)])         # 事件没写 stroke：按工具和产物认出是削皮
+    assert Sounds.soundsOf("chopped", {"tool": "minecraft:iron_axe", "item": "minecraft:oak_log", "stroke": "strip", "block": True, "done": True})[0] == ("use.wood", 1.0, 1.0)
+    _near(_stroke("minecraft:iron_axe", "minecraft:oak_log", Cutting.TOOL_STRIP, yields=["minecraft:stripped_oak_log"]), [("use.wood", 0.8, 0.95)])
+    _near(_stroke("minecraft:iron_axe", "minecraft:oak_planks", Cutting.TOOL_CHOP, done=True, block=True), [("dig.wood", 1.0, 0.8), ("random.pop", 0.35, 1.3)])
 
 
 def testTheMaterialOfWhatIsCutComesFromItsNameThenFromWhatItYields():
