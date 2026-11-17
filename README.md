@@ -35,6 +35,7 @@
 | **烂番茄抛射物** | `arris:rotten_tomato` 可投掷 |
 | **小 MOD 内部联动** | `arris` 命名空间下通过 `compFactory.CreateModAttr("arris")` 暴露的 3 个扩展接口，供其他 Arris 子 MOD 追加堆肥/配方/切片规则 |
 | **JEI 联动** | 可选 — 若安装外部 Arris JEI 子 MOD，则自动注册厨锅 / 砧板 / 煎锅 / 炉灶 4 类配方视图 |
+| **亲手做菜（场景交互前置联动）** | 可选 — 若一并安装「场景交互 · 前置」（单独的作品，不在本仓库），厨锅 / 砧板 / 煎锅 / 炉灶右键进入贴近的操作视角：亲手下料、搅拌、切菜、颠锅、翻面（移植自 Hands-On Delight）；没装前置时这部分不运行，四个方块照农夫乐事原样使用 |
 | **生物 AI 扩展** | 自定义马饲料 `arris:horse_feed`（加速 + 跳跃增益）、狗粮 `arris:dog_food`（加速 + 力量 + 抗性） |
 | **工具类** | 燧石刀、金刀、铁刀、钻石刀、下界合金刀 |
 
@@ -51,7 +52,7 @@ arrisFarmersDelight/
 │   │   ├── Api/                             # 对外联动接口（linkage.md）
 │   │   ├── Server/                          # 服务端：ModServer 入口 + EventRegistry + 各玩法模块 + Helpers/
 │   │   ├── Client/                          # 客户端：ModClient 入口、客户端端点、CookingPotUi、Ui/（指南书、旧厨锅界面）
-│   │   ├── Compat/                          # 联动：Jei/、Create/（对方未安装时不做任何事）
+│   │   ├── Compat/                          # 联动：Jei/、Create/、Diegesis/（亲手做菜的站点）；对方未安装时不做任何事
 │   │   ├── dolorContainer/                  # 容器界面库（tools/vendor.py 拷入，请勿修改），dolorLayouts.py 是布局编译产物
 │   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 146 个自定义方块 JSON
