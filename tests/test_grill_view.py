@@ -400,6 +400,29 @@ def testTheRightButtonTakesAPieceAndADonePieceIsTakenByEitherButton():
     assert actions() == [("take", {"place": 0}), ("take", {"place": 2}), ("take", {"place": 2})]
 
 
+def testOnTouchTheOwnFlipAndTakeBuzzAtOnceAndThePlacedAndRefusedResultsBuzzThroughTheScene():
+    """触屏的轻震：自己的翻面 / 取下点下去这一刻就震（不等服务端）；服务端回的放上去 / 放不上去，场景交给本人开着的站点（feel）震。"""
+    Haptics = dgtest.load("Shared.Haptics")
+    view = make(pieces={0: item(BEEF), 2: item(COOKED)}, data=waiting(0))
+    view.input = "touch"
+    assert click(view, 0) and actions() == [("turn", {"place": 0})]
+    assert world.vibrations == [Haptics.BUZZ_MS["flip"]], "翻面"
+    assert click(view, 2) and world.vibrations == [Haptics.BUZZ_MS["flip"], Haptics.BUZZ_MS["pick"]], "取下熟的"
+    del world.vibrations[:]
+    serverEvent("placed")
+    serverEvent("refused", stack=item(BEEF))
+    serverEvent("grilled", 2)
+    assert world.vibrations == [Haptics.BUZZ_MS["put"], Haptics.BUZZ_MS["refuse"]], "放上去、被拒；烤好了不是本人的动作"
+    del world.vibrations[:]
+    view.input = "mouse"
+    serverEvent("placed")
+    assert world.vibrations == [], "键鼠：视图不震"
+    view.behavior.onClose()
+    view.input = "touch"
+    serverEvent("placed")
+    assert world.vibrations == [], "关了站点：场景不再替这个视图震（旁观的人没有站点视图）"
+
+
 def testClickingBesideThePiecesDoesNothing():
     view = make(pieces={0: item(BEEF)})
     screen = screenOf(view, 5)

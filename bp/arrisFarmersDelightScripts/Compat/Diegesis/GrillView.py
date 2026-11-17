@@ -18,7 +18,7 @@
 炉灶朝哪都对得上。
 开站时场景交给本人的有两样：从屏幕下沿飞来的起点、"我开着站点"（自己翻的不重复演）。
 """
-from . import BookSources, StoveScenes
+from . import BookSources, StoveScenes, TouchFeel
 from .GrillSpace import Space
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
@@ -59,7 +59,7 @@ class GrillViewMixin(object):
         self.space = Space(self.view)
         self.scene = StoveScenes.ensure(self.view.dimensionId, self.view.pos)
         if self.scene is not None:
-            self.scene.focus(self.space.fromPlayer)
+            self.scene.focus(self.space.fromPlayer, lambda kind: TouchFeel.buzz(self.view, kind))
         BookSources.attach(self.view, "grill")
 
     def onClose(self):
@@ -131,8 +131,10 @@ class GrillViewMixin(object):
         action = StoveLayout.pieceClick(event.button, Rules.isDone(item["newItemName"]), pieces.clock - pieces.turnedAt[place])
         if action == StoveLayout.TAKE:
             self.view.sendAction("take", {"place": place})
+            TouchFeel.buzz(self.view, TouchFeel.PICK)          # 触屏的轻震：取下 / 翻面点下去这一刻就震（不等服务端）；放上去 / 放不上去等服务端回话（StoveScene.event）
         elif action == StoveLayout.TURN:
             self.view.sendAction("turn", {"place": place})
+            TouchFeel.buzz(self.view, TouchFeel.FLIP)
             pieces.turned(place)
 
 

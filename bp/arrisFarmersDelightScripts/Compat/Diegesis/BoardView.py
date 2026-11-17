@@ -11,7 +11,7 @@
 - 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
-from . import Arrival, BookSources
+from . import Arrival, BookSources, TouchFeel
 from . import BoardEffects, BoardFx
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
@@ -185,6 +185,7 @@ class BoardViewMixin(object):
             self.cutter.click()
         elif action[0] == Click.KNOCK:
             play(KNOCK, self.view.toWorld(self.draw.cx, self.draw.surface(), self.draw.cz))
+            TouchFeel.buzz(self.view, TouchFeel.REFUSE)
         elif action[0] == Click.PLACE:
             self.view.sendAction("place", {"one": bool(action[1])})
         else:

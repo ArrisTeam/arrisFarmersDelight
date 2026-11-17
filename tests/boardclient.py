@@ -241,6 +241,10 @@ class FakeView(object):
         self.props, self.ports = FakeProps(), FakePorts()
         self.sent, self.dust = [], []
         self.input = "mouse"
+        self.buzzes = []                                  # view.buzz(种类) 震过的种类（前置包有 buzz 才有；老版本没有它）
+
+    def buzz(self, kind):
+        self.buzzes.append(kind)
 
     def sendAction(self, name, data=None):
         self.sent.append((name, data or {}))

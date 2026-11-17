@@ -17,7 +17,7 @@
 """
 import math
 
-from . import BookSources, PanScenes
+from . import BookSources, PanScenes, TouchFeel
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanModelMath as Math
@@ -131,6 +131,7 @@ class PanViewMixin(object):
         if self.scene is not None:
             self.scene.show.focused = True
             self.scene.startsOf, self.scene.cursorAt, self.scene.strokeAt = self._startsOf, self._cursorAt, self._strokeNow
+            self.scene.feel = lambda kind: TouchFeel.buzz(self.view, kind)
         BookSources.attach(self.view, "pan")
 
     def onClose(self):
@@ -138,7 +139,7 @@ class PanViewMixin(object):
         if scene is not None:
             scene.show.close()
             scene.show.focused, scene.hovered, scene.offering = False, False, False
-            scene.startsOf = scene.cursorAt = scene.strokeAt = None
+            scene.startsOf = scene.cursorAt = scene.strokeAt = scene.feel = None
         self.stroking = False
 
     def onState(self, changes):
@@ -166,6 +167,7 @@ class PanViewMixin(object):
         """场景里本人的手要告诉服务端的动作（颠、取）发出去。"""
         for name, data in self.scene.show.takeActions():
             self.view.sendAction(name, data)
+            TouchFeel.buzz(self.view, TouchFeel.FLIP if name == "toss" else TouchFeel.PICK)      # 颠 = 翻面、取 = 拿起：点下去这一刻就震（不等服务端）
 
     # ---------------------------------------------------------------- 指针
 

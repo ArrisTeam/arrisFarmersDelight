@@ -72,7 +72,11 @@ class FakeView(object):
         self.spread = SpreadState(self, None)
         self.lifts = []                            # carryFrom(点, 大小)：拿起的一叠从哪起飞
         self.dropping = False                      # 内核正在送拖着放补的那一下点击
+        self.buzzes = []                           # buzz(种类)：触屏的轻震（前置包有才有）
         self.window = 0.25                         # doubleSeconds() 的回答（前置包有才有；键鼠 0.25，触屏 0.4）
+
+    def buzz(self, kind):
+        self.buzzes.append(kind)
 
     def doubleSeconds(self):
         return self.window
@@ -558,6 +562,16 @@ def testTheDoubleClickWindowIsTheKernelsForTheCurrentInputAndTheirOwnQuarterSeco
             behavior.clock += gap
             behavior.onPointer(Event(LEFT, Hit("item", 0)))
             assert view.clicks[-1][2] == want, (window, gap, view.clicks)
+
+
+def testAScoopedBowlBuzzsAsAPickUpAndAnOldKernelWithoutBuzzJustSkipsIt():
+    behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+    behavior.onEffect("scooped", {"count": 1})
+    behavior.onEffect("served", {"grade": 1, "bonus": 0})
+    assert view.buzzes == ["pick"], "盛到一份：拿起的那一震（整批出锅不是本人的动作）"
+    behavior, view = _withMeal((("minecraft:carrot", 1),), hand=None)
+    view.buzz = None                                              # 老版本的前置包：没有 buzz
+    behavior.onEffect("scooped", {"count": 1})
 
 
 def testTheClicksThatHaveTheirOwnSoundOrNoneStayAsTheyWere():

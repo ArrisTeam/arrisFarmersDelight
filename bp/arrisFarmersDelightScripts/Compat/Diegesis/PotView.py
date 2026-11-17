@@ -91,6 +91,8 @@ class PotViewMixin(object):
     def onEffect(self, name, data):
         if self.scene is not None and name in ("scooped", "served"):
             self.scene.event(name, data, name == "scooped" and self.serve.scooped())     # 开着站点的人不收旁观者那条广播，这里补给场景
+        if name == "scooped":
+            TouchFeel.buzz(self.view, TouchFeel.PICK)         # 盛到了一份：触屏的轻震（和盛汤的声音同一批事件）
         self.hud.effect(name, data)
 
     def frame(self, dt):

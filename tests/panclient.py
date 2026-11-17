@@ -233,6 +233,10 @@ class FakeView(object):
         self.booked = None
         self.rays = {}
         self.input, self.fitting = "mouse", 0             # 输入方式；fits() 的回答（放得进的那一格，放不进 None）
+        self.buzzes = []                                  # view.buzz(种类) 要过的轻震
+
+    def buzz(self, kind):
+        self.buzzes.append(kind)
 
     def toWorld(self, x, y, z):
         return self.geometry.stationPointToWorld(self.yaw, x, y, z, self.pos[0], self.pos[1], self.pos[2])

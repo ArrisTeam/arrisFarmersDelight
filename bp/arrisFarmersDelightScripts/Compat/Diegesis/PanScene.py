@@ -9,7 +9,7 @@
 - 粒子、声音：PanFx.py。
 全部用"场景坐标"（HoD 的 skillet.json：锅心 (8, 0, 8)，锅柄朝 +z），出手时经 PanModelMath 换到世界（锅柄永远朝方块的朝向）。
 本人开着这口锅的站点时，PanView 把手交进来：focused、startsOf（一次放进好几件时从玩家屏幕底边飞来）、cursorAt（光标在某个高度的平面上的点）、
-strokeAt（抓着锅柄时光标的高度，每帧读）、hovered（光标在锅柄上）。
+strokeAt（抓着锅柄时光标的高度，每帧读）、hovered（光标在锅柄上）、feel（触屏的轻震）。
 每口加载着的锅在 32 格内每个渲染帧都过一遍 frame，所以静着的锅要歇着、道具没变不碰引擎（见 busy 和 Prop）：食物躺着不动的锅（凉的、生的）
 歇着时道具原样留在世界里，一帧只做一次便宜的核对；歇着的锅被叫醒的路有六条：广播 / 方块实体数据来了、一次性的表现来了、方块实体在本端重建、
 核对发现模型上的值丢了、本人开了站点（show.focused），和 busy 里别的任何一条成立。
@@ -18,6 +18,7 @@ import random
 
 from .PanFx import PanFx
 from .PanModel import PanModel
+from .TouchFeel import settled
 from ...Client.Engine import addDropItem, compFactory, levelId
 from ...Shared.Rules import ItemPose, PanLookState, PanModelMath, PanPose, PanStation
 from ...Shared.Rules.HandsOn.PanShow import PanShow
@@ -58,6 +59,7 @@ class PanScene(object):
         self.startsOf = None                  # startsOf(高度, 第几个, 共几个) -> (dx, dz)：从玩家屏幕底边飞来的起点相对中心的偏移
         self.cursorAt = None                  # cursorAt(高度) -> 场景坐标的点或 None
         self.strokeAt = None                  # strokeAt() -> 抓着锅柄时光标此刻在竖直平面上的高度，没抓着 None（每帧读，帧间隔和场景的钟同源）
+        self.feel = None                      # feel(种类)：本人开着站点时触屏的一下轻震（TouchFeel），服务端说放进来 / 被拒时调
 
     # ---------------------------------------------------------------- 回调
 
@@ -97,6 +99,7 @@ class PanScene(object):
         """一次性的表现：放进来、被拒、颠、取走、煎好。"""
         self.awake = AWAKE_SECONDS
         self.show.effect(name, payload)
+        settled(self.feel, name)
 
     # ---------------------------------------------------------------- 每帧
 

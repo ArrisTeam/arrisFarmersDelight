@@ -429,6 +429,19 @@ def testAKnifeOnTheCursorOnlyCutsWhenItIsOnTheDashedLine():
     assert C.engine.played and C.engine.played[-1][0] == "hit.wood"
 
 
+def testTheKnockOfATapThatFoundNothingToCutBuzzesAsARefusedAction():
+    board, data = _across()
+    behavior, view = _open(board, data=dict(data, marks=1), hand=C.item(KNIFE))        # 一刀已经切完：没有下一刀
+    view.input = "touch"
+    draw = behavior.draw
+    ray = C.rayTo((draw.cx, draw.surface(), draw.cz))
+    assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)) and view.sent == []
+    assert view.buzzes == ["refuse"], "刀点在食物上、没有下一刀：敲一声，也轻震一下（被拒）"
+    behavior, view = _open(C.item("minecraft:cobblestone", 2), data=dict(_across()[1], stroke="chop"), hand=C.item("arris:iron_knife"))
+    ray = C.rayTo((behavior.draw.cx, behavior.draw.surface(), behavior.draw.cz))
+    assert behavior.onPointer(C.Event("down", "mouth", ray, button=0)) and view.buzzes == ["refuse"], "刀切不了的东西：敲一声也震"
+
+
 def testTheKnifeOnTheCursorIsDrawnOverTheFoodAndTheKernelsCopyOnTheCursorIsHiddenMeanwhile():
     board, data = _across()
     behavior, view = _open(board, data=data, hand=C.item(KNIFE))
@@ -576,6 +589,22 @@ def testTheServersChopEffectFliesDustInTheFoodsColourAndTheLastOneSendsTheFoodAw
     assert len(gone) == 1, "切开的食物往上飘"
     _frames(behavior, 20)
     assert not _live(view, "arris:cabbage"), "缩没"
+
+
+def testTheServersEffectsBuzzOnTouchLikeTheyMakeTheirSoundsAndAnOldKernelWithoutBuzzSkipsThem():
+    """落一刀、被拒、取走、放下、插工具：声音在哪放，触屏的轻震就在哪（view.buzz 只在触屏、sounds 没关时真的震，内核管）；做成一道菜不震。"""
+    board, data = _across()
+    behavior, view = _open(board, data=data)
+    behavior.onEffect("chopped", {"at": 8.0, "at_x": 6.5, "spot": 0.5, "angle": 0.0, "tool": KNIFE, "item": "arris:cabbage", "yaw": 0})
+    behavior.onEffect("refused", {})
+    behavior.onEffect("taken", {"stack": C.item("arris:cabbage", 1), "at": -1, "carved": False})
+    behavior.onEffect("placed", {"at": 0, "item": "arris:cabbage"})
+    behavior.onEffect("carved", {})
+    behavior.onEffect("assembled", {"layers": [], "finish": None})
+    assert view.buzzes == ["cut", "refuse", "pick", "put", "put"], view.buzzes
+    behavior, view = _open(board, data=data)
+    view.buzz = None                                              # 老版本的前置包：没有 buzz
+    behavior.onEffect("refused", {})
 
 
 def testADustPositionFromAnotherSideIsTurnedToMine():

@@ -147,6 +147,28 @@ def testClickingTheFoodTossesWithTheLeftButtonAndTakesItAllWithTheRight():
     assert view.actions[-1] == ("take", {})
 
 
+def testTheOwnTossAndTakeBuzzTheMomentTheyAreSentAndTheServersPlacedAndRefusedBuzzThroughTheScene():
+    """触屏的轻震：自己的颠 = 翻面、取 = 拿起，点下去这一刻就震（不等服务端）；服务端回的放进来 / 被拒，场景交给本人开着的站点（feel）震。"""
+    behavior, view = make()
+    event(behavior, "down", (8.0, 1.0, 8.0))
+    assert view.actions == [("toss", {"strength": 0.4})] and view.buzzes == ["flip"]
+    run(behavior, 0.6)
+    event(behavior, "down", (8.0, 1.0, 8.0), button=1)
+    assert view.actions[-1] == ("take", {}) and view.buzzes == ["flip", "pick"]
+    del view.buzzes[:]
+    behavior.scene.event("placed", {})
+    behavior.scene.event("refused", {"stack": item("minecraft:beef", 1)})
+    behavior.scene.event("tossed", {"strength": 0.4})
+    assert view.buzzes == ["put", "refuse"], "放进来、被拒；别人的颠 / 取不是本人的手"
+    behavior.onClose()
+    behavior.scene = None
+    behavior, view = make()
+    scene = behavior.scene
+    behavior.onClose()
+    scene.event("placed", {})
+    assert view.buzzes == [] and scene.feel is None, "关了站点：场景不再替这个视图震"
+
+
 def testDoneFoodIsTakenWithEitherButton():
     behavior, view = make(food="minecraft:cooked_beef")
     event(behavior, "down", (8.0, 1.0, 8.0))

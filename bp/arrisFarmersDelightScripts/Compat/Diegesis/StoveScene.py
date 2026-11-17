@@ -13,6 +13,7 @@
 from .GrillPieces import Pieces
 from .GrillSpace import WorldSpace
 from .StoveWorld import WorldView
+from .TouchFeel import settled
 from ...Shared.Rules import StoveLookState
 
 AGAIN = 0.6              # 本人刚翻过的这一下：服务端说"翻了"的 0.6 秒内不重复演（JE 的 EFFECT_TURNED：clock - turnedAt > 0.6）
@@ -28,6 +29,7 @@ class StoveScene(object):
         self.pieces = Pieces(self.view, self.space)
         self.known = False                    # 收到过一份状态了（之前不推进：刚建好第一份状态来之前不能把"刚加载不演落下"用掉）
         self.focused = False                  # 本人开着这座炉灶的站点
+        self.feel = None                      # feel(种类)：本人开着站点时触屏的一下轻震（TouchFeel），服务端说放上去 / 放不上去时调
         self.onDrawn = None                   # 第一次真画出样子时调一次（StoveScenes 让世界里原来的展示这时才收起：场景没画之前不能把它盖掉）
 
     # ---------------------------------------------------------------- 状态
@@ -44,6 +46,7 @@ class StoveScene(object):
     def event(self, name, payload):
         """一次性的表现：放上去、放不上去、翻、没翻成、取走、烤好。payload 是 StoveLookState.eventData 清过的。"""
         pieces, place = self.pieces, payload["place"]
+        settled(self.feel, name)
         if name == "placed":
             pieces.placed()
         elif name == "refused":
@@ -72,13 +75,15 @@ class StoveScene(object):
 
     # ---------------------------------------------------------------- 本人
 
-    def focus(self, starts):
-        """本人开了站点：starts(index, count) 是飞入的起点（GrillSpace.Space.fromPlayer）。"""
+    def focus(self, starts, feel=None):
+        """本人开了站点：starts(index, count) 是飞入的起点（GrillSpace.Space.fromPlayer），feel 是触屏轻震的函数（TouchFeel.buzz 套上视图）。"""
         self.focused = True
+        self.feel = feel
         self.space.focus(starts)
 
     def blur(self):
         self.focused = False
+        self.feel = None
         self.space.focus(None)
 
     # ---------------------------------------------------------------- 每帧

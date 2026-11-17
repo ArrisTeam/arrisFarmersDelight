@@ -4,16 +4,20 @@
 对应 Hands-On Delight：client/BoardBehavior.java 的 onEffect（1350-1389）和 chopped（1395-1453）。声音按 Shared/Rules/BoardSounds 的表放
 （旁观的人在 BoardWatch 里按同一张表放，所以两边听到的一样）；动画在 BoardDraw（做成一道菜时的十种收尾在 BoardFinishPlay），碎屑在 BoardFx。
 """
-from . import BoardFx
+from . import BoardFx, TouchFeel
 from ...Shared.Rules import BoardSounds as Sounds
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
+
+FEELS = {"chopped": TouchFeel.CUT, "refused": TouchFeel.REFUSE, "taken": TouchFeel.PICK, "placed": TouchFeel.PUT, "carved": TouchFeel.PUT}     # 触屏的轻震：和放声音的是同一批事件
 
 
 def onEffect(owner, name, data):
     """owner 是 BoardViewMixin：要它的 draw、cutter、view、board()、layers()。"""
     draw, view = owner.draw, owner.view
     world = view.toWorld(draw.cx, Scene.TOP, draw.cz)
+    if name in FEELS:
+        TouchFeel.buzz(view, FEELS[name])
     for sound in ([] if name == "assembled" else Sounds.soundsOf(name, data)):         # 做成的声音等各层落完（assembled 里放）
         BoardFx.play(sound, world)
     if name == "chopped":

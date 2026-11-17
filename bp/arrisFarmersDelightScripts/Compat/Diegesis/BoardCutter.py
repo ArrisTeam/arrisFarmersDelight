@@ -12,7 +12,7 @@
 """
 import math
 
-from . import BoardFx
+from . import BoardFx, TouchFeel
 from .BoardMarkLine import MarkLine
 from .BoardStand import Stand
 from ...Shared.Rules.HandsOn import BoardDashes as Dashes
@@ -178,6 +178,7 @@ class Cutter(object):
             self.owner.draw.shake()
         if self.run is None or self.run.mark < 0:
             BoardFx.play(BoardFx.KNOCK, self.owner.view.toWorld(*self._at(0.0, 2.0)))
+            TouchFeel.buzz(self.owner.view, TouchFeel.REFUSE)
             return
         self.pending.add(self.clock)
         self.owner.sendChop(self.place[0], self.place[1], self.run.mark)
@@ -202,6 +203,7 @@ class Cutter(object):
             return
         if result[0] == Knife.KNOCK:
             BoardFx.play(BoardFx.KNOCK, owner.view.toWorld(owner.draw.cx, owner.draw.surface(), owner.draw.cz))
+            TouchFeel.buzz(owner.view, TouchFeel.REFUSE)
             return
         self.pending.add(self.clock)
         owner.sendChop(self.knife.x, result[2], result[1])
