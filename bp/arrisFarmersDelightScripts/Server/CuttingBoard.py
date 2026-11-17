@@ -13,7 +13,7 @@ from .Helpers import BoardDish
 from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
 from .Helpers.Engine import compFactory, levelId, System, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
-from .Helpers.Items import GetItemType, IsKnife
+from .Helpers.Items import CanStack, GetItemType, GetMaxStack, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data.Cutting import CuttingBoardDict
 from ..Shared.Rules import BoardSounds, CuttingStation
@@ -72,14 +72,9 @@ def _kind(item):
     return (item["newItemName"], item.get("newAuxValue") or 0)
 
 
-def _maxStack(item):
-    info = compFactory.CreateItem(levelId).GetItemBasicInfo(item["newItemName"], _kind(item)[1]) or {}
-    return max(1, info.get("maxStackSize") or 64)
-
-
 def _stacksOnto(board, carriedDict):
-    """手里的能叠到板上这一叠上吗（JE 的 isSameItemSameTags，ItemStackHandler.insertItem）：同一种、数据也一样、没叠满。"""
-    return _kind(carriedDict) == _kind(board) and ItemData.same(board, carriedDict) and board["count"] < _maxStack(carriedDict)
+    """手里的能叠到板上这一叠上吗（ItemStackHandler.insertItem）：同一种、数据也一样、没叠满。"""
+    return CanStack(board, carriedDict) and board["count"] < GetMaxStack(carriedDict)
 
 
 def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
@@ -99,7 +94,7 @@ def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
         return
     board = blockEntityData["cuttingDict"]
     have = board["count"] if board else 0
-    moved = min(carriedDict["count"], _maxStack(carriedDict) - have)
+    moved = min(carriedDict["count"], GetMaxStack(carriedDict) - have)
     stack = dict(board) if board else ItemData.stored(carriedDict)
     stack["count"] = have + moved
     blockEntityData["cuttingDict"] = stack
