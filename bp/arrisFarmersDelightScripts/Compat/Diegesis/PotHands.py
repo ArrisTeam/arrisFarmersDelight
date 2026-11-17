@@ -9,6 +9,7 @@
   dust 粒子（HoD 的 DiegesisParticles.DUST，壳的颜色）；
 - 涟漪、水花、气泡、声音照事件放。
 动作在"场景像素"里算（JE 的场景朝着开站的人）：开着站点的人那边是他的站点坐标（PotView 给的 scene.viewFrame），旁观的人按锅自己的朝向看。
+每只手带着它开始那一刻的换算演完：站点中途关上（或旁观的人中途开站）手也不挪地方（PotBehavior.onClose 只 refresh，going[i] 不动）。
 """
 import random
 
@@ -41,7 +42,7 @@ def kindOf(name):
 class PotHands(object):
     def __init__(self, scene):
         self.scene = scene
-        self.going = {}                      # 槽 -> {"motion", "kind", "name", "props": {节点: [掉落物 id, 物品名]}, "rings"}
+        self.going = {}                      # 槽 -> {"motion", "kind", "name", "props": {节点: [掉落物 id, 物品名]}, "rings", "slot", "frame"}
 
     # ---------------------------------------------------------------- 开始 / 推进
 
@@ -55,10 +56,11 @@ class PotHands(object):
             return
         name = item["newItemName"]
         kind = kindOf(name)
-        start = self._frame()[0](*self._startPoint(slot))
+        frame = self._frame()
+        start = frame[0](*self._startPoint(slot))
         color = 0xFF000000 | (PouredColors.get(name) or MainColors.get(name) or PotLiquid.FALLBACK)
         motion = PotServeHands.goesIn(kind, slot, start, scene.liquid.surfaceY(), RIM_TOP, random.random, name.endswith("_bucket"), color)
-        self.going[slot] = {"motion": motion, "kind": kind, "name": name, "props": {}, "rings": 0.0, "slot": slot}
+        self.going[slot] = {"motion": motion, "kind": kind, "name": name, "props": {}, "rings": 0.0, "slot": slot, "frame": frame}
 
     def _startPoint(self, slot):
         """手从哪来（锅自己的坐标；PotBehavior.java:786-790、859）：一次放好几件的，轮到的那一件从各自的出发点来（屏幕底边一字排开）；
@@ -72,7 +74,8 @@ class PotHands(object):
         return (cursor[0], height, cursor[1]) if cursor is not None else (8.0, height, 8.0)
 
     def _frame(self):
-        """(锅坐标 -> 场景坐标, 场景坐标 -> 锅坐标, 场景坐标 -> 世界)：开着站点的人用他的站点坐标，别人用锅自己的。"""
+        """(锅坐标 -> 场景坐标, 场景坐标 -> 锅坐标, 场景坐标 -> 世界)：开着站点的人用他的站点坐标，别人用锅自己的。
+        新开始的手取这一刻的；演着的手用它自己开始时带走的那份（entry["frame"]）。"""
         frame = self.scene.viewFrame
         if frame is not None:
             return frame
@@ -114,17 +117,18 @@ class PotHands(object):
 
     # ---------------------------------------------------------------- 画
 
-    def _axes(self):
+    @staticmethod
+    def _axes(frame):
         """场景的 x / y / z 轴在世界里的方向（3x3，列是轴）。"""
-        world = self._frame()[2]
+        world = frame[2]
         origin, alongX, alongZ = world(8.0, 0.0, 8.0), world(9.0, 0.0, 8.0), world(8.0, 0.0, 9.0)
         x = [(alongX[i] - origin[i]) * 16.0 for i in range(3)]
         z = [(alongZ[i] - origin[i]) * 16.0 for i in range(3)]
         return [[x[0], 0.0, z[0]], [x[1], 1.0, z[1]], [x[2], 0.0, z[2]]]
 
-    def _turned(self, vector):
+    def _turned(self, frame, vector):
         """场景里的一个方向换到世界里。"""
-        axes = self._axes()
+        axes = self._axes(frame)
         return tuple(sum(axes[row][column] * vector[column] for column in range(3)) for row in range(3))
 
     def _place(self, entry, node, pose, name, span, lying=False):
@@ -139,7 +143,8 @@ class PotHands(object):
                 scene.removeProp(prop[0])
                 del entry["props"][node]
             return
-        where = self._frame()[2](*pose["pos"])
+        frame = entry["frame"]
+        where = frame[2](*pose["pos"])
         if prop is not None and prop[1] != name:
             scene.removeProp(prop[0])
             prop = None
@@ -151,9 +156,9 @@ class PotHands(object):
             prop = entry["props"][node] = [entityId, name]
         size = pose["scale"] * span / ItemPose.ITEM_SPAN
         if lying:
-            matrix = ItemPose.framed(self._axes(), ItemPose.lyingMatrix(pose["rot"][1]))
+            matrix = ItemPose.framed(self._axes(frame), ItemPose.lyingMatrix(pose["rot"][1]))
         else:
-            matrix = ItemPose.standingMatrix(self._axes(), LEAN, pose["rot"][2])
+            matrix = ItemPose.standingMatrix(self._axes(frame), LEAN, pose["rot"][2])
         pivot = ItemPose.pivotFor(where, matrix, size)
         compFactory.CreateItem(levelId).SetDropItemTransform(prop[0], pivot, ItemPose.engineEuler(matrix), size)
 
@@ -164,7 +169,7 @@ class PotHands(object):
 
     def _event(self, entry, event, dt, near):
         scene, kind = self.scene, event["type"]
-        _toFrame, toPot, toWorld = self._frame()
+        _toFrame, toPot, toWorld = entry["frame"]
         if kind == "flow":                    # 液体从手里开始流了（Pour 的 onFlow）：染水从这一刻起（不管近不近）
             if scene.tint.release(entry["slot"]):
                 scene.recolour()
@@ -179,7 +184,7 @@ class PotHands(object):
                 scene.model.ripple(x, z, STREAM_RIPPLE)
             if near:
                 start, end = event["from"], event["to"]
-                speed = self._turned(tuple((end[i] - start[i]) / STREAM_TIME for i in range(3)))
+                speed = self._turned(entry["frame"], tuple((end[i] - start[i]) / STREAM_TIME for i in range(3)))
                 PotFx.particle(PotFx.DROPLET, toWorld(*start), color=event["color"] & 0xFFFFFF,
                                count=1 + int(event["strength"] * 2.0 + random.random()), velocity=speed)
         elif not near:
@@ -190,7 +195,7 @@ class PotHands(object):
             PotFx.particle(PotFx.DUST, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"])
         elif kind in ("droplets", "grains"):
             PotFx.particle(PotFx.DROPLET, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"],
-                           scale=GRAIN_SCALE if kind == "grains" else None, velocity=self._turned(event["rise"]))
+                           scale=GRAIN_SCALE if kind == "grains" else None, velocity=self._turned(entry["frame"], event["rise"]))
         elif kind == "splash":
             PotFx.particle(PotFx.SPLASH, toWorld(*event["pos"]), color=event["color"] & 0xFFFFFF, count=event["count"])
         elif kind == "bubbles":

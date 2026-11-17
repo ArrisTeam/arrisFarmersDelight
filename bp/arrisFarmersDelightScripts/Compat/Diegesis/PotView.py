@@ -62,12 +62,15 @@ class PotViewMixin(object):
         return group == Rules.GROUP_INGREDIENTS and Rules.mayPlace(item)
 
     def onOpen(self):
-        self.scene = PotScenes.ensure(self.view.dimensionId, self.view.pos)
-        if self.scene is not None:
-            self.scene.onSend = self._send
-            self.scene.startsOf = self._starts
-            self.scene.cursorOn = self.serve.cursorOn
-            self.scene.viewFrame = (self.toStation, lambda x, y, z: self.toLocal((x, y, z)), self.view.toWorld)
+        scene = self.scene = PotScenes.ensure(self.view.dimensionId, self.view.pos)
+        if scene is not None:
+            view = self.view
+            scene.onSend = self._send
+            scene.startsOf = self._starts
+            scene.cursorOn = self.serve.cursorOn
+            # 站点像素和锅自己的坐标互换。演着的手把它带到关站之后接着演完（PotHands.going），所以这里直接拿 scene / view，不经 self.scene（关站时清掉）
+            scene.viewFrame = (lambda x, y, z: view.toStation(*scene.world(x, y, z)), lambda x, y, z: scene.local(*view.toWorld(x, y, z)),
+                               view.toWorld)
         BookSources.attach(self.view, "pot")
 
     def onClose(self):
