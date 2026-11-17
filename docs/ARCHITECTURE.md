@@ -54,7 +54,9 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         ItemDrops（东西从方块里掉出来 / 弹出去的位置和初速，照 JE 的 Containers.dropItemStack / ItemUtils.spawnItemEntity；砧板切出来、煎锅煎好的往方块侧面弹：boardPop / panPop）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
                         厨锅的表现也在这里（纯计算，Pot 开头的那些）：汤面（水位、汤色、沸腾）、勺子的手感、漂着的料、碎料、
-                        出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作
+                        出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作；
+                        砧板的表现也在这里（Board 开头的）：板上东西的动作（落下 / 拿走 / 融掉 / 弹出）、刀口、手倒液体和磕蛋，
+                        以及做成一道菜之前的十种收尾（BoardFinishKit 常量 + Plan，BoardFinishGroup / BoardFinishPlace 各种怎么演，BoardFinish.plan 入口）
   Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
@@ -108,7 +110,7 @@ Compat/
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 发现并登记，
                         BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools / BoardEmit（服务端）+ BoardView + BoardDraw /
-                        BoardDrawEvents / BoardThing / BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardStand（立着的刀 / 工具，
+                        BoardDrawEvents / BoardThing / BoardFinishPlay（做成一道菜之前的十种收尾）/ BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardStand（立着的刀 / 工具，
                         借来的半透明粒子）/ BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotPick + PotHud + PotOffer（客户端，开着站点的人：点击、拾取盒和
