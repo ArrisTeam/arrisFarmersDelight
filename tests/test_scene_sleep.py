@@ -431,5 +431,53 @@ def testWhatTheEngineRefusesInAPotIsSentAgainNextFrame():
     assert all(drop["pivot"] is not None for drop in world.drops.values())
 
 
+def testTheSpoonThatRestsInAHeatedPotIsNotRecomputedEveryFrame():
+    """烧着的锅每帧都过一遍 frame，勺子靠着不动时骨骼的位移和欧拉角（要连乘矩阵）每帧都一样：不重算，也不碰引擎；动起来照常算；方块实体重建之后整份重推。"""
+    PotModelMath = C.load("Shared.Rules.PotModelMath")
+    ladleBone = PotModelMath.ladleBone
+    counted = [0]
+
+    def counting(tip, turn=None):
+        counted[0] += 1
+        return ladleBone(tip, turn) if turn is not None else ladleBone(tip)
+
+    PotModelMath.ladleBone = counting
+    try:
+        scene = settledHeatedPot([("minecraft:carrot", 1)])
+        counted[0] = 0
+        run(scene, 2.0)
+        assert counted[0] == 0, "靠着不动：一次也没算（%d）" % counted[0]
+        world.molang.clear()                                                # 方块实体在本端重建
+        scene.model.reset()
+        run(scene, 0.1)
+        assert counted[0] == 1 and (POS, "variable.mod_spoon_rz") in world.molang, "整份重推：重算一次、变量回来（%d）" % counted[0]
+        counted[0] = 0
+        scene.hand, scene.aim = True, (9.0, 9.0)
+        run(scene, 0.5)
+        assert counted[0] > 10, "勺子在动：每帧照算（%d）" % counted[0]
+    finally:
+        PotModelMath.ladleBone = ladleBone
+
+
+def testASpoonPoseTheEngineDidNotTakeIsPushedAgainNextFrame():
+    scene = settledHeatedPot([("minecraft:carrot", 1)])
+    comp, real, refuse = C.Comp, C.Comp.SetBlockEntityMolangValue, [True]
+
+    def maybe(self, pos, name, value):
+        return False if refuse and name == "variable.mod_spoon_rz" else real(self, pos, name, value)
+
+    scene.model.reset()
+    world.molang.clear()
+    comp.SetBlockEntityMolangValue = maybe
+    try:
+        run(scene, 0.2)
+        assert (POS, "variable.mod_spoon_rz") not in world.molang and (POS, "variable.mod_spoon_x") in world.molang, "有一个没收下，别的都推上了"
+        del refuse[:]
+        run(scene, 0.1)
+    finally:
+        comp.SetBlockEntityMolangValue = real
+    assert (POS, "variable.mod_spoon_rz") in world.molang, "收得下了：靠着不动也补上了"
+
+
 if __name__ == "__main__":
     raise SystemExit(C.fdtest.run(globals()))

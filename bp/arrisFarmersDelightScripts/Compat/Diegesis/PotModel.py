@@ -32,11 +32,13 @@ class PotModel(object):
         self._uniforms = {}
         self._armed = False
         self._waves = []            # [x, z, 强度, 年龄]，最新的在后
+        self._ladle = None          # 最近一次整份推到引擎里的勺子姿态 (tip, turn)：勺子靠着不动时每帧都是同一个，不重算骨骼的位移和欧拉角
 
     def reset(self):
         self._molang.clear()
         self._uniforms.clear()
         self._armed = False
+        self._ladle = None
 
     def check(self):
         """引擎那边还是我们推过的样子吗？不是（方块实体重建过）就整份重推。返回 True 表示重推了。"""
@@ -50,15 +52,18 @@ class PotModel(object):
         return True
 
     def _set(self, name, value):
+        """推一个 molang 变量，没变（差不到 EPSILON）就不碰引擎；返回引擎那边现在是不是就是这个值（引擎没收下是假，下一帧再推）。"""
         last = self._molang.get(name)
         if last is not None and abs(last - value) < EPSILON:
-            return
+            return True
         blockInfo = compFactory.CreateBlockInfo(levelId)
         if not self._armed:
             blockInfo.SetEnableBlockEntityAnimations(self.pos, True)
             self._armed = True
         if blockInfo.SetBlockEntityMolangValue(self.pos, name, float(value)):
             self._molang[name] = value
+            return True
+        return False
 
     def _uniform(self, index, values):
         last = self._uniforms.get(index)
@@ -94,12 +99,14 @@ class PotModel(object):
         self._uniform(4, slots)
 
     def ladle(self, tip, turn=PotModelMath.IDENTITY):
-        """tip：勺子下端在锅自己坐标里的位置（像素）；turn：相对靠着的样子又转了多少（3×3）。"""
+        """tip：勺子下端在锅自己坐标里的位置（像素）；turn：相对靠着的样子又转了多少（3×3）。和上一次完整推过的一模一样就什么都不做
+        （勺子靠着不动时，烧着的锅每帧都问一遍：骨骼的位移和欧拉角要连乘矩阵）；推到一半引擎没收下的不记，下一帧整份再来。"""
+        if (tip, turn) == self._ladle:
+            return
         position, rotation = PotModelMath.ladleBone(tip, turn)
-        for axis, value in zip("xyz", position):
-            self._set("variable.mod_spoon_" + axis, value)
-        for axis, value in zip("xyz", rotation):
-            self._set("variable.mod_spoon_r" + axis, value)
+        pushed = [self._set("variable.mod_spoon_" + axis, value) for axis, value in zip("xyz", position)]
+        pushed += [self._set("variable.mod_spoon_r" + axis, value) for axis, value in zip("xyz", rotation)]
+        self._ladle = (tip, turn) if all(pushed) else None
 
     def glow(self, lit, pot=False):
         """勺子 / 锅身描不描亮边（Diegesis 的 hover outline：光标下能用的东西描出轮廓；这里是 ladle_glow / pot_glow 骨骼，
