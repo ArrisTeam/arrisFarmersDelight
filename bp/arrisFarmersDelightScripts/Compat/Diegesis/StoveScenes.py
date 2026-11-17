@@ -14,8 +14,7 @@ from .StoveScene import StoveScene
 from ...Client import BlockItems
 from ...Client.Engine import compFactory, levelId, playerId, unwrapDeep, blockEntityExData
 from ...QuModLibs.Client import AllowCall, Listen
-from ...Shared.Data.Cooking import StoveList
-from ...Shared.Rules import StoveFacing, StoveLookState
+from ...Shared.Rules import GrillBlocks, StoveFacing, StoveLookState
 
 NEAR, FAR = 24.0, 48.0          # 格：近处每帧、带粒子声音；到 FAR 为止隔帧算；再远不算（同煎锅）
 FAR_EVERY = 4
@@ -47,15 +46,19 @@ def _currentDimension():
 
 
 def ensure(dimensionId, pos):
-    """这个位置的炉灶场景，没有就建（那里不是炉灶返回 None）；场景记着炉灶的朝向（方块的 aux），件和动作都按它转。"""
+    """这个位置的炉灶场景，没有就建（那里不是炉灶返回 None）；场景记着炉灶的朝向（方块的 aux），件和动作都按它转，
+    也记着炉灶点着没有（点着的 arris:stove 还是熄着的孪生方块，Shared/Rules/GrillBlocks：熄着没有热气和嗞嗞声）。"""
     key = _key(dimensionId, pos)
+    block = compFactory.CreateBlockInfo(levelId).GetBlock(key[1])
+    grill = bool(block) and GrillBlocks.isGrill(block[0])
     scene = _scenes.get(key)
     if scene is None:
-        block = compFactory.CreateBlockInfo(levelId).GetBlock(key[1])
-        if not block or block[0] not in StoveList:
+        if not grill:
             return None
         scene = _scenes[key] = StoveScene(dimensionId, key[1], StoveFacing.yawOfAux(block[1]))
         scene.onDrawn = lambda: BlockItems.hide(dimensionId, key[1], True)       # 场景画出样子之后，烤架上的东西从此由场景画
+    if grill:
+        scene.setLit(GrillBlocks.isLit(block[0]))
     return scene
 
 
@@ -71,13 +74,14 @@ def _drop(key, blockGone):
 
 @Listen("ModBlockEntityLoadedClientEvent")
 def OnBlockEntityLoaded(args):
-    if not _state["on"] or args["blockName"] not in StoveList:
+    if not _state["on"] or not GrillBlocks.isGrill(args["blockName"]):
         return
     pos = (args["posX"], args["posY"], args["posZ"])
     known = sceneAt(args["dimensionId"], pos)
     scene = known or ensure(args["dimensionId"], pos)
     if scene is None:
         return
+    scene.setLit(GrillBlocks.isLit(args["blockName"]))                    # 点火 / 灭火换了方块：以这个事件的方块名为准
     if known is not None:
         block = compFactory.CreateBlockInfo(levelId).GetBlock(pos)
         scene.turn(StoveFacing.yawOfAux(block[1] if block else 0))       # 重建时方块的朝向可能不是建场景时那个
@@ -116,8 +120,12 @@ def OnStoveLook(payload):
 
 
 def _stillThere(key):
+    """那里还是炉灶（点着的或熄着的）；顺手把点着没有交给场景：点火 / 灭火换方块时没收到移除 / 加载事件，也最多慢一个核对间隔。"""
     block = compFactory.CreateBlockInfo(levelId).GetBlock(key[1])
-    return bool(block) and block[0] in StoveList
+    if not block or not GrillBlocks.isGrill(block[0]):
+        return False
+    _scenes[key].setLit(GrillBlocks.isLit(block[0]))
+    return True
 
 
 @Listen("GameRenderTickEvent")

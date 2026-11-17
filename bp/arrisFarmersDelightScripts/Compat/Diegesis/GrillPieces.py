@@ -44,6 +44,7 @@ class Pieces(object):
         self.view, self.space = view, space
         self.clock = 0.0
         self.near = True                                     # 离本人够近：粒子和声音才放
+        self.lit = True                                      # 炉灶点着：热浪 / 蒸汽 / 烟 / 嗞嗞声、落到烤架上的嘶声只在点着时有（熄着的炉灶是另一个方块，场景从方块名读）
         self.shown = [None] * PLACES                         # 每个位置现在画的是什么（JE 的 shown）
         self.up = [-1.0] * PLACES                            # 画的时候朝上那面烤到哪（shownUp），-1 = 没画过
         self.heldUntil = [0.0] * PLACES                      # 翻到一半之前沿用画着的 up，不用服务端发来的
@@ -158,7 +159,8 @@ class Pieces(object):
         if name == "appear":
             self.draw(place)
         elif name == "landed":
-            self._play(StoveFx.hitsTheGrill(place, random.random))
+            if self.lit:                                     # 熄着的灶上落下没有嘶声和蒸汽（StoveBehavior.java:172 的 if (lit)）
+                self._play(StoveFx.hitsTheGrill(place, random.random))
         elif name == "swap":
             self.heldUntil[place] = 0.0
             self.up[place] = self.newUp[place]
@@ -167,6 +169,9 @@ class Pieces(object):
             self._play(StoveFx.turnLands(place, random.random))
 
     def _heat(self, dt):
+        if not self.lit:
+            self.heat.idle()                                 # 熄着：没有热浪、蒸汽、烟，嗞嗞声的计时清零（StoveBehavior.heat java:263-266）
+            return
         info = []
         for place in range(PLACES):
             item = self.shown[place]

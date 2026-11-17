@@ -57,6 +57,11 @@ class StoveScene(object):
         elif name == "grilled" and place is not None:
             pieces.grilled(place)
 
+    def setLit(self, lit):
+        """炉灶点着没有：点着是 arris:stove，熄着是另一个方块（Shared/Rules/GrillBlocks），StoveScenes 按方块名告诉场景。
+        熄着：没有热浪、蒸汽、烟、嗞嗞声，落下也没有嘶声（HoD 的 StoveBehavior：heat 的 LIT 开头、refresh 里的 if (lit)）。"""
+        self.pieces.lit = bool(lit)
+
     def turn(self, yaw):
         """炉灶方块的朝向和场景记的不一样（区块里的方块实体重建时读到的）：已经画出来的件都是按旧朝向摆的，全收掉，下一帧照新朝向重画
         （样子还在，所以不演落下）。"""

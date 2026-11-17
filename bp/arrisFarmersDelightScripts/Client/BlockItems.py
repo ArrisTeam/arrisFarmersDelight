@@ -9,8 +9,7 @@
 """
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import addDropItem, compFactory, levelId, unwrapDeep, blockEntityExData
-from ..Shared.Data.Cooking import StoveList
-from ..Shared.Rules import BlockDisplay, ItemPose, PotModelMath, StoveFacing
+from ..Shared.Rules import BlockDisplay, GrillBlocks, ItemPose, PotModelMath, StoveFacing
 from ..Shared.Rules.HandsOn import BoardScene
 
 BOARD_BLOCKS = ("arris:cutting_board",)
@@ -26,7 +25,7 @@ def kindOf(blockName):
         return BlockDisplay.KIND_BOARD
     if blockName in SKILLET_BLOCKS:
         return BlockDisplay.KIND_SKILLET
-    if blockName in StoveList:
+    if GrillBlocks.isGrill(blockName):          # 点着的（StoveList）和熄着的炉灶：烤架上的东西摆法一样（JE 的渲染器不看 LIT）
         return BlockDisplay.KIND_STOVE
     return None
 
