@@ -9,6 +9,9 @@
   而且"这一下右键开不开站点"是客户端自己先判的（StoveList 里没有的方块客户端不会去请求开站），所以不能等开站时再发；
 - 之后每 POLL 秒看一眼表变没变（下游可以随时往表里追加，也可以不经联动接口直接改 obtain 拿到的对象，没有事件可听；
   一次检查是几张表在 C 层比一下，不到一毫秒），变了就把新的一版补发给已经收过的所有人。
+- 进服那一份发出去就不知道收没收到（客户端的端点还没登记好时整份丢掉，世界外观广播实机就丢过）：之后的头 RESENDS 轮检查各再整份发一次，
+  客户端并表是幂等的，重复的那几份什么都不改；
+- 给一个人发的时候出了错（Call 抛异常）只记日志、下一轮再给他发，不耽误后面的人。
 没有任何下游追加内容时什么都不发。发的是 Call，端点是客户端的 OnTableSync（Client/TableSync.py）。
 """
 import traceback
@@ -18,17 +21,26 @@ from .Helpers.Engine import Call, compFactory, levelId, serverApi
 from ..Shared.Rules import SyncTables, TableDiff
 
 POLL = 5.0
+RESENDS = 2                      # 进服那一份之后再整份发几次（每轮检查一次：进服后约 5 秒、10 秒）
 syncer = TableDiff.Syncer()      # 导入时的表就是基线
 _known = {}                      # 进过服的玩家 id -> 发给他的版本（rev）；没进服的玩家客户端还没准备好，不能发
+_again = {}                      # 玩家 id -> 还要再整份发几次（进服那一份可能丢了）
 _reported = []                   # 已经写进日志的问题（同一批问题每次重算都打一遍会刷屏）
 _timer = []
 
 
 def _push(playerId, since):
-    """发给他：版本比 since（他已经收过的版本，新进服是 0）新的那几张表的累计差异。"""
-    for message in syncer.messages(since):
-        Call(playerId, SyncTables.ENDPOINT, message)
+    """发给他：版本比 since（他已经收过的版本，新进服是 0）新的那几张表的累计差异。发到一半出错：记日志、不记成发过（下一轮再发，
+    已经到了的那几条重复并一次不改任何东西），返回 False；不往外抛——后面还有别的人要发。"""
+    try:
+        for message in syncer.messages(since):
+            Call(playerId, SyncTables.ENDPOINT, message)
+    except Exception:  # noqa: BLE001 - 发给一个人出错不能耽误别人
+        print("[arrisFarmersDelight] 表同步：发给 %s 出错，下一轮再发" % (playerId,))
+        traceback.print_exc()
+        return False
     _known[playerId] = syncer.rev
+    return True
 
 
 def _refresh():
@@ -48,10 +60,15 @@ def step(everyone=False):
     for playerId in list(_known):
         if playerId not in online:
             del _known[playerId]
+            _again.pop(playerId, None)
+        elif _again.get(playerId):
+            _again[playerId] -= 1
+            _push(playerId, 0)                # 进服那一份可能丢了：整份再发一次
         elif _known[playerId] != syncer.rev:
             _push(playerId, _known[playerId])
     if everyone:
         for playerId in sorted(online - set(_known)):
+            _known[playerId] = 0              # 没发成的也记着，下一轮接着补
             _push(playerId, 0)
 
 
@@ -72,4 +89,6 @@ def _ensureTimer():
 def OnTableSyncPlayerJoin(args):
     _ensureTimer()
     _refresh()
-    _push(args["playerId"], 0)
+    playerId = args["playerId"]
+    _known[playerId], _again[playerId] = 0, RESENDS      # 先记着：这一下没发成，下一轮也会补
+    _push(playerId, 0)

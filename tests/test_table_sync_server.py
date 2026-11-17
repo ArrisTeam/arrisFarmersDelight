@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""下游追加的表什么时候发给客户端（Server/TableSync.py，假引擎见 fakeengine.py）：玩家进服发一次累计的差异、没有追加时什么都不发、
-定时看表变没变并只给收过的人补发变了的那几张、没进服 / 走掉的人不发、出错的一轮不拖垮定时器、问题只在算差异时记一次日志；
+"""下游追加的表什么时候发给客户端（Server/TableSync.py，假引擎见 fakeengine.py）：玩家进服发一次累计的差异、之后的头两轮各再整份发一次
+（进服那一份可能丢了）、没有追加时什么都不发、定时看表变没变并只给收过的人补发变了的那几张、没进服 / 走掉的人不发、
+出错的一轮不拖垮定时器、给一个人发出错不耽误别人、问题只在算差异时记一次日志；
 发出去的消息拿给另一份包（客户端）并进去，表和服务端的一样；入口模块里导入了它。
 """
 from __future__ import print_function
@@ -50,6 +51,7 @@ def _fresh(*players):
     PRISTINE.restore()
     TableSync.syncer = Diff.Syncer()
     TableSync._known.clear()
+    TableSync._again.clear()
     del TableSync._reported[:]
     del TableSync._timer[:]
     del world.repeating[:]
@@ -76,6 +78,13 @@ def _poll():
     world.repeating[0][1]()
 
 
+def _settle():
+    """进服之后的头几轮检查：把"进服那一份可能丢了"的那几次整份重发走完，丢掉发出去的。"""
+    for _ in range(TableSync.RESENDS):
+        _poll()
+    _sent()
+
+
 def testAJoiningPlayerGetsTheWholeDiffOnceAndTheTimerStarts():
     _fresh("a", "b")
     knives = K.downstream(K.DEFAULT)          # 下游在 LoadServerAddonScriptsAfter 里追加：晚于模块导入时记的基线
@@ -93,8 +102,79 @@ def testAJoiningPlayerGetsTheWholeDiffOnceAndTheTimerStarts():
 def testNothingIsSentWhenNoDownstreamAddedAnything():
     _fresh("a")
     _join("a")
+    for _ in range(4):
+        _poll()
+    assert _sent() == [] and TableSync._known == {"a": 0} and len(world.repeating) == 1, "没有追加：进服、重发、定时都什么也不发"
+
+
+def testTheJoinPushIsRepeatedOnTheNextTwoPollsBecauseItMayHaveBeenLost():
+    """进服那一份发出去就不知道收没收到（客户端的端点还没登记好时整份丢掉）：之后的头两轮检查各再整份发一次，客户端并表是幂等的。"""
+    _fresh("a", "b")
+    K.downstream(K.DEFAULT)
+    _join("a")
+    first = _sent()
+    assert len(first) == 8
     _poll()
-    assert _sent() == [] and TableSync._known == {"a": 0} and len(world.repeating) == 1
+    again = _sent()
+    assert [message["table"] for _t, message in again] == [message["table"] for _t, message in first], "第一轮：整份再发"
+    assert all(target == "a" for target, _m in again)
+    _join("b")                                                      # b 晚一轮进服：各数各的
+    _sent()
+    _poll()
+    assert sorted(set(target for target, _m in _sent())) == ["a", "b"], "a 的第二次、b 的第一次"
+    _poll()
+    assert sorted(set(target for target, _m in _sent())) == ["b"], "a 发完了，b 还有一次"
+    _poll()
+    assert _sent() == [], "都发完了：表不变就不再发"
+
+
+def testAPlayerWhoseCallFailsIsRetriedAndDoesNotStarveTheOthers():
+    """给一个人发的时候 Call 抛了异常：只记日志、下一轮再给他发，后面的人照收。"""
+    _fresh("a", "b")
+    knives = K.downstream(K.DEFAULT)
+    _join("a")
+    _join("b")
+    _settle()
+    real, capture, old = TableSync.Call, _Capture(), (sys.stdout, sys.stderr)
+
+    def flaky(playerId, endpoint, message):
+        if playerId == "a":
+            raise RuntimeError("player a is gone")
+        return real(playerId, endpoint, message)
+
+    knives.append("ends_delight:late_knife")
+    TableSync.Call = flaky
+    sys.stdout = sys.stderr = capture
+    try:
+        _poll()
+    finally:
+        TableSync.Call = real
+        sys.stdout, sys.stderr = old
+    assert [target for target, _m in _sent()] == ["b"], "a 出错不耽误 b"
+    assert TableSync._known["a"] == 1 and TableSync._known["b"] == 2, "a 没记成发过"
+    assert "表同步" in "".join(capture.chunks)
+    _poll()
+    assert [(target, message["table"]) for target, message in _sent()] == [("a", "knifeList")], "下一轮补给 a"
+
+
+def testAJoinWhosePushFailsIsStillRememberedAndFilledInLater():
+    _fresh("a")
+    K.downstream(K.DEFAULT)
+    real, capture, old = TableSync.Call, _Capture(), (sys.stdout, sys.stderr)
+
+    def broken(playerId, endpoint, message):
+        raise RuntimeError("not ready")
+
+    TableSync.Call = broken
+    sys.stdout = sys.stderr = capture
+    try:
+        _join("a")
+    finally:
+        TableSync.Call = real
+        sys.stdout, sys.stderr = old
+    assert _sent() == [] and TableSync._known == {"a": 0}
+    _poll()
+    assert len(_sent("a")) == 8, "下一轮整份补上"
 
 
 def testALateChangeGoesToEveryoneWhoJoinedAndOnlyForTheChangedTables():
@@ -102,7 +182,7 @@ def testALateChangeGoesToEveryoneWhoJoinedAndOnlyForTheChangedTables():
     knives = K.downstream(K.DEFAULT)
     _join("a")
     _join("b")
-    _sent()
+    _settle()
     _poll()
     assert _sent() == [], "表没变：这一轮什么也不发"
     knives.append("ends_delight:late_knife")
@@ -123,7 +203,7 @@ def testAPlayerWhoHasNotFinishedLoadingGetsNothingAndAPlayerWhoLeftIsForgotten()
     knives = K.downstream(K.DEFAULT)
     _join("a")
     _join("b")
-    _sent()
+    _settle()
     world.addPlayer("c")                       # 在线，但客户端还没加载完（没收到 ClientLoadAddonsFinish）：端点还没登记，发了也丢
     del world.players["b"]
     knives.append("ends_delight:late_knife")
@@ -192,7 +272,7 @@ def testAFailingPollIsLoggedAndTheNextOneRunsAgain():
     _fresh("a")
     knives = K.downstream(K.DEFAULT)
     _join("a")
-    _sent()
+    _settle()
     original = TableSync.syncer.refresh
 
     def broken():
