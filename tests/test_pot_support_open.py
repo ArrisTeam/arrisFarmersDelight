@@ -7,6 +7,7 @@ sneakFallback，所以潜行的右键不被客户端取消、到服务端的方�
 from __future__ import print_function
 
 import bootkit as B
+import dgflow as F
 from optkit import Config
 
 
@@ -15,6 +16,15 @@ def testThePotStationKeepsTheSneakFallbackSoASneakingClickNeverOpensIt():
     entry = B.ClientRegistry.behaviorOf(B.POT_BLOCK)
     assert entry is not None and entry.stationId == B.POT
     assert entry.sneakFallback is True, "潜行右键走方块原本的玩法：切吊把手；不取消、不开站"
+
+
+def testASneakingClickIsNotTheStationsSoItGoesOnToTheServerAndASneakFreeOneIs():
+    """内核（Client/Controller.tryOpen）：登记时没关 sneakFallback 的站点，潜行右键不认（返回假：不取消、不开站，请求到服务端的方块宿主那里切把手），不潜行才开。"""
+    controller = F.setup()
+    F.world.sneaking = True
+    assert F.click(controller) is False and controller.view is None
+    F.world.sneaking = False
+    assert F.click(controller) is True and controller.view is not None
 
 
 def testTheOtherStationsKeepItToo():
