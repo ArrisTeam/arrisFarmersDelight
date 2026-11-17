@@ -9,7 +9,7 @@
 所以漏斗再下面有火也不画托盘，和 JE 一样；传热的那一格变了没有邻居事件，由 Server/HeatConduct.py 隔一会儿去看。
 厨锅还有第三种支架：吊把手（HANDLE，Server/PotSupport.py），挂着时不论下面是什么都不画托盘；热不热和它无关（isHeated 不看支架）。
 """
-from .Engine import compFactory, levelId, GetBlockName
+from .Engine import compFactory, levelId, GetBlockEntityData, GetBlockName
 from .Fx import ToAllPlayerBlockMolang
 from ...Shared.Data.Cooking import CanProvideHeatBlockList, HeatConductorList
 from ...Shared.Rules import PotSupport
@@ -62,19 +62,31 @@ def RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName, del
 
     厨锅挂着吊把手（handleEnable，Server/PotSupport 存的）时下面是什么都不画托盘（FD 的 updateShape：HANDLE 不动），也把这个旗一并同步；
     煎锅和没有这个键的厨锅（/setblock 放的）没有吊把手。
-    delay > 0 时延后发送（方块刚放下时客户端的方块实体还没建好）。
+    delay > 0 时延后发送（方块刚放下时客户端的方块实体还没建好）：到点时现读方块实体数据再发——排着的这一会儿里支架又变了
+    （刚放下就潜行切了吊把手）的话，发的得是现在的值；原来发的是排队时的值，会把刚切好的吊把手冲掉。
     """
     handle = blockEntityData["handleEnable"]
     blockEntityData["shelfEnable"] = 1.0 if belowName in ShelfBlockSet and handle != 1.0 else 0.0
     heat = IsHeated(belowPos, dimensionId, belowName)
     blockEntityData["heatEnable"] = heat
     blockEntityData["heatParticleEnable"] = 1.0 if heat else 0.0
-    pairs = [("variable.mod_shelf", blockEntityData["shelfEnable"]), ("variable.mod_heat", blockEntityData["heatParticleEnable"])]
-    if handle is not None:
-        pairs.append(("variable.mod_handle", handle))
-    for name, value in pairs:
-        if delay > 0:
-            compFactory.CreateGame(levelId).AddTimer(delay, ToAllPlayerBlockMolang, blockPos, name, value)
-        else:
-            ToAllPlayerBlockMolang(blockPos, name, value)
+    if delay > 0:
+        compFactory.CreateGame(levelId).AddTimer(delay, PushSupport, dimensionId, blockPos)
+    else:
+        _push(blockEntityData, blockPos)
     return heat
+
+
+def PushSupport(dimensionId, blockPos):
+    """把这个方块现在的支架、加热状态发给各客户端的方块实体模型（延后的那一份到点时调：现读，方块已经不在了就不发）。"""
+    blockEntityData = GetBlockEntityData(dimensionId, blockPos)
+    if blockEntityData:
+        _push(blockEntityData, blockPos)
+
+
+def _push(blockEntityData, blockPos):
+    pairs = [("variable.mod_shelf", blockEntityData["shelfEnable"]), ("variable.mod_heat", blockEntityData["heatParticleEnable"])]
+    if blockEntityData["handleEnable"] is not None:
+        pairs.append(("variable.mod_handle", blockEntityData["handleEnable"]))
+    for name, value in pairs:
+        ToAllPlayerBlockMolang(blockPos, name, value)

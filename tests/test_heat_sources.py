@@ -121,12 +121,32 @@ def testAnUnlitCampfireBelowKeepsTheShelfButGivesNoHeat():
 def testTheRefreshStillSendsTheTwoMolangVariablesToEveryClientAfterTheDelay():
     data = _fresh()
     _put(BELOW, ("minecraft:lava", None))
+    world.setBlock(POT[0], POT[1], POT[2], "arris:cooking_pot", data=data)
     Heat.RefreshHeat(data, POT, BELOW, 0, "minecraft:lava", delay=0.1)
     assert [call for call in world.calls if call[1] == "SetEntityBlockMolang"] == [], "方块刚放下时客户端的方块实体还没建好：要等"
-    assert len(world.timers) == 2
+    assert len(world.timers) == 1, "一份延后的推送：到点时现读方块实体数据"
     world.runTimers()
     sent = dict((call[2]["name"], call[2]["molang"]) for call in world.calls if call[1] == "SetEntityBlockMolang")
     assert sent == {"variable.mod_heat": 1.0, "variable.mod_shelf": 1.0}, sent
+
+
+def testTheDelayedPushSendsWhatTheBlockIsWhenItFiresNotWhenItWasQueued():
+    """排着的这一会儿里方块又变了（刚放下就切了支架、下面的火灭了）：到点发的是现在的值。方块已经不在了就什么都不发。"""
+    data = _fresh()
+    _put(BELOW, ("minecraft:lava", None))
+    world.setBlock(POT[0], POT[1], POT[2], "arris:cooking_pot", data=data)
+    Heat.RefreshHeat(data, POT, BELOW, 0, "minecraft:lava", delay=0.1)
+    data["shelfEnable"], data["heatParticleEnable"] = 0.0, 0.0
+    world.runTimers()
+    sent = dict((call[2]["name"], call[2]["molang"]) for call in world.calls if call[1] == "SetEntityBlockMolang")
+    assert sent == {"variable.mod_heat": 0.0, "variable.mod_shelf": 0.0}, sent
+    data = _fresh()
+    _put(BELOW, ("minecraft:lava", None))
+    world.setBlock(POT[0], POT[1], POT[2], "arris:cooking_pot", data=data)
+    Heat.RefreshHeat(data, POT, BELOW, 0, "minecraft:lava", delay=0.1)
+    world.setBlock(POT[0], POT[1], POT[2], "minecraft:air")
+    world.runTimers()
+    assert [call for call in world.calls if call[1] == "SetEntityBlockMolang"] == [], "锅已经拆了：不发"
 
 
 if __name__ == "__main__":

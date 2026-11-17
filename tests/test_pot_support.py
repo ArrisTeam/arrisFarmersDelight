@@ -132,6 +132,17 @@ def testAHangingPotHasNoTrayWhateverIsBelowItAndStillGetsHeatFromIt():
     assert molang["variable.mod_shelf"] == 0.0 and molang["variable.mod_handle"] == 1.0 and molang["variable.mod_heat"] == 1.0
 
 
+def testAHandleToggledRightAfterPlacingIsNotOverwrittenByThePlacementsLatePush():
+    """方块刚放下时模型变量延后 0.1 秒才发（客户端的方块实体还没建好）。这一会儿里潜行空手切了吊把手：延后的那一份到点时要发现在的值——
+    原来发的是放下那一刻的"没有吊把手"，把刚切出来的吊把手从画面上冲掉了（服务端记着有、客户端画着没有，实机复现过）。"""
+    _fresh()
+    _place(1)                                                    # 放在方块上面：没有吊把手
+    _sneak()
+    assert _click() is not None                                  # 延后的那一份还没到点就切了
+    assert fake.blockEntities[(0, POT)]["handleEnable"] == 1.0
+    assert _molang()["variable.mod_handle"] == 1.0, "到点发的是现在的值"
+
+
 def testTheLastPlacementAttemptAtAPositionCountsAndRecordsAreKeptPerPosition():
     _fresh()
     _tryPlace(UNDER)
