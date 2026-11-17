@@ -43,13 +43,21 @@ def twinOf(blockName):
 
 class GrillBlocks(object):
     """"in" 判断的活容器：点着的炉灶（StoveList，下游追加的也在）加上熄着的孪生方块。前置包登记站点只用 in
-    （Server/Station.binds、Client/Registry.behaviorOf），所以给它这个对象：附属包追加的炉灶照旧开站，熄着的那个方块也开站（HoD 的 StoveStation.opens 不看 LIT）。"""
+    （Server/Station.binds、Client/Registry.behaviorOf），所以给它这个对象：附属包追加的炉灶照旧开站，熄着的那个方块也开站（HoD 的 StoveStation.opens 不看 LIT）。
+    只读：顺序是 StoveList 在前、熄着的在后，能取长度、按下标取、遍历（GrillStation.STOVE_BLOCKS 原来就是 StoveList 这个列表，别处的写法不用改）。"""
 
     def __contains__(self, blockName):
         return isGrill(blockName)
 
     def __iter__(self):
         return iter(list(StoveList) + sorted(LIT_OF))
+
+    def __len__(self):
+        return len(StoveList) + len(LIT_OF)
+
+    def __getitem__(self, index):
+        """原来 STOVE_BLOCKS 就是 StoveList 这个列表：按下标取（第 0 个还是 arris:stove）、切片的写法照旧能用。"""
+        return (list(StoveList) + sorted(LIT_OF))[index]
 
     def __repr__(self):
         return "GrillBlocks(%r)" % (list(self),)

@@ -46,12 +46,13 @@ def testTheGrillContainerIsLiveSoDownstreamStovesStillWork():
     grill = Blocks.GRILL_BLOCKS
     assert LIT in grill and UNLIT in grill and "minecraft:stone" not in grill and None not in grill
     assert list(grill) == [LIT, UNLIT]
+    assert len(grill) == 2 and grill[0] == LIT and grill[1] == UNLIT and grill[-1] == UNLIT and grill[:1] == [LIT], "原来 STOVE_BLOCKS 就是 StoveList 这个列表：长度、下标、切片照旧能用"
     Contract.ArrisFarmersDelightInterface("StoveList", "addon:big_stove")
     try:
         assert "addon:big_stove" in grill and Blocks.isLit("addon:big_stove") and Blocks.isGrill("addon:big_stove")
         assert Blocks.twinOf("addon:big_stove") is None, "下游的炉灶没有熄着的孪生方块：点不灭、灭不了，照旧只有点着的"
         assert not Blocks.isUnlit("addon:big_stove")
-        assert list(grill) == [LIT, "addon:big_stove", UNLIT]
+        assert list(grill) == [LIT, "addon:big_stove", UNLIT] and len(grill) == 3 and grill[1] == "addon:big_stove"
         assert Blocks.useOf(True, "minecraft:water_bucket", "bucket") is not None, "规则只说东西能不能灭火；有没有孪生方块是 twinOf 的事"
     finally:
         Cooking.StoveList.remove("addon:big_stove")
