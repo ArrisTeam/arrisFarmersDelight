@@ -95,7 +95,7 @@ def OnServePlatedFood(args):
         if blockStates:
             blockStates["direction"] = FacingOfAux(args["aux"])
             compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, blockStates, dimensionId)
-    ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
+    ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_generic")     # FD 的 block.food.take_portion 就是原版的 item.armor.equip_generic
     if needsBowl:
         SetNotCreateItem(playerId, handItemDict)
     GiveOrDropItem(playerId, itemDict, dimensionId)
