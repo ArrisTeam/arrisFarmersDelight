@@ -15,7 +15,7 @@
 					"name": "cooking_pot",
 					"pivot": [-8, 8, 8],
 					"locators": {
-						"blister": [-8, 10.5, 8],
+						"blister": [-8, 11.2, 8],
 						"steam": [-8, 8, 8]
 					}
 				},

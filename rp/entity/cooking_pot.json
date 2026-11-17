@@ -31,7 +31,7 @@
       ],
       "particle_effects": {
         "steam":  "arris:steam",
-        "bubble":  "arris:bubble"
+        "bubble":  "arris:bubble_pop"
       },
       "sound_effects": {
         "boil": "ambient.cooking_pot.boil",

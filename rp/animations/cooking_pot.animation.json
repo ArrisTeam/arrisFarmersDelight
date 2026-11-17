@@ -34,7 +34,7 @@
 		},
 		"animation.cooking_pot.bubble": {
 			"loop": true,
-			"animation_length": 2,
+			"animation_length": 0.25,
 			"particle_effects": {
 				"0.0": {
 					"effect": "bubble",

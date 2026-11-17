@@ -19,7 +19,8 @@
 | Hands-On Delight | 煎锅的油膜贴图（`block/oil_film.png`）和热浪粒子贴图（`particle/heat.png`） | `rp/textures/handson/` |
 
 砧板刀口虚线的贴图 `rp/textures/particle/arris_board_mark.png` 是 Java 版原版的 `assets/minecraft/textures/block/white_concrete.png`（Mojang 的素材）：HoD 的虚线贴的就是它，
-原样拷来。本包只在网易版《我的世界》（正版代理）里分发使用。
+原样拷来。经典厨锅冒的气泡 `rp/textures/particle/arris_bubble_pop.png`（五张 16 x 16 叠成一张）是 Java 版原版的 `assets/minecraft/textures/particle/bubble_pop_0.png` 到
+`bubble_pop_4.png`（Mojang 的素材）：FD 的锅放的就是原版的 `BUBBLE_POP`，原样拷来。本包只在网易版《我的世界》（正版代理）里分发使用。
 
 两者的许可原文相同：
 
