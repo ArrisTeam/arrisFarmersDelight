@@ -16,6 +16,7 @@ import skilletkit
 world = fakeengine.install()
 skilletkit.extend(world)
 Skillet = fdtest.load("Server.Skillet")
+Mix = fdtest.load("Shared.Rules.SoundMix")
 
 POS = (7, 64, 7)
 CENTER = (POS[0] + 0.5, POS[1] + 0.5, POS[2] + 0.5)
@@ -116,6 +117,59 @@ def testAnEmptyPanStillTakesTheWholeStack():
     data = _setUp(hand=_item("minecraft:beef", 5))
     _use()
     assert data["cookingDict"]["count"] == 5 and _hand() is None and data["cookTimer"] == 7.0
+
+
+# ---------------------------------------------------------------- 声音
+
+def _heard():
+    """放过的声音：[(声音名, JE 的音量, JE 的音调, 位置)]。载荷里是交给引擎的数，乘回采样自带的（SoundMix.BUILT_IN）才是听到的。"""
+    out = []
+    for call in world.soundArgs:
+        builtVolume, builtPitch = Mix.BUILT_IN.get(call["soundName"], (1.0, 1.0))
+        out.append((call["soundName"], round(call.get("volume", 1.0) * builtVolume, 9), round(call.get("pitch", 1.0) * builtPitch, 9), call["pos"]))
+    return out
+
+
+def testTheFirstFoodOnAHotEmptyPanPlaysTheAddFoodSoundThenTheLanternPlace():
+    _setUp(hand=_item("minecraft:beef", 3))
+    _use()
+    assert _heard() == [("ambient.skillet.addfood", 0.8, 1.0, CENTER), ("block.lantern.place", 0.7, 1.0, CENTER)], "JE：下料 0.8、挂灯 0.7，都在方块中心"
+
+
+def testOnAColdPanOrWhenMergingOnlyTheLanternPlacePlays():
+    _setUp(hand=_item("minecraft:beef", 3), heated=False, below="minecraft:stone")
+    _use()
+    assert _heard() == [("block.lantern.place", 0.7, 1.0, CENTER)], "锅是空的但不在热源上：只有挂灯"
+    _setUp(hand=_item("minecraft:beef", 3), pan=_item("minecraft:beef", 2))
+    _use()
+    assert _heard() == [("block.lantern.place", 0.7, 1.0, CENTER)], "锅里已经有东西（合并）：只有挂灯"
+
+
+def testTheEngineGetsTheNumbersWithTheSamplesOwnVolumeAndPitchDividedOut():
+    _setUp(hand=_item("minecraft:beef", 1))
+    _use()
+    addFood, lantern = world.soundArgs
+    assert addFood["volume"] == 0.4 and addFood["pitch"] == 1.0, "下料声的采样自带 2.0，0.8 要给 0.4"
+    assert lantern["volume"] == 0.7 and abs(lantern["pitch"] - 1.0 / 1.1) < 1.0e-12, "原版挂灯放置声的采样自带音调 1.1，JE 的 1.0 要给 1 / 1.1"
+
+
+def testNothingPlaysWhenNothingWasAdded():
+    _setUp(hand=_item("minecraft:chicken", 3), pan=_item("minecraft:beef", 2))
+    _use()
+    _setUp(hand=_item("minecraft:beef", 3), pan=_item("minecraft:beef", 64))
+    _use()
+    _setUp(hand=_item("minecraft:beef", 3))
+    world.water.add((0,) + POS)
+    _use()
+    _setUp(hand=_item("minecraft:stick", 1))
+    _use()
+    assert world.soundArgs == []
+
+
+def testTakingTheFoodBackPlaysNothing():
+    data = _setUp(pan=_item("minecraft:beef", 2))
+    _use()
+    assert data["cookingDict"] is None and _hand()["count"] == 2 and world.soundArgs == [], "JE 取回没有 playSound"
 
 
 if __name__ == "__main__":

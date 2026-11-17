@@ -26,6 +26,11 @@ TIP_UNDERWATER_HAND = "在水里可没法煎啊……"
 TIP_INVALID_ITEM = "这东西可不能被烹饪……"
 TIP_UNDERWATER_BLOCK = "被水泡着可没法烹饪啊……"
 
+# 放下的煎锅上放食物的声音，(声音名, 音量, 音调)：每次放进去一声挂灯（SkilletBlock.java:83 LANTERN_PLACE 0.7 / 1.0），锅是空的又在热源上再加一声下料
+# （SkilletBlockEntity.java:189 BLOCK_SKILLET_ADD_FOOD 0.8 / 1.0）；取回没有声音（SkilletBlock.java:71-77）
+SOUND_PLACE = ("block.lantern.place", 0.7, 1.0)
+SOUND_ADD_FOOD = ("ambient.skillet.addfood", 0.8, 1.0)
+
 
 def _f32(value):
     """Java float 的舍入：getSkilletCookingTime 用 float 运算，取整的结果要和它一位一位对上。"""

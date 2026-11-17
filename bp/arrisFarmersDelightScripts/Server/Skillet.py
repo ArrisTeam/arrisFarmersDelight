@@ -7,7 +7,7 @@
 一件煎多久照 JE（SkilletBlock.getSkilletCookingTime：6 秒，方块里那件煎锅带火焰附加 I 是 4 秒、II 起 3 秒）；
 含水的煎锅（液体层有水）不能煎：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE SkilletBlockEntity.cookingTick）。
 右键放食物照 JE 的 addItemToCook：锅空着、或锅里是同一种（数据也一样）就放进去，叠到一叠的最大数量为止、剩下的留在手里，每放进去一次这一件的计时从头算；
-别的放不进去，什么也不发生。
+别的放不进去，什么也不发生。放进去响一声挂灯，锅原本是空的又在热源上再响一声下料，空手取回不响（Shared/Rules/SkilletRules 的 SOUND_*）。
 """
 import time
 
@@ -20,7 +20,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
 from .Helpers.Items import CanStack, GetMaxStack
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
-from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
+from ..Shared.Data.Cooking import CanCookedFoodDict
 from ..Shared.Rules import SkilletRules as Rules
 from ..Shared.Rules.BlockDisplay import skilletLayers
 from ..Shared.Rules.Ticks import Pacer
@@ -72,8 +72,7 @@ def OnServerSkilletBlockUse(args):
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
         HandFrying.byFarmersDelight(dimensionId, blockPos, blockEntityData)
-        SetCarriedItem(playerId, cookingDict)
-        ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
+        SetCarriedItem(playerId, cookingDict)                       # 取回没有声音（SkilletBlock.java:71-77）
         blockEntityData["cookingDict"] = None
         PublishSkillet(dimensionId, blockPos, None)
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
@@ -101,9 +100,10 @@ def _addFood(dimensionId, blockPos, blockEntityData, carriedDict, playerId):
         left["count"] -= moved
         SetCarriedItem(playerId, left if left["count"] > 0 else None)
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
-    downBlockName = GetBlockName((blockPos[0], blockPos[1] - 1, blockPos[2]), dimensionId)
-    sound = "ambient.skillet.addfood" if downBlockName in CanProvideHeatBlockList else "armor.equip_leather"
-    ToAllPlayerPlaySound(dimensionId, blockPos, sound)
+    center = (blockPos[0] + 0.5, blockPos[1] + 0.5, blockPos[2] + 0.5)
+    if not pan and blockEntityData["heatEnable"] is True:          # 锅原本是空的又在热源上：先一声下料（SkilletBlockEntity.java:188-190）
+        ToAllPlayerPlaySound(dimensionId, center, *Rules.SOUND_ADD_FOOD)
+    ToAllPlayerPlaySound(dimensionId, center, *Rules.SOUND_PLACE)  # 每次放进去都再一声挂灯（SkilletBlock.java:83）
 
 
 def _refreshSkilletHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName):
