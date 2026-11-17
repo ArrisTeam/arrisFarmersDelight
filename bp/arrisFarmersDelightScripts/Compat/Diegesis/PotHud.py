@@ -6,7 +6,8 @@
 - 徽章：锅里有菜可做（或煮好了）就在锅右边把手上方立一块牌：开放的星、菜、进度条；没火时是一个空火苗；一批出锅后
   星一颗颗亮起（那颗星的图弹一下、冒几点闪光）、多送了份数时叮几声并显示 +N。光标在菜上时提示"N × 菜 / 菜 / 菜，还要 S 秒"。
   牌是内核的 view.plate：每样东西一张贴图（rp/textures/ui/pot_badge/），没亮满的星和没走完的条靠图片裁切；
-- 光标在漂着的料上：它的名字和个数；悬着容器 / 悬着要取回的东西时：这一下做什么（"盛出 …" / "取回 …"，JE 没有这行字）。
+- 光标在漂着的料上：它的名字和个数；悬着容器 / 悬着要取回的东西时：这一下做什么（"盛出 …" / "取回 …"，JE 没有这行字）；
+  勺子在手里（按着拖、点了一下留着）时什么提示都不出，悬停也冻在勺子上（JE 的 isBusy）。
 """
 import math
 
@@ -75,8 +76,10 @@ class PotHud(object):
                 "cookLeft": data.get("cook_left") or 0.0}
 
     def _tip(self, state):
-        """光标在徽章的菜上：那道菜的提示；在漂着的料上：它的名字和个数。"""
+        """光标在徽章的菜上：那道菜的提示；在漂着的料上：它的名字和个数。勺子在手里（busy）什么提示都不出（FocusScreen.java:455）。"""
         view = self.owner.view
+        if self.owner.busy():
+            return None
         if view.plateHover:
             tip = self.badge.tooltip(state)
             return [TIPS[tip[0]] % tip[1]] if tip else None

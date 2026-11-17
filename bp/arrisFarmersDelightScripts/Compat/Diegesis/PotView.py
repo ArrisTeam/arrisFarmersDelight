@@ -119,7 +119,9 @@ class PotViewMixin(object):
         key = event.hit.node.key if event.hit is not None else None
         payload = event.hit.node.payload if event.hit is not None else None
         if event.kind == "move":
-            self.hover, self.ray = (key, payload), event.ray
+            if not self.gesture.stroking:            # 勺子在手里（按着拖、点了一下留着）：悬停冻住，不跟着光标挪（FocusInput.java:798，只在没有笔画时才更新）
+                self.hover = (key, payload)
+            self.ray = event.ray
             if key == "mouth" and self.view.hand is not None and not PotPick.holdsVessel(self.view):    # 盛这锅菜的容器不是往里放的：锅口不收它，不变
                 resize = getattr(self.view, "carryAs", None)        # 光标到了放东西的地方上：手上的东西变成那里的东西的大小，离开不变回去
                 if resize is not None:                              # （FocusInput.updateCarry 的 zoneItemSize；老版本的前置包没有这个接口）
@@ -157,6 +159,7 @@ class PotViewMixin(object):
             return self.serve.sunkClick()     # 取回不看是哪个键（PotBehavior.java:502-505）
         if key == "ladle":                    # 握勺子也不看键：Stroke 左右键都起（FocusInput.java:412-413），START / END 不看按键（PotBehavior.java:466-488）
             self.gesture.down(self.clock)
+            self.hover = (key, payload)       # 悬停从这一刻起冻在勺子上，不会是上一帧光标刚好路过的哪件料
             scene.hand = True
             self._aim(event.ray)
             return True

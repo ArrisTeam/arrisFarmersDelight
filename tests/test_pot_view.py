@@ -63,6 +63,7 @@ class FakeView(object):
         self.dimensionId = 0
         self.pos = POS
         self.actions, self.drops, self.clicks = [], [], []
+        self.plateHover = False
 
     def sendAction(self, name, payload):
         self.actions.append((name, payload))
@@ -176,6 +177,73 @@ def testTheBehaviourIsBusyExactlyWhileTheSpoonIsInTheHand():
     behavior.onPointer(Event(LEFT, Hit("ladle")))
     behavior.onClose()
     assert behavior.busy() is False, "关站：勺子放下"
+
+
+RAY = (8.0, 41.0, -21.0, 0.0, -0.6, 0.8)          # 机位射向液面
+
+
+def _move(key=None, payload=None, ray=None):
+    return Event(LEFT, Hit(key, payload) if key else None, ray=ray, kind="move")
+
+
+def testTheHoverFollowsTheCursorUntilTheSpoonIsInHandAndThenStaysOnTheSpoon():
+    # FocusInput.java:798：只有 gesture == null（或在搬东西）才更新悬停；笔画里悬停冻在勺子上
+    behavior, view = behaviorOf()
+    behavior.onPointer(_move("item", 0))
+    assert behavior.hover == ("item", 0)
+    behavior.onPointer(_move("ladle"))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    behavior.onPointer(_move("item", 0, RAY))                      # 勺子拖过一件料
+    assert behavior.hover == ("ladle", None), "冻在勺子上，不是那件料"
+    assert behavior.ray == RAY and behavior.scene.aim is not None, "光标的射线、勺尖的目标照常跟着（那是 mouseX / mouseY，不是悬停）"
+    behavior.onPointer(_move(None, None, RAY))
+    assert behavior.hover == ("ladle", None), "挪到什么也没有的地方也一样"
+    behavior.clock += 0.6
+    behavior.onPointer(Event(LEFT, kind="up"))                     # 拖完松手：没有笔画了
+    behavior.onPointer(_move("item", 0))
+    assert behavior.hover == ("item", 0), "悬停又跟着光标走"
+
+
+def testTheHoverStaysFrozenWhileTheSpoonIsHeldByAClickToo():
+    behavior, view = behaviorOf()
+    behavior.onPointer(_move("ladle"))
+    behavior.onPointer(Event(RIGHT, Hit("ladle")))
+    behavior.clock += 0.1
+    behavior.onPointer(Event(RIGHT, kind="up"))
+    assert behavior.gesture.heldByClick
+    behavior.onPointer(_move("item", 0, RAY))
+    behavior.onPointer(_move("served"))
+    assert behavior.hover == ("ladle", None), "点一下留在手里的勺子也是笔画：悬停不动"
+    behavior.onPointer(Event(LEFT, Hit("mouth")))                  # 下一按放下
+    behavior.onPointer(Event(LEFT, kind="up"))
+    behavior.onPointer(_move("served"))
+    assert behavior.hover == ("served", None)
+
+
+def testPressingTheSpoonMakesItTheHoveredNodeEvenIfTheCursorJumpedThereWithoutAFrameBetween():
+    behavior, view = behaviorOf()
+    behavior.onPointer(_move("item", 0))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    assert behavior.hover == ("ladle", None), "冻住的不能是上一帧路过的料（它会一直卡在那里）"
+
+
+def testNoTooltipAtAllWhileTheSpoonIsInHand():
+    # FocusScreen.java:455：isBusy() 就一个提示都不画（节点的、徽章的都算）
+    behavior, view = behaviorOf()
+    view.plateHover = True
+    state = {"servings": 3, "mealName": "Soup"}
+    assert behavior.hud._tip(state) == ["3 × Soup"], "没握勺子：徽章的提示照常"
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    assert behavior.hud._tip(state) is None, "按着拖"
+    behavior.clock += 0.6
+    behavior.onPointer(Event(LEFT, kind="up"))
+    assert behavior.hud._tip(state) == ["3 × Soup"], "松手：又有了"
+    behavior.onPointer(Event(RIGHT, Hit("ladle")))
+    behavior.clock += 0.1
+    behavior.onPointer(Event(RIGHT, kind="up"))
+    assert behavior.hud._tip(state) is None, "点一下留在手里"
+    behavior.onPointer(Event(LEFT, Hit("mouth")))
+    assert behavior.hud._tip(state) == ["3 × Soup"], "放下了"
 
 
 def testTouchStillNeverKeepsTheSpoonInHandWhicheverButtonTheTapWasSentAs():
