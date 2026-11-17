@@ -17,7 +17,7 @@ from ...QuModLibs.Client import AllowCall, Listen
 from ...Shared.Rules import PanLookState, PanModelMath
 
 SKILLET_BLOCK = "arris:skillet"
-NEAR, FAR = 24.0, 48.0          # 格：近处每帧、带粒子声音；到 FAR 为止隔帧算；再远不算
+NEAR, FAR = 32.0, 40.0          # 格：NEAR 以内每帧、带粒子声音（Diegesis 的 WATCH_RANGE：服务端的状态和效果只发到这么远）；到 FAR 为止隔帧算、只画（SceneRenderer.RENDER_RANGE）；再远不算
 FAR_EVERY = 4
 MAX_FRAME = 0.1
 _state = {"on": False, "last": None, "tick": 0}

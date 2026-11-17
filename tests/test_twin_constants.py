@@ -39,5 +39,16 @@ def testTheLookBroadcastReachesAsFarAsTheKernelsWatchers():
     assert ours == kernel == 32.0, (ours, kernel)             # Diegesis 的 ActiveStation.WATCH_RANGE
 
 
+def testScenesAreDrawnAndHeardAsFarAsInJava():
+    """每座锅 / 灶在本客户端的场景：32 格以内每帧算、带粒子声音，40 格以内只画，再远不算（Diegesis：ActiveStation.WATCH_RANGE 32、
+    SceneRenderer.RENDER_RANGE 40）。三个场景管理各写了一份。"""
+    for module in ("PotScenes", "PanScenes", "StoveScenes"):
+        tree = ast.parse(io.open(os.path.join(FD, "Compat", "Diegesis", module + ".py"), encoding="utf-8").read())
+        found = [ast.literal_eval(node.value) for node in tree.body
+                 if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Tuple)
+                 and [getattr(name, "id", None) for name in node.targets[0].elts] == ["NEAR", "FAR"]]
+        assert found == [(32.0, 40.0)], (module, found)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

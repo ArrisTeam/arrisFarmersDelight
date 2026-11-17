@@ -287,14 +287,14 @@ def testTheRenderTickDrivesNearScenesEveryFrameAndFarOnesEveryFourth():
         Scenes.OnRenderTick()
         assert scene.clock > 0.0, "近处：每帧算"
         clock = scene.clock
-        world.foot = (10.5, 64.0, 10.5 + 40.0)                  # 40 格：远
+        world.foot = (10.5, 64.0, 10.5 + 36.0)                  # 36 格：过了 32（不放粒子声音、隔帧算），还在 40 以内（照画）
         Scenes._state["tick"] = 0
         for _ in range(3):
             Scenes.OnRenderTick()
         assert scene.clock == clock, "远处三帧不算"
         Scenes.OnRenderTick()
         assert scene.clock > clock, "第四帧算一次（带上前几帧的时间）"
-        world.foot = (10.5, 64.0, 10.5 + 80.0)
+        world.foot = (10.5, 64.0, 10.5 + 41.0)                  # 过了 40：不算
         clock = scene.clock
         for _ in range(8):
             Scenes.OnRenderTick()
