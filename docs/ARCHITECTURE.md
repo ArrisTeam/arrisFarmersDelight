@@ -453,6 +453,15 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   没存过的（/setblock、旧存档）掉一把新的。方块的火焰附加读 `skilletItem`，`Skillet._timerStart` 换成倒计时起点（秒数 + 1）。
 - 含水的煎锅（液体层 `GetLiquidBlock` 有水）：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE `cookingTick`）；
   放非食物仍是"这东西可不能被烹饪……"（JE 先查配方，所以泡着水也先报这句；锅里有东西时同样报）。
+- 放下的煎锅（经典玩法）自己的嗞嗞声、蒸汽、火焰附加的星星（`Client/SkilletSteam.py`，概率和位置在 `Shared/Rules/SkilletSteam.py`，和炉灶的火同一种做法）：
+  JE 的 `SkilletBlock.animateTick` 只有 `isCooking()`（加热着**而且锅里有东西**）才每次 1/10 响一声 `block.skillet.sizzle`（音量 0.4、音调 0.9~1.1），
+  `SkilletBlockEntity.animationTick` 同样条件下每刻 20% 放一颗 FD 的蒸汽、带火焰附加每刻 `level * 5%` 放一颗 `ENCHANTED_HIT`（x、z 在方块中心 ±0.2，y + 0.1）。
+  基岩版：方块 JSON 写 `netease:block_animate_random_tick`（trigger_rate 1，嗞嗞声）和 `netease:block_entity.client_tick`（每秒 20 次，蒸汽 / 星星；
+  client_tick 是方块实体的标志，**这一版之前放下的煎锅要重新放才有蒸汽**，嗞嗞声是方块级的组件、旧锅也有）；"加热着"读方块实体模型的 `mod_heat`、
+  "锅里有东西"读 `Client/BlockItems` 记着的内容、火焰附加读方块实体数据里记着的那件煎锅；场景接管（`mod_scene` 为 1）时不放，声音和烟是煎锅场景画的。
+  粒子 `arris:skillet_steam`（FD 的 `SteamParticle`：半边长 0.2~0.4、活 4~6.45 秒、每秒升 0.1~0.34 格、alpha 0.6 最后 1.5 秒淡掉）和 `arris:skillet_spark`
+  （`CritParticle` 的附魔色：速度 0.4 倍、摩擦 0.7 每刻、重力 0.02 格每二次方刻）是本包自己的（厨锅的 `arris:steam_0` 飘得又高又快，是厨锅那一路的数）。
+  原来实体定义里的嗞嗞动画（只要在热源上就每 15 秒响一声，空锅也响、没有蒸汽）删了。
 - 手持烹饪（`SkilletHand`）：JE 的 `SkilletItem.use` 两只手都认（煎锅在哪只手，原料就在另一只手）。**基岩版的副手只收引擎允许的那几种物品，生肉放不进去**（实测 `SetEntityItem(OFFHAND, 生牛肉)` 返回 False），所以这边常用的是反过来拿：煎锅放副手（物品 JSON 开了 `netease:allow_offhand`）、原料拿主手，这时在热源旁按住右键是煎不是吃——客户端在 `ClientItemTryUseEvent` 里取消"吃"（`SkilletHandRules.cooksInsteadOfEating`：副手煎锅、主手有营火配方、身边 3x3x3 有热源；JE 里饿着的时候主手的食物会先被吃掉，这里改成有热源就煎，不然基岩版饿着就没法手持煎东西了）。下面说的"副手食物"换成这种拿法就是主手的那件。
   基岩版没有"按住使用"的服务端事件，由客户端在主手或副手拿着煎锅时报告右键：`RightClickBeforeClientEvent` 报一次，按住期间 `OnScriptTickClient`
   每 0.2 秒报一次，`RightClickReleaseClientEvent` 报松开（`Client/Input.py` + `SkilletHandRules.HoldReporter`，RPC `SkilletUseHeld`）；服务端按最后一次"按着"的时间判断还按不按着
