@@ -7,6 +7,7 @@
 """
 from __future__ import print_function
 
+import facingkit as T
 import potfake
 import stovekit as K
 
@@ -114,7 +115,7 @@ def testALogicThatCoversIsTheSameAnswerAsTheHook():
 
 # ---------------------------------------------------------------- 站点朝哪（JE 的 Orientation.BLOCK）
 
-YAW_OF_AUX = {0: 180, 1: 270, 2: 0, 3: 90}      # direction 状态 0 南 1 西 2 北 3 东：站点的北面转到炉灶的正面那一侧
+YAW_OF_AUX = T.YAW      # aux -> 站点朝向：direction 状态 0 南 1 西 2 北 3 东（假日创造者实验玩法是 0 / 4 / 8 / 12），站点的北面转到炉灶的正面那一侧
 
 
 def testTheStationIsRegisteredWithTheBlockFacingHook():
@@ -132,14 +133,19 @@ def testTheStationFacesTheStovesFrontWhicheverSideTheCookOpensFrom():
         assert GrillOpen.facingOf(0, K.STOVE) == yaw
 
 
-def testTheServerHookReadsTheBlocksAuxFromTheEngineAndGivesTheSameAnswerAsTheClientsRule():
-    StoveFacing = K.fdtest.load("Shared.Rules.StoveFacing")
+def testTheServerHookPinsTheSameAuxToYawTableAsTheClientHookAndTheScenes():
+    """具体值写死（facingkit：和客户端的钩子、场景、世界里的展示的测试 test_facing_of_aux.py 同一张表，不由被测的函数自己算）：aux 0..3、
+    假日创造者实验玩法的 4 / 8 / 12、读不到的值。这里读的是假引擎的 GetBlockAux（一个 lambda）；真的 GetBlockAux 辅助函数连同这个钩子
+    在 test_block_aux_helper.py 里对着假的 compFactory 跑。"""
     manager, data = K.setup()
-    for aux in range(4):
+    for aux, yaw in sorted(T.YAW.items()):
         fake.blockAux[(0, K.STOVE)] = aux
-        assert GrillOpen.facingOf(0, K.STOVE) == StoveFacing.yawOfAux(aux) == YAW_OF_AUX[aux]
+        assert GrillOpen.facingOf(0, K.STOVE) == yaw, aux
+    for aux in T.UNKNOWN:
+        fake.blockAux[(0, K.STOVE)] = aux
+        assert GrillOpen.facingOf(0, K.STOVE) == T.UNKNOWN_YAW, aux
     del fake.blockAux[(0, K.STOVE)]
-    assert GrillOpen.facingOf(0, K.STOVE) == 180, "读不到 aux 按 0：引擎的缺省状态朝南"
+    assert GrillOpen.facingOf(0, K.STOVE) == T.UNKNOWN_YAW == 180, "读不到 aux 按 0：引擎的缺省状态朝南；永远给一个朝向，不返回 None（None 站点就朝着玩家了）"
 
 
 def testAnOlderKernelWhoseStationTypeKnowsNoCanOpenStillGetsTheStove():
