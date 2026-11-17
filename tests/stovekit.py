@@ -34,9 +34,9 @@ BEEF, EGG, STICK = "minecraft:beef", "minecraft:egg", "minecraft:stick"
 ARGS = {"dimension": 0, "posX": STOVE[0], "posY": STOVE[1], "posZ": STOVE[2]}
 
 
-def setup(creative=False, covered=None, look=False):
+def setup(creative=False, covered=None, look=True):
     """干净的假世界：一个点着的炉灶（方块实体数据初始化好）、玩家 a（炉灶北边，生存或创造）和 b（东边）；返回 (Manager, 炉灶的方块实体数据)。
-    look 为真打开世界外观广播（StoveLook），之后 looks() / events() 看发出去的东西。"""
+    look 打开世界外观广播（StoveLook，装了前置包时 ServerBoot 就是打开的），之后 effects() / looks() / broadcasts() 看发出去的东西。"""
     fake.reset()
     Registry.clearAll()
     HandGrill._hands.clear()
@@ -83,18 +83,26 @@ def opened(manager, playerId="a"):
 
 
 def effects(playerId="a"):
-    """取走并返回这位玩家收到的表现事件：[(名字, 数据)]。"""
-    return [(e[2]["name"], e[2]["data"]) for e in fake.world.take(playerId, Protocol.EP_EFFECT)]
+    """取走并返回这位玩家收到的炉灶一次性事件（StoveLook 的广播，站点开不开着都发）：[(名字, 数据)]，数据不带 dimensionId / pos / event。"""
+    out, rest = [], []
+    for call in fake.calls:
+        player, key, args = call
+        if key == StoveLook.ENDPOINT and player == playerId and args[0].get("event"):
+            payload = dict(args[0])
+            name = payload.pop("event")
+            payload.pop("dimensionId"), payload.pop("pos")
+            out.append((name, payload))
+        else:
+            rest.append(call)
+    fake.calls[:] = rest
+    return out
 
 
-def stateData(playerId="a"):
-    """这位玩家收到的最新站点数据（没有新的返回 None）。"""
-    states = fake.world.take(playerId, Protocol.EP_STATE)
-    for _, _, payload in reversed(states):
-        shared = payload["state"].get("data")
-        if shared is not None:
-            return shared
-    return None
+def current():
+    """炉灶此刻的样子（StoveLook.build 的）整理成 {"down": [...], "up": [...], "hand": [...]}，每个都是长 6 的列表（空位 0.0 / False）。"""
+    payload = StoveLook.build(0, STOVE, fake.blockEntities[(0, STOVE)], HandGrill.peek(0, STOVE))
+    slots = payload["slots"]
+    return {"down": [s.get("down", 0.0) for s in slots], "up": [s.get("up", 0.0) for s in slots], "hand": [bool(s.get("hand")) for s in slots]}
 
 
 def hand(playerId="a"):

@@ -6,10 +6,11 @@
 两次机会、只登记一次：导入时（前置包的服务端 Api 是纯 Python，早于它的服务端系统导入也安全），
 以及 LoadServerAddonScriptsAfter（前置包比本包后加载时）。
 砧板、厨锅、煎锅站点要前置包 API 3（2：光标栈随状态同步、站点逻辑的 ctx / dropped / userData、托盘；3：客户端悬着的半透明容器和输入方式），
-炉灶要 2：更老的前置包上它们照旧走经典玩法（砧板没登记，工作台也就照旧出那些菜）。装了新前置包时顺手打开厨锅、煎锅的世界外观广播（Server/PotLook.py、Server/PanLook.py）；砧板站点登记了就打开砧板的旁观广播（Server/BoardLook.py）。
+炉灶要 2：更老的前置包上它们照旧走经典玩法（砧板没登记，工作台也就照旧出那些菜）。装了新前置包时顺手打开厨锅、煎锅的世界外观广播（Server/PotLook.py、Server/PanLook.py）。
+炉灶站点登记上了就打开炉灶的世界外观广播（Server/StoveLook.py），客户端的 StoveScenes 照它画。
 """
 from ...QuModLibs.Server import Listen, serverApi
-from ...Server import BoardLook, PanLook, PotLook
+from ...Server import BoardLook, PanLook, PotLook, StoveLook
 from . import BoardLogic, DishCrafts, GrillLogic, PanLogic, PotLogic
 
 API_MODULE = "arrisDiegesisScripts.Api.Server"
@@ -36,7 +37,8 @@ def tryRegister():
         PotLook.enable()
         PanLogic.register(api)
         PanLook.enable()
-    GrillLogic.register(api)
+    if GrillLogic.register(api) is not None:
+        StoveLook.enable()
     if board is not None:
         DishCrafts.register()        # 改在砧板上摆的菜：工作台不再出（照 HoD 在 JE 上的缺省）；砧板站点不在就一切照旧
         BoardLook.enable()           # 附近没开站点的人也听得到切菜声（站点里的人收站点自己的 effect）

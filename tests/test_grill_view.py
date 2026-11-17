@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""炉灶站点开着的人的那一层（Compat/Diegesis/GrillView.py + GrillPieces.py + GrillSpace.py + GrillGhosts.py + GrillFx.py）：
-用前置包客户端的假引擎（dgstation）驱动真的 StationView，从指针点击一路看到发出的动作、摆下的客户端掉落物、放的粒子和声音。
-对应 Hands-On Delight 的 StoveBehavior（onEvent / onItemClick / refresh / turned / onEffect）。"""
+"""炉灶站点开着的人的那一层（Compat/Diegesis/GrillView.py + GrillSpace.py）：用前置包客户端的假引擎（dgstation）驱动真的 StationView，
+从指针点击一路看到发出的动作、场景里摆下的客户端掉落物。烤架上的画面（落下 / 翻面 / 取走的动作、热气、声音）是谁都看得见的场景，
+在 test_stove_scene.py 里测；这里测站点这一层和场景的接口：命中盒和场景画的对得上、开站把飞入的起点和方向交给场景、
+自己翻的不重复演、被拒的虚影往开站点的人这边弹。对应 Hands-On Delight 的 StoveBehavior（onEvent / onItemClick）。"""
 from __future__ import print_function
 
 import importlib
@@ -53,17 +54,38 @@ class Factory(object):
 
 factory = Factory(_engine.compFactory)
 _engine.compFactory = factory
+
+
+def _addDropItem(item, dimensionId, pos):
+    """Client/Engine.addDropItem 的替身：建掉落物、关影子。"""
+    entityId = factory.CreateItem(None).AddDropItemToWorld(item, dimensionId, pos, 0, 0)
+    factory.CreateModel(entityId).SetEntityShadowShow(False)
+    return entityId
+
+
+_engine.addDropItem = _addDropItem
+_engine.unwrapDeep = lambda value: value
+_engine.blockEntityExData = lambda pos: {}
 sys.modules[fdtest.SCRIPTS + ".Client.Engine"] = _engine
 _hidden = []
 _stub = types.ModuleType(fdtest.SCRIPTS + ".Client.BlockItems")
 _stub.hide = lambda dimensionId, pos, hidden: _hidden.append((dimensionId, tuple(pos), hidden))
+_stub.release = lambda dimensionId, pos: _hidden.append((dimensionId, tuple(pos), "released"))
 sys.modules[fdtest.SCRIPTS + ".Client.BlockItems"] = _stub
 setattr(importlib.import_module(fdtest.SCRIPTS + ".Client"), "BlockItems", _stub)       # py2 的 from 包 import 子模块要包上有这个属性
+_qu = fdtest.SCRIPTS + ".QuModLibs"
+_package = types.ModuleType(_qu)
+_package.__path__ = []
+_client = types.ModuleType(_qu + ".Client")
+_client.Listen = lambda name: (lambda fn: fn)
+_client.AllowCall = lambda fn: fn
+sys.modules[_qu], sys.modules[_qu + ".Client"] = _package, _client
 
 GrillView = fdtest.load("Compat.Diegesis.GrillView")
+Scenes = fdtest.load("Compat.Diegesis.StoveScenes")
 Rules = fdtest.load("Shared.Rules.GrillStation")
 Layout = fdtest.load("Shared.Rules.HandsOn.StoveLayout")
-Motion = fdtest.load("Shared.Rules.HandsOn.StoveMotion")
+State = fdtest.load("Shared.Rules.StoveLookState")
 Registry = dgstation.load("Client.Registry")
 View = dgstation.load("Client.View")
 Ports = dgstation.load("Client.Ports")
@@ -72,6 +94,7 @@ Pick = dgtest.load("Shared.Pick")
 
 STOVE = (10, 64, 10)
 BEEF, COOKED = "minecraft:beef", "minecraft:cooked_beef"
+DT = 1.0 / 60.0
 
 
 def item(name, count=1):
@@ -86,16 +109,23 @@ class Api(object):
     Schema = Schema
 
 
-class Book(object):
-    pass
+def lookOf(pieces, data):
+    """场景要的样子：pieces 是 {位置: 物品}，data 是 down / up / hand 三个长 6 的列表。"""
+    data = data or {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False] * 6}
+    slots = [{"item": pieces[place], "hand": data["hand"][place], "down": data["down"][place], "up": data["up"][place]}
+             if place in (pieces or {}) else {} for place in range(6)]
+    return State.decode({"slots": slots})
 
 
 def make(yaw=0, pieces=None, data=None):
-    """打开着的炉灶站点：yaw 是玩家所在的一侧（0 北、90 东……），pieces 是 {位置: 物品}，data 是站点数据。"""
+    """打开着的炉灶站点：yaw 是玩家所在的一侧（0 北、90 东……），pieces 是 {位置: 物品}，data 是两面烤到哪。场景已经画好（走了一帧）。"""
     world.reset()
     del _hidden[:]
+    Scenes._scenes.clear()
+    Scenes.enable()
     factory.recorder = Recorder()
     random.seed(3)
+    world.blocks[STOVE] = "arris:stove"
     behaviorClass = GrillView.register(Api)
     entry = Registry.getBehavior("arris:stove")
     view = View.StationView(entry, STOVE, 0, yaw, Ports.Ports(lambda: shot(yaw)))
@@ -106,8 +136,9 @@ def make(yaw=0, pieces=None, data=None):
     world.camera["pose"], world.camera["fov"] = shot(yaw)[0], 30.0
     for place, stack in (pieces or {}).items():
         view.state.rawSetItem(("grill", place), stack)
-    view.data = data or {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False] * 6}
     view.behavior.onOpen()
+    view.behavior.scene.applyLook(lookOf(pieces, data))
+    run(view, DT)
     return view
 
 
@@ -140,9 +171,10 @@ def actions(raw=None):
     return [(a["name"], a["data"]) for a in world.actions() if a.get("type") == "custom"]
 
 
-def run(view, seconds, dt=1.0 / 60.0):
+def run(view, seconds, dt=DT):
+    """场景自己每个渲染帧走（StoveScenes.OnRenderTick）；这里直接推它。"""
     for _ in range(int(round(seconds / dt))):
-        view.behavior.frame(dt)
+        view.behavior.scene.frame(dt, True)
 
 
 def drops():
@@ -153,6 +185,22 @@ def center(drop):
     return drop["pos"]
 
 
+def centerOf(drop):
+    """掉落物的视觉中心：轴心 + 贴图的"上"方向 * 半边长。"""
+    x, y, z = [math.radians(angle) for angle in drop["rot"]]
+    half = 8.0 / 16.0 * drop["scale"] * 0.5
+    up = (-math.sin(z) * math.cos(x), math.cos(z) * math.cos(x), math.sin(x))
+    return tuple(drop["pos"][axis] + up[axis] * half for axis in range(3))
+
+
+def serverEvent(name, place=None, **data):
+    body = {"dimensionId": 0, "pos": list(STOVE), "event": name}
+    if place is not None:
+        body["place"] = place
+    body.update(data)
+    Scenes.OnStoveLook(body)
+
+
 # ---------------------------------------------------------------- 开站
 
 def testTheStationOpensTheJeWayWithoutHintRowOrDrawer():
@@ -161,41 +209,63 @@ def testTheStationOpensTheJeWayWithoutHintRowOrDrawer():
     assert behavior.chrome == "java" and behavior.flightSeconds == 0.4 and behavior.workPlane == 17.0
     assert behavior.camera["pos"] == (8.0, 50.5, -21.0) and behavior.camera["target"] == (8.0, 16.0, 8.0) and behavior.camera["fov"] == 30.0
     assert abs(behavior.camera["keepWidth"] - 16.0 / 9.0) < 1.0e-9
-    assert _hidden == [(0, STOVE, True)], "开站期间本端不画世界里的那份"
+    assert _hidden == [(0, STOVE, True)], "烤架上的东西由场景画，本端不画世界里的那份（场景建好时就藏了，不是开站才藏）"
     assert behavior.usable(item(BEEF)) and not behavior.usable(item("minecraft:egg")) and not behavior.usable(item("minecraft:bread"))
     assert behavior.mayDrop("grill", 0, item(BEEF)) and not behavior.mayDrop("grill", 0, item("minecraft:stick"))
-    behavior.onClose()
-    assert _hidden[-1] == (0, STOVE, False), "关站还原"
     assert view.bookSource.__class__.__name__ == "GrillSource", "食谱书照旧挂"
+    behavior.onClose()
+    assert _hidden == [(0, STOVE, True)], "关站不动世界里的那份：场景还在画，谁都看得见"
+    assert behavior.scene is None and Scenes.sceneAt(0, STOVE) is not None, "站点这一层放手了，场景留着"
 
 
-def testASixPieceGrillShowsEachPieceWhereTheWorldHasIt():
-    view = make(pieces=dict((place, item(BEEF)) for place in range(6)))
-    live = drops()
-    assert len(live) == 6 and all(drop["item"]["newItemName"] == BEEF for drop in live)
-    centers = [view.toWorld(*c) for c in view.behavior.space.centers()]
-    assert [(round(x - STOVE[0], 3), round(z - STOVE[2], 3)) for x, _, z in centers] ==         [(0.8, 0.7), (0.5, 0.7), (0.2, 0.7), (0.8, 0.3), (0.5, 0.3), (0.2, 0.3)], "stove.json 的 piece_0 ~ piece_5"
-    assert all(abs(d["scale"] - 5.0 / 8.0) < 1.0e-9 for d in live), "一件 5 像素宽"
-    assert len(set(tuple(round(v, 3) for v in d["rot"]) for d in live)) == 6, "每件摆得各转一点，没有两件同向"
+def testTheStationHandsItsHandToTheSceneAndTakesItBackWhenItCloses():
+    view = make(pieces={0: item(BEEF)})
+    scene = Scenes.sceneAt(0, STOVE)
+    assert view.behavior.scene is scene and scene.focused, "本人开着站点"
+    assert scene.space.starts == view.behavior.space.fromPlayerInWorld and scene.space.turner == view.behavior.space.turn
+    view.behavior.onClose()
+    assert not scene.focused and scene.space.starts is None and scene.space.turner is None
+    assert len(drops()) == 1, "站点关了，烤架上的东西还在场景里"
 
 
-def testTheSidePlayersOpenFromTurnsTheLayoutWithTheWorld():
-    north = make(yaw=0, pieces={0: item(BEEF), 4: item(BEEF)})
-    where = sorted((d["pos"], d["rot"]) for d in drops())
-    for yaw in (90, 180, 270):
-        side = make(yaw=yaw, pieces={0: item(BEEF), 4: item(BEEF)})
-        got = sorted((d["pos"], d["rot"]) for d in drops())
-        for (pos, rot), (pos2, rot2) in zip(where, got):
-            assert max(abs(a - b) for a, b in zip(pos, pos2)) < 1.0e-6, (yaw, pos, pos2)
-            assert max(abs(((a - b + 180.0) % 360.0) - 180.0) for a, b in zip(rot, rot2)) < 1.0e-6, (yaw, rot, rot2)
-        assert side.behavior.space.centers()[0] != north.behavior.space.centers()[0], "站点空间里的位置随玩家的一侧转"
+def testWithoutAStoveBlockThereIsNoSceneAndThePickBoxesAreEmpty():
+    world.reset()
+    del _hidden[:]
+    Scenes._scenes.clear()
+    behaviorClass = GrillView.register(Api)
+    view = View.StationView(Registry.getBehavior("arris:stove"), STOVE, 0, 0, Ports.Ports(lambda: shot(0)))
+    view.behavior = behaviorClass(view)
+    view.behavior.onOpen()                                      # world.blocks 里那里是空气
+    assert view.behavior.scene is None and view.behavior.pickables() == []
+
+
+# ---------------------------------------------------------------- 命中盒和场景对得上
+
+def testThePickBoxesSitWhereTheSceneDrawsThePiecesWhicheverSideThePlayerOpensFrom():
+    for yaw in (0, 90, 180, 270):
+        view = make(yaw=yaw, pieces=dict((place, item(BEEF)) for place in range(6)))
+        scene = view.behavior.scene
+        for place in range(6):
+            station = view.toWorld(*view.behavior.space.centers()[place])
+            there = scene.space.toWorld(*scene.space.centers()[place])
+            assert max(abs(a - b) for a, b in zip(station, there)) < 1.0e-6, (yaw, place, station, there)
+        assert sorted(node.payload for node in view.behavior.pickables()) == list(range(6)), "六件各有一个盒子"
+        for place in range(6):
+            world.actions()
+            assert click(view, place), (yaw, place)
+            assert actions()[-1] == ("turn", {"place": place}), (yaw, place)
+            view.behavior.scene.pieces.turnedAt[place] = -10.0          # 不管 0.3 秒的冷却，下一件接着点
+            del world.calls[:]
 
 
 def testTheYawTheServerSendsAtOpenIsUsedNotTheClientsGuess():
-    """Controller 先按客户端猜的一侧建表现，服务端的 Opened 可能改 view.yaw，再调 onOpen：件的坐标和朝向要按改后的算。"""
+    """Controller 先按客户端猜的一侧建表现，服务端的 Opened 可能改 view.yaw，再调 onOpen：坐标要按改后的算。"""
     reference = make(yaw=90, pieces={0: item(BEEF)})
-    want = [(d["pos"], d["rot"]) for d in drops()]
+    want = reference.behavior.space.centers()
     world.reset()
+    del _hidden[:]
+    Scenes._scenes.clear()
+    world.blocks[STOVE] = "arris:stove"
     behaviorClass = GrillView.register(Api)
     entry = Registry.getBehavior("arris:stove")
     view = View.StationView(entry, STOVE, 0, 0, Ports.Ports(lambda: shot(90)))
@@ -204,21 +274,26 @@ def testTheYawTheServerSendsAtOpenIsUsedNotTheClientsGuess():
     view.yaw = 90                                         # Opened 里服务端给的朝向
     world.camera["pose"], world.camera["fov"] = shot(90)[0], 30.0
     view.state.rawSetItem(("grill", 0), item(BEEF))
-    view.data = {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False] * 6}
     view.behavior.onOpen()
-    got = [(d["pos"], d["rot"]) for d in drops()]
-    assert got == want and view.behavior.space.centers() == reference.behavior.space.centers()
+    assert view.behavior.space.centers() == want
 
 
 # ---------------------------------------------------------------- 手
 
+def waiting(place=1):
+    down, hand = [0.0] * 6, [False] * 6
+    down[place], hand[place] = 1.0, True
+    return {"down": down, "up": [0.0] * 6, "hand": hand}
+
+
 def testClickingAPieceTurnsItAndSendsTurnAndTheHopStarts():
-    view = make(pieces={1: item(BEEF)}, data={"down": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [False, True] + [False] * 4})
+    view = make(pieces={1: item(BEEF)}, data=waiting())
     before = center(drops()[0])
+    del factory.recorder.played[:]                            # 建的那一帧里热气已经嗞过一声
     assert click(view, 1)
     assert actions() == [("turn", {"place": 1})]
     run(view, 0.145)
-    assert view.behavior.pieces.motion[1].pose()[0][1] > 2.5 and center(drops()[0]) != before, "跳起来了：半程升到 3 px"
+    assert view.behavior.scene.pieces.motion[1].pose()[0][1] > 2.5 and center(drops()[0]) != before, "跳起来了：半程升到 3 px"
     assert [name for name, _, _, _ in factory.recorder.played][:1] == ["block.lantern.step"], "翻面起跳的一声"
 
 
@@ -248,6 +323,18 @@ def testClickingBesideThePiecesDoesNothing():
     assert view.pointer("down", screen, 1, False) is False and actions() == []
 
 
+def testMyOwnTurnIsNotPlayedAgainWhenTheServerSaysSo():
+    """自己点的那一下马上演了；服务端的 turned（广播给附近所有人，开着站点的人也收到）0.6 秒内不重复。"""
+    view = make(pieces={1: item(BEEF)}, data=waiting())
+    pieces = view.behavior.scene.pieces
+    click(view, 1)
+    stamp = pieces.turnedAt[1]
+    run(view, 0.05)
+    serverEvent("turned", 1, up=1.0)
+    assert pieces.turnedAt[1] == stamp, "自己刚翻的服务端又说一遍：不重复演"
+    assert len(actions()) == 1
+
+
 # ---------------------------------------------------------------- 拿着一叠点烤架
 
 def testAStackInTheHandGoesOnEverywhereWithTheLeftButtonAndOnTheNearestFreePlaceWithTheRight():
@@ -265,6 +352,15 @@ def testAStackInTheHandGoesOnEverywhereWithTheLeftButtonAndOnTheNearestFreePlace
     assert near in (0, 2, 4) and near != 1, "光标在占着的第 1 件上：最近的空位是它旁边的"
 
 
+def testTheFreePlacesAreTheStationsStateNotWhatIsDrawn():
+    """服务端说空的就算空：画面还在演取走的动作时，那个位置已经能放了。"""
+    view = make(pieces={1: item(BEEF)})
+    view.state.rawSetItem(("grill", 1), None)                 # 前置包先发状态（那一格空了），场景那边的事件还没到
+    view.setHand(item(BEEF, 5))
+    assert view.behavior.scene.pieces.shown[1] is not None
+    assert view.behavior._free() == [True] * 6
+
+
 def testRightClickingElsewhereWithAStackInHandIsLeftToTheKernelToPutAway():
     view = make(pieces={1: item(BEEF)})
     view.setHand(item(BEEF, 5))
@@ -272,158 +368,47 @@ def testRightClickingElsewhereWithAStackInHandIsLeftToTheKernelToPutAway():
     assert world.actions()[-1]["click"] == "PUT_AWAY"
 
 
-# ---------------------------------------------------------------- 效果
+# ---------------------------------------------------------------- 开着站点才有的演法
 
-def testANewPieceDropsOnToTheHotGrillAndHisses():
+def testSeveralPiecesTheCookLaysFlyInFromTheScreensBottomOneAfterTheOther():
     view = make()
-    view.state.rawSetItem(("grill", 2), item(BEEF))
-    view.data = {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False, False, True, False, False, False]}
-    view.behavior.onState(None)
-    assert view.behavior.pieces.motion[2].pose()[0][1] == 4.0, "从烤架上方 4 px 落下"
-    run(view, 0.25)
-    assert [p for p in factory.recorder.played if p[0] == "ambient.skillet.addfood"], "落到烤架上：下料的一声"
-    assert factory.recorder.created, "冒两口汽"
-    assert abs(center(drops()[0])[1] - (STOVE[1] + 1.0 + (16.3 - 16.0) / 16.0)) < 0.02, "落回烤架面"
-
-
-def testSeveralPiecesLandOneAfterTheOtherComingInFromTheScreensBottom():
-    view = make()
-    for place in (0, 1, 2):
-        view.state.rawSetItem(("grill", place), item(BEEF))
-    view.behavior.onState(None)
-    pieces = view.behavior.pieces
+    scene = view.behavior.scene
+    scene.apply({"dimensionId": 0, "pos": list(STOVE), "slots": [{"item": item(BEEF), "hand": True, "down": 0.0, "up": 0.0}] * 3 + [{}] * 3})
+    run(view, DT)
+    pieces = scene.pieces
     assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, False, False], "后面的先等着"
     offset = pieces.motion[0].pose()[0]
     assert offset[2] < -5.0, "从屏幕下沿那边（离相机近的一侧）飞来"
     run(view, 1.0)
-    assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, True, True]
-    assert len(drops()) == 3
+    assert [pieces.motion[place].visible for place in (0, 1, 2)] == [True, True, True] and len(drops()) == 3
 
 
-def serverTurned(view, place, down=0.0, up=1.0):
-    """服务端翻了一件：前置包先发状态（down / up 对调）、后发表现事件（带翻过来之后朝上那面烤到哪）。"""
-    data = dict((key, list(values)) for key, values in view.data.items())
-    data["down"][place], data["up"][place] = down, up
-    view.data = data
-    view.behavior.onState(None)
-    view.behavior.onEffect("turned", {"place": place, "up": up})
+def testARefusedStackBouncesTowardTheCookWhicheverSideHeStandsOn():
+    for yaw in (0, 90, 180, 270):
+        view = make(yaw=yaw)
+        serverEvent("refused", stack=item(BEEF))
+        scene = view.behavior.scene
+        middle = scene.space.toWorld(*scene.space.middle())
+        run(view, 0.3)
+        assert len(drops()) == 1
+        here = centerOf(drops()[0])
+        back = (view.toWorld(0.0, 0.0, -6.0)[0] - view.toWorld(0.0, 0.0, 0.0)[0], view.toWorld(0.0, 0.0, -6.0)[2] - view.toWorld(0.0, 0.0, 0.0)[2])
+        moved = (here[0] - middle[0], here[2] - middle[2])
+        assert abs(moved[0] - back[0] * 0.95) < 0.03 and abs(moved[1] - back[1] * 0.95) < 0.03, (yaw, moved, back)
+        run(view, 0.4)
+        assert drops() == []
 
 
-def testAnotherCooksTurnIsShownFromTheStartEvenThoughTheStateComesFirst():
-    view = make(pieces={1: item(BEEF)}, data={"down": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [False, True] + [False] * 4})
-    pieces = view.behavior.pieces
-    serverTurned(view, 1)
-    assert pieces.turnedAt[1] == pieces.clock, "别人翻的：照样演"
-    run(view, 0.1)
-    assert drops()[0]["item"]["newItemName"] == BEEF, "翻到一半之前还是生的那面朝上"
-    run(view, 0.1)
-    assert drops()[0]["item"]["newItemName"] == COOKED, "翻到一半换成熟的那面朝上的样子"
-    run(view, 0.3)
-    assert drops()[0]["item"]["newItemName"] == COOKED and actions() == [], "效果不发动作"
-
-
-def testMyOwnTurnIsNotPlayedAgainWhenTheServerSaysSo():
-    view = make(pieces={1: item(BEEF)}, data={"down": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [False, True] + [False] * 4})
-    pieces = view.behavior.pieces
-    click(view, 1)
-    stamp = pieces.turnedAt[1]
-    run(view, 0.05)
-    serverTurned(view, 1)
-    assert pieces.turnedAt[1] == stamp, "自己刚翻的（0.6 秒内）服务端又说一遍：不重复演"
-    run(view, 0.4)
-    assert drops()[0]["item"]["newItemName"] == COOKED and len(actions()) == 1
-
-
-def testALookThatChangesWithoutATurnEffectIsDrawnAfterAShortWait():
-    view = make(pieces={1: item(BEEF)}, data={"down": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [False, True] + [False] * 4})
-    data = dict((key, list(values)) for key, values in view.data.items())
-    data["up"][1] = 1.0
-    view.data = data
-    view.behavior.onState(None)
-    assert drops()[0]["item"]["newItemName"] == BEEF, "先等一等：翻面的效果可能紧跟着到"
-    run(view, 0.2)
-    assert drops()[0]["item"]["newItemName"] == COOKED
-
-
-def testATurnTheServerRefusedIsLaidBack():
-    view = make(pieces={1: item(BEEF)}, data={"down": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [False, True] + [False] * 4})
-    pieces = view.behavior.pieces
-    click(view, 1)
-    run(view, 0.1)
-    view.behavior.onEffect("unturned", {"place": 1})
-    assert pieces.heldUntil[1] == 0.0
-    run(view, 0.4)
-    assert drops()[0]["item"]["newItemName"] == BEEF, "服务端的状态里朝上那面还是生的：画回生的"
-
-
-def testATakenPieceLeavesAGhostAndGoesAtOnce():
-    view = make(pieces={3: item(BEEF)})
-    assert len(drops()) == 1
-    view.state.rawSetItem(("grill", 3), None)            # 前置包先发状态（那一格空了），后发表现事件
-    view.behavior.onState(None)
-    assert drops() == [], "真的那件马上没了"
-    view.behavior.onEffect("taken", {"place": 3, "stack": item(BEEF)})
-    assert len(drops()) == 1 and view.behavior.pieces.shown[3] is None, "真的那件马上没了，换成虚影"
-    run(view, 0.1)
-    assert len(drops()) == 1 and drops()[0]["scale"] < 5.0 / 8.0, "虚影缩小"
-    run(view, 0.3)
-    assert drops() == [], "虚影走完收掉"
-
-
-def testARefusedStackBouncesAGhostBack():
+def testAnOnlookerWithoutTheStationSeesTheRefusedStackBounceNorth():
     view = make()
-    view.behavior.onEffect("refused", {"stack": item(BEEF)})
-    assert len(drops()) == 1
-    run(view, 0.1)
-    assert [p for p in factory.recorder.played if p[0] == "block.lantern.hit"]
-    run(view, 0.4)
-    assert drops() == []
-
-
-def testPiecesLaidWhenTheStationOpensFlyInOnceTheCameraIsThere():
-    """右键拿着食物开站：摆上去的在第一份状态里就有了；placed 事件带着位置，镜头到位（第一帧）之后才演落下。"""
-    view = make(pieces={0: item(BEEF), 1: item(BEEF), 2: item(BEEF)})
-    pieces = view.behavior.pieces
-    view.behavior.onEffect("placed", {"places": [1, 2]})
-    assert pieces.pending == [1, 2]
-    run(view, 1.0 / 60.0)
-    assert pieces.motion[1].visible and not pieces.motion[2].visible and pieces.motion[0].visible
-    run(view, 1.0)
-    assert pieces.motion[2].visible
-
-
-def testAPieceDoneOnBothSidesSteamsAndGlints():
-    view = make(pieces={4: item(COOKED)})
-    view.behavior.onEffect("grilled", {"place": 4, "stack": item(COOKED)})
-    kinds = [identifier for identifier, _ in factory.recorder.created]
-    assert kinds.count("arris_diegesis:steam") == 3 and kinds.count("arris_diegesis:glint") == 3
-    assert not factory.recorder.played, "叮的一声世界里的广播已经有了，这里不重复"
-
-
-def testAPieceWaitingToBeTurnedSmokesAndAnotherOneGrillingSteams():
-    view = make(pieces={0: item(BEEF), 1: item(BEEF)},
-                data={"down": [1.0, 0.3, 0.0, 0.0, 0.0, 0.0], "up": [0.0] * 6, "hand": [True, True] + [False] * 4})
-    run(view, 5.0)
-    colours = [value for _, name, value in factory.recorder.variables if name == "variable.tint_r"]
-    assert any(abs(value - 0xC8 / 255.0) < 1.0e-6 for value in colours), "该翻的那件冒烟（灰白）"
-    assert [p for p in factory.recorder.played if p[0] == "ambient.skillet.sizzle" and p[2] > 0.0]
-    big = [value for particleId, name, value in factory.recorder.variables
-           if name == "variable.scale" and value > 2.0 and factory.recorder.created[particleId - 1][0] == "arris_diegesis:steam"]
-    assert big, "烟比蒸汽大"
-
-
-def testAnEmptyLitGrillOnlyShimmersWithHeat():
-    """JE 的 heat()：点着的烤架不管有没有东西都一阵阵热浪（每秒 1.6 个，煎锅那个 arris:pan_heat 粒子）；没有东西就没有蒸汽、烟和嗞嗞声。"""
-    view = make()
-    run(view, 5.0)
-    assert factory.recorder.played == []
-    kinds = [identifier for identifier, _ in factory.recorder.created]
-    assert 6 <= len(kinds) <= 10 and set(kinds) == {"arris:pan_heat"}, kinds
-    values = dict((name, value) for _, name, value in factory.recorder.variables)
-    assert values["variable.scale"] == 3.5 and abs(values["variable.alpha"] - 0x48 / 255.0) < 1.0e-9
-    assert 0.8 <= values["variable.life"] <= 1.3 and values["variable.speed_set"] == 1.0
-    lifted = [pos[1] for _, pos in factory.recorder.created]
-    assert all(STOVE[1] + 1.0 + 1.9 / 16.0 <= y <= STOVE[1] + 1.0 + 4.1 / 16.0 for y in lifted), "高出烤架面 2~4 像素"
+    view.behavior.onClose()
+    serverEvent("refused", stack=item(BEEF))
+    scene = Scenes.sceneAt(0, STOVE)
+    middle = scene.space.toWorld(*scene.space.middle())
+    for _ in range(18):
+        scene.frame(DT, True)
+    here = centerOf(drops()[0])
+    assert abs(here[0] - middle[0]) < 0.03 and here[2] - middle[2] < -0.3, "没有开站点的人没有自己这边可言：往 -z（北）弹"
 
 
 def testHoveringAPieceGivesNoFeedbackAsInJava():

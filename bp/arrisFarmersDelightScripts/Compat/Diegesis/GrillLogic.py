@@ -11,8 +11,9 @@
     place {"one", "place", "from"}  手上这叠（或背包第 from 格）：缺省每个空位摆一件；one 为真只摆 place 那一个位置；放不上去弹回
     turn  {"place"}                 这个烤位上的那件翻个面（离这件上次翻不到 0.3 秒、已经烤好的不算）
     take  {"place"}                 取下这个烤位上的那件（生的、半熟的、烤好的）进背包，放不下掉在脚下
-表现事件：placed {"places"}（摆上去的位置）、refused {"stack"}、turned {"place", "up"}（翻过来之后朝上那面烤到哪）/ unturned {"place"}、taken {"place", "stack"}、grilled {"place", "stack"}（两面都烤好了）。
-站点数据：down / up / hand 三个长 6 的列表（贴灶台那面、朝上那面烤到哪，手放的），每刻重算、变了才发。
+表现事件：placed {"places"}（摆上去的位置）、refused {"stack"}、turned {"place", "up"}（翻过来之后朝上那面烤到哪）/ unturned {"place"}、taken {"place", "stack"}。
+烤架上的画面和两面烤到哪不走站点的状态和效果：JE 的炉灶场景是 idle_visible，32 格内的人都看得见，所以事件和样子都由 Server/StoveLook.py 广播给附近所有人
+（开着站点的人也一样，他的客户端按"自己刚翻过"去重）；两面都烤好了的 grilled 由炉灶自己的每一步发（Server/Stove.py），站点开不开着都有。
 """
 import time
 
@@ -78,8 +79,6 @@ class GrillLogicMixin(object):
             return False
         EnsureStoveData(data)            # /setblock、结构放出的炉灶没走放置事件
         self.hand = HandGrill.handOf(self.station.dimensionId, self.station.pos, data)
-        if not self.station.users:
-            del self.hand.just[:]        # 没人在时烤好的那几件早就过去了：不要等人开站才叮一声
         self._layHeld(playerId)
         self._flush()
         return True
@@ -115,15 +114,8 @@ class GrillLogicMixin(object):
         return True
 
     def tick(self, dt):
-        hand = self.hand
-        if hand is None:
-            return
-        while hand.just:
-            place = hand.just.pop(0)
-            item = self.station.state.getItem((Rules.GROUP_GRILL, place))
-            self.station.effect("grilled", {"place": place, "stack": StoveLook.wire(item)})
-            ToAllPlayerPlaySound(self.station.dimensionId, self.station.pos, "random.pop")
-        self._flush()
+        if self.hand is not None:
+            self._flush()
 
     # ---------------------------------------------------------------- 动作
 
@@ -206,8 +198,7 @@ class GrillLogicMixin(object):
     # ---------------------------------------------------------------- 同步
 
     def _tell(self, name, data):
-        """表现事件：站点里的人（内核的 effect）和附近所有人（StoveLook 广播）都收到。"""
-        self.station.effect(name, data)
+        """表现事件：发给附近所有人（StoveLook 广播），开着站点的人也在里面。"""
         StoveLook.event(self.station.dimensionId, self.station.pos, name, data)
 
     def _blockData(self):
@@ -219,24 +210,16 @@ class GrillLogicMixin(object):
         return GrillOpen.isCovered(self.station.dimensionId, self.station.pos)
 
     def _flush(self):
-        """世界里的展示（烤位上的东西变了才广播）和站点数据（每刻重算，变了才发）。"""
+        """世界里的展示（烤位上的东西变了才广播）和世界外观广播（样子变了才发）。"""
         data = self._blockData()
         if data is None:
             return
         if self._laidNow:
-            StoveLook.event(self.station.dimensionId, self.station.pos, "placed", {"places": sorted(self._laidNow)})
+            self._tell("placed", {"places": sorted(self._laidNow)})
             del self._laidNow[:]
         if self._publishStove:
             self._publishStove = False
             PublishStove(self.station.dimensionId, self.station.pos, data)
-        grill, state = self.hand.grill, self.station.state
-        down, up, byHand = [], [], []
-        for place in range(Rules.PLACES):
-            here = state.getItem((Rules.GROUP_GRILL, place)) is not None
-            down.append(Frying.syncStep(grill.down(place)) if here else 0.0)
-            up.append(Frying.syncStep(grill.up(place)) if here else 0.0)
-            byHand.append(bool(grill.byHand(place)) and here)
-        state.setData({"down": down, "up": up, "hand": byHand})
         StoveLook.tick(self.station.dimensionId, self.station.pos, data, self.hand, time.time())
 
 

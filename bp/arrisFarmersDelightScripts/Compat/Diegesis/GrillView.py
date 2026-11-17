@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 """GrillView - 炉灶站点里本人的那一层：JE 的机位、底部托盘拿放、点烤位翻面或取下、食谱书（客户端）
 
-对应 Hands-On Delight：client/StoveBehavior.java 的 onEvent / onItemClick / onOpen / onEffect 和 scenes/stove.json（机位、命中盒）。
-烤架上的画面（六件、落下 / 翻面 / 取走的动作、热气蒸汽烟、声音）在 GrillPieces.py，这里把本人的手交给它，并照 JE 的规矩把点击变成动作：
-- 机位、飞入照场景文件：相机 (8, 50.5, -21) 看 (8, 16, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；没有提示行、没有抽屉（chrome 是 java）；
+对应 Hands-On Delight：client/StoveBehavior.java 的 onEvent / onItemClick / onOpen 和 scenes/stove.json（机位、命中盒）。
+烤架上的画面（六件、落下 / 翻面 / 取走的动作、热浪蒸汽烟、声音）是谁都看得见的世界场景（StoveScene.py），这里只把本人的手交给它，
+并照 JE 的规矩把点击变成动作：
+- 机位照场景文件：相机 (8, 50.5, -21) 看 (8, 16, 8)，视野 30 度，0.4 秒，窗口窄时保住左右；没有提示行、没有抽屉（chrome 是 java）；
 - 底部托盘（前置包按 usable 列出背包里烤得了的食物）点一叠就拿到手上；拿着一叠点烤架：左键每个空位摆一件，右键只摆离光标最近的
   空位那一个；Shift 点托盘里的食物直接整叠摆上去（槽规则放行，内核自己做）；
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
   既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
-坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.py）；命中盒、世界里的展示和这里画的对得上。
+坐标：件的位置固定在方块里，按玩家所在的一侧换到站点空间（GrillSpace.Space）；命中盒、世界里的展示和这里画的对得上。
+开站时场景交给本人的有三样：从屏幕下沿飞来的起点、站点方向换成场景方向的法子（被拒的虚影往自己这边弹）、"我开着站点"（自己翻的不重复演）。
 """
-from . import BookSources
-from .GrillPieces import Pieces
+from . import BookSources, StoveScenes
 from .GrillSpace import Space
-from ...Client import BlockItems
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover
 from ...Shared.Rules.HandsOn import StoveLayout
@@ -23,13 +23,6 @@ CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target
           "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
 SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
-AGAIN = 0.6                                            # 自己翻的这一下已经演过了：服务端说"翻了"的 0.6 秒内不重复演（onEffect 里 TURNED）
-
-
-def _place(data):
-    """服务端发来的位置序号：0..5 的整数才算，别的是 None。"""
-    value = data.get("place") if isinstance(data, dict) else None
-    return int(value) if isinstance(value, (int, type(2 ** 64))) and not isinstance(value, bool) and 0 <= value < StoveLayout.PLACES else None
 
 
 class GrillViewMixin(object):
@@ -42,7 +35,8 @@ class GrillViewMixin(object):
 
     def __init__(self, view):
         super(GrillViewMixin, self).__init__(view)
-        self.space = self.pieces = None        # onOpen 里建：服务端的 Opened 可能改了朝向（view.yaw），之后才算坐标
+        self.space = None                      # onOpen 里建：服务端的 Opened 可能改了朝向（view.yaw），之后才算坐标
+        self.scene = None                      # 这座炉灶的场景：画面、动作、声音都在它那里（没装场景时是 None，只剩点击和托盘）
 
     # ---------------------------------------------------------------- 钩子
 
@@ -53,53 +47,31 @@ class GrillViewMixin(object):
         return group == Rules.GROUP_GRILL and Rules.mayPlace(item)
 
     def onOpen(self):
-        BlockItems.hide(self.view.dimensionId, self.view.pos, True)     # 开站期间本端不画世界里的那份，关站时还原
         self.space = Space(self.view)
-        self.pieces = Pieces(self.view, self.space)
-        self.pieces.refresh()
+        self.scene = StoveScenes.ensure(self.view.dimensionId, self.view.pos)
+        if self.scene is not None:
+            self.scene.focus(self.space.fromPlayerInWorld, self.space.turn)
         BookSources.attach(self.view, "grill")
 
     def onClose(self):
-        BlockItems.hide(self.view.dimensionId, self.view.pos, False)
+        scene, self.scene = self.scene, None
+        if scene is not None:
+            scene.blur()
 
     def onState(self, changes):
-        if self.pieces is not None:
-            self.pieces.refresh()
         BookSources.refresh(self.view)
-
-    def onEffect(self, name, data):
-        pieces, place = self.pieces, _place(data)
-        if pieces is None:
-            return
-        if name == "placed":
-            pieces.placed(data.get("places") if isinstance(data, dict) else None)
-        elif name == "refused":
-            pieces.refused(data.get("stack"))
-        elif name == "turned" and place is not None and pieces.clock - pieces.turnedAt[place] > AGAIN:
-            pieces.turned(place, data.get("up"))       # 自己翻的已经演过了
-        elif name == "unturned" and place is not None:
-            pieces.unturned(place)
-        elif name == "taken" and place is not None:
-            pieces.taken(place, data.get("stack"))
-        elif name == "grilled" and place is not None:
-            pieces.grilled(place)
-
-    def frame(self, dt):
-        if self.pieces is None:
-            return
-        self.pieces.frame(dt)
 
     # ---------------------------------------------------------------- 拾取
 
     def pickables(self):
         """拿着东西时整个烤架面是一块（mouth）；手空着时只有烤位上的件能点（点件旁边什么也不发生）。"""
-        if self.pieces is None:
+        if self.scene is None:
             return []
         if self.view.hand is not None:
             return [self.space.box(self.api, "mouth", *StoveLayout.MOUTH_BOX)]
         boxes = []
         for place in range(StoveLayout.PLACES):
-            if self.pieces.shown[place] is not None:
+            if self.scene.pieces.shown[place] is not None:
                 lo, hi = StoveLayout.pieceBox(place)
                 boxes.append(self.space.box(self.api, "piece", lo, hi, place))
         return boxes
@@ -121,17 +93,21 @@ class GrillViewMixin(object):
             return True
         return False
 
+    def _free(self):
+        """哪些烤位空着：照站点的状态（服务端说了算），不看画着什么（画面可能还在落下 / 取走的动作里）。"""
+        return [self.view.state.getItem((Rules.GROUP_GRILL, place)) is None for place in range(StoveLayout.PLACES)]
+
     def _place(self, event):
         """拿着一叠点烤架（StoveBehavior.onItemClick）：左键每个空位一件；右键只放离光标最近的空位那一个。"""
         nearest = -1
         if event.button == 1:
             centers = [(x, z) for x, _, z in self.space.centers()]
-            nearest = StoveLayout.nearestFree(self.space.cursor(event.ray), centers, self.pieces.free())
+            nearest = StoveLayout.nearestFree(self.space.cursor(event.ray), centers, self._free())
         self.view.sendAction("place", StoveLayout.placeRequest(event.button, nearest))
 
     def _piece(self, event, place):
         """点烤位上的一件（StoveBehavior.onEvent）：右键取下；烤好的取下；否则翻面，它在空中的那一下不发。"""
-        pieces = self.pieces
+        pieces = self.scene.pieces
         item = pieces.shown[place]
         if item is None:
             return

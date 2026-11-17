@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-"""GrillPieces - 开着炉灶站点的人看到的烤架：六件食物、落下 / 翻面 / 取走 / 弹回的动作、热气蒸汽烟和声音（客户端）
+"""GrillPieces - 一座炉灶烤架上的画面：六件食物、落下 / 翻面 / 取走 / 弹回的动作、热浪蒸汽烟和声音（客户端）
 
-对应 Hands-On Delight：client/StoveBehavior.java 的 refresh / draw / turned / taken / onEffect / heat。状态来自站点
-（grill 槽组里是什么，data 里 down / up / hand 是每件两面烤到哪了、是不是手放的），动作的数学在 Shared/Rules/HandsOn/StoveMotion.py，
-热气的日程在 StoveFx.py，这里只把它们接到前置包的客户端道具（view.props，客户端掉落物）和粒子声音（GrillFx.py）上：
+对应 Hands-On Delight：client/StoveBehavior.java 的 refresh / draw / turned / taken / onEffect / heat。状态是"每个烤位里是什么，
+每件两面烤到哪了、是不是手放的"（view.state / view.data），动作的数学在 Shared/Rules/HandsOn/StoveMotion.py，热气的日程在 StoveFx.py，
+这里只把它们接到客户端道具（view.props，客户端掉落物）和粒子声音（GrillFx.py）上。谁都看得见的场景（StoveScene.py）拥有它，
+view 是 StoveWorld.WorldView，space 是 GrillSpace.WorldSpace：
 - 每件一个道具，平躺在烤位上，每件朝向不同；朝上那面熟了画熟的图，否则画生的（掉落物不能染色，JE 的焦色染不了）；
-- 一件新放上来：从上面落下带一跳，落地冒汽、嗞一声；一次放好几件（Shift 点托盘、拿着一叠点烤架）从屏幕下沿飞来，一件接一件；
+- 一件新放上来：从上面落下带一跳，落地冒汽、嗞一声；一次放好几件（Shift 点托盘、拿着一叠点烤架）：开着站点的人从屏幕下沿飞来，
+  旁观的人从正上方落下，一件接一件；
 - 点一件翻面：跳起 3 px、转到立起来、换成另一面的样子、转回来落下；别人翻的也这么演（服务端发 turned），自己翻的不重复；
 - 取走：虚影升起缩没（GrillGhosts）；放不上去：虚影从上面落下往后弹开；
-- 点着的烤架：在烤的冒蒸汽、该翻的冒烟，嗞嗞声（热浪暂缺）。
+- 点着的烤架：热浪、在烤的冒蒸汽、该翻的冒烟，嗞嗞声。离得远（near 假）时只算画面，不放粒子和声音。
 放上去、取下、烤好的"叮"这几声，世界里的广播（服务端的 ToAllPlayerPlaySound）已经有了，这里不重复。
 """
 import random
@@ -35,12 +37,12 @@ def _same(a, b):
 
 
 class Pieces(object):
-    """一个打开着的炉灶站点的烤架。space 是 GrillSpace.Space。"""
+    """一座炉灶的烤架。view 是 StoveWorld.WorldView，space 是 GrillSpace.WorldSpace。"""
 
     def __init__(self, view, space):
         self.view, self.space = view, space
         self.clock = 0.0
-        self.began = False                                   # 第一帧过了没有（镜头到位之后才有帧）
+        self.near = True                                     # 离本人够近：粒子和声音才放
         self.shown = [None] * PLACES                         # 每个位置现在画的是什么（JE 的 shown）
         self.up = [-1.0] * PLACES                            # 画的时候朝上那面烤到哪（shownUp），-1 = 没画过
         self.heldUntil = [0.0] * PLACES                      # 翻到一半之前沿用画着的 up，不用服务端发来的
@@ -53,15 +55,11 @@ class Pieces(object):
         self.last = [None] * PLACES
         self.ghosts = Ghosts(view, SCALE)
         self.heat = StoveFx.Heat(random.random)
-        self.pending = []                                    # 开站时一起摆上来的位置：第一帧起从玩家那边飞来
-        self.quiet = True                                    # 站点刚开：已经在烤架上的不演落下
+        self.quiet = True                                    # 刚建好 / 刚重建：已经在烤架上的不演落下
 
     def datum(self, key, place, default=0.0):
         values = self.view.data.get(key)
         return values[place] if isinstance(values, list) and place < len(values) else default
-
-    def free(self):
-        return [self.view.state.getItem((Rules.GROUP_GRILL, place)) is None for place in range(PLACES)]
 
     # ---------------------------------------------------------------- 状态 -> 画面
 
@@ -139,30 +137,18 @@ class Pieces(object):
 
     # ---------------------------------------------------------------- 每帧
 
-    def frame(self, dt):
+    def frame(self, dt, near=True):
         """前进 dt 秒：状态、动作、虚影、热气。每帧都对一遍状态（JE 每刻 refresh）：
-        翻到一半被服务端退回、状态比效果晚到这类，下一帧就画回服务端说的样子。"""
+        翻到一半被服务端退回、状态比效果晚到这类，下一帧就画回服务端说的样子。near 假：粒子和声音不放，画面照走。"""
+        self.near = near
         self.clock += dt
         self.refresh()
-        if not self.began:
-            self.began = True
-            self._arrivePending()
         for place in range(PLACES):
             for name in self.motion[place].update(dt):
                 self._event(place, name)
             self.pose(place)
         self.ghosts.frame(dt)
         self._heat(dt)
-
-    def _arrivePending(self):
-        """开站时一起摆上来的几件（右键拿着食物开站）：镜头到位了才演，从玩家那边飞来、一件接一件。"""
-        places = [place for place in self.pending if self.shown[place] is not None]
-        self.pending = []
-        for rank, place in enumerate(places):
-            together = len(places) > 1
-            self.motion[place].arrive(rank * StoveMotion.STAGGER if together else 0.0,
-                                      self.space.fromPlayer(rank, len(places)) if together else None)
-            self.draw(place)
 
     def _event(self, place, name):
         """动作走到点的事件：晚到的现身、落到烤架上冒汽嗞一声、翻到一半换另一面的样子、翻完落回烤架。"""
@@ -190,7 +176,8 @@ class Pieces(object):
         self._play(self.heat.step(dt, cooking, waiting))
 
     def _play(self, effects):
-        GrillFx.play(effects, self.space.world)
+        if self.near:
+            GrillFx.play(effects, self.space.world)
 
     # ---------------------------------------------------------------- 动作和效果
 
@@ -220,15 +207,22 @@ class Pieces(object):
         self.draw(place)
 
     def refused(self, stack):
-        """放不上去的一件：虚影从烤架中心上方落下，往后弹开。"""
-        self.ghosts.refused(stack, self.space.middle())
+        """放不上去的一件：虚影从烤架中心上方落下，往后弹开（往开着站点的人这边弹，旁观的人看它往北弹）。"""
+        self.ghosts.refused(stack, self.space.middle(), self.space.turn)
         self._play(StoveFx.refused())
 
     def grilled(self, place):
         """一件两面都烤好了：蒸汽和闪光。"""
         self._play([effect for effect in StoveFx.grilled(place, random.random) if not isinstance(effect, StoveFx.Sound)])
 
-    def placed(self, places):
-        """放上去了。站点刚开（右键拿着食物）时摆上来的在第一份状态里就有了，镜头到位之后才演落下。"""
-        if not self.began and places:
-            self.pending = [place for place in places if isinstance(place, int) and 0 <= place < PLACES]
+    def clear(self):
+        """所有道具和虚影收掉、样子清空（场景收掉、方块实体重建）：下一份状态来了按"刚加载"画，不演落下。"""
+        for place in range(PLACES):
+            self._drop(place)
+            self.shown[place] = None
+            self.up[place] = -1.0
+            self.heldUntil[place] = self.settleAt[place] = 0.0
+            self.turnedAt[place] = -10.0
+            self.motion[place] = StoveMotion.Piece(self.yaws[place])
+        self.ghosts.clear()
+        self.quiet = True

@@ -19,14 +19,15 @@ def beef(count=1):
     return {"newItemName": BEEF, "newAuxValue": 0, "count": count}
 
 
-def testOpeningBindsTheSixPlacesToTheBlockAndSendsWhatEachPieceIsDoing():
+def testOpeningBindsTheSixPlacesToTheBlockAndTheStationSendsNoPicturesOfItsOwn():
+    """烤架上的画面（两面烤到哪、动作）是谁都看得见的世界场景，靠 StoveLook 的广播；站点自己只管六个烤位里是什么。"""
     manager, data = K.setup()
     data["1"] = {"itemDict": beef(), "cookTimer": 30}
     payload = K.opened(manager)
     state = payload["state"]
     assert sorted(state["slots"]) == ["grill"] and len(state["slots"]["grill"]) == 6
     assert state["slots"]["grill"]["1"]["newItemName"] == BEEF and state["slots"]["grill"]["0"] == {}
-    assert state["data"] == {"down": [0.0] * 6, "up": [0.0] * 6, "hand": [False] * 6}, state["data"]
+    assert not state["data"], "站点不再带两面烤到哪的数据：画面照世界外观广播"
     assert payload["hand"] is None
     assert K.names(data)[:2] == [None, BEEF], "站点读的就是方块实体数据"
 
@@ -191,10 +192,10 @@ def testAPieceGrillsInHalvesWaitsToBeTurnedThenIsDone():
     K.do(manager, "a", K.click(K.inv(3), kind="QUICK_MOVE"))
     K.effects()
     K.step(SIDE - 0.5, manager=manager)
-    shared = K.stateData()
+    shared = K.current()
     assert 0.9 < shared["down"][0] < 1.0 and shared["up"][0] == 0.0 and shared["hand"][:2] == [True, True]
     K.step(1.0, manager=manager)
-    shared = K.stateData()
+    shared = K.current()
     grill = K.hand_of().grill
     assert shared["down"][0] == 1.0 and shared["up"][0] == 0.0 and grill.waits(0) and grill.waits(1), "贴烤架那面熟了：等着翻"
     K.step(5.0, manager=manager)
@@ -210,7 +211,8 @@ def testAPieceGrillsInHalvesWaitsToBeTurnedThenIsDone():
     assert [c for c in fake.calls if c[1] == "OnPlaySound" and c[2][0]["soundName"] == "random.pop"], "烤好了的叮一声"
 
 
-def testAPieceThatWasDoneWhileNobodyWatchedMakesNoNoiseWhenTheStationOpensLater():
+def testAPieceThatIsDoneWhileNobodyHasTheStationOpenIsAnnouncedToEveryoneNearby():
+    """JE 的炉灶场景 idle_visible：烤好的那一下（一团汽、金光、叮）32 格内的人都看得见，不用有人开着站点；站点后来再开也不重复。"""
     manager, data = K.setup()
     data["0"] = {"itemDict": beef(), "cookTimer": 30}
     K.hand_of().grill.layByHand(0)
@@ -218,11 +220,28 @@ def testAPieceThatWasDoneWhileNobodyWatchedMakesNoNoiseWhenTheStationOpensLater(
     assert K.hand_of().grill.toss(0, fake.world.time)           # 厨师翻了一下就走了
     K.step(SIDE + 0.5)
     assert K.names(data)[0] == "minecraft:cooked_beef", "没人开站点：照样烤好了"
-    assert K.hand_of().just == [0], "烤好了的记着，等站点来取"
+    assert K.hand_of().just == [], "烤好了的当场告诉附近的人，不留着等站点来取"
+    done = K.broadcasts("grilled")
+    assert len(done) == 1 and done[0][1]["place"] == 0 and sorted(done[0][2]) == ["a", "b"], "两个玩家都在 32 格内：都收到"
+    assert done[0][1]["stack"]["newItemName"] == "minecraft:cooked_beef"
     del fake.calls[:]
     K.opened(manager)
     K.step(0.5, manager=manager)
-    assert [name for name, _ in K.effects()] == [] and not [c for c in fake.calls if c[1] == "OnPlaySound"]
+    assert K.effects() == [] and not [c for c in fake.calls if c[1] == "OnPlaySound"], "站点开了不再补一遍"
+
+
+def testTheStationSendsNoEffectsOfItsOwnTheNearbyBroadcastCarriesThemAll():
+    manager, data = K.setup()
+    fake.give("a", 3, BEEF, 8)
+    K.opened(manager)
+    K.do(manager, "a", K.click(K.inv(3)))
+    K.do(manager, "a", K.custom("place"))
+    K.do(manager, "a", K.custom("turn", place=0))
+    K.do(manager, "a", K.custom("take", place=1))
+    assert fake.world.take("a", Protocol.EP_EFFECT) == [], "内核的效果通道不用了"
+    names = [name for name, _, _ in K.broadcasts()]
+    assert names == ["placed", "turned", "taken"] or names == ["placed", "unturned", "taken"], names
+    assert all(sorted(players) == ["a", "b"] for _, _, players in K.broadcasts()), "站点里的人和站点外附近的人收到同样的一份"
 
 
 def testTheHandGrillingIsSavedWithTheStoveAndPicksUpAfterARestart():
@@ -242,8 +261,8 @@ def testTheHandGrillingIsSavedWithTheStoveAndPicksUpAfterARestart():
     assert data["0"]["cookTimer"] == 30, "FD 的计时没动：没有被当成 FD 原样的件弹出去"
     K.step(40.0)
     assert K.names(data)[:2] == [BEEF, BEEF], "等着翻就一直等着翻，不会被 FD 弹出"
-    payload = K.opened(manager)
-    assert payload["state"]["data"]["down"][:2] == [1.0, 1.0] and payload["state"]["data"]["hand"][:2] == [True, True]
+    K.opened(manager)
+    assert K.current()["down"][:2] == [1.0, 1.0] and K.current()["hand"][:2] == [True, True], "进度和手放的记号都接上了"
     assert K.do(manager, "a", K.custom("turn", place=0))
     K.step(SIDE + 0.5, manager=manager)
     assert K.names(data)[0] == "minecraft:cooked_beef", "接着翻、接着烤"
@@ -264,7 +283,7 @@ def testTheProgressIsToldInThirtySecondsOfASide():
     K.opened(manager)
     K.do(manager, "a", K.click(K.inv(3), kind="QUICK_MOVE"))
     K.step(2.0, manager=manager)
-    shared = K.stateData()
+    shared = K.current()
     exact = K.hand_of().grill.down(0)
     assert 0.15 < exact <= 0.2 and shared["down"][0] == math.floor(exact * 32) / 32.0, "向下取到 1/32 的整数倍"
     assert shared["down"][1:] == [0.0] * 5 and shared["hand"] == [True] + [False] * 5
@@ -301,6 +320,7 @@ def testTakingARawHalfDoneOrDonePieceGivesItBackAndTheGrillStartsOver():
     fake.give("a", 3, BEEF, 2)
     K.opened(manager)
     K.do(manager, "a", K.click(K.inv(3), kind="QUICK_MOVE"))
+    manager.tick(0.05)
     K.effects()
     K.BlockItems.startRecording()
     assert K.do(manager, "a", K.custom("take", place=1))
@@ -362,8 +382,8 @@ def testAPieceFarmersDelightLaidItsOwnWayIsTurnedFromRawAndStaysTheCooks():
     """farmersDelightsWayStaysItsOwn：右键放上去的不是手放的；翻它一下，从此归厨师、从生开始算；烤架上它旁边手放的互不相干。"""
     manager, data = K.setup()
     data["2"] = {"itemDict": beef(), "cookTimer": 30}
-    shared = K.opened(manager)["state"]["data"]
-    assert shared["hand"] == [False] * 6
+    K.opened(manager)
+    assert K.current()["hand"] == [False] * 6
     K.step(5.0)
     assert not K.hand_of().grill.byHand(2) and K.names(data)[2] == BEEF
     assert data["2"]["cookTimer"] < 30, "FD 自己的 30 秒在倒数"
@@ -399,8 +419,8 @@ def testTheGrillKeepsItsPiecesWhenTheCookWalksAwayAndTheCursorStackGoesBack():
     assert fake.count("a", BEEF) == 3, "手上剩的放回背包"
     K.step(SIDE + 0.5)
     assert K.hand_of().grill.waits(0), "他走开了也接着烤：烤到一面熟了就等着翻"
-    payload = K.opened(manager)
-    assert payload["state"]["data"]["down"][0] == 1.0 and payload["state"]["data"]["hand"] == [True] * 6
+    K.opened(manager)
+    assert K.current()["down"][0] == 1.0 and K.current()["hand"] == [True] * 6
 
 
 def testAnotherCookAtTheSameStoveSeesTheChangesAsTheyHappen():
