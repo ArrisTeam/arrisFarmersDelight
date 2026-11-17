@@ -14,7 +14,7 @@ from ...Client.Engine import compFactory, levelId
 from ...Shared.Data.FoodColors import FoodColors
 from ...Shared.Rules import BlockDisplay, PotModelMath, StoveFacing
 from ...Shared.Rules import BoardDust as Dust
-from ...Shared.Rules.BoardSounds import BOUNCE, KNOCK, snipBite  # noqa: F401 （别的模块从这里拿）
+from ...Shared.Rules.BoardSounds import BOUNCE, DEFINITION_VOLUMES, KNOCK, snipBite  # noqa: F401 （别的模块从这里拿）
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
@@ -32,8 +32,9 @@ DEFAULT_COLOR = 0xE0D0A0
 
 
 def play(sound, world):
-    """放一声 (名字, 音量, 音调)，位置是世界坐标。"""
-    compFactory.CreateCustomAudio(levelId).PlayCustomMusic(sound[0], tuple(world), float(sound[1]), float(sound[2]), False, None)
+    """放一声 (名字, 音量, 音调)，位置是世界坐标。音量是 JE 的音量：定义里每个采样自带的音量（DEFINITION_VOLUMES）引擎会乘上去，所以先除掉。"""
+    volume = float(sound[1]) / DEFINITION_VOLUMES.get(sound[0], 1.0)
+    compFactory.CreateCustomAudio(levelId).PlayCustomMusic(sound[0], tuple(world), volume, float(sound[2]), False, None)
 
 
 def colorOf(itemName, stroke=None):

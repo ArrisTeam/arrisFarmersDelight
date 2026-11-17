@@ -11,6 +11,7 @@ import fdtest
 
 KNIFE, AXE = "arris:iron_knife", "minecraft:iron_axe"
 POS = list(C.STATION_POS)
+KNIFE_ENGINE_VOLUME = 0.8 / 1.5          # JE 的刀声 0.8；定义里每个采样自带 1.5，引擎会乘上去，所以交给引擎的是 0.8 / 1.5（BoardSounds.DEFINITION_VOLUMES）
 
 
 def _open(board=None, layers=(), data=None, hand=None):
@@ -37,10 +38,10 @@ def _names():
 def testTheCookHearsTheKnifeAtPointEightThenTheLastStrokesThreeSounds():
     behavior, view = _open(C.item("arris:cabbage", 2), data={"plan": 1, "marks": 0, "style": "across", "spots": [0.5], "angles": [0.0], "stroke": "cut", "dish": ""})
     behavior.onEffect("chopped", _chopped())
-    assert C.engine.played[-1][0] == "ambient.cutting_board.knife" and C.engine.played[-1][1] == 0.8 and 0.95 <= C.engine.played[-1][2] <= 1.10
+    assert C.engine.played[-1][0] == "ambient.cutting_board.knife" and C.engine.played[-1][1] == KNIFE_ENGINE_VOLUME and 0.95 <= C.engine.played[-1][2] <= 1.10
     C.engine.played[:] = []
     behavior.onEffect("chopped", _chopped(done=True, count=2))
-    assert [(sound[0], sound[1]) for sound in C.engine.played] == [("ambient.cutting_board.knife", 0.8), ("random.pop", 0.35)], "FD 的切声 + 飞给厨师的拿起声"
+    assert [(sound[0], sound[1]) for sound in C.engine.played] == [("ambient.cutting_board.knife", KNIFE_ENGINE_VOLUME), ("random.pop", 0.35)], "FD 的切声 + 飞给厨师的拿起声"
     assert C.engine.played[-1][2] == 1.3
 
 
@@ -85,7 +86,7 @@ def testAnOnlookerHearsTheSameSoundsFromTheBoard():
     C.engine.reset()
     C.BoardWatch.enable(C.Geometry)
     C.BoardWatch.OnBoardLook(_look("chopped", **_chopped(done=True, count=2)))
-    assert [(sound[0], sound[1]) for sound in C.engine.played] == [("ambient.cutting_board.knife", 0.8), ("random.pop", 0.35)]
+    assert [(sound[0], sound[1]) for sound in C.engine.played] == [("ambient.cutting_board.knife", KNIFE_ENGINE_VOLUME), ("random.pop", 0.35)]
     x, y, z = C.engine.playedAt[0]
     assert (x, z) == (POS[0] + 0.5, POS[2] + 0.5) and POS[1] < y < POS[1] + 1, "声音从板上传来"
     C.engine.played[:] = []
@@ -158,6 +159,26 @@ def testAnOnlookerHearsTheKnockOfARefusedStackTheSameAsTheCook():
     x, y, z = C.engine.playedAt[0]
     assert (x, z) == (POS[0] + 0.5, POS[2] + 0.5) and POS[1] < y < POS[1] + 1, "声音从板上传来"
     assert "refused" in C.BoardWatch.OBSERVED and C.BoardWatch.OBSERVED >= set(["chopped", "placed", "taken", "carved", "assembled"])
+
+
+def testTheKnifeIsNotOneAndAHalfTimesLouderThanJavaBecauseOfItsDefinition():
+    """rp/sounds/sound_definitions.json 里刀声两个采样各自带 volume 1.5，引擎把调用的音量乘上去：JE 的 0.8 不除的话放出来是 1.2。
+    站点里的人、旁观的人、点空了的刀（敲一声）、最后一刀，听到的刀声乘上定义的音量都是 JE 的 0.8；别的声音（原版的，定义里没有音量）原样交给引擎。"""
+    assert C.BoardFx.DEFINITION_VOLUMES == {"ambient.cutting_board.knife": 1.5}, "BoardFx 用的就是声音表里的那张"
+    behavior, view = _open(C.item("arris:cabbage", 2), data={"plan": 1, "marks": 0, "style": "across", "spots": [0.5], "angles": [0.0], "stroke": "cut", "dish": ""})
+    for done in (False, True):
+        C.engine.played[:] = []
+        behavior.onEffect("chopped", _chopped(done=done, count=2) if done else _chopped())
+        knife = [sound for sound in C.engine.played if sound[0] == "ambient.cutting_board.knife"]
+        assert len(knife) == 1 and abs(knife[0][1] * 1.5 - 0.8) < 1e-9, done
+    C.engine.reset()
+    C.BoardWatch.enable(C.Geometry)
+    C.BoardWatch.OnBoardLook(_look("chopped", **_chopped()))
+    assert abs(C.engine.played[-1][1] * 1.5 - 0.8) < 1e-9
+    C.engine.reset()
+    C.BoardFx.play(("hit.wood", 0.25, 1.6), (0.0, 0.0, 0.0))
+    C.BoardFx.play(("random.pop", 0.35, 1.3), (0.0, 0.0, 0.0))
+    assert C.engine.played == [("hit.wood", 0.25, 1.6), ("random.pop", 0.35, 1.3)], "原版的声音：音量不动"
 
 
 def testTheBroadcastIsDeadUntilTheBoardStationIsRegisteredByTheBoot():
