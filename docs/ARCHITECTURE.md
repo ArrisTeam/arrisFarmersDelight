@@ -575,7 +575,7 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 - 游戏内自检：`Server/Debug/McdkSelfTest.py`（`mcdk_test_run()` / 约 15 秒后 `mcdk_test_collect()`），含切菜板站点用例
   （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。同目录还有 `McdkDishTest`（砧板摆盘、一桶水揉一叠面团）、
   `McdkBookTest`（食谱书放料）、`McdkPotTest` / `McdkPanTest` / `McdkGrillTest`（三个站点的烹饪；`McdkGrillTest` 还有炉灶四个朝向的自检：服务端读 direction 状态 / aux /
-  站点朝向钩子，客户端 `Client/Debug/McdkGrillTest` 读同一格的 aux 和客户端的钩子，在游戏里对起来）、`McdkCraftTest`（工作台合成：摆格子、
+  站点朝向钩子，客户端 `Client/Debug/McdkGrillTest` 读同一格的 aux 和客户端的钩子，在游戏里对起来）、`McdkStoveFireTest`（点火 / 灭火换方块：记下引擎事件到的先后、核对东西带过去，`start` / `collect`）、`McdkCraftTest`（工作台合成：摆格子、
   点结果格、核对剩余物和拦截，要用 mc_input 点）、`McdkBackstabTest`（背刺），调用方法写在各文件头。几个自检别同时跑（共用玩家脚边的位置）。
   `McdkTableSyncTest`（服务端 `Server/Debug/` 照下游的写法追加石剑当刀、黏土球的切菜配方、木棍 / 圆石煮钻石的厨锅配方、胡萝卜可煎烤，再补发；客户端 `Client/Debug/` 用
   `is_client` 为真的 `execute_code` 看本端的表和站点判断认不认得）。
