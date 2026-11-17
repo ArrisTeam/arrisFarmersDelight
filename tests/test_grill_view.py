@@ -23,7 +23,7 @@ _engine = sys.modules[dgtest.SCRIPTS + ".Client.Engine"]
 
 class Recorder(object):
     def __init__(self):
-        self.created, self.variables, self.played = [], [], []
+        self.created, self.variables, self.played, self.ui = [], [], [], []
 
     def Create(self, identifier, pos):
         self.created.append((identifier, tuple(pos)))
@@ -34,6 +34,10 @@ class Recorder(object):
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, entity):
         self.played.append((name, tuple(pos), volume, pitch))
+        return "id"
+
+    def PlayCustomUIMusic(self, name, volume, pitch, loop):
+        self.ui.append((name, volume, pitch))                 # 内核自己的拿放声（没人接的右键放回背包）
         return "id"
 
 
