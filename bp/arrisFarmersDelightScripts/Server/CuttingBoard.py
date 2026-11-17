@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """CuttingBoard - 砧板：放上一叠物品、用对的工具一件件切、空手取回（服务端）
 
-照 JE：手里那一叠整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
-工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），带 chance 的产物按概率给。
+照 JE（FD 的 CuttingBoardBlock.use）：板空着时手里什么都能整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
+板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）就当是拿工具来切：工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），
+带 chance 的产物按概率给。空手取回，创造模式取回的东西不给玩家（:68）。
 板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
@@ -18,8 +19,6 @@ from ..Shared.Rules import CuttingStation
 from ..Shared.Rules.HandsOn import ItemData
 
 CUTTING_BOARD = "arris:cutting_board"
-# 这些类型的物品可以单纯摆在砧板上（不切）
-_PLACEABLE_TYPES = ("sword", "axe", "hoe", "shovel", "pickaxe")
 
 
 @registerHandler("BlockNeighborChangedServerEvent", match=CUTTING_BOARD)
@@ -54,10 +53,11 @@ def OnServerCuttingBoardBlockUse(args):
     if carriedDict:
         _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId)
         return
-    # 空手：取回砧板上的物品
+    # 空手：取回砧板上的东西
     cuttingDict = blockEntityData["cuttingDict"]
     if cuttingDict:
-        SetCarriedItem(playerId, ItemData.restored(cuttingDict))
+        if not IsCreative(playerId):                       # JE CuttingBoardBlock.java:68：创造模式取回的东西不给玩家
+            SetCarriedItem(playerId, ItemData.restored(cuttingDict))
         ToAllPlayerPlaySound(dimensionId, blockPos, "armor.equip_leather")
         blockEntityData["cuttingDict"] = None
         PublishBoard(dimensionId, blockPos, None)
@@ -67,43 +67,36 @@ def _kind(item):
     return (item["newItemName"], item.get("newAuxValue") or 0)
 
 
+def _maxStack(item):
+    info = compFactory.CreateItem(levelId).GetItemBasicInfo(item["newItemName"], _kind(item)[1]) or {}
+    return max(1, info.get("maxStackSize") or 64)
+
+
+def _stacksOnto(board, carriedDict):
+    """手里的能叠到板上这一叠上吗（JE 的 isSameItemSameTags，ItemStackHandler.insertItem）：同一种、数据也一样、没叠满。"""
+    return _kind(carriedDict) == _kind(board) and ItemData.same(board, carriedDict) and board["count"] < _maxStack(carriedDict)
+
+
 def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
-    itemType = GetItemType(carriedDict)
-    cuttingDict = blockEntityData["cuttingDict"]
-    if cuttingDict:
-        if _kind(carriedDict) == _kind(cuttingDict):
-            _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)     # 同一种：接着叠
-            return
-        result = CuttingBoardDict.get(_kind(cuttingDict))
-        if not result:
-            ShowTip(playerId, "这东西可不能切啊……")
-        elif CuttingStation.fitsTool(carriedDict["newItemName"], itemType, result, IsKnife):
-            _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId)
-        else:
-            ShowTip(playerId, "或许得换个工具……")
-        return
     if carriedDict["newItemName"] == "arris:skillet_item":
-        return
-    if itemType in _PLACEABLE_TYPES or _kind(carriedDict) in CuttingBoardDict:
-        _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)
+        return                           # 煎锅物品潜行才放成方块（Server/SkilletItem.py），这一下不当东西摆上板
+    board = blockEntityData["cuttingDict"]
+    if not board or _stacksOnto(board, carriedDict):
+        _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)      # FD 的 canAddItem：板空着，或是同一种还有空位
     else:
-        ShowTip(playerId, "这东西可不能切啊……")
+        _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerId)
 
 
 def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
-    """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。数据（附魔、改名……）存不进方块实体数据的、
-    和板上的数据不一样的不放（JE 的 isSameItemSameTags），不然取回时会丢数据。"""
-    board = blockEntityData["cuttingDict"]
-    if not ItemData.storable(carriedDict) or (board and not ItemData.same(board, carriedDict)):
+    """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。数据（附魔、改名……）存不进方块实体数据的不放，不然取回时会丢数据。"""
+    if not ItemData.storable(carriedDict):
         ShowTip(playerId, "这东西放不上砧板……")
         return
-    info = compFactory.CreateItem(levelId).GetItemBasicInfo(carriedDict["newItemName"], _kind(carriedDict)[1]) or {}
-    room = max(1, info.get("maxStackSize") or 64) - (board["count"] if board else 0)
-    moved = min(carriedDict["count"], room)
-    if moved <= 0:
-        return
+    board = blockEntityData["cuttingDict"]
+    have = board["count"] if board else 0
+    moved = min(carriedDict["count"], _maxStack(carriedDict) - have)
     stack = dict(board) if board else ItemData.stored(carriedDict)
-    stack["count"] = (board["count"] if board else 0) + moved
+    stack["count"] = have + moved
     blockEntityData["cuttingDict"] = stack
     if not IsCreative(playerId):
         left = dict(carriedDict)
@@ -111,6 +104,17 @@ def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
         SetCarriedItem(playerId, left if left["count"] > 0 else None)
     ToAllPlayerPlaySound(dimensionId, blockPos, "dig.wood")
     PublishBoard(dimensionId, blockPos, stack)
+
+
+def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerId):
+    """JE 的 processStoredItemUsingTool：板上的东西没有切法提示不能切，手里的工具不对提示换工具，对了切一件。"""
+    result = CuttingBoardDict.get(_kind(board))
+    if not result:
+        ShowTip(playerId, "这东西可不能切啊……")
+    elif CuttingStation.fitsTool(carriedDict["newItemName"], GetItemType(carriedDict), result, IsKnife):
+        _cutOne(blockEntityData, board, result, carriedDict, blockPos, dimensionId, playerId)
+    else:
+        ShowTip(playerId, "或许得换个工具……")
 
 
 def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId):
