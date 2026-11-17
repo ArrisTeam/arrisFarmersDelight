@@ -5,11 +5,13 @@
 每个煎锅一份 PanHand，站点关了它还在（锅里的东西接着煎、等着翻），方块没了才删。和 HoD 一样存进方块实体数据（键 panFrying，
 Frying.save / load）：服务器重启、区块卸载再加载之后接着煎。
 不是手放的（FD 自己的右键放进来的）照旧由 Server/Skillet.py 一件一件煎、弹出来；颠一下锅就从此归厨师，从生开始重算。
-一面多久按方块里那件煎锅的火焰附加算（PanStation.sideSeconds）。两面都熟时这一批换成成品留在锅里，并广播 fried 事件（PanLook）。
+一面多久按方块里那件煎锅的火焰附加和配置里的 skillet_time 倍率算（PanStation.sideSeconds）；
+站点关了（配置里 skillet 为假）时存档里留下的手放的锅交给 FD 原样煎，不再等人颠。两面都熟时这一批换成成品留在锅里，并广播 fried 事件（PanLook）。
 """
 from . import PanLook
 from .Helpers.BlockItems import PublishSkillet
 from .Helpers.Engine import System
+from ..Shared.Rules import HandsOnOptions as Options
 from ..Shared.Rules import PanStation
 from ..Shared.Rules.HandsOn import Frying
 
@@ -77,6 +79,10 @@ def fry(hand, dimensionId, blockPos, blockEntityData, dt, fireAspect=0):
             save(hand, blockEntityData)
         return False
     if not frying.byHand:
+        return False
+    if not Options.skillet():
+        frying.farmersDelightsWay()      # 煎锅站点关了，没人能颠这锅了：交给 FD 原样煎（SkilletCooking.fry 的 !HandsOnConfig.skillet()）
+        save(hand, blockEntityData)
         return False
     fried = PanStation.friedOf(item["newItemName"])
     if fried is None:

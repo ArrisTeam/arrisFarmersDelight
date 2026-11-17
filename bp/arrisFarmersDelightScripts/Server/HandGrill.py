@@ -6,6 +6,7 @@
 服务器重启后炉灶第一次 tick 接上。手放 / 手翻过的烤位由这里烤，别的（FD 自己的右键放上去的）照旧由 Server/Stove.py 每件 30 秒烤好弹出来（JE：营火配方的 600 刻）。
 """
 from ..Shared.Rules import GrillStation
+from ..Shared.Rules import HandsOnOptions as Options
 from ..Shared.Rules.HandsOn import Grill
 
 COOK_TIMER = 30                   # 与 Server/Stove.py 一致：烤位的 FD 计时（JE 的炉灶按营火配方 600 刻 = 30 秒）
@@ -64,8 +65,17 @@ def slotItem(blockEntityData, place):
     return item if item and item.get("newItemName") else None
 
 
+def handOver(hand, blockEntityData, place, item):
+    """炉灶站点关了，没人能翻这一件了：交给 FD 原样烤，用配方的时间（站点关了倍率算 1.0），已经烤好的 1 刻就弹出来
+    （StoveCooking.handOver / farmersDelightsTime；Grill.handOverSeconds 是它的时长）。"""
+    hand.grill.farmersDelightsWay(place)
+    done = GrillStation.grilledOf(item["newItemName"]) is None
+    blockEntityData[str(place)] = {"itemDict": item, "cookTimer": Grill.handOverSeconds(GrillStation.RECIPE_SECONDS, done, Options.stoveTime())}
+
+
 def grill(hand, blockEntityData, dt):
-    """手放的烤位烤 dt 秒（炉灶的 tick 调用）。返回 (这些烤位归手工管、FD 原样别碰, 有没有烤位换成了成品)。"""
+    """手放的烤位烤 dt 秒（炉灶的 tick 调用）。返回 (这些烤位归手工管、FD 原样别碰, 有没有烤位换成了成品)。
+    炉灶站点关了（配置里 stove 为假）：手放的都交给 FD 原样烤（StoveCooking.tick 的 !HandsOnConfig.stove()），这里一件也不管。"""
     handled, changed, side = set(), False, GrillStation.sideSeconds()
     for place in range(GrillStation.PLACES):
         if not hand.grill.byHand(place):
@@ -73,6 +83,9 @@ def grill(hand, blockEntityData, dt):
         item = slotItem(blockEntityData, place)
         if item is None:
             hand.grill.farmersDelightsWay(place)
+            continue
+        if not Options.stove():
+            handOver(hand, blockEntityData, place, item)
             continue
         handled.add(place)
         grilled = GrillStation.grilledOf(item["newItemName"])

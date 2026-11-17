@@ -10,6 +10,7 @@ JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的�
 QUICK_MOVE，它只看 pan 槽组的规则（accepts、一批 16 件的上限）和 mayPlace——两条路用的是同一份判断（mayPlace / SlotRules）。
 """
 from ..Data.Cooking import CanCookedFoodDict
+from . import HandsOnOptions as Options
 from .HandsOn import Frying
 
 STATION_ID = "arris:skillet"
@@ -34,9 +35,10 @@ def isOneSided(itemName):
 
 
 def sideSeconds(batch, fireAspect=0):
-    """手放的一批一面要多久。fireAspect 是方块里那件煎锅的火焰附加等级（JE：SkilletBlock.getSkilletCookingTime 再按 sideTicks 算）。"""
+    """手放的一批一面要多久。fireAspect 是方块里那件煎锅的火焰附加等级（JE：SkilletBlock.getSkilletCookingTime 再按 sideTicks 算）；
+    配置里的 skillet_time（HandsOnConfig.skilletTime，煎锅站点关了是 1）是倍数：只算站点里手放的，FD 自己的右键放进去的照旧 6 秒一件。"""
     seconds = SKILLET_SECONDS if not fireAspect else Frying.skilletSeconds(CAMPFIRE_SECONDS, fireAspect)
-    return Frying.sideSeconds(seconds, batch)
+    return Frying.sideSeconds(seconds, batch, Options.skilletTime())
 
 
 def acceptsFryable(item):

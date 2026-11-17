@@ -11,6 +11,7 @@
 from ..Data.Cooking import StoveList
 from ..Data.Cutting import knifeList
 from .BlockDisplay import STOVE_SLOTS
+from . import HandsOnOptions as Options
 from .HandsOn import Grill
 from .PanStation import canFry as hasRecipe, friedOf as grilledOf, isOneSided  # noqa: F401 - 炉灶与煎锅同一张表
 
@@ -26,7 +27,8 @@ CUTTING_TYPES = ("axe", "pickaxe", "hoe")                                # 砧�
 
 
 def sideSeconds():
-    return Grill.sideSeconds(RECIPE_SECONDS)
+    """手放的一件一面要多久；配置里的 stove_time（HandsOnConfig.stoveTime，炉灶站点关了是 1）是倍数，FD 自己的右键放上去的照旧 30 秒一件。"""
+    return Grill.sideSeconds(RECIPE_SECONDS, Options.stoveTime())
 
 
 def canGrill(itemName):
