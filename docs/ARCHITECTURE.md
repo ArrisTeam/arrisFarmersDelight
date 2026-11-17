@@ -127,6 +127,8 @@ Compat/
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
                         TouchFeel（客户端，四个站点共用：触屏的轻震和双击间隔，问前置包的 view.buzz / view.doubleSeconds，老版本没有就不震，docs/diegesis/DESIGN.md §9）；
+                        HoldMenu + PotHold / BoardHold / PanHold / GrillHold（客户端，触屏长按菜单：前置包的可选钩子 onHold 的条目和各站点的判断，只给和点一下不一样的右键 /
+                        Shift 点击变体，老版本的前置包没有 HOLD_MENU 就永远不会被问，docs/diegesis/DESIGN.md §9）；
                         四个站点的开关、搅拌、食谱书、烹饪倍率读 Shared/Data/HandsOnConfig（docs/diegesis/DESIGN.md §4.1）：每个站点的 register 在配置里关了返回 None
                         （服务端、客户端同一个条件），各站点的步骤看返回值连带广播、场景、旁观声音、DishCrafts（返回 False 的步骤记成 skipped）；
                         BookSources（客户端，把各站点的食谱书交给前置包）+ BookFill（服务端，照书从背包放料）；
