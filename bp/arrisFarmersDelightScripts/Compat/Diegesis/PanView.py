@@ -12,12 +12,12 @@
 - 手上拿着东西（托盘里拿起一叠，或开站这一下就拿着）点锅的任何地方（mouth / food / handle 的碰撞盒）：放进去，左键整叠、右键一个，
   放不进的那一件弹开（服务端判，回 refused）；托盘里空手 Shift 点（前置包 onInventoryShiftClick 钩子）发 place {from: 背包格号}，整叠进锅（一批为止），
   放不进同样弹开；前置包没有这个钩子的老版本走内核自己的 QUICK_MOVE；
-- 托盘只列煎得了的东西（usable）；食谱书照旧挂（BookSources），只看。
+- 托盘只列煎得了的东西（usable）；食谱书照旧挂（BookSources），只看；触屏没有右键 / Shift，按住不动的菜单在 PanHold.py（onHold）。
 坐标：HoD 的场景坐标（锅柄朝 +z）经 PanModelMath 换到世界，再经 view.toStation 到站点像素，所以随方块朝向转。
 """
 import math
 
-from . import BookSources, PanScenes, TouchFeel
+from . import BookSources, PanHold, PanScenes, TouchFeel
 from ...Client.Engine import clientApi, compFactory, levelId
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanModelMath as Math
@@ -203,6 +203,8 @@ class PanViewMixin(object):
             self._flush()
             return True
         return False
+
+    onHold = PanHold.onHold                   # 触屏长按（前置包的 onHold 钩子）：手上的东西放一个、没熟的食物全部取回
 
     def _withStack(self, event, key):
         """手上拿着东西点锅的任何一处：放进去（onItemClick）；点在别处不处理，右键由内核把手上的放回背包。"""

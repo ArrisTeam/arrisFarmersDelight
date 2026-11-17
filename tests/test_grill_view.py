@@ -553,5 +553,45 @@ def testAnOldFrontDoorGetsNoBehavior():
     assert GrillView.register(Old) is None and Registry.getBehavior("arris:stove") is None
 
 
+# ---------------------------------------------------------------- 触屏长按（onHold）：右键 / Shift 点击的变体，只给和点一下不一样的
+
+HoldMenu = fdtest.load("Compat.Diegesis.HoldMenu")
+
+
+def testHoldingAStackOverTheGrillOffersPutHereWhereMoreThanOnePlaceIsFree():
+    """点一下：每个空位摆一件（先摆第一个空位）；右键：只摆离光标最近的空位那一件——空位不止一个，选哪一格才有区别（东西只有一个也一样）。"""
+    view = make(pieces={1: item(BEEF)})
+    view.setHand(item(BEEF, 5))
+    assert view.holdOf(screenOf(view, 4)) == {"menu": [HoldMenu.PUT_HERE]} and HoldMenu.PUT_HERE == {"label": "只放这一格", "button": 1, "quick": False}
+    assert click(view, 4) and actions()[-1] == ("place", {})
+    assert click(view, 4, button=1) and actions()[-1] == ("place", {"one": True, "place": 4}), "点一下和右键真的不一样"
+    view.setHand(item(BEEF, 1))
+    assert view.holdOf(screenOf(view, 4)) == {"menu": [HoldMenu.PUT_HERE]}, "手上只有一个：选哪一格照样有区别"
+    assert view.holdOf((5.0, 5.0)) is None, "点在烤架以外：不接，没有变体"
+    view = make(pieces=dict((place, item(BEEF)) for place in range(5)))
+    view.setHand(item(BEEF, 5))
+    assert view.holdOf(screenOf(view, 5)) is None, "只剩一个空位：左键右键放在同一处"
+
+
+def testEmptyHandOverARawPieceOffersTakeWhereATapWouldTurnIt():
+    view = make(pieces={0: item(BEEF)})
+    assert view.holdOf(screenOf(view, 0)) == {"menu": [HoldMenu.TAKE_PIECE]} and HoldMenu.TAKE_PIECE == {"label": "取下", "button": 1, "quick": False}
+    assert click(view, 0) and actions()[-1] == ("turn", {"place": 0}), "点一下：翻面"
+    assert click(view, 0, button=1) and actions()[-1] == ("take", {"place": 0}), "右键：取下"
+
+
+def testADonePieceOneStillInTheAirOrNoPieceHasNoMenuSoTheTapActsAtOnce():
+    view = make(pieces={0: item(COOKED)})
+    assert view.holdOf(screenOf(view, 0)) is None, "烤好了：点一下就是取下"
+    view = make(pieces={0: item(BEEF)})
+    click(view, 0)
+    assert view.holdOf(screenOf(view, 0)) is None, "刚翻过、还在空中：点一下什么也不做，不等"
+    run(view, 1.0)
+    assert view.holdOf(screenOf(view, 0)) == {"menu": [HoldMenu.TAKE_PIECE]}, "落下来了：又是点一下翻面"
+    assert view.holdOf((5.0, 5.0)) is None, "别处"
+    view.behavior.scene = None
+    assert view.holdOf(screenOf(view, 0)) is None
+
+
 if __name__ == "__main__":
     raise SystemExit(dgtest.run(globals()))

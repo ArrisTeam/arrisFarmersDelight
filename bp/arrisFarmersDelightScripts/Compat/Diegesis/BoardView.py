@@ -9,10 +9,10 @@
   右键 / 没有刀的左键 = 取回；摆盘一层层往上放，凑成了点一下做成；Shift 点空板 = 手上的工具插进去；
 - 板上的东西由本端自己画（开站期间 Client/BlockItems 不画这块板，关站还原）；食谱书照旧挂在左边（BookSources）；
 - 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
-点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
+点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）；触屏没有右键 / Shift，按住不动的菜单在 BoardHold.py（onHold）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
 from . import Arrival, BookSources, TouchFeel
-from . import BoardEffects, BoardFx
+from . import BoardEffects, BoardFx, BoardHold
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
 from .BoardFx import KNOCK, play
@@ -173,6 +173,8 @@ class BoardViewMixin(object):
         if self.view.hand is not None:
             return key == "mouth" and self._withStack(event)
         return key == "surface" and self._bareHand(event)
+
+    onHold = BoardHold.onHold                 # 触屏长按（前置包的 onHold 钩子）：手上的东西放一个、工具插在板上、空手取回
 
     def _withStack(self, event):
         """手上拿着东西点板（onItemClick）。"""

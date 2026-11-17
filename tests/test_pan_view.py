@@ -314,5 +314,58 @@ def testTheBehaviorIsOnlyRegisteredWithApiTwoOrNewer():
     assert PanView.register(api) is None, "旧前置包：煎锅走经典玩法"
 
 
+# ---------------------------------------------------------------- 触屏长按（onHold）：右键 / Shift 点击的变体，只给和点一下不一样的
+
+HoldMenu = C.load("Compat.Diegesis.HoldMenu")
+
+
+def hold(behavior, target):
+    """手指按在场景里按住不动：前置包在按下那一刻问表现的 onHold（和按下收到的同一种拾取事件，左键），按 View.pointer 的做法拾取。"""
+    cam = behavior.camera["pos"]
+    ray = C.ray(cam, behavior._toStation(target)) if target is not None else None
+    hit = Pick.pick(behavior.pickables(), ray) if ray is not None else None
+    return behavior.onHold(Pointer.PointerEvent("down", (0.0, 0.0), ray, hit, True, 0, False))
+
+
+def testHoldingAStackOverThePanOffersPutOneWhereTheRightClickPlacesJustOne():
+    behavior, view = make(hand=item("minecraft:beef", 5), food=None)
+    for target in ((8.0, 3.0, 8.0), (8.0, 1.0, 8.0), (8.0, 2.0, 22.0)):          # 锅口、食物、锅柄：哪处都一样（onItemClick 不挑节点）
+        assert hold(behavior, target) == {"menu": [HoldMenu.PUT_ONE]}, target
+    assert HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    event(behavior, "down", (8.0, 3.0, 8.0))
+    event(behavior, "down", (8.0, 3.0, 8.0), button=1)
+    assert view.actions == [("place", {"one": False}), ("place", {"one": True})], "点一下整叠、右键一个：真的不一样"
+    assert hold(behavior, (60.0, 0.0, -40.0)) is None, "锅外：点一下什么也不接，没有变体"
+    view.hand = item("minecraft:beef", 1)
+    assert hold(behavior, (8.0, 3.0, 8.0)) is None, "只有一个：放一个就是放整叠"
+    view.hand = item("minecraft:beef", 5)
+    view.fitting = None
+    assert hold(behavior, (8.0, 3.0, 8.0)) is None, "锅里是别的东西 / 满了：放不进"
+
+
+def testEmptyHandOverTheRawFoodOffersTakeAllBackWhereATapWouldToss():
+    behavior, view = make()
+    assert hold(behavior, (8.0, 1.0, 8.0)) == {"menu": [HoldMenu.TAKE_ALL_BACK]}
+    assert HoldMenu.TAKE_ALL_BACK == {"label": "全部取回", "button": 1, "quick": False}
+    event(behavior, "down", (8.0, 1.0, 8.0))
+    assert view.actions == [("toss", {"strength": 0.4})], "点一下：颠"
+    run(behavior, 0.6)
+    event(behavior, "down", (8.0, 1.0, 8.0), button=1)
+    assert view.actions[-1] == ("take", {}), "右键：全拿回背包"
+
+
+def testTheDoneFoodTheHandleAndAnEmptyPanHaveNoMenuSoTheStrokeAndTheTakeStartAtOnce():
+    behavior, view = make(food="minecraft:cooked_beef")
+    assert hold(behavior, (8.0, 1.0, 8.0)) is None, "熟了：点一下就是全拿回"
+    behavior, view = make()
+    assert hold(behavior, (8.0, 2.0, 22.0)) is None, "锅柄：抓住往上提 = 颠，一按下就开始"
+    event(behavior, "down", (8.0, 2.0, 22.0))
+    assert behavior.stroking
+    behavior, view = make(food=None)
+    assert hold(behavior, (8.0, 1.0, 8.0)) is None, "锅是空的：点一下什么也不发"
+    behavior.scene = None
+    assert hold(behavior, (8.0, 1.0, 8.0)) is None
+
+
 if __name__ == "__main__":
     raise SystemExit(C.fdtest.run(globals()))

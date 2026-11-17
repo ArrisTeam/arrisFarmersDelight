@@ -32,7 +32,9 @@ class New(object):
 
 def testTheKindsAreTheKernelsKindsAndEveryOneHasADuration():
     assert (Feel.PICK, Feel.PUT, Feel.CUT, Feel.FLIP, Feel.REFUSE) == (Haptics.PICK, Haptics.PUT, Haptics.CUT, Haptics.FLIP, Haptics.REFUSE)
-    assert set(Haptics.BUZZ_MS) == set((Feel.PICK, Feel.PUT, Feel.CUT, Feel.FLIP, Feel.REFUSE)), "表里的种类和这边用的一一对上"
+    used = set((Feel.PICK, Feel.PUT, Feel.CUT, Feel.FLIP, Feel.REFUSE))
+    assert used <= set(Haptics.BUZZ_MS), "站点用的种类，表里都有"
+    assert set(Haptics.BUZZ_MS) - used == set((Haptics.HOLD,)), "表里多出来的只有内核自己调的（长按弹出菜单的那一震），站点不用管"
     assert set(Feel.SETTLED.values()) <= set(Haptics.BUZZ_MS)
 
 

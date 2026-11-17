@@ -89,6 +89,11 @@ PACKS = {
             "Compat/Diegesis/BoardWatch.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/BoardInv.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/TouchFeel.py": {"forbid": {"Server", "Client"}, "engine": False},     # 只问前置包的视图：不碰任何一端、不碰引擎
+            "Compat/Diegesis/HoldMenu.py": {"forbid": {"Server", "Client"}, "engine": False},      # 触屏长按菜单的条目和返回值：纯逻辑
+            "Compat/Diegesis/PotHold.py": {"forbid": {"Server"}, "engine": False},                 # 四个站点的 onHold：问视图和规则，引擎的事经 PotOffer
+            "Compat/Diegesis/BoardHold.py": {"forbid": {"Server"}, "engine": False},
+            "Compat/Diegesis/PanHold.py": {"forbid": {"Server"}, "engine": False},
+            "Compat/Diegesis/GrillHold.py": {"forbid": {"Server"}, "engine": False},
             "Compat/Diegesis/PotView.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotPick.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotHud.py": {"forbid": {"Server"}, "engine": True},

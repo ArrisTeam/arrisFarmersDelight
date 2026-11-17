@@ -10,6 +10,7 @@
 - Shift 点托盘里的一叠（前置包 onInventoryShiftClick 钩子，空手时先问这里）：有营火配方的整叠摆上去，发 place {from: 背包格号}，
   服务端放进去回 placed、放不进（蛋、满了）回 refused，落下 / 弹开大家都看得见；前置包没有这个钩子的老版本走内核自己的 QUICK_MOVE；
 - 手空着：点烤位上的一件，生的、半熟的左键翻面（它跳起转半圈）、右键取下；烤好的左键右键都是取下；
+- 触屏没有右键 / Shift，按住不动的菜单在 GrillHold.py（onHold）。
 - 烤位上的东西是客户端掉落物，描不了边。JE 的炉灶场景开了 hover_outline，但件在 Diegesis 看来不是可交互节点（没有 slot / grabbable 的角色），
   既不描边也不抬起、也没有提示，只有该翻的那件冒烟示意：这里也一样，悬停不给任何反馈。
 站点朝哪：炉灶是 JE 的 Orientation.BLOCK，登记时给前置包 facing 钩子（facingOf）：站点的北面永远是炉灶方块的正面，镜头永远在正面，
@@ -18,7 +19,7 @@
 炉灶朝哪都对得上。
 开站时场景交给本人的有两样：从屏幕下沿飞来的起点、"我开着站点"（自己翻的不重复演）。
 """
-from . import BookSources, StoveScenes, TouchFeel
+from . import BookSources, GrillHold, StoveScenes, TouchFeel
 from .GrillSpace import Space
 from ...Client.Engine import clientApi, compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
@@ -109,6 +110,8 @@ class GrillViewMixin(object):
             self._piece(event, payload)
             return True
         return False
+
+    onHold = GrillHold.onHold                 # 触屏长按（前置包的 onHold 钩子）：手上的东西只放这一格、翻得动的一件取下
 
     def _free(self):
         """哪些烤位空着：照站点的状态（服务端说了算），不看画着什么（画面可能还在落下 / 取走的动作里）。"""

@@ -699,6 +699,100 @@ def testTheOfferedBowlDippedIntoTheSoupSplashesFourAtSixPixelsPerSecond():
     assert found[0]["vars"]["variable.speed_set"] == 1.0
 
 
+# ---------------------------------------------------------------- 触屏长按（onHold）：右键 / Shift 点击的变体，只给和点一下不一样的
+
+HoldMenu = C.load("Compat.Diegesis.HoldMenu")
+PotHold = C.load("Compat.Diegesis.PotHold")
+
+
+def _hold(behavior, key=None, payload=None):
+    """手指按在场景里按住不动：前置包在按下那一刻问表现的 onHold，event 和按下收到的是同一种拾取事件（左键）。"""
+    return behavior.onHold(Event(LEFT, Hit(key, payload) if key else None, kind="down"))
+
+
+def testHoldingAStackOfIngredientsOverTheMouthOffersPutOneWhereTheRightClickPlacesJustOne():
+    behavior, view = behaviorOf()
+    view.hand = dict(CARROTS)
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    assert behavior.onPointer(Event(LEFT, Hit("mouth"))) is True and view.spread.button == LEFT, "点一下是整叠（松手才放）"
+    view.spread.cancel()
+    assert behavior.onPointer(Event(RIGHT, Hit("mouth"))) is True and view.spread.button == RIGHT, "菜单补的右键：放一个"
+    for key in ("ladle", "item", "served", "soup", "sunk", None):
+        assert _hold(behavior, key, 0) is None, "锅口以外的地方：手上的料点不进去，没有变体"
+    view.hand = dict(CARROTS, count=1)
+    assert _hold(behavior, "mouth") is None, "只有一个：放一个就是放整叠"
+    view.hand = dict(CARROTS)
+    view.fitIndex = None
+    assert _hold(behavior, "mouth") is None, "哪一格都放不下：点一下什么也不发，右键也一样"
+
+
+def testHoldingTheMealsContainerOffersScoopAllOnlyWhenThereIsMoreThanOneServingAndMoreThanOneContainer():
+    # PotPick.withStack：点一下盛一份，Shift 盛到没菜或没容器；哪个节点都一样（mouth、ladle、item_N、served）
+    behavior, view = _withMeal((("minecraft:carrot", 1), ("minecraft:potato", 1)), hand=dict(BOWL, count=4))
+    assert HoldMenu.SCOOP_ALL == {"label": "全部盛出", "button": 0, "quick": True}
+    for key, payload in (("mouth", None), ("ladle", None), ("item", 0), ("item", 1), ("served", None)):
+        assert _hold(behavior, key, payload) == {"menu": [HoldMenu.SCOOP_ALL]}, key
+    for key in ("soup", "sunk", None):
+        assert _hold(behavior, key) is None
+    behavior.onPointer(Event(LEFT, Hit("mouth")))
+    behavior.onPointer(Event(LEFT, Hit("mouth"), True))
+    assert [action for action in view.actions if action[0] == "scoop"] == [("scoop", {"all": False, "from_inventory": False}),
+                                                                          ("scoop", {"all": True, "from_inventory": False})], "点一下和 Shift 真的不一样"
+    view.hand = dict(BOWL)
+    assert _hold(behavior, "mouth") is None, "手上只有一个容器：全盛也只是一份"
+    view.hand = dict(BOWL, count=4)
+    view.data = {"meal": {"newItemName": "arris:pumpkin_soup", "count": 1}, "vessel": {"newItemName": "minecraft:bowl"}}
+    assert _hold(behavior, "mouth") is None, "锅里只剩一份"
+
+
+def testTheMealsContainerOfAnotherKindIsJustAStackToPutIn():
+    behavior, view = _withMeal(hand=dict(CARROTS))
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]}, "手上不是这锅菜的容器：当料，在锅口放一个"
+    assert _hold(behavior, "ladle") is None and _hold(behavior, "served") is None
+
+
+def testEmptyHandOnAFloatingStackOrTheServedStackOffersTheTakeBarForThatSlot():
+    behavior, view = _withMeal((("minecraft:carrot", 5), ("minecraft:potato", 1)), hand=None)
+    assert _hold(behavior, "item", 0) == {"take": _slot(0), "count": 5}, "点一下整格拿起、右键拿一半：份量从 1 到 5 由手指定"
+    assert _hold(behavior, "item", 1) is None, "只有一个：没有份量可取，按下立刻拿起"
+    behavior.scene.apply(C.look((("minecraft:carrot", 5), ("minecraft:potato", 1)), served=C.item("arris:pumpkin_soup", 3), meal=C.item("arris:pumpkin_soup", 3)))
+    assert _hold(behavior, "served") == {"take": Txn.stationTarget(Rules.GROUP_SERVED, 0), "count": 3}
+    behavior.scene.apply(C.look((("minecraft:carrot", 5),), served=C.item("arris:pumpkin_soup", 1), meal=C.item("arris:pumpkin_soup", 1)))
+    assert _hold(behavior, "served") is None
+
+
+def testTheSpoonHandleTheSunkThingsAndNothingAreNeverHeldSoTheStrokeStartsAtOnce():
+    behavior, view = _withMeal((("minecraft:carrot", 5),), hand=None)
+    for key in ("ladle", "sunk", "mouth", None):
+        assert _hold(behavior, key) is None, key
+    assert behavior.onPointer(Event(LEFT, Hit("ladle"))) is True and behavior.gesture.stroking, "握勺柄照旧按下就开始"
+
+
+def testEmptyHandOnTheHungBowlOffersScoopAllWhenTheSoupAndTheInventoryHaveMoreThanOne():
+    behavior, view = _withMeal(hand=None)
+    real = PotHold.PotOffer.carried
+    try:
+        PotHold.PotOffer.carried = lambda name: 3 if name == "minecraft:bowl" else 0
+        assert _hold(behavior, "soup") == {"menu": [HoldMenu.SCOOP_ALL]}, "悬着碗点汤：点一下盛一份，Shift 全盛（PotOffer.soupClick）"
+        PotHold.PotOffer.carried = lambda name: 1
+        assert _hold(behavior, "soup") is None, "背包里只有一个容器"
+        PotHold.PotOffer.carried = lambda name: 3
+        view.data = {"meal": {"newItemName": "arris:pumpkin_soup", "count": 1}, "vessel": {"newItemName": "minecraft:bowl"}}
+        assert _hold(behavior, "soup") is None, "锅里只剩一份"
+        view.data = {}
+        assert _hold(behavior, "soup") is None, "没有煮好的菜"
+    finally:
+        PotHold.PotOffer.carried = real
+
+
+def testNoSceneOrNoLookMeansNoMenu():
+    behavior, view = _withMeal((("minecraft:carrot", 5),), hand=None)
+    behavior.scene.look = None
+    assert _hold(behavior, "item", 0) is None
+    behavior.scene = None
+    assert _hold(behavior, "item", 0) is None
+
+
 if __name__ == "__main__":
     import fdtest
     raise SystemExit(fdtest.run(globals()))

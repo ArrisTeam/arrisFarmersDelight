@@ -24,13 +24,16 @@ from ...Shared.Rules.HandsOn import PotServe, PotSounds
 AWAY_LIFT = 6.0                         # 端走时朝屏幕底边在汤面上方这么高的那一点去（PB 548）
 
 
+def carried(name):
+    """本人的背包里这种容器一共有几个。"""
+    posType = clientApi.GetMinecraftEnum().ItemPosType.INVENTORY
+    return sum(item.get("count") or 0 for item in compFactory.CreateItem(playerId).GetPlayerAllItems(posType, False) or []
+               if item and item.get("newItemName") == name)
+
+
 def _carries(name):
     """本人的背包里有没有这种容器。"""
-    posType = clientApi.GetMinecraftEnum().ItemPosType.INVENTORY
-    for item in compFactory.CreateItem(playerId).GetPlayerAllItems(posType, False) or []:
-        if item and item.get("newItemName") == name and (item.get("count") or 0) > 0:
-            return True
-    return False
+    return carried(name) > 0
 
 
 class PotOffer(object):

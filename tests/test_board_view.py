@@ -773,5 +773,73 @@ def testAStackLetGoLandsFromAboveTheCursor():
     assert abs(_live(view, "arris:cabbage")[-1].center[0] - behavior.draw.cx) < 0.05 and not behavior.draw.item.mover.moving
 
 
+# ---------------------------------------------------------------- 触屏长按（onHold）：右键 / Shift 点击的变体，只给和点一下不一样的
+
+HoldMenu = fdtest.load("Compat.Diegesis.HoldMenu")
+
+
+def _hold(behavior, key):
+    """手指按在场景里按住不动：前置包在按下那一刻问表现的 onHold（和按下收到的同一种拾取事件，左键）。"""
+    return behavior.onHold(C.Event("down", key))
+
+
+def testHoldingAStackOverTheBoardOffersPutOneWhereTheRightClickPlacesJustOne():
+    behavior, view = _open(hand=C.item("arris:cabbage", 3))
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    behavior.onPointer(C.Event("down", "mouth", button=0))
+    behavior.onPointer(C.Event("down", "mouth", button=1))
+    assert view.sent == [("place", {"one": False}), ("place", {"one": True})], "点一下整叠、右键一个：真的不一样"
+    view.hand = C.item("arris:cabbage", 1)
+    assert _hold(behavior, "mouth") is None, "只有一个：放一个就是放整叠"
+    view.hand = C.item("minecraft:dirt", 3)
+    assert _hold(behavior, "mouth") is None, "板不收的东西：点一下、右键都放不上去"
+    view.hand = C.item("arris:cabbage", 3)
+    assert _hold(behavior, "surface") is None and _hold(behavior, None) is None, "不是板口的地方没有变体"
+
+
+def testHoldingAToolOverABareBoardOffersCarveAndOverFoodOffersNothing():
+    behavior, view = _open(hand=C.item(KNIFE))
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.CARVE]} and HoldMenu.CARVE == {"label": "插在板上", "button": 0, "quick": True}
+    behavior.onPointer(C.Event("down", "mouth", button=0))
+    assert view.sent == [], "点一下：刀点在没有可切的东西上，只敲一声"
+    behavior.onPointer(C.Event("down", "mouth", button=0, quick=True))
+    assert view.sent == [("carve", {})], "Shift 点空板：插进去"
+    board, data = _across()
+    behavior, view = _open(board, data=data, hand=C.item(KNIFE))
+    assert _hold(behavior, "mouth") is None, "板上有东西：点一下就是落刀，Shift 点也插不进去"
+    behavior, view = _open(hand=C.item("arris:cabbage", 1))
+    assert _hold(behavior, "mouth") is None, "拿着一个、不是工具：左键右键都是放一个"
+
+
+def testEmptyHandOverTheFoodOffersTakeBackWhereATapWouldCutOrFinishADish():
+    board, data = _across()
+    behavior, view = _open(board, data=data)
+    assert _hold(behavior, "surface") is None, "没有刀：点一下就是取回"
+    C.engine.inventory[8] = C.item(KNIFE)
+    assert _hold(behavior, "surface") == {"menu": [HoldMenu.TAKE_BACK]} and HoldMenu.TAKE_BACK == {"label": "取回", "button": 1, "quick": False}, "背包里有刀：点一下是借来切"
+    cut, icon = _lineOf()
+    ray = _cursorOn(behavior, (cut.x, cut.z))
+    _frames(behavior)
+    assert behavior.onPointer(C.Event("down", "surface", ray, button=0)) and view.sent[0][0] == "chop"
+    view.sent[:] = []
+    assert behavior.onPointer(C.Event("down", "surface", ray, button=1)) and view.sent == [("take", {})], "右键：取回"
+    layers = [C.item("minecraft:bread", 2), C.item("arris:beef_patty", 2)]
+    behavior, view = _open(layers=layers, data={"dish": "arris:hamburger"})
+    assert _hold(behavior, "surface") == {"menu": [HoldMenu.TAKE_BACK]}, "层凑成了一道菜：点一下是做成，右键是取回最上一层"
+    view.data = {"dish": ""}
+    assert _hold(behavior, "surface") is None, "还凑不成：点一下就是取回"
+    behavior, view = _open(C.item(KNIFE))
+    C.engine.inventory[8] = C.item("minecraft:iron_sword")
+    assert _hold(behavior, "surface") is None, "插着的工具：任一键拔出来"
+    behavior, view = _open()
+    C.engine.inventory[8] = C.item(KNIFE)
+    assert _hold(behavior, "surface") is None, "板是空的：点一下、右键都什么也不是"
+
+
+def testTheBoardWithNothingDrawnYetAsksNothing():
+    behavior, view, api = C.station()
+    assert behavior.onHold(C.Event("down", "surface")) is None, "还没开站（板上的东西没画）：没有菜单"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

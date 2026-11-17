@@ -15,12 +15,12 @@
 - 手空着：点漂着的料 = 那一格整叠拿到手上（右键一半、Shift 直接进背包，双击 = 锅里和背包里同一种的都收到手上，
   和原版容器一样）；汤煮好了、背包里有容器，光标在汤上会悬出那只半透明的容器，点一下盛一份；汤里有倒进去 / 打进去 / 化掉的
   东西（牛奶、鸡蛋、糖）时光标在汤面上悬出要取回的那样，点一下取回最后放的。拿在手上的东西点托盘的格子放回背包。
-- 触屏（view.input，规矩在前置包的 Shared/Input.py）：没有悬停，一下点完指针就离开（onLeave），悬着的东西收起；点在汤面上
-  没做事的那一下让容器 / 要取回的那样悬出来，再点一下才做；刚盛过、取回过的留在老地方等着接着点。勺子一按一松不留在手里。
+- 触屏（view.input，规矩在前置包的 Shared/Input.py）：没有悬停，一下点完指针就离开（onLeave），悬着的东西收起；点在汤面上没做事的那一下让容器 /
+  要取回的那样悬出来，再点一下才做；刚盛过、取回过的留在老地方等着接着点。勺子一按一松不留在手里。没有右键 / Shift：按住不动的菜单在 PotHold.py（onHold）。
 徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
-from . import BookSources, PotPick, PotScenes, TouchFeel
+from . import BookSources, PotHold, PotPick, PotScenes, TouchFeel
 from .PotHud import PotHud
 from .PotOffer import PotOffer
 from ...Client.Engine import clientApi, compFactory, levelId
@@ -186,6 +186,8 @@ class PotViewMixin(object):
         if key == "soup":
             return self.serve.soupClick(event)
         return False
+
+    onHold = PotHold.onHold                   # 触屏长按（前置包的 onHold 钩子）：手上的料放一个、盛汤全盛、取一部分漂着的料 / 盛好的那格
 
     def busy(self):
         """勺子还在手里（按着拖，或点了一下留着）：内核据此不让光标停在屏幕边上就飞去相邻的站点，也不让托盘接下一次按下——
