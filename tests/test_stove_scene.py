@@ -343,12 +343,10 @@ def testAPieceWaitingToBeTurnedSmokesAndAnotherOneGrillingSteamsWithNobodyAtTheS
     scene = setup({0: slot(BEEF, True, 1.0, 0.0), 1: slot(BEEF, True, 0.3, 0.0)})
     run(scene, 5.0)
     assert not scene.focused, "站点没人开着，烟照样冒"
-    tints = [p["vars"].get("variable.tint_r") for p in particles("arris_diegesis:steam")]
-    assert any(abs(value - 0xC8 / 255.0) < 1.0e-6 for value in tints if value is not None), "该翻的那件冒烟（灰白）"
+    smoke = particles("arris:pan_smoke")
+    assert smoke and all(abs(p["vars"]["variable.tint_r"] - 0xC8 / 255.0) < 1.0e-6 for p in smoke), "该翻的那件冒烟（灰白，本包自己的烟粒子）"
     assert [s for s in sounds("ambient.skillet.sizzle") if s["volume"] > 0.0]
-    big = [p for p in particles("arris_diegesis:steam") if p["vars"].get("variable.scale", 0.0) > 2.0]
-    assert big, "烟比蒸汽大"
-    assert all(abs(p["pos"][0] - (POS[0] + 0.8)) < 0.2 and abs(p["pos"][2] - (POS[2] + 0.7)) < 0.2 for p in big), "烟只从那一件（第 0 件）的边上冒"
+    assert all(abs(p["pos"][0] - (POS[0] + 0.8)) < 0.2 and abs(p["pos"][2] - (POS[2] + 0.7)) < 0.2 for p in smoke), "烟只从那一件（第 0 件）的边上冒"
 
 
 def testAnEmptyLitGrillOnlyShimmersWithHeat():
@@ -400,8 +398,7 @@ def testALateLoadedChunkDrawsTheStoveFromTheSavedDataWithoutFalling():
     run(scene, DT)
     assert len(drops(BEEF)) == 1 and scene.pieces.motion[1].pose()[0][1] == 0.0, "加载时就躺在烤架上"
     run(scene, 4.0)
-    tints = [p["vars"].get("variable.tint_r") for p in particles("arris_diegesis:steam")]
-    assert any(abs(value - 0xC8 / 255.0) < 1.0e-6 for value in tints if value is not None), "存着的进度：一面熟了等着翻，烟照冒"
+    assert particles("arris:pan_smoke"), "存着的进度：一面熟了等着翻，烟照冒"
 
 
 def testARepeatedLoadEventRebuildsTheSceneWithoutReplayingTheFalls():
@@ -561,10 +558,10 @@ def testSmokeAndSteamComeFromThePieceWhereverTheStoveFaces():
         scene = setup({0: slot(BEEF, True, 1.0, 0.0)}, aux=aux)
         del world.particles[:]
         run(scene, 5.0)
-        big = [p for p in particles("arris_diegesis:steam") if p["vars"].get("variable.scale", 0.0) > 2.0]
-        assert big, aux
+        smoke = particles("arris:pan_smoke")
+        assert smoke, aux
         x, z = turnedFraction(yaw, FRACTIONS[0][0], FRACTIONS[0][1])
-        assert all(abs(p["pos"][0] - (POS[0] + x)) < 0.2 and abs(p["pos"][2] - (POS[2] + z)) < 0.2 for p in big), (aux, "烟只从那一件的边上冒")
+        assert all(abs(p["pos"][0] - (POS[0] + x)) < 0.2 and abs(p["pos"][2] - (POS[2] + z)) < 0.2 for p in smoke), (aux, "烟只从那一件的边上冒")
 
 
 def testTheGrillCentreDoesNotMoveWhenTheStoveTurns():

@@ -4,7 +4,7 @@
 粒子的"在哪、多快、多大、什么色"照 HoD 的 SkilletBehavior / HandsOnDelightClient.registerParticles：
     oil_pop   油泡（Diegesis 的 bubble + bubble_pop 帧，染 E6F7C27A，0.25-0.5 秒）   -> arris_diegesis:bubble_pop
     fat       油星（原版 drip_fall，染 FFE7A8，小，重力 75）                        -> arris_diegesis:droplet
-    pan_smoke 贴锅面熟了冒的烟（steam 帧，染 58C8C6C2，1.8-2.6 像素，活 1.6-2.4 秒）-> arris_diegesis:steam
+    pan_smoke 贴锅面熟了冒的烟（steam 帧，染 58C8C6C2，1.8-2.6 像素，活 1.6-2.4 秒）-> arris:pan_smoke（rp/particles/arris_pan_smoke.json）
     steam / glint / dust                                                           -> 前置包同名的
     heat      热锅上的热浪（HoD 的 heat 四帧，染 48FFFFFF）                         -> arris:pan_heat（rp/particles/arris_pan_heat.json）
 位置的抖动、速度的抖动照 Diegesis 的 SceneParticles.spawn（位置每轴 gauss * spread，速度每轴 gauss * max(0.3, |v| * 0.25)，gauss 是 nextGaussian() * 0.5），
@@ -25,9 +25,10 @@ SOUNDS = {      # HoD 的声音 -> 基岩版的声音名；定义里采样自带
     "egg_crack": "block.turtle_egg.crack",
 }
 HEAT = "arris:pan_heat"
-# JE 的 PAN_SMOKE（HandsOnDelightClient.java:93-94）：蒸汽的帧、染 0x58C8C6C2、大小 1.8~2.6 像素、活 1.6~2.4 秒；前置包的蒸汽是 0.6~1.0 像素，
-# 所以大小倍数取两个区间中点的比 2.2 / 0.8。煎锅（"pan_smoke"）和炉灶（GrillFx 的 "smoke"）在 JE 里是同一个样式，这里也只此一处
-PAN_SMOKE = (PotFx.STEAM, 0x58C8C6C2, 2.2 / 0.8, (1.6, 2.4))
+# JE 的 PAN_SMOKE（HandsOnDelightClient.java:93-94）：蒸汽的帧、染 0x58C8C6C2、大小 1.8~2.6 像素、活 1.6~2.4 秒、重力 -4、阻力 0.75、长大到 3 倍、摆动 1、渐显 0.3、
+# 不 emissive（跟着环境光）。这些数都写在 FD 自己的粒子里（rp/particles/arris_pan_smoke.json），不再借前置包满亮度的蒸汽（0.6~1.0 像素、别的重力阻力、emissive）
+# 乘倍数。煎锅（"pan_smoke"）和炉灶（GrillFx 的 "smoke"）在 JE 里是同一个样式，这里也只此一处
+PAN_SMOKE = ("arris:pan_smoke", 0x58C8C6C2, 1.0, None)
 STYLES = {      # 样式 -> (粒子, 缺省色 ARGB, 大小倍数, 活多久（秒）的范围，None 用粒子自己的)
     "oil_pop": (PotFx.BUBBLE_POP, 0xE6F7C27A, 1.0, (0.25, 0.5)),
     "fat": (PotFx.DROPLET, 0xFFFFE7A8, 0.33, (0.3, 0.6)),

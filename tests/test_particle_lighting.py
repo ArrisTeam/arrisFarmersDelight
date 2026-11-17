@@ -26,6 +26,7 @@ TABLE = [
     # (文件, 该是什么, 依据)
     ("arris_board_dust.json", LIT, "砧板的碎屑放的是 DiegesisParticles.DUST（BoardBehavior.java:1411-1420），样式同上不 emissive"),
     ("arris_pan_heat.json", LIT, "HandsOnDelightClient.java:95-96 的 HEAT 没写 emissive"),
+    ("arris_pan_smoke.json", LIT, "HandsOnDelightClient.java:93-94 的 PAN_SMOKE 没写 emissive（煎锅 / 炉灶的烟，SkilletBehavior:576、StoveBehavior:292 放的）"),
     ("arris_bubble_pop.json", LIT, "原版 BubblePopParticle 没有覆盖 getLightColor（经典厨锅 CookingPotBlockEntity.animationTick 放的）"),
     ("arris_steam.json", LIT, "SteamParticle.java 没有覆盖 getLightColor"),
     ("arris_skillet_steam.json", LIT, "同上（煎锅和厨锅放的是同一个 SteamParticle）"),

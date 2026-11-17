@@ -5,7 +5,8 @@ StoveFx 只说"哪一件上、偏哪、什么速度、几颗、什么色"和"哪
 glint 闪光，diegesisRp/particles）和本包 / 原版的声音。JE 的粒子样式（StoveBehavior 用的 STEAM / PAN_SMOKE / HEAT / GLINT）
 在基岩版里的对应（热浪、蒸汽、烟和各种声音谁都看得见听得见，不用开着站点：StoveScene.py 里每座加载着的炉灶一份）：
 - steam：蒸汽，白色按 ARGB 的透明度，大小 1；
-- smoke（PAN_SMOKE）：和煎锅是同一个样式，只在 PanFx.PAN_SMOKE 定义一处（蒸汽的帧、灰白 0xC8C6C2、透明度 0x58、大小放大 2.2 / 0.8 倍、活 1.6~2.4 秒）；
+- smoke（PAN_SMOKE）：和煎锅是同一个样式，只在 PanFx.PAN_SMOKE 定义一处：本包自己的粒子 arris:pan_smoke（rp/particles/arris_pan_smoke.json，蒸汽的帧、灰白 0xC8C6C2、
+  透明度 0x58、大小 1.8~2.6 像素、活 1.6~2.4 秒、跟着环境光，数都写在粒子里）；
 - glint：闪光；
 - heat（热浪，HEAT）：煎锅用的同一个粒子 arris:pan_heat（rp/particles/arris_pan_heat.json，HoD 的 heat 四帧，淡白 0x48、3.5 倍、活 0.8~1.3 秒，
   照 PanFx.STYLES 的 heat），点着的烤架每秒 1.6 个，空烤架也有（JE 的 heat() 不看有没有东西）。
@@ -69,7 +70,7 @@ def _style(spawn):
         return GLINT, color, None, 1.0, None
     if spawn.kind == "smoke":
         identifier, argb, scale, life = PAN_SMOKE
-        return identifier, argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0, scale, random.uniform(*life)
+        return identifier, argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0, scale, random.uniform(*life) if life else None
     if spawn.kind == "heat":
         return HEAT, HEAT_ARGB & 0xFFFFFF, ((HEAT_ARGB >> 24) & 0xFF) / 255.0, HEAT_SCALE, random.uniform(*HEAT_LIFE)
     return None

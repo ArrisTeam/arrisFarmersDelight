@@ -17,6 +17,7 @@
 | Hands-On Delight | 厨锅的声音（搅、落水、冒泡、盛） | `rp/sounds/handson/pot/`；其中 `body.ogg`（汤的底噪）是 Joseph Sardin 的录音，CC0，出自 [BigSoundBank](https://bigsoundbank.com)（HoD 的 README 里这样注明） |
 | Hands-On Delight | 厨锅镂空锅身的方块和贴图坐标（`models/block/cooking_pot/body.json`）、场景文件里的机位和节点位置 | `rp/models/entity/cooking_pot.geo.json`、`bp/arrisFarmersDelightScripts/Compat/Diegesis/PotView.py` 等 |
 | Hands-On Delight | 煎锅的油膜贴图（`block/oil_film.png`）和热浪粒子贴图（`particle/heat.png`） | `rp/textures/handson/` |
+| Diegesis | 煎锅 / 炉灶的烟（HoD 的 `PAN_SMOKE`）用的 12 帧蒸汽贴图 `particle/steam_0.png` 到 `steam_11.png`（原版烟的帧染成白的），叠成一张 | `rp/textures/handson/particle/pan_smoke.png` |
 
 砧板刀口虚线的贴图 `rp/textures/particle/arris_board_mark.png` 是 Java 版原版的 `assets/minecraft/textures/block/white_concrete.png`（Mojang 的素材）：HoD 的虚线贴的就是它，
 原样拷来。经典厨锅冒的气泡 `rp/textures/particle/arris_bubble_pop.png`（五张 16 x 16 叠成一张）是 Java 版原版的 `assets/minecraft/textures/particle/bubble_pop_0.png` 到
