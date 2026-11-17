@@ -3,7 +3,8 @@
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 chopped（1395-1453）、pop 里的面粉和闪光（1642-1651）、敲一声（WOOD_HIT）。
 碎屑是本包自己的粒子 arris:board_dust（rp/particles/arris_board_dust.json）：HoD 的 spawnParticles(起点, 初速, 散布, 个数, 颜色) 的初速、
-散布、个数都由 variable.* 给，数在 Shared/Rules/BoardDust（每种工具各一套），颜色按食物的贴图（FoodColors）、不是食物按工具；闪光还是前置包的
+散布、个数都由 variable.* 给，数在 Shared/Rules/BoardDust（每种工具各一套），颜色是被切的东西自己图标的主色（JE 的 FoodColors.main，Shared/Data/BrothColors.MainColors：
+砧板能切的每一件都有）；闪光还是前置包的
 arris_diegesis:glint。站点里的人和旁观的人（BoardWatch，没有站点视图）都从 puffAt 放：一阵碎屑的起点和初速是操作者那边的站点像素，按他的朝向
 转到世界。USE_OWN_DUST 关掉（粒子出了毛病时）就退回前置包自带的 arris_diegesis:dust（只有颜色和个数，旁观的人则没有碎屑）。
 声音经 CustomAudio，名字是原版的；放什么、多大声在 Shared/Rules/BoardSounds（站点里的人 BoardEffects 和旁观的人 BoardWatch 用同一张表），
@@ -11,7 +12,7 @@ arris_diegesis:glint。站点里的人和旁观的人（BoardWatch，没有站�
 """
 from . import PotFx
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Data.FoodColors import FoodColors
+from ...Shared.Data.BrothColors import MainColors
 from ...Shared.Rules import BlockDisplay, PotModelMath, StoveFacing
 from ...Shared.Rules import BoardDust as Dust
 from ...Shared.Rules.BoardSounds import BOUNCE, DEFINITION_VOLUMES, KNOCK, snipBite  # noqa: F401 （别的模块从这里拿）
@@ -22,7 +23,7 @@ OWN_DUST = "arris:board_dust"
 USE_OWN_DUST = True
 DUST, GLINT = "arris_diegesis:dust", "arris_diegesis:glint"       # 前置包自带的：DUST 只在 USE_OWN_DUST 关掉时用
 PIXEL = 1.0 / 16.0
-# 不是食物时碎屑的颜色（木头、石头、皮革按工具）；食物按贴图（FoodColors）
+# MainColors 里没有的东西（下游往砧板配方里追加的）碎屑的颜色：木头、石头、皮革按工具
 TOOL_COLORS = {Cutting.TOOL_CHOP: 0x9C7F4E, Cutting.TOOL_STRIP: 0x6B5034, Cutting.TOOL_SMASH: 0x8A8A8A, Cutting.TOOL_DIG: 0xA4A8B8,
                Cutting.TOOL_PRY: 0x9C7F4E, Cutting.TOOL_SNIP: 0x8B5A2B}
 FLOUR = 0xEDE3CC
@@ -38,8 +39,9 @@ def play(sound, world):
 
 
 def colorOf(itemName, stroke=None):
-    """被切的东西飞出来的碎屑什么颜色：食物按贴图，别的按工具。"""
-    return FoodColors.get(itemName, TOOL_COLORS.get(stroke, DEFAULT_COLOR))
+    """被切的东西飞出来的碎屑什么颜色：它自己图标的主色（BoardBehavior.chopped 的 FoodColors.main(worked)，原木、石头、花、船、皮甲也一样）；
+    表里没有的（下游追加的配方）才按工具。"""
+    return MainColors.get(itemName, TOOL_COLORS.get(stroke, DEFAULT_COLOR))
 
 
 def dust(world, velocity, spread, count, color):

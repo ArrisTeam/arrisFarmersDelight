@@ -16,6 +16,7 @@ Table = fdtest.load("Shared.Data.BrothColors")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList
 Colors = fdtest.load("Shared.Rules.HandsOn.PotColors")
 Sunk = fdtest.load("Shared.Data.PotSunk")
+Cuts = fdtest.load("Shared.Data.Cutting").CuttingBoardDict
 TOOL = os.path.join(fdtest.ROOT, "tools", "gen_broth_colors.py")
 VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
 
@@ -61,6 +62,27 @@ def testEveryIngredientHasAMainColourAndSoDoesWhatItCooksInto():
         assert cooked in Table.MainColors, "碎料按熟的颜色：%s -> %s" % (raw, cooked)
     for name in ("minecraft:beef", "minecraft:potato", "minecraft:rabbit", "arris:minced_beef", "arris:wheat_dough", "minecraft:egg"):
         assert name in Table.CookedForms, name
+
+
+def testEveryItemTheBoardCutsHasAMainColourForItsDust():
+    """砧板切东西飞出的碎屑按被切的东西自己图标的主色染（BoardBehavior.chopped 的 FoodColors.main(worked)）：205 件原料（食物、原木、石头、花、船、门、皮甲……）
+    每件都有一项。原来只有 31 件有颜色，174 件落到按工具定的颜色（所有削皮的原木同一个棕色、所有劈的木制品同一个木色）。"""
+    names = sorted(set(name for name, _aux in Cuts))
+    assert len(names) >= 205, "整张砧板配方表都读到了"
+    assert [name for name in names if name not in Table.MainColors] == []
+    for name in names:
+        assert 0 <= Table.MainColors[name] <= 0xFFFFFF, name
+    assert len(set(Table.MainColors[name] for name in names)) > 100, "不是同一个颜色刷了一遍：每种木头、每朵花各有各的"
+    red, green, blue = channels(Table.MainColors["minecraft:poppy"])
+    assert red > 200 and green < 40 and blue < 40, "虞美人是红的"
+    red, green, blue = channels(Table.MainColors["minecraft:blue_orchid"])
+    assert blue > red and blue > 200, "蓝色的兰花"
+    red, green, blue = channels(Table.MainColors["minecraft:warped_stem"])
+    assert green > red and blue > red, "诡异菌柄是青绿的（以前所有削皮的原木都是同一个棕色 0x6B5034）"
+    red, green, blue = channels(Table.MainColors["minecraft:crimson_stem"])
+    assert red > green and red > blue, "绯红菌柄是红的"
+    assert Table.MainColors["minecraft:cherry_log"] != Table.MainColors["minecraft:spruce_log"], "每种木头各有各的颜色"
+    assert Table.MainColors["arris:red_mushroom_colony"] != Table.MainColors["arris:brown_mushroom_colony"]
 
 
 def testThePowdersThatDissolveHaveAMainColourForTheirGrains():

@@ -4,12 +4,14 @@
 照 Hands-On Delight 的 client/FoodColors.java，取色规则在 bp/.../Shared/Rules/HandsOn/PotColors.py（纯函数，和 JDK 逐位对过）：
   BrothColors   每道厨锅菜（我们厨锅配方的每个成品）的汤色：FoodColors.broth——色相分 12 份取最大的一族，容器（配方的 Vessel，没有就是
                 物品自带的合成剩余物）自己的颜色去掉，或者容器的颜色没画在菜上就只看图标上面 60% 的行；
-  MainColors    每件配料（配方里出现的物品，加上它进炉子烧出来的熟食）切成碎料时的颜色：FoodColors.main；
+  MainColors    每件配料（配方里出现的物品，加上它进炉子烧出来的熟食）切成碎料时的颜色：FoodColors.main；砧板上切的每件东西（Shared/Data/Cutting.py
+                的每个原料，原木、石头、花、船、皮甲……）切出来的碎屑也按它染（BoardBehavior.chopped 的 FoodColors.main(worked)）；
   PouredColors  倒进锅里的液体（HoD 的 poured 标签里本包有的）：和空容器的图标不一样的像素里最多的那种颜色（ItemVoxels.contents），
                 加上生蛋搅进去的 0xF2DC9A；
   CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked：熟的还是食物才换），碎料按熟的颜色。
 农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10；那个目录不在时，原版物品沿用
-现有 BrothColors.py 里的值、只重算本包的物品，--check 也只比本包的物品）。
+现有 BrothColors.py 里的值、只重算本包的物品，--check 也只比本包的物品）。原版物品读哪张贴图：先看 gen_food_colors.VANILLA 和下面的 VANILLA_MORE
+手写的，再按 vanilla_icons 的规则找（平面图标、不规则名字的门 / 船 / 告示牌 / 矿车、方块的侧面贴图）。
 用法：py -3 tools/gen_broth_colors.py [--vanilla <游戏的 resource_packs/vanilla 目录>] [--check]
 """
 import glob
@@ -25,6 +27,7 @@ sys.dont_write_bytecode = True      # 别在 tools/ 和行为包里留 .pyc（�
 from PIL import Image
 
 import gen_food_colors
+import vanilla_icons
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "bp")
@@ -33,6 +36,7 @@ sys.path.insert(0, BP)
 SCRIPTS = "arrisFarmersDelightScripts.Shared."
 Colors = importlib.import_module(SCRIPTS + "Rules.HandsOn.PotColors")
 Recipes = importlib.import_module(SCRIPTS + "Data.CookingPotRecipes")
+Cutting = importlib.import_module(SCRIPTS + "Data.Cutting")
 Remainders = importlib.import_module(SCRIPTS + "Data.Remainders")
 Sunk = importlib.import_module(SCRIPTS + "Data.PotSunk")
 
@@ -47,6 +51,9 @@ VANILLA_MORE = {
 }
 # 方块物品的图标（terrain_texture.json 里的名字）：JE 里这个物品是平面图标
 BLOCK_ICONS = {"arris:stuffed_pumpkin_block_stage0": "arris:stuffed_pumpkin_block_icon"}
+# 本包的方块物品里 terrain_texture.json 没有同名项的：直接写贴图（相对 rp/，不带扩展名）。蘑菇丛的图标是长满的第四档（JE 的物品模型 brown_mushroom_colony_stage3）
+OWN_TEXTURES = {"arris:brown_mushroom_colony": "textures/blocks/brown_mushroom_colony_stage3",
+                "arris:red_mushroom_colony": "textures/blocks/red_mushroom_colony_stage3"}
 # 下锅不浮的几类（Shared/Data/PotSunk.py，HoD 的 poured / cracked / dissolves 标签）：
 # poured 倒出来的是容器里的液体，容器是物品自带的合成剩余物；cracked 生蛋搅进汤里是蛋黄加蛋白的颜色 FoodColors.EGG；
 # dissolves 的粉进锅时抖下来的粒子要碎料色（MainColors），倒的（蜂蜜）用液色
@@ -93,17 +100,29 @@ class Icons(object):
         self.items = _json("rp", "textures", "item_texture.json")["texture_data"]
         self.terrain = _json("rp", "textures", "terrain_texture.json")["texture_data"]
         self.vanillaPaths = dict(gen_food_colors.VANILLA, **VANILLA_MORE)
+        self.finder = vanilla_icons.VanillaIcons(self.vanilla) if self.vanilla else None
 
     def ours(self, name):
+        """本包的物品：平面图标先于方块贴图（和 JE 一样，派是平面图标、方块不是）；柜子的图标取正面（orientable 的粒子贴图是 front）。"""
         if name in BLOCK_ICONS:
             return readIcon(os.path.join(ROOT, "rp", _first(self.terrain[BLOCK_ICONS[name]])))
         if name in self.items:
             return readIcon(os.path.join(ROOT, "rp", _first(self.items[name])))
+        if name in OWN_TEXTURES:
+            return readIcon(os.path.join(ROOT, "rp", OWN_TEXTURES[name]))
+        for key in (name, name + "_front") if name.endswith("_cabinet") else (name,):
+            if key in self.terrain:
+                return readIcon(os.path.join(ROOT, "rp", _first(self.terrain[key])))
         return None
+
+    def vanillaPath(self, name):
+        """原版物品的贴图路径：手写的表先，再按 vanilla_icons 的规则找；找不到是 None。"""
+        return self.vanillaPaths.get(name) or (self.finder.textureOf(name) if self.finder else None)
 
     def get(self, name):
         if name.startswith("minecraft:"):
-            return readIcon(os.path.join(self.vanilla, self.vanillaPaths[name])) if self.vanilla and name in self.vanillaPaths else None
+            path = self.vanillaPath(name) if self.vanilla else None
+            return readIcon(os.path.join(self.vanilla, path)) if path else None
         return self.ours(name)
 
 
@@ -126,6 +145,11 @@ def ingredientNames():
                 if name not in names:
                     names.append(name)
     return names
+
+
+def cuttingNames():
+    """砧板能切的每件东西（Shared/Data/Cutting.py 的每个原料）的名字，排好序、去掉重复。"""
+    return sorted(set(name for name, _aux in Cutting.CuttingBoardDict))
 
 
 def dishes():
@@ -167,7 +191,8 @@ def compute(icons, previous):
     for name in names:
         if name in smelting:
             tables["CookedForms"][name] = smelting[name]
-    for name in names + [powder for powder in POWDERS if powder not in names] + sorted(set(tables["CookedForms"].values())):
+    wanted = names + [powder for powder in POWDERS if powder not in names] + sorted(set(tables["CookedForms"].values()))
+    for name in wanted + [cut for cut in cuttingNames() if cut not in wanted]:
         found = icon(name)
         keep("MainColors", name, Colors.sampleMain(found[0], found[1], found[2]) if found else None)
     for name in POURED:
@@ -186,7 +211,7 @@ def render(tables):
         "",
         "照 Hands-On Delight 的 FoodColors（取色规则在 Shared/Rules/HandsOn/PotColors.py）。颜色都是 0xRRGGBB。",
         "BrothColors   每道厨锅菜的汤色（FoodColors.broth：去掉容器自己的颜色，色相分 12 份取最大一族）；没有的菜用 FALLBACK。",
-        "MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main）。",
+        "MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main），砧板上切的每件东西飞出的碎屑也是这个。",
         "PouredColors  倒进锅里的液体的颜色（和空容器不一样的像素里最多的那种），和生蛋搅进去的 RAW_EGG。",
         "CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked），碎料按熟的颜色。",
         '"""',

@@ -53,6 +53,18 @@ def testABlockWorkedToTheEndBurstsAtItsMiddleAndTheDishPopsFlourOrFrost():
     assert _near(Dust.flourPuff(6.5, 8.0, frost=True)[1], (0, 2, 0)), "冰棒是霜：初速 (0, 2, 0)"
 
 
+def testTheDustIsTheMainColourOfTheThingsOwnIconAndOnlyUnknownThingsFallBackToTheTool():
+    """BoardBehavior.chopped：碎屑的颜色是 FoodColors.main(被切的东西)——食物、原木、石头、花、船、皮甲都按自己的图标；MainColors 里没有的（下游追加的配方）按工具。"""
+    MainColors = fdtest.load("Shared.Data.BrothColors").MainColors
+    for name in ("arris:cabbage", "minecraft:oak_log", "minecraft:crimson_stem", "minecraft:poppy", "minecraft:stone", "minecraft:oak_boat", "minecraft:leather_boots"):
+        for stroke in (None, Cutting.TOOL_STRIP, Cutting.TOOL_SMASH, Cutting.TOOL_CHOP):
+            assert C.BoardFx.colorOf(name, stroke) == MainColors[name], (name, stroke)
+    assert C.BoardFx.colorOf("minecraft:crimson_stem", Cutting.TOOL_STRIP) != C.BoardFx.TOOL_COLORS[Cutting.TOOL_STRIP], "削皮的原木不再都是同一个棕色"
+    assert C.BoardFx.colorOf("x:downstream_thing", Cutting.TOOL_STRIP) == C.BoardFx.TOOL_COLORS[Cutting.TOOL_STRIP]
+    assert C.BoardFx.colorOf("x:downstream_thing", Cutting.TOOL_SMASH) == C.BoardFx.TOOL_COLORS[Cutting.TOOL_SMASH]
+    assert C.BoardFx.colorOf("x:downstream_thing") == C.BoardFx.DEFAULT_COLOR
+
+
 def testTheOwnParticleFileMatchesWhatTheScriptSetsAndIsValidJson():
     path = os.path.join(fdtest.ROOT, "rp", "particles", "arris_board_dust.json")
     text = io.open(path, encoding="utf-8").read()
