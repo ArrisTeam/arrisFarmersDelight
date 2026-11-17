@@ -16,7 +16,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         BiomeWater（各群系的水色，tools/gen_biome_water.py 按原版资源包每个群系的 water_appearance 生成；厨锅里的清水取它）
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
-  Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置） Ticks（错峰 / 概率）
+  Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
@@ -25,6 +25,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotWater（厨锅里清水的颜色：锅所在区块里 5x5 列的群系水色取平均，群系名由客户端 Compat/Diegesis/PotBiome 问来）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
                         GrillStation（炉灶站点：能放什么、一面多久、这一下右键开不开）  StoveCover（炉灶上面盖没盖东西：锅、煎锅、砧板、别的方块）
+                        GrillBlocks（灶方块 = 点着的 `StoveList` + 熄着的孪生方块 `arris:stove_extinguish`：isLit / isGrill / twinOf、前置包登记站点用的活容器 `GRILL_BLOCKS`、
+                        熄着时 FD 的件怎么冷却 `cooledTimer`、什么点得着 / 灭得了炉灶 `useOf`）
                         StoveFacing（炉灶的朝向：方块的 aux -> 站点朝向，炉灶自己的坐标 / 姿态 -> 世界，六件跟着炉灶转）
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
@@ -67,6 +69,9 @@ Server/                 服务端
   PotServe              盛菜：取一份、记"做过几份"、给经验；主手拿着容器右键直接盛
   HandFrying            煎锅手放的一批（HoD Frying）：先煎贴锅面、等颠锅翻面、两面熟了留在锅里；右键放的照 FD 原样
   HandGrill             炉灶手放的每一件（HoD Grill）：逐件两面分开烤、等翻面、烤好留在灶台上；右键放的照 FD 原样
+  StoveSwap StoveFire   炉灶点火 / 灭火：点着的是 `arris:stove`、熄着的是 `arris:stove_extinguish`，换方块名等于换方块实体，StoveSwap 换之前拍炉灶自己的键（六个烤位、cookingIndex、
+                        handGrill）和朝向的快照、换完写回（事件先后两种都兜；5 秒还写不上把东西丢在地上；旧方块的移除事件用 claims 挡住；换完一秒里重发世界外观），
+                        StoveFire 是 `ServerItemUseOnEvent` 优先级 11 的处理：打火石、火焰弹点着，铲子、水桶熄灭（JE 的 AbstractStoveBlock.use），用上了就认领，不再放食物
   PanLook StoveLook     煎锅 / 炉灶的世界外观广播：东西、两面烤到哪、翻面 / 取走 / 放不进 / 烤好的一次性事件，发给 32 格内的人（站点开不开着都一样），
                         新走进 32 格的人单发一份当前的、样子没变时每 5 秒再单发一份（广播丢了就这么补）、开站那一刻单发给开站的人
                         （Helpers/LookWatch：玩家位置快照 + 每口锅 / 灶一份"已经收到当前样子的人和时刻"）
@@ -165,7 +170,7 @@ def OnServerSkilletBlockUse(args):
 | `CuttingBoardDict`（键 `(物品名, aux)`） | 追加键；`tool` 引用 `knifeList` / `axeList` | 砧板 `BoardStation.Env` 的 `recipeOf / cuttable / cutsWith / isToolItem / usable / shiftPlaces`（托盘亮不亮、借哪把刀、Shift 放不放、点板是落刀还是敲一声，`BoardView.py:68-101,125-130,179`）、`BoardDraw.kindOf`（`:58`，工具类的东西是不是插着的）、`StationBooks.boardPages / boardCurrent`（食谱书"切"的页） |
 | `knifeList`、`axeList` | 追加名字（`append`） | `BoardInv.isKnife`、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
 | `CanCookedFoodDict` | 追加键 | 煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、`StationBooks.panPages / grillPages`、手持煎锅"煎还是吃"（`Client/Input.py:42`） |
-| `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（**就是** `StoveList` 本身，`GrillView.py:148` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（`:54,73,117`，哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源） |
+| `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 
@@ -182,7 +187,7 @@ def OnServerSkilletBlockUse(args):
   **就是** `knifeList` / `axeList` 等登记过的那个列表对象的，写成 `{"$ref": "knifeList"}`，客户端换回它自己的那一个——砧板配方的 `tool` 和服务端一样是引用，之后追加的刀对所有配方一起生效。
   py2 的 `unicode` 两端各换一次 `str`。传不了的值（自定义对象、集合、键不是 `str` 的嵌套字典、嵌套超过 16 层）：**那一条跳过并记日志**（`[arrisFarmersDelight] 表同步：…`），别的照发；
   厨锅配方新增的那一行编不了时放一个空行占着下标（书页的键、书里放料发的键都是下标，后面几行不能错位）。deepcopy 不认的东西让"变没变"的快速检查退成每次重算，同步不会停。
-- **并表**（`TableMerge.apply`，客户端）：就地改、不换对象（前置包拿着 `StoveList` 这个列表对象）；幂等（本端已经有一样的东西就不动它：重复收、晚收都一样，
+- **并表**（`TableMerge.apply`，客户端）：就地改、不换对象（前置包拿着的容器每次按 `StoveList` 这个列表对象判）；幂等（本端已经有一样的东西就不动它：重复收、晚收都一样，
   单机联机两端共用一份表时也不会把下游手里的配方字典换成副本）；厨锅配方里本端已有的行就地合并（`Recipe` 列表原地换内容，保住 `_Ways.slots`：食谱书一格一格轮换备选要读它）；
   一条条隔离，换不回来的条目记日志跳过，消息本身不对（版本、表名、种类，或 `base` 比本端的表还长：两端不是同一版）整条不理；
   并进去有变化的表重算缓存：厨锅配方索引（`CookingPot.rebuildIndex`）和砧板的工具表（`BoardStation.invalidate`，它的缓存键现在也看 `knifeList` / `axeList` 的长度）。其它站点读表都是现读的，没有缓存。
@@ -569,7 +574,8 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   砧板 / 煎锅 / 炉灶 / 厨锅 / 四本书对着下游追加的东西，并表前说不认、并表后认）、`test_table_sync_server.py`（进服发一次、定时补发只发变了的表）、`test_table_sync_selftest.py`（游戏内自检的两半）。
 - 游戏内自检：`Server/Debug/McdkSelfTest.py`（`mcdk_test_run()` / 约 15 秒后 `mcdk_test_collect()`），含切菜板站点用例
   （直接驱动前置包的 Manager，与客户端点击走同一条校验路径；前置没装时跳过）。同目录还有 `McdkDishTest`（砧板摆盘、一桶水揉一叠面团）、
-  `McdkBookTest`（食谱书放料）、`McdkPotTest` / `McdkPanTest` / `McdkGrillTest`（三个站点的烹饪）、`McdkCraftTest`（工作台合成：摆格子、
+  `McdkBookTest`（食谱书放料）、`McdkPotTest` / `McdkPanTest` / `McdkGrillTest`（三个站点的烹饪；`McdkGrillTest` 还有炉灶四个朝向的自检：服务端读 direction 状态 / aux /
+  站点朝向钩子，客户端 `Client/Debug/McdkGrillTest` 读同一格的 aux 和客户端的钩子，在游戏里对起来）、`McdkCraftTest`（工作台合成：摆格子、
   点结果格、核对剩余物和拦截，要用 mc_input 点）、`McdkBackstabTest`（背刺），调用方法写在各文件头。几个自检别同时跑（共用玩家脚边的位置）。
   `McdkTableSyncTest`（服务端 `Server/Debug/` 照下游的写法追加石剑当刀、黏土球的切菜配方、木棍 / 圆石煮钻石的厨锅配方、胡萝卜可煎烤，再补发；客户端 `Client/Debug/` 用
   `is_client` 为真的 `execute_code` 看本端的表和站点判断认不认得）。
