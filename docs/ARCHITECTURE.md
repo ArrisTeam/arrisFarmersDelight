@@ -22,6 +22,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
                         PotLookState（厨锅"看上去是什么样"的广播怎么读）  PotModelMath（方块朝向、勺子骨骼的位移和欧拉角）
                         PotPiecesLook（汤里的碎料交给着色器的数：配料槽、出现 / 缩走的钟）  PotItem（拆下来的锅带着菜）
+                        PotSupport（厨锅的支架：没有 / 托盘 / 吊把手，放下时点的是不是方块的下面、两个旗读成哪种、切换的声音）
                         PotWater（厨锅里清水的颜色：锅所在区块里 5x5 列的群系水色取平均，群系名由客户端 Compat/Diegesis/PotBiome 问来）
                         PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
                         GrillStation（炉灶站点：能放什么、一面多久、这一下右键开不开）  StoveCover（炉灶上面盖没盖东西：锅、煎锅、砧板、别的方块）
@@ -50,7 +51,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         StoveFlame（点着的炉灶自己的火：火口的火星 / 烟 / 噼啪声、灶上每件东西冒烟的概率和位置，JE 的 animateTick / particleTick）
                         TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
                         SoundMix（JE 的音量 / 音调换成交给引擎的数：定义里自带音量 / 音调的声音要把那份除掉）
-                        ItemDrops（东西从方块里掉出来 / 弹出去的位置和初速，照 JE 的 Containers.dropItemStack / ItemUtils.spawnItemEntity）
+                        ItemDrops（东西从方块里掉出来 / 弹出去的位置和初速，照 JE 的 Containers.dropItemStack / ItemUtils.spawnItemEntity；砧板切出来、煎锅煎好的往方块侧面弹：boardPop / panPop）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
                         厨锅的表现也在这里（纯计算，Pot 开头的那些）：汤面（水位、汤色、沸腾）、勺子的手感、漂着的料、碎料、
                         出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作
@@ -61,7 +62,7 @@ Server/                 服务端
   ModServer.py          导入全部玩法模块；33 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
-                        Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给）
+                        Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给；PopFromBoard / PopFromPan 读方块朝向往侧面弹）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
@@ -82,6 +83,7 @@ Server/                 服务端
                         （Helpers/LookWatch：玩家位置快照 + 每口锅 / 灶一份"已经收到当前样子的人和时刻"）
   CookingPotHost        厨锅接入 dolorContainer：容器类型 + 方块宿主 + 界面数据读数；宿主的 onViewers 告诉烹饪谁开着界面
   CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
+  PotSupport            厨锅的支架：挂在天花板下面放下就是吊把手（放置前事件记点的面），潜行空手右键在吊把手和托盘 / 没有之间切（见"厨锅的支架"）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
   TableSync             下游在服务端追加的表发给客户端：玩家进服发一次累计的差异，之后每 5 秒看表变没变、补发（客户端的站点表现读的是客户端那一份表）
   Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
@@ -217,7 +219,7 @@ def OnServerSkilletBlockUse(args):
 - 存储不变：8 个引擎容器格（`netease:block_container`，0-5 食材、6 容器、7 成品）；烹饪、热源、预览槽仍由 `Server/CookingPot.py` 在
   方块实体数据里推进，dolor 只接管界面、格子操作和食谱书。
 - 打开：`Server/CookingPotHost.py` 登记容器类型 `arris:cooking_pot` 与方块宿主（库的 `Std/Block/Server.Host`）。宿主自己监听
-  `ServerBlockUseEvent` / `ServerItemUseOnEvent`：对着厨锅使用时打开界面（潜行并拿着东西时放过，按住不重复开）。登记时库在运行期
+  `ServerBlockUseEvent` / `ServerItemUseOnEvent`：对着厨锅使用时打开界面（潜行并拿着东西时放过；潜行空手右键是切吊把手、不开界面，见"厨锅的支架"；按住不重复开）。登记时库在运行期
   让引擎报厨锅的移除，所以方块 JSON 里**不能**再写 `netease:listen_block_remove`（两处同时开，方块和物品图标都不画）；
   `OnCookingPotRemove` 照常经 `BlockRemoveServerEvent` 收到事件。客户端那一半（`Std/Block/Client.py`）在 `Client/CookingPotUi.py` 里导入。
 - 界面模型 `Shared/Menus/CookingPot.py` 两端各建一份：格子类型、Shift 点击的去向、界面数据、动作；服务端权威，客户端只预测。
@@ -268,7 +270,8 @@ JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格
 
 JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-36）：正下方一格是热源就热——标签 `heat_sources` = 岩浆块、熔岩炼药锅、炉灶、`tray_heat_sources`（熔岩、营火、火），
 带 `LIT` 状态的要点着；正下方是 `heat_conductors`（漏斗；`create:chute` 是可选项，这个引擎上没有对应的方块名）时改看再下面一格，只往下看一格。
-托盘（`SUPPORT = TRAY`，这边是方块实体模型的 `variable.mod_shelf`）只看正下方是不是 `tray_heat_sources`（`CookingPotBlock.getTrayState`、`SkilletBlock`），所以漏斗下面的火烧得热锅、不画托盘。
+托盘（`SUPPORT = TRAY`，这边是方块实体模型的 `variable.mod_shelf`）只看正下方是不是 `tray_heat_sources`（`CookingPotBlock.getTrayState`、`SkilletBlock`），所以漏斗下面的火烧得热锅、不画托盘；
+厨锅挂着吊把手时下面是什么都不画托盘（见"厨锅的支架"）。
 这边（`Server/Helpers/Heat.py`，厨锅和煎锅经典 / 站点共用，`RefreshHeat` 把结果存进方块实体数据 `heatEnable`，站点和世界外观都读那份存着的）：
 
 - 热源表还是对外联动契约的 `CanProvideHeatBlockList`（一个字没改：岩浆块是 `minecraft:magma`，营火看 `extinguished` 状态，点着的 `arris:stove` 在表里、熄着的孪生方块不在）；
@@ -289,6 +292,42 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
 2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
    一格一格读的自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_probe(x, y, z)`（方块名、状态、`IsHeatSource`、`IsHeated`；锅 / 煎锅那一格再给存着的 `heatEnable` / `shelfEnable`，
    和 `Heat.IsHeated` 现算的对照），用法在文件开头的说明里。
+
+## 厨锅的支架：吊把手、托盘（对照 JE）
+
+JE 的 `CookingPotBlock` 有方块状态 `support`：`none` / `tray` / `handle`（`CookingPotSupport`）。
+- 放下时（`getStateForPlacement`，java:117-120）：点的是方块的**下面**（锅挂在天花板下面）是吊把手，否则正下方是托盘热源（`tray_heat_sources`：熔岩、营火类、火）是托盘，不是就没有；
+- 邻居变了（`updateShape`，java:128-130）：吊把手不动，别的按正下方重算（所以挂着的锅下面有火也不画托盘，但照样被烧热：`isHeated` 不看支架）；
+- 潜行 + **空手**右键（`use`，java:71-74）：吊把手切回按正下方算的托盘 / 没有，别的切成吊把手，响一声挂灯（`LANTERN_PLACE` 0.7 / 1.0）；不开界面、不盛菜。
+  原版潜行时任何一只手拿着东西，方块的 `use` 根本不调（`ServerPlayerGameMode.useItemOn` 的 `isSecondaryUseActive && 手里有东西`），手里的东西照常用出去；
+  HoD 的 `CookingPotStation.opens` 对潜行一律返回假（"Sneaking keeps the pot's handle toggle"），所以装了 HoD 潜行右键也只是切把手。
+
+**玩家看到的变化**：厨锅挂在天花板下面放（点方块的下面）会带吊把手；潜行空手右键锅，吊把手和托盘 / 没有来回切（响挂灯声）。**潜行空手右键不再开经典界面**
+（原来前置包在场时是那样开的）：装了前置包，经典界面只剩 HoD 配置里关了 `cooking_pot` 站点一条路，和 JE + HoD 一样；没装前置包时普通右键照旧开它。
+潜行并拿着东西（含副手）右键没有变：手里的东西照常用（放方块……），不盛、不开界面。
+
+这边（规则 `Shared/Rules/PotSupport.py`，服务端 `Server/PotSupport.py`）：
+- **状态**存在方块实体数据：`handleEnable`（1.0 挂着 / 0.0 没挂；没有这个键 = 没有吊把手：`/setblock`、结构放出的锅没有放置事件）和 `shelfEnable`（托盘，`Helpers/Heat.RefreshHeat` 按正下方和 `handleEnable` 算，
+  挂着时恒为 0）。没有新的方块状态，方块 JSON 没动。
+- **放置**：`ServerEntityTryPlaceBlockEvent` 的 `face`（`Facing.Down` = 0 = 点的是方块的下面）在放置前由 `OnTryPlacePotAgainst` 按位置记一笔（5 秒过期；同一格放置失败又换个面再放，用最后一次的），
+  方块实体建好（`ServerPlaceBlockEntityEvent`，`CookingPot.OnServerCookingPotCreate`）时 `PotSupport.attach` 取走；没有记录的（活塞推来的带着旗，别的方式放的没有）不改已有的旗。
+- **切换**：`Server/CookingPotHost.use`（dolorContainer 方块宿主，库在 `ServerBlockUseEvent` 里先问宿主）：潜行时调 `PotSupport.toggle`，主手副手都空着才切（库的缺省规则 `sneakPasses` 已经把主手有东西的放过，
+  副手有东西的 JE 也不调 `use`，这里返回放过）；共用 0.2 秒的交互冷却（JE 按住右键也是每 4 刻一次），创造模式也切。
+- **模型**（`rp/models/entity/cooking_pot.geo.json` 的 `handle` 骨骼）：FD 的 `cooking_pot_handle.json` 那一组（hoop、两片侧面、顶上一条，贴图 `cooking_pot_handle.png` 贴在 `cooking_pot.png` 的 (0, 40) 起 16 x 16 处），
+  `variable.mod_handle > 0.5` 才画（渲染控制器的 `part_visibility`），实体 JSON 初始化为 0。托盘 `shelf` 骨骼和 `mod_shelf` 不变。
+- **同步给客户端**：变的时候 `RefreshHeat` 直接推 `mod_shelf` / `mod_heat` / `mod_handle`（有 `handleEnable` 这个键才推，煎锅没有）；方块实体加载时 `Client/BlockEntityRestore` 按存档补；
+  世界外观广播（`Server/PotLook`，前置包在场时）带 `support`（`PotSupport.NONE / TRAY / HANDLE` = 0 / 1 / 2，进 `potLook` 镜像时 0 不写），客户端 `PotScene` 每帧交给 `PotModel.support`，
+  所以方块实体被引擎无事件重建（进世界十来秒后会有一次，变量回到初始值）时，`PotModel.check()` 发现后吊把手和托盘跟着别的值一起重推。没有前置包时没有场景，重建后要等下一次邻居事件 / 加载才补。
+- **测试**：`tests/test_pot_support.py`（放置、邻居、切换、冷却、手里有东西、世界外观）、`tests/test_pot_support_model.py`（模型文件、场景推给模型、重建后重推、加载时补）、
+  `tests/test_pot_support_open.py`（站点登记保留潜行不开站）。
+- **没做**：JE 托盘状态的碰撞盒（`SHAPE_WITH_TRAY`：方块下面多一块 1 像素的板）——自定义方块的碰撞盒不能伸到方块外面，托盘只是画出来；吊把手的描边（悬停描边只有勺子有）。
+
+待实机验证（离线 + 假引擎核对过，没进过游戏；改了几何 / 实体 / 渲染控制器 / 贴图，要完整重启）：
+
+1. 对着天花板（方块下面）放厨锅：长出吊把手（一个 14 像素宽的框、顶上一条横梁，穿过锅口中间）；对着地面 / 侧面放没有。
+2. 潜行空手右键：把手出现 / 消失，响挂灯声，不开界面；锅放在营火 / 熔岩 / 火上：切回来是托盘，再切又是把手（把手盖着托盘）；拿着东西潜行右键什么都不切、手里的东西照常用。
+3. 站点开着时（前置包在场）把手也在，镜头看锅口不被它挡得太多；别的玩家从远处走近、重进世界、进世界十来秒后都还有把手（`PotModel.check` 重推）。
+4. 创造模式、按住右键（每 0.2 秒切一次）。
 
 ## 合成与合成剩余物（对照 JE）
 
