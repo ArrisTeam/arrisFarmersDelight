@@ -6,7 +6,8 @@
 带 chance 的产物按概率给，从板的侧面带着初速弹出去（CuttingBoardBlockEntity:89-92，Helpers/Drops.PopFromBoard）。空手取回，创造模式取回的东西不给玩家（:68）。
 放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的 FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
 拆了板：板上的东西从方块里随机一点掉出来（CuttingBoardBlock.onRemove 的 Containers.dropItemStack，Helpers/Drops.ScatterItem），摆着的菜的每一层也是（HoD 的 CuttingBoardBlockMixin）。
-下面撑不住（空气 / 液体，Shared/Rules/BoardSupport）：放不下，已经放着的在下面变成这样时当场被拆（JE 的 canSurvive + updateShape）。
+下面撑不住（JE 的 canSurvive：下面那格的顶面正中得有东西托着——空气、液体、花草、火把、地毯、下半砖、耕地、箱子都不行，按引擎给的碰撞盒判，Shared/Rules/BoardSupport）：
+放不下，已经放着的在下面变成这样时当场被拆（updateShape）。
 板上的东西只存在方块实体数据 cuttingDict（带数量，整件存：附魔、耐久、改名等数据一起，Shared/Rules/HandsOn/ItemData.py）；
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
@@ -25,20 +26,28 @@ from ..Shared.Rules.HandsOn import ItemData
 CUTTING_BOARD = "arris:cutting_board"
 
 
+def _carries(pos, dimensionId, name=None):
+    """pos 这一格（砧板正下面）撑不撑得住砧板。name：事件说它变成了什么——世界里读到的要是另一种（还没换过去），就只按名字判。"""
+    info = compFactory.CreateBlockInfo(levelId)
+    below = info.GetBlockNew(pos, dimensionId)
+    if not below or (name is not None and below["name"] != name):
+        return BoardSupport.survives(name)
+    return BoardSupport.survives(below["name"], below.get("aux", 0), BoardSupport.boxOf(info.GetBlockCollision(pos, dimensionId), pos))
+
+
 @registerHandler("BlockNeighborChangedServerEvent", match=CUTTING_BOARD)
 def OnCuttingBoardNeighborChanged(args):
-    # 下方方块撑不住了（变成空气 / 液体，JE 的 updateShape + canSurvive）：像被挖掉一样拆下来，掉板自己，板上的东西从方块里散落（BlockRemoveServerEvent）
+    # 下方方块撑不住了（JE 的 updateShape + canSurvive）：像被挖掉一样拆下来，掉板自己，板上的东西从方块里散落（BlockRemoveServerEvent）
     neighborPos = (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"])
-    if neighborPos == (args["posX"], args["posY"] - 1, args["posZ"]) and not BoardSupport.survives(args["toBlockName"]):
+    if neighborPos == (args["posX"], args["posY"] - 1, args["posZ"]) and not _carries(neighborPos, args["dimensionId"], args["toBlockName"]):
         blockPos = (args["posX"], args["posY"], args["posZ"])
         compFactory.CreateBlockInfo(levelId).SetBlockNew(blockPos, {"name": BoardSupport.AIR}, 1, args["dimensionId"])
 
 
 @registerHandler("ServerEntityTryPlaceBlockEvent", match=CUTTING_BOARD)
 def OnTryPlaceCuttingBoard(args):
-    # JE 的 canSurvive：下面撑不住（空气 / 液体：贴着墙侧面放、悬空）就放不下，物品留在手里
-    below = compFactory.CreateBlockInfo(levelId).GetBlockNew((args["x"], args["y"] - 1, args["z"]), args["dimensionId"])
-    if not BoardSupport.survives(below["name"] if below else None):
+    # JE 的 canSurvive：下面撑不住（贴着墙侧面放、悬空、放在地毯 / 下半砖 / 花草上）就放不下，物品留在手里
+    if not _carries((args["x"], args["y"] - 1, args["z"]), args["dimensionId"]):
         args["cancel"] = True
 
 

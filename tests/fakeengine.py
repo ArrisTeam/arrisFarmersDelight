@@ -42,6 +42,7 @@ class FakeWorld(object):
         self.entities = {}      # id -> {"type", "tamed", "health", "maxHealth", "fire", "owner", "effects"}
         self.players = {}       # id -> {"hand", "creative", "pos", "hunger", "given"}
         self.blocks = {}        # (dim, x, y, z) -> {"name", "states", "data"}
+        self.collisions = {}    # 方块名 -> 碰撞盒（相对这一格的 (minX, minY, minZ, maxX, maxY, maxZ)，None 是没有碰撞盒）；没列的：空气 / 液体没有，别的是整格
         self.itemEntities = {}  # id -> itemDict
         self.spawned = []       # [(itemDict, dim, pos)]
         self.motions = {}       # 掉落物实体 id -> SetMotion 给的初速（每刻几格；id 是 CreateEngineItemEntity 返回的 item1000、item1001……）
@@ -194,7 +195,15 @@ class FakeWorld(object):
         def setBlockNew(pos, blockDict, handling=0, dim=DIMENSION, *rest):
             self.blocks[(dim,) + tuple(pos)] = {"name": blockDict["name"], "states": None, "data": None}
             return True
-        return {"SetBlockNew": setBlockNew,
+        def getCollision(pos, dim=DIMENSION, getAll=False):
+            """实机（3.10）：这一格碰撞盒的包围盒，世界坐标；没有碰撞盒的六个数全是 0。"""
+            name = self.blockName(pos[0], pos[1], pos[2], dim)
+            hollow = name == "minecraft:air" or name.split(":")[-1] in ("water", "flowing_water", "lava", "flowing_lava")
+            box = self.collisions.get(name, None if hollow else (0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
+            if box is None:
+                return {"min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}
+            return {"min": [pos[axis] + box[axis] for axis in range(3)], "max": [pos[axis] + box[3 + axis] for axis in range(3)]}
+        return {"SetBlockNew": setBlockNew, "GetBlockCollision": getCollision,
                 "GetBlockNew": lambda pos, dim=DIMENSION: {"name": self.blockName(pos[0], pos[1], pos[2], dim),
                                                            "aux": self.blockAux(pos[0], pos[1], pos[2], dim)}}
 
