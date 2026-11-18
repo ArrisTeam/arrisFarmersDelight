@@ -16,12 +16,17 @@ Gestures = fdtest.load("dolorContainer.Client.Gestures")
 
 
 class Old(object):
-    """老版本前置包的视图：没有 buzz / doubleSeconds。"""
+    """老版本前置包的视图：没有 buzz / doubleSeconds / flyIn。"""
 
 
 class New(object):
     def __init__(self):
         self.buzzes = []
+        self.flew = 0
+
+    def flyIn(self, at=None):
+        self.flew += 1
+        return True
 
     def buzz(self, kind):
         self.buzzes.append(kind)
@@ -43,6 +48,14 @@ def testBuzzAsksTheViewAndDoesNothingOnAnOldKernel():
     Feel.buzz(view, Feel.CUT)
     assert view.buzzes == ["cut"]
     Feel.buzz(Old(), Feel.CUT)
+
+
+def testFlyInAsksTheViewAndDoesNothingOnAnOldKernel():
+    view = New()
+    Feel.flyIn(view)
+    assert view.flew == 1
+    Feel.flyIn(Old())
+    assert dgtest.load("Shared.Protocol").FLY_IN is True, "前置包这一版认它（Protocol.FLY_IN）"
 
 
 def testTheDoubleClickWindowIsTheViewsOrTheCallersDefault():

@@ -124,6 +124,8 @@ class GrillViewMixin(object):
             centers = [(x, z) for x, _, z in self.space.centers()]
             nearest = StoveLayout.nearestFree(self.space.cursor(event.ray), centers, self._free())
         self.view.sendAction("place", StoveLayout.placeRequest(event.button, nearest))
+        if self.view.fits(Rules.GROUP_GRILL) is not None:
+            TouchFeel.flyIn(self.view)                     # 触屏点选的：从托盘里它那一格飞过来（没有空位的不飞）
 
     def _piece(self, event, place):
         """点烤位上的一件（StoveBehavior.onEvent）：右键取下；烤好的取下；否则翻面，它在空中的那一下不发。"""

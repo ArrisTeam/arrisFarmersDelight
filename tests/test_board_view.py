@@ -404,8 +404,22 @@ def testLeftClickWithAStackPlacesAllAndRightClickPlacesOne():
     assert behavior.onPointer(C.Event("down", "mouth", button=0))
     assert behavior.onPointer(C.Event("down", "mouth", button=1))
     assert view.sent == [("place", {"one": False}), ("place", {"one": True})]
+    assert view.flew == 2, "放得上板的：每放一下，触屏点选的那一叠从托盘里它那一格飞过来（前置包的 view.flyIn，键鼠时它什么都不画）"
     assert not behavior.onPointer(C.Event("down", "surface")), "手上拿着东西：板面不是接东西的口"
     assert not behavior.onPointer(C.Event("down", None, button=1)), "点在板外：内核把手上的放回背包"
+    assert view.flew == 2
+
+
+def testAStackTheBoardWillNotTakeAndAToolThatOnlyCutsDoNotFlyIn():
+    behavior, view = _open(board=C.item("arris:cabbage"), hand=C.item("minecraft:stick", 3))
+    assert behavior.onPointer(C.Event("down", "mouth", button=0)) and view.sent[-1][0] == "place", "照发，收不收是服务端的事"
+    assert view.flew == 0, "板上已经有东西、这一叠放不上去：不飞（服务端会拒）"
+    behavior, view = _open(board=C.item("arris:cabbage"), hand=C.item(KNIFE))
+    behavior.onPointer(C.Event("down", "mouth", button=0))
+    assert view.flew == 0, "刀是拿来切的，不是放上去的"
+    behavior, old = _open(hand=C.item("arris:cabbage", 5))
+    old.flyIn = None                                              # 老版本的前置包：没有 flyIn
+    assert behavior.onPointer(C.Event("down", "mouth", button=0)) and old.sent == [("place", {"one": False})], "照放，只是不飞"
 
 
 def testAKnifeOnTheCursorOnlyCutsWhenItIsOnTheDashedLine():

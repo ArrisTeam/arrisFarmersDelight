@@ -451,9 +451,12 @@ def testMyOwnTurnIsNotPlayedAgainWhenTheServerSaysSo():
 def testAStackInTheHandGoesOnEverywhereWithTheLeftButtonAndOnTheNearestFreePlaceWithTheRight():
     view = make(pieces={1: item(BEEF)})
     view.setHand(item(BEEF, 5))
+    flew = []
+    view.flyIn = lambda at=None: flew.append(at)
     assert [node.key for node in view.behavior.pickables()] == ["mouth"], "拿着东西时整个烤架面是一块"
     assert click(view, 4)
     assert actions()[-1] == ("place", {}), "左键：每个空位一件"
+    assert len(flew) == 1, "有空位：触屏点选的那一叠从托盘里它那一格飞过来（前置包的 view.flyIn，键鼠时它什么都不画）"
     assert click(view, 4, button=1)
     assert actions()[-1] == ("place", {"one": True, "place": 4}), "右键：离光标最近的空位"
     assert click(view, 0, button=1)

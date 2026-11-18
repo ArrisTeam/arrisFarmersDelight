@@ -190,6 +190,10 @@ def testWithAStackInHandAnyClickOnThePanPlacesItLeftTheWholeStackRightOne():
     assert view.actions[-1] == ("place", {"one": True})
     event(behavior, "down", (8.0, 2.0, 22.0))                # 手上拿着东西点锅柄也是放（JE 的 onItemClick 不挑节点）
     assert view.actions[-1] == ("place", {"one": False}) and not behavior.stroking, "拿着东西不是抓锅柄"
+    assert view.flew == 3, "锅里放得进：每放一下，触屏点选的那一叠从托盘里它那一格飞过来（前置包的 view.flyIn）"
+    view.fitting = None
+    event(behavior, "down", (8.0, 3.0, 8.0))
+    assert view.actions[-1] == ("place", {"one": False}) and view.flew == 3, "锅里放不进：照发（服务端拒），不飞"
 
 
 def testWithAStackInHandAClickOutsideThePanIsLeftToTheKernel():

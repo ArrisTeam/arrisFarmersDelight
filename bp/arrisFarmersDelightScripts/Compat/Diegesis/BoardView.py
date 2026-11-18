@@ -190,8 +190,12 @@ class BoardViewMixin(object):
             TouchFeel.buzz(self.view, TouchFeel.REFUSE)
         elif action[0] == Click.PLACE:
             self.view.sendAction("place", {"one": bool(action[1])})
+            if placeable(self.env, hand, board, layers):
+                TouchFeel.flyIn(self.view)                 # 触屏点选的：从托盘里它那一格飞过来（板不收的不飞）
         else:
             self.view.sendAction(action[0])                # carve / assemble
+            if action[0] == Click.CARVE:
+                TouchFeel.flyIn(self.view)                 # 工具插到板上：也是把手上的东西放上去
         return True
 
     def _bareHand(self, event):

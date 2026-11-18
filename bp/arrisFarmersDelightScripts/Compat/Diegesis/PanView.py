@@ -211,6 +211,8 @@ class PanViewMixin(object):
         if key is None:
             return False
         self.view.sendAction("place", {"one": event.button == 1})
+        if self.view.fits(Rules.GROUP_PAN) is not None:
+            TouchFeel.flyIn(self.view)                     # 触屏点选的：从托盘里它那一格飞过来（锅里放不进的不飞）
         return True
 
 

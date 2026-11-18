@@ -245,9 +245,14 @@ class FakeView(object):
         self.sent, self.dust = [], []
         self.input = "mouse"
         self.buzzes = []                                  # view.buzz(种类) 震过的种类（前置包有 buzz 才有；老版本没有它）
+        self.flew = 0                                     # view.flyIn() 调了几次（触屏点选的东西飞上站点，前置包有才有）
 
     def buzz(self, kind):
         self.buzzes.append(kind)
+
+    def flyIn(self, at=None):
+        self.flew += 1
+        return True
 
     def sendAction(self, name, data=None):
         self.sent.append((name, data or {}))
