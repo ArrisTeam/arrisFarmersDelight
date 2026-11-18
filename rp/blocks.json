@@ -882,8 +882,7 @@
         "textures": "arris:sweet_berry_cheesecake"
     },
     "arris:tatami": {
-        "sound": "cloth",
-        "textures": "arris:tatami_mat_half"
+        "sound": "cloth"
     },
     "arris:tatami_full_mat": {
         "netease_model": "arris:tatami_full_mat",

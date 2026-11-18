@@ -36,6 +36,7 @@ from . import FoodBlocks  # noqa: F401
 from . import Storage  # noqa: F401
 from . import RopeAndNet  # noqa: F401
 from . import TatamiMats  # noqa: F401
+from . import TatamiPairs  # noqa: F401
 from . import RopeFences  # noqa: F401
 from . import FoodEffects  # noqa: F401
 from . import Livestock  # noqa: F401
@@ -101,6 +102,11 @@ def _onDestroyBlock(args):
 @Listen("ServerEntityTryPlaceBlockEvent")
 def _onServerEntityTryPlaceBlock(args):
     dispatch("ServerEntityTryPlaceBlockEvent", args, args.get("fullName"))
+
+
+@Listen("EntityPlaceBlockAfterServerEvent")
+def _onEntityPlaceBlockAfter(args):
+    dispatch("EntityPlaceBlockAfterServerEvent", args, args.get("fullName"))
 
 
 @Listen("ServerPlayerTryDestroyBlockEvent")

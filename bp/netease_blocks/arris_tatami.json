@@ -1,30 +1,29 @@
 {
-    "format_version": "1.10.0",
+    "format_version": "1.21.90",
     "minecraft:block": {
         "components": {
-            "minecraft:block_light_absorption": {
-                "value": 0
+            "minecraft:destructible_by_explosion": {
+                "explosion_resistance": 0.8
             },
-            "minecraft:block_light_emission": {
-                "emission": 0
+            "minecraft:destructible_by_mining": {
+                "seconds_to_destroy": 0.8
             },
-            "minecraft:destroy_time": {
-                "value": 0.8
+            "minecraft:geometry": "minecraft:geometry.full_block",
+            "minecraft:light_dampening": 0,
+            "minecraft:loot": "loot_tables/tatami.json",
+            "minecraft:material_instances": {
+                "*": {
+                    "texture": "arris:tatami_mat_half"
+                }
             },
-            "minecraft:explosion_resistance": {
-                "value": 0.8
-            },
-            "netease:connection": {
-                "blocks": []
-            },
-            "netease:face_directional": {
-                "type": "direction"
+            "minecraft:redstone_conductivity": {
+                "redstone_conductor": true
             },
             "netease:fuel": {
                 "duration": 20
             },
-            "netease:render_layer": {
-                "value": "opaque"
+            "netease:neighborchanged_sendto_script": {
+                "value": true
             },
             "netease:solid": {
                 "value": true
@@ -33,7 +32,359 @@
         "description": {
             "category": "arris_farmers_delight",
             "identifier": "arris:tatami",
-            "register_to_creative_menu": true
-        }
+            "register_to_creative_menu": true,
+            "states": {
+                "arris:paired": [
+                    0,
+                    1
+                ],
+                "arris:tatami_facing": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            }
+        },
+        "permutations": [
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 0 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_odd"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_even_cw180"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_even_cw180"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_odd"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 0 && q.block_state('arris:paired') == 1"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 1 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_even"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_odd_cw180"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_odd_cw180"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_even"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 1 && q.block_state('arris:paired') == 1"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 2 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_even"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_odd_cw270"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_even"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_odd_cw90"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 2 && q.block_state('arris:paired') == 1"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 3 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_odd"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_even_cw270"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_odd"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_even_cw90"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 3 && q.block_state('arris:paired') == 1"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 4 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_even_cw90"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_odd_cw270"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_odd_cw90"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_even_cw270"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 4 && q.block_state('arris:paired') == 1"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_mat_half_cw270"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 5 && q.block_state('arris:paired') == 0"
+            },
+            {
+                "components": {
+                    "minecraft:material_instances": {
+                        "*": {
+                            "texture": "arris:tatami_mat_half"
+                        },
+                        "down": {
+                            "texture": "arris:tatami_odd_cw90"
+                        },
+                        "east": {
+                            "texture": "arris:tatami_mat_half_cw180"
+                        },
+                        "north": {
+                            "texture": "arris:tatami_even_cw270"
+                        },
+                        "south": {
+                            "texture": "arris:tatami_even_cw90"
+                        },
+                        "up": {
+                            "texture": "arris:tatami_odd_cw270"
+                        },
+                        "west": {
+                            "texture": "arris:tatami_mat_half_cw90"
+                        }
+                    }
+                },
+                "condition": "q.block_state('arris:tatami_facing') == 5 && q.block_state('arris:paired') == 1"
+            }
+        ]
     }
 }

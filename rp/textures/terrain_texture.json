@@ -460,6 +460,15 @@
         "arris:tatami_even": {
             "textures": "textures/blocks/tatami_even"
         },
+        "arris:tatami_even_cw90": {
+            "textures": "textures/blocks/tatami_even_cw90"
+        },
+        "arris:tatami_even_cw180": {
+            "textures": "textures/blocks/tatami_even_cw180"
+        },
+        "arris:tatami_even_cw270": {
+            "textures": "textures/blocks/tatami_even_cw270"
+        },
         "arris:tatami_full_mat_icon": {
             "textures": "textures/blocks/full_tatami_mat"
         },
@@ -469,11 +478,29 @@
         "arris:tatami_mat_half": {
             "textures": "textures/blocks/tatami_mat_half"
         },
+        "arris:tatami_mat_half_cw90": {
+            "textures": "textures/blocks/tatami_mat_half_cw90"
+        },
+        "arris:tatami_mat_half_cw180": {
+            "textures": "textures/blocks/tatami_mat_half_cw180"
+        },
+        "arris:tatami_mat_half_cw270": {
+            "textures": "textures/blocks/tatami_mat_half_cw270"
+        },
         "arris:tatami_mat_side": {
             "textures": "textures/blocks/tatami_mat_side"
         },
         "arris:tatami_odd": {
             "textures": "textures/blocks/tatami_odd"
+        },
+        "arris:tatami_odd_cw90": {
+            "textures": "textures/blocks/tatami_odd_cw90"
+        },
+        "arris:tatami_odd_cw180": {
+            "textures": "textures/blocks/tatami_odd_cw180"
+        },
+        "arris:tatami_odd_cw270": {
+            "textures": "textures/blocks/tatami_odd_cw270"
         },
         "arris:tomato_crate_side": {
             "textures": "textures/blocks/tomato_crate_side"

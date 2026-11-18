@@ -21,7 +21,8 @@ Food = fdtest.load("Shared.Data.Food")
 
 # JE：破坏后掉自己的方块
 SELF_DROPPING = ("arris:beetroot_crate", "arris:cabbage_crate", "arris:carrot_crate", "arris:onion_crate",
-                 "arris:potato_crate", "arris:tomato_crate", "arris:rice_bag", "arris:rice_bale", "arris:straw_bale")
+                 "arris:potato_crate", "arris:tomato_crate", "arris:rice_bag", "arris:rice_bale", "arris:straw_bale",
+                 "arris:tatami")
 # JE：大菜吃过之后掉的东西（整只的时候掉"自己"，即 stage0 的方块物品）
 FEAST_LEFTOVERS = {
     "roast_chicken_block": [("minecraft:bowl", 1, 1), ("minecraft:bone_meal", 1, 1)],
@@ -48,7 +49,8 @@ def blockTables():
             data = _readJson(os.path.join(root, name))["minecraft:block"]
             table = data["components"].get("minecraft:loot")
             if table:
-                result[data["description"]["identifier"]] = table["table"]
+                # 网易 1.10 格式写 {"table": 路径}，1.19.10 起的格式（榻榻米方块）直接写路径
+                result[data["description"]["identifier"]] = table["table"] if isinstance(table, dict) else table
     return result
 
 
