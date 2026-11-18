@@ -37,7 +37,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         SyncTables  TableWire  TableDiff  TableMerge（下游在服务端追加的表怎么发给客户端：登记哪些表 / 编码 / 算差异 / 并表，见"联动契约与客户端的表"）
                         FoodEffects（吃喝之后的追加结算：牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤；只返回动作，Server/FoodEffects 执行）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
-                        BoardSupport（砧板下面撑不撑得住：空气 / 液体放不下、会掉，JE 的 canSurvive，形状判定引擎没有查询）
+                        BoardSupport（砧板下面撑不撑得住：JE 的 canSurvive，下面那格的顶面要盖住正中 2x2 像素——按引擎给的碰撞盒判，包围盒说不准的按名字）
                         MobLoot（刀杀死生物的额外掉落、洋葱掉落的概率结算） Slicing（刀切派 / 蛋糕 / 南瓜：剩几片、切片单） Eating（吃一份食物的饥饿 / 饱和度）
                         Livestock（马饲料 / 狗粮喂给谁、有什么效果） ChestLoot（战利品箱追加物品的掷骰）
                         GrowthRates（JE 作物的生长概率 -> 基岩随机刻的概率，换算只在这里） CropTick（一次随机刻长不长、长几级）
