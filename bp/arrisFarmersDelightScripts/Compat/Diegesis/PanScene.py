@@ -31,7 +31,8 @@ PAN_CHILDREN = ("piece", "under", "lift")      # 锅的孩子：跟着锅转；h
 
 class Prop(object):
     """一件掉落物和它最近一次送给引擎的样子。位置和转角要连乘好几个矩阵，是每帧里最贵的一段（8 块食物 700 微秒）：
-    节点的位置、转角和锅的转动都没变就不重算；缩放没变也不再调引擎。熟好的食物一鼓一鼓只变缩放，所以缩放单独记。"""
+    节点的位置、转角和锅的转动都没变就不重算；缩放没变也不再调引擎。熟好的食物一鼓一鼓只变缩放，所以缩放单独记。
+    matrix 是送给引擎的那个姿态（世界里的）：下一次的姿态接着它（ItemPose.steadied），所以和节点的姿态可以差贴图平面里的半圈。"""
 
     __slots__ = ("entityId", "kind", "orient", "center", "matrix", "euler", "scale")
 
@@ -163,21 +164,24 @@ class PanScene(object):
             prop = None
         if kind is None:
             return
+        orient = (node.pos, node.rot, panPos, panRot)
+        scale = max(0.01, node.size * node.scale / ItemPose.ITEM_SPAN)
+        if prop is not None and orient == prop.orient and scale == prop.scale:
+            return                                  # 和引擎里的一模一样：不重算、不调引擎
+        center, matrix = (prop.center, prop.matrix) if prop is not None else (None, None)
+        if prop is None or orient != prop.orient:
+            center, posed = self._placed(name, panPos, panRot, node)
+            # 锅里躺着的接着上一次画的姿态：翻面到顶点换向时轴心不跳（ItemPose.steadied；引擎的位置晚到一两帧，跳了就闪到别处）。蛋的手、蛋液照原样
+            center, matrix = self.world(center), ItemPose.steadied(PanPose.toWorld(self.facing, posed), matrix if name.split("_")[0] in PAN_CHILDREN else None)
+        pivot = ItemPose.pivotFor(center, matrix, scale)
         if prop is None:
-            entityId = addDropItem({"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}, self.dimensionId,
-                                   self.world(PanModelMath.SCENE_PAN))
+            entityId = addDropItem({"newItemName": kind[0], "newAuxValue": kind[1], "count": 1}, self.dimensionId, pivot)      # 一出生就在轴心该在的地方
             if not entityId:
                 return
             prop = self.props[name] = Prop(entityId, kind)
-        orient = (node.pos, node.rot, panPos, panRot)
-        scale = max(0.01, node.size * node.scale / ItemPose.ITEM_SPAN)
-        if orient == prop.orient and scale == prop.scale:
-            return                                  # 和引擎里的一模一样：不重算、不调引擎
-        if orient != prop.orient:
-            center, matrix = self._placed(name, panPos, panRot, node)
-            prop.matrix = PanPose.toWorld(self.facing, matrix)
-            prop.center, prop.euler = self.world(center), ItemPose.engineEuler(prop.matrix)
-        sent = compFactory.CreateItem(levelId).SetDropItemTransform(prop.entityId, ItemPose.pivotFor(prop.center, prop.matrix, scale), prop.euler, scale)
+        if matrix is not prop.matrix:
+            prop.center, prop.matrix, prop.euler = center, matrix, ItemPose.engineEuler(matrix)
+        sent = compFactory.CreateItem(levelId).SetDropItemTransform(prop.entityId, pivot, prop.euler, scale)
         prop.orient, prop.scale = (orient, scale) if sent else (None, None)         # 引擎没收下就下一帧再来（和每帧都调时一样）
 
     @staticmethod

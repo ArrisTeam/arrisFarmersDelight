@@ -113,9 +113,9 @@ class Pieces(object):
         key = (look, item.get("newAuxValue") or 0)
         if self.props[place] is None or self.props[place][0] != key:
             self._drop(place)
-            prop = self.view.props.item(_one(look, key[1]), self.space.centers()[place], scale=SCALE,
-                                        matrix=StoveMotion.poseRows(0.0, motion.yaw, 0.0))
-            self.props[place] = (key, prop)
+            center, matrix, scale = self._posed(place)      # 照这一刻的动作建（翻到一半换样子时它在半空立着）：建在落点再挪，头一两帧画在半路上
+            self.props[place] = (key, self.view.props.item(_one(look, key[1]), center, scale=scale, matrix=matrix))
+            self.last[place] = motion.pose()
         self.pose(place)
 
     def _drop(self, place):
@@ -129,13 +129,19 @@ class Pieces(object):
         entry = self.props[place]
         if entry is None or not self.motion[place].visible:
             return
-        offset, rotation, scale = self.motion[place].pose()
-        if (offset, rotation, scale) == self.last[place]:
+        posed = self.motion[place].pose()
+        if posed == self.last[place]:
             return
-        self.last[place] = (offset, rotation, scale)
+        self.last[place] = posed
+        center, matrix, scale = self._posed(place)
+        entry[1].move(center=center, matrix=matrix, scale=scale)
+
+    def _posed(self, place):
+        """这一件此刻的 (中心, 姿态, 缩放)：落点加上动作的偏移、转角、缩放。"""
+        offset, rotation, scale = self.motion[place].pose()
         base = self.space.centers()[place]
-        entry[1].move(center=(base[0] + offset[0], base[1] + offset[1], base[2] + offset[2]),
-                      matrix=StoveMotion.poseRows(rotation[0], rotation[1], rotation[2]), scale=SCALE * scale)
+        return ((base[0] + offset[0], base[1] + offset[1], base[2] + offset[2]),
+                StoveMotion.poseRows(rotation[0], rotation[1], rotation[2]), SCALE * scale)
 
     # ---------------------------------------------------------------- 每帧
 

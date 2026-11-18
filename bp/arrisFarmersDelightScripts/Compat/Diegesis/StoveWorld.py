@@ -20,7 +20,9 @@ class WorldProp(object):
     def __init__(self, dimensionId, origin, yaw, item, center, scale, matrix):
         self.origin, self.yaw = origin, yaw
         self.center, self.scale, self.matrix = center, scale, matrix
-        self.entityId = addDropItem(item, dimensionId, self._world(center))
+        self.drawn = None                     # 上一次送给引擎的姿态（世界里的）：下一次接着它，翻面换向时轴心不跳（ItemPose.steadied）
+        # 一出生就在轴心该在的地方：引擎按游戏刻插值掉落物的位置，建在别处再挪，头一两帧画在半路上
+        self.entityId = addDropItem(item, dimensionId, self._placed()[0])
         self.move()
 
     @property
@@ -37,9 +39,13 @@ class WorldProp(object):
         self.center = center if center is not None else self.center
         self.matrix = matrix if matrix is not None else self.matrix
         self.scale = scale if scale is not None else self.scale
-        world = ItemPose.framed(StoveFacing.axes(self.yaw), self.matrix)
-        pivot = ItemPose.pivotFor(self._world(self.center), world, self.scale)
-        return compFactory.CreateItem(levelId).SetDropItemTransform(self.entityId, pivot, ItemPose.engineEuler(world), float(self.scale))
+        pivot, self.drawn = self._placed()
+        return compFactory.CreateItem(levelId).SetDropItemTransform(self.entityId, pivot, ItemPose.engineEuler(self.drawn), float(self.scale))
+
+    def _placed(self):
+        """(轴心在世界里的位置, 世界里的姿态)，姿态接着上一次画的。"""
+        world = ItemPose.steadied(ItemPose.framed(StoveFacing.axes(self.yaw), self.matrix), self.drawn)
+        return ItemPose.pivotFor(self._world(self.center), world, self.scale), world
 
     def remove(self):
         if self.entityId is not None:

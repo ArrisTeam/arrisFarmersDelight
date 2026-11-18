@@ -245,6 +245,57 @@ def testAnotherCooksTurnIsShownFromTheStartWhicheverArrivesFirst():
         assert sounds("block.lantern.step"), "起跳的一声"
 
 
+def _worstStep(scene, seconds):
+    """seconds 秒里每件掉落物的轴心（送给引擎的位置）一帧最多挪了多远（格）。"""
+    last, worst = {}, 0.0
+    for _ in range(int(round(seconds / DT))):
+        scene.frame(DT, True)
+        for key, drop in world.drops.items():
+            if drop["pivot"] is None:
+                continue
+            if key in last:
+                worst = max(worst, sum((a - b) ** 2 for a, b in zip(drop["pivot"], last[key])) ** 0.5)
+            last[key] = drop["pivot"]
+    return worst
+
+
+def testATurnNeverMakesAPiecesPivotJump():
+    """引擎里掉落物的转角当帧生效、位置晚到一两帧（按游戏刻插值）：轴心一帧里跳得远，那一两帧它就画在别处（煎锅上用户报的"飞得特别高，闪一下"，
+    烤架翻面是同一种写法）。翻到一半从 +90 度直接换成 -90 度时，场景接着上一帧的姿态画（ItemPose.steadied），轴心不跳；
+    翻面换了样子（要换一件掉落物）时，新的那件直接建在它此刻该在的地方，不从落点挪过去。"""
+    ItemPose = C.load("Shared.Rules.ItemPose")
+    both = {1: slot(COOKED, True, 1.0, 1.0)}             # 两面一个样子：翻面不换掉落物
+    scene = setup(both)
+    run(scene, 0.2)
+    ids = set(world.drops)
+    Scenes.OnStoveLook(event("turned", 1, up=1.0))
+    worst = _worstStep(scene, 0.6)
+    assert set(world.drops) == ids and len(ids) == 1, "还是那一件"
+    assert worst < 2.0 / 16.0, "轴心一帧最多挪 %.3f 格，没有哪一帧跳出去" % worst
+    assert abs(centerOf(drops()[0])[1] - (POS[1] + 16.3 / 16.0)) < 0.02, "落回烤架面"
+    keep = ItemPose.steadied
+    ItemPose.steadied = lambda matrix, before: matrix            # 对照：照动作的转角原样摆（修之前）
+    try:
+        scene = setup(both)
+        run(scene, 0.2)
+        Scenes.OnStoveLook(event("turned", 1, up=1.0))
+        jump = _worstStep(scene, 0.6)
+    finally:
+        ItemPose.steadied = keep
+    assert jump > 4.0 / 16.0, "不接着上一帧：翻到一半那一帧轴心跳了 %.3f 格" % jump
+    scene = setup(waiting())                             # 生的翻成熟的：翻到一半换一件掉落物
+    turned(scene)
+    before, fresh = set(world.drops), []
+    for _ in range(int(round(0.3 / DT))):
+        scene.frame(DT, True)
+        fresh = [drop for key, drop in world.drops.items() if key not in before]
+        if fresh:
+            break
+    assert len(fresh) == 1 and fresh[0]["item"]["newItemName"] == COOKED, "翻到一半：换了一件"
+    assert fresh[0]["at"] == fresh[0]["pivot"], "新的那件就建在它此刻的轴心上（建在落点再挪，头一两帧画在半路上）"
+    assert centerOf(fresh[0])[1] > POS[1] + (16.3 + 2.0) / 16.0, "那一刻它在半空（跳到顶了）"
+
+
 def testTheCooksOwnTurnIsNotPlayedAgainWhenTheServerSaysSoButAnOnlookersIs():
     scene = setup(waiting())
     scene.focus(None)

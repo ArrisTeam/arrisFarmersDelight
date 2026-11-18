@@ -235,5 +235,24 @@ def testLiquidLayersAreNotDrawnAndEggLayersAreDrawnOpenedLikeAtTheStation():
     assert [p.item["newItemName"] for p in bottom] == ["minecraft:milk_bucket", "minecraft:wheat"], "第 0 层是底座：容器照旧画"
 
 
+def testAPoseFollowsTheLastOneSoThePivotDoesNotJumpWhenTheSpriteIsTurnedUpsideDown():
+    """ItemPose.steadied：贴图的"上"方向和上一次画的反着时，换成贴图在自己平面里转半圈的那个——占同一块地方、朝外的还是同一面、轴心留在原来那一边。"""
+    before = Pose._mul(Pose._ry(30.0), Pose._rx(180.0))                      # 立着、上下颠倒（翻到一半之前）
+    after = Pose._ry(30.0)                                                   # 同一块地方、正着（HoD 换成 -90 度之后）
+    assert Pose.steadied(after, None) is after and Pose.steadied(before, before) is before
+    kept = Pose.steadied(after, before)
+    center = (3.0, 5.0, 7.0)
+    old, new = Pose.pivotFor(center, before, 1.25), Pose.pivotFor(center, kept, 1.25)
+    assert max(abs(a - b) for a, b in zip(old, new)) < 1e-9, "轴心没动"
+    jumped = Pose.pivotFor(center, after, 1.25)
+    assert abs(jumped[1] - old[1]) > 0.6, "原样摆的话轴心跳一个边长（8 / 16 x 1.25 格）"
+    assert all(abs(kept[r][2] - after[r][2]) < 1e-12 for r in range(3)), "朝外的还是同一面（法线没变）"
+    assert all(abs(kept[r][0] + after[r][0]) < 1e-12 and abs(kept[r][1] + after[r][1]) < 1e-12 for r in range(3)), "贴图在自己的平面里转了半圈"
+    again = Pose.steadied(Pose._mul(Pose._ry(31.0), Pose._rx(-80.0)), kept)
+    assert again[1][1] < 0.0, "之后接着它画：还在同一边，不翻回去"
+    quarter = Pose._mul(Pose._ry(30.0), Pose._rx(90.0))
+    assert Pose.steadied(quarter, Pose._ry(30.0)) is quarter, "转了正好四分之一圈（点积 0）：不换"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

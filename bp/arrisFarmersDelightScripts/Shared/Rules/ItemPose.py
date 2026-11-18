@@ -78,6 +78,18 @@ def pivotFor(center, matrix, scale):
     return (center[0] - matrix[0][1] * half, center[1] - matrix[1][1] * half, center[2] - matrix[2][1] * half)
 
 
+def steadied(matrix, before):
+    """薄片（贴图物品）的姿态 matrix 接着上一次画的 before：返回占同一块地方、轴心离 before 近的那个姿态（新的行表，不改 matrix；before 是 None 原样返回）。
+    引擎里掉落物的转角、缩放当帧生效，位置却是实体的渲染位置——按游戏刻插值，晚到最多一刻（一两帧）；所以送给引擎的轴心（贴图底边中点）必须连续：
+    一帧里跳得远，那一两帧它就画在旧轴心附近、转角却已经是新的（2026-11-18 用户报的：颠锅到顶点时有的食物高出一个物品那么多，闪一下就没了）。
+    HoD 翻面到一半把节点从 +90 度直接换成 -90 度（JE 的模型绕中心转，看不出来）：贴图的"上"方向反了过来，底边上的轴心要跳一个边长。
+    贴图在自己的平面里转半圈（M·Rz(180)）占的是同一块地方、朝外的还是同一面，只是底边换到了对面：matrix 的"上"方向和 before 的反着（点积为负）就用它，
+    轴心留在原来那一边。之后一直接着它画：翻过奇数次的那一块，贴图在自己的平面里是倒着的（和 JE 差半圈），位置、朝上的面都一样。"""
+    if before is None or matrix[0][1] * before[0][1] + matrix[1][1] * before[1][1] + matrix[2][1] * before[2][1] >= 0.0:
+        return matrix
+    return [[-row[0], -row[1], row[2]] for row in matrix]
+
+
 def raisedShift(matrix, scale):
     """画成一张平面图的方块物品（花、树苗、野生作物：物品类型是 block，掉落物却是一张贴图）照贴图物品的规矩摆之前，中心要先挪多少
     （站点像素），画出来才落在本来要的中心上。matrix 是它的 3x3 姿态（y 朝上的空间都行：站点的、世界的）。

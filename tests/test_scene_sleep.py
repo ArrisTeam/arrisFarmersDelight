@@ -8,6 +8,8 @@
 """
 from __future__ import print_function
 
+import math
+
 import copy
 
 import panclient as C
@@ -158,7 +160,9 @@ def testAnEventWakesASleepingPan():
     assert moved, "颠了：食物飞起来"
     run(scene, 6.0)
     assert scene.frame(DT) is False
-    assert max(abs(a - b) for key in before for a, b in zip(world.drops[key]["pivot"], before[key]["pivot"])) < 0.02, "落回来了"
+    assert max(abs(a - b) for key in before for a, b in zip(centerOf(world.drops[key]), centerOf(before[key]))) < 0.02, "落回来了：每块的中心回到原处"
+    # 翻了一回：贴图在自己的平面里倒了过来，底边上的轴心在对面那一边（场景接着上一帧的姿态画，翻到顶点换向时轴心不跳，ItemPose.steadied）
+    assert all(max(abs(a - b) for a, b in zip(world.drops[key]["pivot"], before[key]["pivot"])) > 0.2 for key in before)
 
 
 def testHeatWakesASleepingPan():
@@ -231,28 +235,46 @@ def testWhatTheEngineRefusesIsSentAgainNextFrame():
     assert all(drop["pivot"] is not None for drop in world.drops.values()), "收得下了：摆好"
 
 
-def referencePose(scene, name, node):
-    """原来每帧都这么算（不缓存）：节点此刻的样子 -> SetDropItemTransform 的三个参数。"""
+def centerOf(drop):
+    """掉落物的视觉中心：轴心 + 贴图的"上"方向 * 半边长（R = Rz·Rx·Ry，第二列是 (-sin z cos x, cos z cos x, sin x)）。"""
+    x, y, z = [math.radians(angle) for angle in drop["euler"]]
+    half = 8.0 / 16.0 * drop["scale"] * 0.5
+    up = (-math.sin(z) * math.cos(x), math.cos(z) * math.cos(x), math.sin(x))
+    return tuple(drop["pivot"][axis] + up[axis] * half for axis in range(3))
+
+
+def referencePose(scene, name, node, turned=False):
+    """原来每帧都这么算（不缓存）：节点此刻的样子 -> SetDropItemTransform 的三个参数。turned：贴图在自己的平面里转了半圈的那个姿态
+    （占同一块地方，轴心在对面那一边）——翻过奇数次的那一块画的是它（ItemPose.steadied）。"""
     pan = scene.show.nodes["pan"]
     center, matrix = scene._placed(name, pan.pos, pan.rot, node)
     world_ = PanPose.toWorld(scene.facing, matrix)
+    if turned:
+        world_ = [[-row[0], -row[1], row[2]] for row in world_]
     scale = max(0.01, node.size * node.scale / ItemPose.ITEM_SPAN)
     return ItemPose.pivotFor(scene.world(center), world_, scale), ItemPose.engineEuler(world_), scale
 
 
 def testTheCachedPoseIsTheSameNumbersTheOldPerFrameMathGave():
-    """颠一下、再落下、再鼓着：每一帧、每一块掉落物在引擎里的位置转角缩放，和不缓存时现算的一模一样。"""
+    """颠一下、再落下、再鼓着：每一帧、每一块掉落物在引擎里的位置转角缩放，和不缓存时现算的一模一样——
+    翻到顶点之前是节点的姿态原样，之后是贴图在自己平面里转了半圈的那个（轴心不跳），一块只换这一回。"""
     scene = panSetup()
     PanScenes.OnPanLook(panLook(name="minecraft:cooked_beef", count=5, down=1.0, up=1.0))
     run(scene, 1.0)
     scene.event("tossed", {"strength": 0.7})
+    turned = {}
     for _ in range(90):
         scene.frame(DT, False)
         for name, prop in scene.props.items():
             drop = world.drops[prop.entityId]
-            expected = referencePose(scene, name, scene.show.nodes[name])
-            assert drop["pivot"] == tuple(expected[0]) and drop["euler"] == tuple(expected[1]) and drop["scale"] == expected[2], name
-    assert len(scene.props) == 5
+            got = (drop["pivot"], drop["euler"], drop["scale"])
+            plain, other = [(tuple(pose[0]), tuple(pose[1]), pose[2]) for pose in (referencePose(scene, name, scene.show.nodes[name]),
+                                                                                   referencePose(scene, name, scene.show.nodes[name], True))]
+            assert got in (plain, other), name
+            if got != plain:
+                turned[name] = True
+            assert got == (other if turned.get(name) else plain), "%s：换过去之后一直是那一个，不来回跳" % name
+    assert len(scene.props) == 5 and len(turned) == 5, "五块都翻了一回"
 
 
 # ---------------------------------------------------------------- 厨锅

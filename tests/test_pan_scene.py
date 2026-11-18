@@ -123,6 +123,56 @@ def testTheFoodRidesThePanWhenItIsTossed():
     assert best > 4.5 / 16.0, "飞起来至少 4.5 像素"
 
 
+def _worstStep(scene, seconds):
+    """seconds 秒里每件掉落物的轴心（送给引擎的位置）一帧最多挪了多远（格）。"""
+    last, worst = {}, 0.0
+    for _ in range(int(round(seconds / DT))):
+        scene.frame(DT, True)
+        for key, drop in world.drops.items():
+            if drop["pivot"] is None:
+                continue
+            if key in last:
+                worst = max(worst, sum((a - b) ** 2 for a, b in zip(drop["pivot"], last[key])) ** 0.5)
+            last[key] = drop["pivot"]
+    return worst
+
+
+def testAFlipNeverMakesADropItemsPivotJump():
+    """引擎里掉落物的转角当帧生效、位置却按游戏刻插值（晚到最多一刻）：送给引擎的轴心一帧里跳得远，那一两帧它就画在旧位置上、转角却是新的——
+    用户报的"颠锅时有的食物飞得特别高，只有一两帧，闪现一样"。HoD 翻到顶点把节点从 +90 度直接换成 -90 度，贴图底边上的轴心要跳一个边长；
+    场景接着上一帧的姿态画（ItemPose.steadied：换成贴图在自己平面里转半圈的那个，占同一块地方、轴心不动），整个颠锅过程轴心每帧只挪一点点。"""
+    ItemPose = C.load("Shared.Rules.ItemPose")
+    scene = setup()
+    Scenes.OnPanLook(payload())                      # 两面都没熟：翻面不换样子，掉落物还是那两件
+    run(scene, 0.3)
+    ids = set(world.drops)
+    scene.event("tossed", {"strength": 1.0})
+    worst = _worstStep(scene, 1.0)
+    assert set(world.drops) == ids and not world.deleted, "没有换实体：还是那两件"
+    assert worst < 3.0 / 16.0, "轴心一帧最多挪 %.3f 格：飞得最快时一帧 1.5 像素上下，没有哪一帧跳出去" % worst
+    resting = [d for d in world.drops.values()]
+    assert all(POS[1] <= d["pivot"][1] < POS[1] + 0.3 for d in resting), "落回锅底"
+    keep = ItemPose.steadied
+    ItemPose.steadied = lambda matrix, before: matrix            # 对照：照节点的转角原样摆（修之前）
+    try:
+        scene = setup()
+        Scenes.OnPanLook(payload())
+        run(scene, 0.3)
+        scene.event("tossed", {"strength": 1.0})
+        jump = _worstStep(scene, 1.0)
+    finally:
+        ItemPose.steadied = keep
+    assert jump > 6.0 / 16.0, "不接着上一帧：顶点那一帧轴心跳了 %.3f 格（一个边长 7.5 像素）" % jump
+
+
+def testANewDropItemIsCreatedWhereItsPivotBelongs():
+    """新建的掉落物直接建在轴心该在的地方：建在锅心再挪过去，引擎头一两帧把它画在半路上。"""
+    scene = setup()
+    Scenes.OnPanLook(payload())
+    run(scene, DT)
+    assert world.drops and all(drop["at"] == drop["pivot"] for drop in world.drops.values())
+
+
 def testTheOilFilmShowsUpWhileFrying():
     scene = setup()
     Scenes.OnPanLook(payload(rate=0.5))
