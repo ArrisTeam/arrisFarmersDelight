@@ -127,7 +127,8 @@ Compat/
                         StoveWorld / GrillPieces / GrillSpace / GrillGhosts / GrillFx（客户端，谁都看得见的烤架场景：东西、落下 / 翻面 / 取走的动作、
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
-                        TouchFeel（客户端，四个站点共用：触屏的轻震和双击间隔，问前置包的 view.buzz / view.doubleSeconds，老版本没有就不震，docs/diegesis/DESIGN.md §9）；
+                        TouchFeel（客户端，四个站点共用：触屏的轻震、双击间隔、点选的东西飞上站点，问前置包的 view.buzz / view.doubleSeconds / view.flyIn，老版本没有就算了，
+                        docs/diegesis/DESIGN.md §9；砧板、煎锅、炉灶在发 place 的地方调 flyIn，只在照客户端的状态放得上去时调，厨锅走内核自己的点击）；
                         FlatSprites（客户端，纯逻辑，四个站点的表现类共用：答前置包的可选钩子 flatSprite，手上拿着的方块物品里哪些引擎画成一张平面图——查 Shared/Data/FlatBlockItems；
                         前置包没有 FLAT_SPRITES 就不挂，docs/diegesis/DESIGN.md §9）；
                         HoldMenu + PotHold / BoardHold / PanHold / GrillHold（客户端，触屏长按菜单：前置包的可选钩子 onHold 的条目和各站点的判断，只给和点一下不一样的右键 /
@@ -228,6 +229,8 @@ def OnServerSkilletBlockUse(args):
 ## 联动（场景交互前置）
 
 亲手做菜的站点（Hands-On Delight 的移植）要装单独的作品「场景交互 · 前置」才有；本包不依赖它：没装时就是原样的农夫乐事，Hands-On Delight 的东西一样也不跑。
+本文里写的 `docs/diegesis/DESIGN.md`（前置包内核和四个站点照 JE 怎么做的、实机量到的事实）是**前置包仓库里的文档**，不在本仓库、不随本仓库上传（2026-11-18 起）；
+两个仓库叠在同一个目录的开发机上它就在那个路径上，只有本仓库时没有这份文档。
 联动的做法照机械动力系列的附属包（无中生有等）：运行模式每端判定一次、记在一个地方，注册写成步骤表，业务模块在自己的步骤里才导入，一步出错不拦别的步骤。
 不一样的只有怎么发现前置包：不用联动 SDK 的 ready 事件，照旧 `ImportModule("arrisDiegesisScripts.Api.Server" / ".Api.Client")` 取接口模块、读 `API_VERSION`，可选功能读接口上的功能旗。
 
