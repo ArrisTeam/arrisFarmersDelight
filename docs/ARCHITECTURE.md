@@ -52,6 +52,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         NetBounce（安全网：摔落距离推撞击速度、弹跳系数） StoveBurn（站在点燃炉灶上的烫伤：烤架区、豁免条件）
                         StoveFlame（点着的炉灶自己的火：火口的火星 / 烟 / 噼啪声、灶上每件东西冒烟的概率和位置，JE 的 animateTick / particleTick）
                         TatamiMat（长榻榻米垫两格怎么摆、另一半在哪、脚下没了方块） RopeFence（绳栅栏门的开关、朝向、声音）
+                        TatamiPair（榻榻米方块两两配对：放下时和谁配、另一半没了拆开；方块态 arris:tatami_facing / arris:paired 的取值）
                         SoundMix（JE 的音量 / 音调换成交给引擎的数：定义里自带音量 / 音调的声音要把那份除掉）
                         ItemDrops（东西从方块里掉出来 / 弹出去的位置和初速，照 JE 的 Containers.dropItemStack / ItemUtils.spawnItemEntity；砧板切出来、煎锅煎好的往方块侧面弹：boardPop / panPop）
     HandsOn/            Hands-On Delight 规则内核的移植：搅锅评星、批量烹饪、刀口、煎锅 / 灶台两面、摆盘（MIT）；
@@ -63,7 +64,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；33 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ModServer.py          导入全部玩法模块；34 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给；PopFromBoard / PopFromPan 读方块朝向往侧面弹）
@@ -96,6 +97,7 @@ Server/                 服务端
   CraftReturns          工作台合成后补还无序配方的剩余物（读合成格，照 JE 放回原格 / 进背包）
   Backstabbing          背刺魔咒：玩家从背后打中目标时在 DamageEvent 里加伤害
   TatamiMats            长榻榻米垫两格一起放、一起拆（只掉一个）、长短垫脚下没了方块就碎；RopeFences  绳栅栏门右键开关
+  TatamiPairs           榻榻米方块两两配对：放下（EntityPlaceBlockAfterServerEvent）时写两块的方块态，另一半没了拆开；样子全在方块 JSON 的 permutations 里
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
@@ -637,6 +639,20 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   掉落全交给被拆那一半的战利品表（头的表指向长垫子，脚掉自己），所以整张只掉一个、创造模式一个不掉。脚下变空气时先静默清掉另一半，
   再把这一半以"销毁"（`SetBlockNew` 第三个参数 1）清掉，同样只掉一个；短垫子也走这一条（JE 的 `canSurvive`），放置时下面是空气会被取消。
   与 JE 的差别：两半都 `break_on_push`（被活塞推会碎成一个掉落物；JE 里长垫子能被推，推一半会留下一个孤零零的头）。
+- 榻榻米方块（JE `TatamiBlock`）像床一样**两两配对**，不是连成一片的连接纹理：一对拼成一张两格长的榻榻米（接缝没有边框、席纹接得上），两头是正方形的单块，
+  没配对的六面都是单块；每块只看 FACING 那一格，没有对角、也不看别的邻格。方块态 `arris:tatami_facing`（网易 Facing 枚举 0 下 1 上 2 北 3 南 4 西 5 东，
+  缺省 0 = JE 的缺省 DOWN）+ `arris:paired`，规则在 `Shared/Rules/TatamiPair.py`。放下（`Server/TatamiPairs.py`；`EntityPlaceBlockAfterServerEvent` 的 `face`
+  是点的那一面）：FACING = 点的面的反方向；玩家没潜行、点的是没配对的榻榻米时两块配对、FACING 互指；另一半不再是榻榻米时剩下那块拆开（邻格变化，
+  FACING 不变；活塞推着走、还在路上的 `minecraft:moving_block` 不算没了——JE 推一整对时先落地的那块会把自己拆开，是 JE 的毛病）。
+  样子全靠 permutations：`tools/gen_tatami.py` 照抄 JE 的方块状态和模型（顶点 UV、面的 rotation、方块状态的 x / y 转动）算出 12 个状态六个面各贴哪张图、
+  转几个直角，换到基岩 `full_block` 的面坐标（底面和 JE 差 180°），写 12 条互斥的 permutation、转出 9 张转角图（3 张原图的 4 个转角都用得到）；
+  改了 JE 数据或贴图就重跑，`tests/test_tatami_gen.py` 查生成物是不是最新的、抄的 JE 数据和 `.refs` 里的原文件对不对，`tests/test_tatami_block_look.py`
+  把一对两块同一面的图按基岩的面坐标拼起来逐像素比 JE 的整张长垫。方块 JSON 是 1.21.90 格式（几何 + 材质实例的新管线），`blocks.json` 只留声音；
+  战利品表 `loot_tables/tatami.json` 掉一个 data 0 的榻榻米（不写时掉的物品带着方块态的 aux）。
+  旧存档：自定义方块态按名字降序从低位排进 aux，`arris:tatami_facing` 占低 3 位、`arris:paired` 第 4 位（实机 `GetBlockAuxValueFromStates`：aux = 朝向 + 8 × 配对），
+  改成方块态之前放下的榻榻米（aux 是 direction 0..3）读出来都是没配对的；假日创造者实验玩法的存档里 aux 8 / 12 的会读成"配了对"，旁边一有方块变化就理顺。
+  /setblock、结构放出来的是缺省状态（朝下、没配对）。实机核过（2026-11-18）：竖着、南北、东西三种配对的样子（接缝处没有线）、真右键放置配对、潜行放置不配、
+  第三块配不走已经配了对的、拆一半另一半拆开、掉落、创造模式中键取方块（都是 aux 0 的榻榻米）、重启后方块态原样。
 - 榻榻米合成照 JE 四条无序配方（方块 -> 2 长垫、2 短垫 -> 1 长垫、1 长垫 -> 2 短垫、2 长垫 -> 1 方块），原来基岩版自加的"方块 -> 4 短垫"去掉了。
 - 绳栅栏（JE `RopeFenceBlock`）没有脚本：连不连邻居靠方块 JSON 的 `netease:connection`（按标识符列名单）和模型 / 碰撞盒里的
   `query.is_connect(面)`（2 北 3 南 4 西 5 东）。名单 = 实心整格的原版方块（引擎方块表里形状是整格的，去掉树叶、屏障、南瓜、西瓜、潜影盒这些
@@ -697,6 +713,11 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 客户端掉落物（`AddDropItemToWorld`）：轴心在贴图底边中点，缩放 1 时半格；`SetDropItemTransform` 的 `rot=(x,y,z)` 是
   R = Rz·Rx·Ry，"躺平后再绕竖轴转"要先拼矩阵再换算（`ItemPose.engineEuler`）。
 - 新加的自定义魔咒（`netease_enchants/`）、方块、物品定义要**完整重启游戏**才登记，重进存档不够（配方 JSON 重进存档就生效）。
+- 带方块态的自定义方块不写战利品表时，掉出来的物品带着方块的 aux（实机：配了对的榻榻米掉 `arris:tatami` aux 8，和普通的叠不到一起）：写战利品表 `set_data 0`。
+  1.19.10 起的格式 `minecraft:loot` 直接写路径字符串，网易 1.10 格式是 `{"table": 路径}`。
+- 自定义方块态按名字**降序**从低位往高位排进 aux（名字大的占低位；arrisCreate 枚举反推，榻榻米实机再验过），往已有方块加状态时按这条挑名字，旧存档的 aux 才解得对。
+- 走新管线的方块（`minecraft:geometry` + `minecraft:material_instances`）在 `blocks.json` 里写 `textures` 引擎不认还报错，只留 `sound`；
+  `minecraft:geometry.full_block` 的底面贴图右 = 西、上 = 北，比 JE / 旧管线转了 180°，其余五面和 JE 一样。
 - 服务端取消 `ServerItemUseOnEvent`（`ret`）拦不住客户端接着"使用物品"（吃）：原版南瓜派对着方块按住右键，放下一个之后还会吃掉一个。
   要在客户端 `ClientItemTryUseEvent` 里取消（`Client/Input.py`：准星对着方块时不吃，`CreateCamera.PickFacing()` 的 `type == "Block"`）。
 - QuMod 的 RPC 端点按裸函数名注册：服务端端点一律 `@AllowCall` + `@InjectHttpPlayerId`，玩家身份只认注入的，坐标、维度、背包下标都要校验。
