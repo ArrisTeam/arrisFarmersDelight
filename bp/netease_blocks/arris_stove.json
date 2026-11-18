@@ -3,7 +3,7 @@
     "minecraft:block": {
         "components": {
             "minecraft:block_light_absorption": {
-                "value": 0
+                "value": 15
             },
             "minecraft:block_light_emission": {
                 "emission": 0.8667

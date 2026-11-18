@@ -9,7 +9,7 @@
                 "seconds_to_destroy": 0.8
             },
             "minecraft:geometry": "minecraft:geometry.full_block",
-            "minecraft:light_dampening": 0,
+            "minecraft:light_dampening": 15,
             "minecraft:loot": "loot_tables/tatami.json",
             "minecraft:material_instances": {
                 "*": {
