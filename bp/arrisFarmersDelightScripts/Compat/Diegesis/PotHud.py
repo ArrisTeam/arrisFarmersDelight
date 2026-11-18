@@ -7,6 +7,8 @@
   星一颗颗亮起（那颗星的图弹一下、冒几点闪光）、多送了份数时叮几声并显示 +N。光标在菜上时提示"N × 菜 / 菜 / 菜，还要 S 秒"。
   牌是内核的 view.plate：每样东西一张贴图（rp/textures/ui/pot_badge/），没亮满的星和没走完的条靠图片裁切；
 - 光标在漂着的料上：它的名字和个数；悬着容器 / 悬着要取回的东西时：这一下做什么（"盛出 …" / "取回 …"，JE 没有这行字）；
+- 数量字（JE 的 SlotBinding.counts，scenes/cooking_pot.json）：盛好的那格不止一份时一直写着份数（counts 缺省 always），漂着的料只在光标停在上面时写（hover）。
+  写在哪、多大是前置包的事（view.counts，Protocol.COUNT_LABELS）；有了它，悬停提示里就不再拼 ×N（JE 的提示只有物品自己的那几行）。老版本的前置包没有它：照旧拼在提示里；
   勺子在手里（按着拖、点了一下留着）时什么提示都不出，悬停也冻在勺子上（JE 的 isBusy）。
 """
 import math
@@ -14,11 +16,12 @@ import math
 from . import PotFx
 from .PotSceneFx import play
 from ...Client.Engine import compFactory, levelId
-from ...Shared.Rules.HandsOn import PotBadge
+from ...Shared.Rules.HandsOn import PotBadge, PotDriftExtras
 
 BADGE_AT = (-0.6, 14.5, 4.6)            # scenes/cooking_pot.json 的 badge 节点：锅右边把手上方（站点像素）
 BADGE_TILT = math.radians(50.0)         # badge 节点朝镜头仰 50 度（rotation [-50, 0, 0]）：牌面上的"下"在场景里是往下、往镜头这边
 APPEAR_FROM = 0.25                      # 镜头来了四分之一之后徽章才开始长出来
+SLOT_SIZE = 3.2                         # scenes/cooking_pot.json：漂着的料（ingredients[i]）和盛好的那格（served）的 slot size，数量字的大小和位置跟着它
 TIPS = {PotBadge.TIP_READY: "%d × %s", PotBadge.TIP_COOKING: "%s，还要 %d 秒", PotBadge.TIP_NAME: "%s"}
 SCOOP_TIP, TAKE_TIP = "盛出 %s", "取回 %s"          # 悬着容器 / 悬着要取回的东西时，光标旁说这一下做什么
 _names = {}
@@ -57,6 +60,21 @@ class PotHud(object):
             elif event["type"] == "glint" and model is not None:
                 self._glint(event, model["unit"])
         view.tooltip(self._tip(state))
+        counts = getattr(view, "counts", None)
+        if counts is not None:
+            counts(self._counts())
+
+    def _counts(self):
+        """要写数量的格子：盛好的那格（一直写），光标停着的那件漂着的料（勺子在手里时悬停冻在勺子上，不写）。个数只有一个的内核自己不写。"""
+        owner, scene = self.owner, self.owner.scene
+        look, labels = scene.look, []
+        if look.served is not None:
+            labels.append({"at": PotDriftExtras.servedAt(scene.liquid.surfaceY()), "count": look.served["count"], "size": SLOT_SIZE})
+        key, slot = owner.hover
+        if key == "item" and slot is not None and look.items[slot] is not None and not owner.busy():
+            drift = scene.drift
+            labels.append({"at": owner.toStation(drift.x[slot], drift.y[slot], drift.z[slot]), "count": look.items[slot]["count"], "size": SLOT_SIZE})
+        return labels
 
     def _glint(self, event, unit):
         """亮起的那颗星冒几点闪光：牌面上的 (x, y)（图标像素，+x 向右、+y 向下）换到场景里——镜头从 -z 看过来，右是 -x。"""
@@ -92,7 +110,7 @@ class PotHud(object):
             return self._offerTip(state)
         whole = getattr(view, "itemText", None)       # JE 是这件物品原版的整份提示；老版本的前置包没有这个接口，只写名字
         lines = list(whole(item)) if whole is not None else [nameOf(item)]
-        if item["count"] > 1:
+        if item["count"] > 1 and getattr(view, "counts", None) is None:      # 前置包会把数量写在那一格上（view.counts）时提示里不再拼
             lines[0] = "%s ×%d" % (lines[0], item["count"])
         return lines
 
@@ -116,3 +134,5 @@ class PotHud(object):
         view = self.owner.view
         view.plate(None)
         view.tooltip(None)
+        if getattr(view, "counts", None) is not None:
+            view.counts(None)

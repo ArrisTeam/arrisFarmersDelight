@@ -341,6 +341,65 @@ def testNoTooltipAtAllWhileTheSpoonIsInHand():
     assert behavior.hud._tip(state) == ["3 × Soup"], "放下了"
 
 
+class CountingView(FakeView):
+    """认 view.counts 的前置包（Protocol.COUNT_LABELS）：记下交来的数量字。"""
+
+    def __init__(self):
+        FakeView.__init__(self)
+        self.labels = []
+
+    def counts(self, labels):
+        self.labels.append(labels)
+
+    def itemText(self, item):
+        return ["Name of " + item["newItemName"], "a line"]
+
+
+def _counting(items, served):
+    behavior, _old = _withMeal(items, hand=None)
+    view = CountingView()
+    view.data, view.behavior = dict(SOUP_DATA), behavior
+    behavior.view = view
+    behavior.scene.apply(C.look(items, served=served, meal=C.item("arris:pumpkin_soup", 3)))
+    drift = behavior.scene.drift
+    for slot in range(len(items)):
+        drift.visible[slot], drift.waiting[slot] = True, False
+        drift.x[slot], drift.y[slot], drift.z[slot] = 6.0 + slot, 5.0, 9.0
+    return behavior, view
+
+
+def testTheServedStackAlwaysShowsItsCountAndAFloatingStackOnlyUnderTheCursor():
+    # scenes/cooking_pot.json：served 的 counts 缺省 always，ingredients[i] 是 hover（SlotBinding.java:27-35）；字写在哪、多大是前置包的事
+    behavior, view = _counting((("minecraft:carrot", 5), ("minecraft:potato", 1)), C.item("arris:pumpkin_soup", 2))
+    hud, scene = behavior.hud, behavior.scene
+    served = hud._counts()
+    middle = fdtest.load("Shared.Rules.HandsOn.PotDriftExtras").servedAt(scene.liquid.surfaceY())
+    assert served == [{"at": middle, "count": 2, "size": 3.2}] and middle[0] == middle[2] == 8.0, "盛好的那格浮在液面正中：一直写着份数"
+    behavior.onPointer(_move("item", 0))
+    both = hud._counts()
+    assert both[0] == served[0] and both[1] == {"at": behavior.toStation(6.0, 5.0, 9.0), "count": 5, "size": 3.2}, "光标停在一叠胡萝卜上：那一叠也写"
+    behavior.onPointer(_move("item", 1))
+    assert hud._counts()[1]["count"] == 1, "只有一个的也交给内核（内核自己不写一个的）"
+    behavior.onPointer(_move("ladle"))
+    assert hud._counts() == served, "光标走开：只剩盛好的那格"
+    behavior.onPointer(_move("item", 0))
+    behavior.onPointer(_move("ladle"))
+    behavior.onPointer(Event(LEFT, Hit("ladle")))
+    behavior.onPointer(_move("item", 0, RAY))
+    assert hud._counts() == served, "勺子在手里：悬停冻在勺子上，划过的料不写"
+    behavior.scene.apply(C.look((("minecraft:carrot", 5),), served=None))
+    assert hud._counts() == [], "没有盛好的：不写"
+
+
+def testWithTheCountOnTheSlotTheTooltipIsJustTheItemsOwnLines():
+    behavior, view = _counting((("minecraft:carrot", 5),), C.item("arris:pumpkin_soup", 2))
+    behavior.onPointer(_move("item", 0))
+    assert behavior.hud._tip({}) == ["Name of minecraft:carrot", "a line"], "数量写在那一格上了：提示里不再拼 ×5"
+    old, plain = _withMeal((("minecraft:carrot", 5),), hand=None)
+    old.onPointer(_move("item", 0))
+    assert old.hud._tip({})[0].endswith("×5"), "老版本的前置包没有 view.counts：照旧拼在提示里"
+
+
 def testTouchStillNeverKeepsTheSpoonInHandWhicheverButtonTheTapWasSentAs():
     for button in (LEFT, RIGHT):                               # "单个"档把点按送成右键
         behavior, view = behaviorOf()
