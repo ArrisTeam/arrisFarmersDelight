@@ -759,7 +759,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   `'int' object has no attribute 'get'`——`Client/BlockItems._itemsFromExData`，`tests/test_block_items_exdata.py`）。
 - 服务端 `SetBlockNew` 放的方块，客户端不发 `ModBlockEntityLoadedClientEvent`；这个事件也可能重复触发——客户端渲染要幂等，
   内容以服务端广播为准。
-- 客户端掉落物（`AddDropItemToWorld`）：轴心在贴图底边中点，缩放 1 时半格；`SetDropItemTransform` 的 `rot=(x,y,z)` 是
+- 客户端掉落物（`AddDropItemToWorld`）：轴心在贴图底边中点，缩放 1 时贴图边长 **0.45 格 = 7.2 像素**（`ItemPose.ITEM_SPAN`；引擎是调用方缩放 0.3 x 物品变换 1.5，方块物品的小立方体 0.25 格）。2026-11-19 之前按半格 8 像素算，站点里和方块上摆着的东西都只有九成大、还朝贴图的底边偏 0.4 x 缩放 像素；实机重量过（蛋糕 7.1、虞美人 7.2），改完截图对过砧板上的蛋糕正好 10 像素见方。画成平面的方块物品（花、野生作物）另外被抬高 0.2 格、轴心在离底边 5/16 个边长处（`RAISED_PIVOT` = 2.25 像素）。经典摆法里 Java 的 `scale(s)`：立方体是掉落物缩放 `2 s`，贴图是 `16 / 7.2 x s`（`BlockDisplay.FD_SCALE / FD_SPRITE`）；`SetDropItemTransform` 的 `rot=(x,y,z)` 是
   R = Rz·Rx·Ry，"躺平后再绕竖轴转"要先拼矩阵再换算（`ItemPose.engineEuler`）。
 - 新加的自定义魔咒（`netease_enchants/`）、方块、物品定义要**完整重启游戏**才登记，重进存档不够（配方 JSON 重进存档就生效）。
 - 带方块态的自定义方块不写战利品表时，掉出来的物品带着方块的 aux（实机：配了对的榻榻米掉 `arris:tatami` aux 8，和普通的叠不到一起）：写战利品表 `set_data 0`。
