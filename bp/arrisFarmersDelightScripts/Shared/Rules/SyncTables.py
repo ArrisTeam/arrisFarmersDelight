@@ -7,8 +7,8 @@
 客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张，别的在 NOT_SYNCED 里写明为什么不发。
 三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，两端必须一一对上）。
 """
-from ..Data import Cooking, CookingPotRecipes, Cutting, Food
-from . import BoardStation, CookingPot
+from ..Data import Cooking, CookingPotRecipes, Cutting, Dishes, Food
+from . import BoardStation, CookingPot, DishStation
 from .TableWire import Codec
 
 ENDPOINT = "OnTableSync"      # 客户端端点名（Client/TableSync.py 里同名函数），服务端 Call 它
@@ -24,6 +24,9 @@ TABLES = (
     ("CanProvideHeatBlockList", ITEMS, Cooking.CanProvideHeatBlockList),    # 热源方块：手持煎锅"身边有没有热源"
     ("CookingPotRecipeList", ROWS, CookingPotRecipes.CookingPotRecipeList),  # 厨锅：托盘里哪些亮、放不放得下、书页、汤色用的成品
     ("platePackagedFoodDict", MAP, Food.platePackagedFoodDict),             # 盘装的盛宴：砧板上的物品类型（客户端和服务端的 GetItemType 一致）
+    ("DishList", ROWS, Dishes.DishList),                                    # 砧板摆盘的菜：托盘里哪些亮、层接不接得上、食谱书、悬着的成品
+    ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 煎锅站点：只煎一面的不画翻面、不给翻
+    ("NotOnGrillList", ITEMS, Cooking.NotOnGrillList),                      # 炉灶站点：烤架不收的，托盘里不亮、放不上去
 )
 BY_NAME = dict((name, (kind, container)) for name, kind, container in TABLES)
 
@@ -32,6 +35,8 @@ BY_NAME = dict((name, (kind, container)) for name, kind, container in TABLES)
 REFS = {"knifeList": Cutting.knifeList, "axeList": Cutting.axeList, "pickaxeList": Cutting.pickaxeList,
         "shovelList": Cutting.shovelList, "hoeList": Cutting.hoeList, "shearsList": Cutting.shearsList}
 CODEC = Codec(REFS)
+# ROWS 的表里传不了的新增行用什么占着下标（TableDiff）：两端的索引都要把它当"不是一行"跳过。没写的表用厨锅配方的那一种
+HOLES = {"DishList": {"result": ("", 0), "count": 1, "ingredients": [], "extras": [], "keeps": [], "source": ""}}
 
 # 联动契约白名单（Api/LegacyModAttr.py）里没有同步的变量和原因：tests 核对"白名单 = 同步的 + 这里的"，新增变量时要在两处之一写明
 NOT_SYNCED = {
@@ -57,3 +62,5 @@ def recompute(name):
         CookingPot.rebuildIndex()          # 按配方建的索引：哪些是食材 / 容器、各道菜煮多久、料怎么摆
     elif name in ("CuttingBoardDict", "knifeList", "axeList"):
         BoardStation.invalidate()          # 全部配方的工具名和物品类型
+    elif name == "DishList":
+        DishStation.rebuildIndex()         # 摆盘菜的索引：底座、收尾、哪些是成品

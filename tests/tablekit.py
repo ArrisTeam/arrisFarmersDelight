@@ -81,7 +81,7 @@ class Pristine(object):
             elif kind == "items":
                 saved = list(container)
             else:
-                saved = [(row, dict(row), list(row["Recipe"])) for row in container]
+                saved = [(row, dict(row), list(row["Recipe"]) if "Recipe" in row else None) for row in container]     # 厨锅配方的 Recipe 列表就地放回；摆盘菜的行没有它
             self.saved.append((kind, container, saved))
 
     def restore(self):
@@ -96,9 +96,11 @@ class Pristine(object):
                 for row, fields, variants in saved:
                     row.clear()
                     row.update(fields)
-                    row["Recipe"][:] = variants
+                    if variants is not None:
+                        row["Recipe"][:] = variants
         self.package.load("Shared.Rules.CookingPot").rebuildIndex()
         self.package.load("Shared.Rules.BoardStation").invalidate()
+        self.package.load("Shared.Rules.DishStation").rebuildIndex()
 
 
 def recipe(result, variants, vessel=("minecraft:bowl", 0), text="紫颂酱", **extra):

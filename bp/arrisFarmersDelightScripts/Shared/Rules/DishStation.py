@@ -33,6 +33,8 @@ def rebuildIndex(dishList=None):
     del _dishes[:]
     _results.clear()
     for entry in (DishList if dishList is None else dishList):
+        if not entry.get("ingredients"):
+            continue                              # 没有配料的行不是一道菜（表同步时传不过来的那一行用空行占着下标，SyncTables.HOLES）
         ingredients = [(name, aux) for name, aux in entry["ingredients"]]
         base, kind = Assembly.baseOf([name for name, _aux in ingredients])
         _dishes.append({"ingredients": ingredients, "base": base, "kind": kind, "result": tuple(entry["result"]),

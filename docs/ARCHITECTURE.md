@@ -185,7 +185,9 @@ def OnServerSkilletBlockUse(args):
 **客户端是另一个进程，有自己的一份 `Shared/Data`，下游追加的它没有。** 经典玩法（右键）全在服务端判，不受影响；四个站点的客户端表现读的是客户端那一份，
 没同步时就是"服务端认、站点客户端不认"：托盘里不亮、借不到下游的刀、点板只敲一声、下游的炉灶不开站点、食谱书里没有那一页、书里放料发的键对不上服务端的下标……
 
-**联动契约本身一个字没动**（`tests/test_legacy_modattr_contract.py` 锁着；同步登记的容器必须就是契约交出去的那个对象，`tests/test_table_sync.py` 逐个核对）。
+**联动契约原有的 21 个名字一个字没动**（`tests/test_legacy_modattr_contract.py` 锁着；同步登记的容器必须就是契约交出去的那个对象，`tests/test_table_sync.py` 逐个核对）。
+2026-11-19 往白名单里加了三个给站点用的名字（只加不改，`tests/test_contract_station_tables.py`）：`DishList`、`OneSidedList`、`NotOnGrillList`——HoD 里后两样是物品标签（`KitchenTags.ONE_SIDED / NOT_ON_GRILL`）、
+摆盘的菜是配方，数据包都能加；我们这边原来是规则里写死的 frozenset 和不在白名单里的生成表，下游够不着。
 同步是旁路：服务端在模块导入时记下各张表的样子，下游追加完之后把"现在 - 基线"发给客户端，客户端并进它自己的表。
 
 **同步哪些表**（表名即契约的变量名，`Shared/Rules/SyncTables.py` 登记；客户端真有地方读的才同步）：
@@ -198,10 +200,13 @@ def OnServerSkilletBlockUse(args):
 | `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
+| `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
+| `OneSidedList` | 追加名字 | `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅站点上只煎一面、不用翻 |
+| `NotOnGrillList` | 追加名字 | `GrillStation.canGrill`（`NOT_ON_GRILL` 就是这个列表）：炉灶站点的烤架不收，托盘里不亮 |
 
 没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的 + 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、
 `canClimbList`、`cabinetList`、`WildCropDict`、`cropsDict`、`negativeEffect`、`horseComponentsDict`、`wolfComponentsDict`（只有服务端读），`uiGuideBookPath / Screen`（字符串常量，契约没法往里追加）。
-联动契约之外的表（`Dishes` 摆盘菜谱、`BrothColors / FoodColors / ItemMasks`、`Remainders`……）下游本来就够不到，没有"追加"可同步：下游的菜用兜底汤色，没有刀口遮罩。
+联动契约之外的表（`BrothColors / FoodColors / ItemMasks`、`Remainders`……）下游本来就够不到，没有"追加"可同步：下游的菜用兜底汤色，没有刀口遮罩。
 
 **怎么同步**（纯规则在 `Shared/Rules/`，服务端和客户端各一个薄模块）：
 - **基线与差异**（`TableDiff.Syncer`，服务端）：`Server/TableSync.py` 导入时建一个，记下各表那一刻的编码——下游在 `LoadServerAddonScriptsAfter` 里才追加，晚于任何模块的导入，

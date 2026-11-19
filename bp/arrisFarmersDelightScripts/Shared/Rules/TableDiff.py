@@ -34,7 +34,7 @@ class Syncer(object):
         self.rev = 0                 # 差异变了几次
         self.problems = []           # 最近一次算差异时跳过的条目和原因
         self._revs = {}              # 表名 -> 这张表的消息最近一次变成现在这样是第几版
-        self._hole = self.codec.encode(_HOLE)
+        self._holes = dict((name, self.codec.encode(SyncTables.HOLES.get(name, _HOLE))) for name, kind, _ in self.tables if kind == SyncTables.ROWS)
         self._base = dict((name, self._baseline(kind, container)) for name, kind, container in self.tables)
         self._seen = self._copies()
         self._messages = None        # {表名: [消息]}（没有差异的表不在里面）；None：还没算过
@@ -147,7 +147,7 @@ class Syncer(object):
                 problems.append("%s 的第 %d 行传不了，%s：%s" % (name, index, "用空行占着下标" if index >= len(base) else "客户端保持原样", error))
                 if index < len(base):
                     continue
-                wireRow = self._hole
+                wireRow = self._holes[name]
             if index >= len(base) or base[index] != wireRow:
                 ops.append({"at": index, "v": wireRow})
         return ops

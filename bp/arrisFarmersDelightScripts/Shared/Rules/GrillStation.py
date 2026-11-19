@@ -8,6 +8,7 @@
 烤位的位置不在这里：HoD 场景里的像素坐标（HandsOn/StoveLayout，炉灶朝北那一份）就是站点空间，站点朝炉灶的正面（StoveFacing）；
 世界里的展示用同一份换成方块内的比例（BlockDisplay.STOVE_SLOTS）。
 """
+from ..Data.Cooking import NotOnGrillList
 from ..Data.Cutting import knifeList
 from .BlockDisplay import STOVE_SLOTS
 from . import HandsOnOptions as Options
@@ -20,7 +21,7 @@ STOVE_BLOCKS = GRILL_BLOCKS       # 活的"in"容器：点着的（StoveList，�
 RECIPE_SECONDS = 30.0             # FD 原样烤一件要多久（Server/Stove.py 的 COOK_TIMER，JE 的营火配方 600 刻）
 PLACES = len(STOVE_SLOTS)
 GROUP_GRILL = "grill"             # 站点的槽组：六个烤位 = 方块实体数据里的 "0".."5"（一格一件）
-NOT_ON_GRILL = frozenset(["minecraft:egg"])      # 从烤架的缝里漏下去的（HoD 的 KitchenTags.NOT_ON_GRILL，默认是蛋）
+NOT_ON_GRILL = NotOnGrillList     # 从烤架的缝里漏下去的（HoD 的 KitchenTags.NOT_ON_GRILL，默认是蛋）：数据表里的那个列表本身，下游经联动契约追加的也算
 STOVE_USES = ("minecraft:flint_and_steel", "minecraft:fire_charge")     # 炉灶自己用得上的：点火（铲子、桶按物品类型认）
 KITCHEN_THINGS = ("minecraft:bowl", "minecraft:glass_bottle", "minecraft:shears")
 CUTTING_TYPES = ("axe", "pickaxe", "hoe")                                # 砧板上用的工具（刀另查 knifeList）

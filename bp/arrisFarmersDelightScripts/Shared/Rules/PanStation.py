@@ -9,7 +9,7 @@ JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的�
 走 onInventoryShiftClick），取走 take。基岩版内核对非空槽先问 mayTake，所以光标栈放进有东西的锅只能走 place；托盘里 Shift 点是内核的
 QUICK_MOVE，它只看 pan 槽组的规则（accepts、一批 16 件的上限）和 mayPlace——两条路用的是同一份判断（mayPlace / SlotRules）。
 """
-from ..Data.Cooking import CanCookedFoodDict
+from ..Data.Cooking import CanCookedFoodDict, OneSidedList
 from . import HandsOnOptions as Options
 from .HandsOn import Frying
 
@@ -19,7 +19,7 @@ GROUP_PAN = "pan"                             # 站点的槽组：一格 = 方�
 BATCH = Frying.BATCH                          # 一锅最多放几件
 SKILLET_SECONDS = 6.0                         # FD 原样煎一件要多久（Server/Skillet.py 的 COOK_TIMER 从 7 倒数到 1）
 CAMPFIRE_SECONDS = 30.0                       # 营火配方的时间（600 刻）：煎锅的时间从它算
-ONE_SIDED = frozenset(("minecraft:egg",))     # 只煎一面、不用翻（HoD 的 KitchenTags.ONE_SIDED）
+ONE_SIDED = OneSidedList                      # 只煎一面、不用翻（HoD 的 KitchenTags.ONE_SIDED）：数据表里的那个列表本身，下游经联动契约追加的也算
 
 
 def canFry(itemName):

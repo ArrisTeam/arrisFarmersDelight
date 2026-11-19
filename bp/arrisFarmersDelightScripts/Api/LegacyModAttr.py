@@ -9,8 +9,9 @@ linkage.md 公开的三个函数，按"变量名字符串"读写配置表：
 白名单里的就是 Shared/Data 的同一批容器对象（身份不变），签名、返回值、
 "容器为空返回 False"、"未知名字抛 KeyError" 等行为逐字保留，由 tests/test_legacy_modattr_contract.py 锁住。
 """
-from ..Shared.Data import Blocks, Cooking, CookingPotRecipes, Cutting, Effects, Farming, Food, GuideBook, Mobs
+from ..Shared.Data import Blocks, Cooking, CookingPotRecipes, Cutting, Dishes, Effects, Farming, Food, GuideBook, Mobs
 from ..Shared.Rules import CookingPot as CookingPotRules
+from ..Shared.Rules import DishStation
 
 # 每个厨锅配方变体最多 6 个食材（厨锅只有 6 个输入格）
 MAX_RECIPE_INGREDIENTS = 6
@@ -38,7 +39,13 @@ _TARGETS = {
     "wolfComponentsDict": Mobs.wolfComponentsDict,
     "uiGuideBookPath": GuideBook.uiGuideBookPath,
     "uiGuideBookScreen": GuideBook.uiGuideBookScreen,
+    # 场景交互前置在场时四个站点读的（2026-11-19 加进白名单；不装前置包时追加了也没人读）：
+    "DishList": Dishes.DishList,                    # 砧板上摆的菜：一行一道，写法见 Shared/Data/Dishes.py
+    "OneSidedList": Cooking.OneSidedList,           # 煎锅上只煎一面、不用翻的物品名
+    "NotOnGrillList": Cooking.NotOnGrillList,       # 炉灶的烤架不收的物品名
 }
+# 摆盘的菜一道最多几层（砧板站点的 layers 槽组只有 9 格，Shared/Rules/BoardStation.MOST_LAYERS）
+MAX_DISH_LAYERS = 9
 
 
 def _recipeTooLarge(recipeDict):
@@ -46,6 +53,18 @@ def _recipeTooLarge(recipeDict):
         if len(variant) > MAX_RECIPE_INGREDIENTS:
             return True
     return False
+
+
+def _dishRowBad(row):
+    """摆盘菜的一行写得不对（建索引会出错）：不是字典、没有成品 (物品名, aux)、配料不是 1 到 9 个 (物品名, aux)。"""
+    if not isinstance(row, dict):
+        return True
+    result, ingredients = row.get("result"), row.get("ingredients")
+    if not isinstance(result, (list, tuple)) or len(result) != 2 or not isinstance(ingredients, (list, tuple)):
+        return True
+    if not 1 <= len(ingredients) <= MAX_DISH_LAYERS:
+        return True
+    return any(not isinstance(entry, (list, tuple)) or len(entry) != 2 for entry in ingredients)
 
 
 def ArrisFarmersDelightInterface(target, element=None):
@@ -66,6 +85,11 @@ def ArrisFarmersDelightInterface(target, element=None):
         for recipeDict in recipes:
             if _recipeTooLarge(recipeDict):
                 return False
+    if target == "DishList":
+        # 一行写坏了整体拒绝：坏行进了表，重建索引会在半路出错，连原有的菜都摆不了
+        for row in (element if isinstance(element, list) else [element]):
+            if _dishRowBad(row):
+                return False
     if isinstance(container, list):
         if isinstance(element, list):
             container.extend(element)
@@ -75,6 +99,8 @@ def ArrisFarmersDelightInterface(target, element=None):
         container.update(element)
     if target == "CookingPotRecipeList":
         CookingPotRules.rebuildIndex()
+    elif target == "DishList":
+        DishStation.rebuildIndex()
     return container
 
 
