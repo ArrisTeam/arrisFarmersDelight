@@ -59,6 +59,11 @@ def markOf(axis, style, spots, angles, index, count):
     return line(axis, style, spot, angles[index] if index < len(angles) else 0.0)
 
 
+def cutsMade(axis, style, spots, angles, made, count):
+    """BoardBehavior.cutsMade（729-737）：这件食物上已经切过的那几刀——第 0 到 made - 1 条线，不超过一共要切的 count 刀。"""
+    return [markOf(axis, style, spots, angles, index, count) for index in range(max(0, min(int(made), int(count))))]
+
+
 def clip(start, along, low, high, first, last):
     """BoardBehavior.clip（1197-1204）：线 start + t * along 落在 [low, high] 里的那段 t，在 [first, last] 里再收窄。"""
     if abs(along) < 1.0e-4:

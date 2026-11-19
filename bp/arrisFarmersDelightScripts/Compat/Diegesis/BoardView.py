@@ -2,7 +2,7 @@
 """BoardView - 切菜板站点里本人的那一层：托盘拿放、点板、落刀、取回、摆盘、食谱书（客户端）
 
 对应 Hands-On Delight：client/BoardBehavior.java 的 onEvent / onItemClick / onInventoryShiftClick / usable / onEffect / frame。
-板上的画面（食物、层、落下 / 拿走 / 弹回的动画）在 BoardDraw.py，刀和虚线在 BoardCutter.py，服务端表现事件的处理在 BoardEffects.py，声音和碎屑在 BoardFx.py。照 JE 的规矩：
+板上的画面（食物、层、落下 / 拿走 / 弹回的动画）在 BoardDraw.py，刀和虚线在 BoardCutter.py，切过的缝在 BoardSeams.py，服务端表现事件的处理在 BoardEffects.py，声音和碎屑在 BoardFx.py。照 JE 的规矩：
 - 机位照 scenes/cutting_board.json：相机 (7.5, 35.5, -21) 看 (7.5, 1, 8)，视野 30，0.4 秒，窗口窄时保住左右；没有提示行、没有关闭按钮（chrome = java）；
 - 底部托盘（前置包按 usable 列出背包里能切的、能摆盘的、切东西用的工具）拿一叠到手上点板 = 放上去（左键整叠、右键一个），Shift 点托盘 = 整叠直接放上去，
   右键开站时手里的食物也直接放；手上拿着刀、或手空着背包里有刀（选中格 -> 副手 -> 背包），光标移到食物上刀吸附下一刀的虚线，点一下落刀；
@@ -18,6 +18,7 @@ from .BoardDraw import Draw
 from .BoardFx import KNOCK, play
 from .BoardGlow import BoardGlow, placeable
 from .BoardInv import offhand, selectedSlot, typeOf
+from .BoardSeams import Seams
 from ...Client import BlockItems
 from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
@@ -42,7 +43,7 @@ class BoardViewMixin(object):
         super(BoardViewMixin, self).__init__(view)
         self.env = Rules.Env(BlockItems.isKnife, typeOf, view.ports.maxStack, lambda: (view.data or {}).get(Rules.CARVED))
         self.draw = None
-        self.cutter = None
+        self.cutter = self.seams = None
         self.screen = None
         self.carriedHidden = False
         self.glow, self.over = BoardGlow(view.pos), None      # 板的描边、光标底下是哪块（mouth / surface / None）
@@ -117,7 +118,7 @@ class BoardViewMixin(object):
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
         self.draw = Draw(self.view, self.center(), self.env, self.api.Geometry)
-        self.cutter = Cutter(self)
+        self.cutter, self.seams = Cutter(self), Seams(self)
         self.redraw()
         BookSources.attach(self.view, "board")
         if Arrival.byUse(self.view):                  # 从相邻的站点走过来的：主手上的东西不是给这块板的（openedByUse）
@@ -134,9 +135,10 @@ class BoardViewMixin(object):
     def onClose(self):
         if self.cutter is not None:
             self.cutter.close()
+            self.seams.close()
         if self.draw is not None:
             self.draw.close()
-        self.cutter = self.draw = None
+        self.cutter = self.seams = self.draw = None
         self.carriedHidden = False
         self.glow.frame(0.0, False)
         BlockItems.hide(self.view.dimensionId, self.view.pos, False)
@@ -153,6 +155,7 @@ class BoardViewMixin(object):
             return
         self.draw.frame(dt)
         self.cutter.frame(dt, self.toolOf()[0])
+        self.seams.frame(dt)
         self.carriedHidden = self.cutter.drawn or self.draw.bouncing > 0.0
         over = self.over == "mouth" or self.view.input == self.api.TOUCH       # 触屏没有悬停：拿着放得上的东西就描
         self.glow.frame(dt, over and placeable(self.env, self.view.hand, self.board(), self.layers()))

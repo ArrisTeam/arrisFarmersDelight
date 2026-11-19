@@ -14,6 +14,10 @@ DASH_GAP = 0.45          # :83 段和段之间隔多远
 MARK_ALPHA = 0xA0        # :85 MARK_COLOR = 0xA0FFFFFF 的 alpha 字节
 MARK_FADE = 0.18         # :203 新的一条虚线用这么久显出来
 OFFERED_ALPHA = 0x8C     # :178 OFFERED = 0x8CFFFFFF 的 alpha 字节：手空着、从背包里借来悬在食物上的工具
+GAP = 0.8                # :65 切过的一刀，两半之间挪开这么宽的缝（ItemVoxels.build：每个像素沿法线往两边各挪 gap / 2）
+GAP_TIME = 0.12          # :66 缝用这么久张开
+SEAM_ALPHA = 0.4         # 这边才有的数：缝画成压在食物上的一条黑色半透明细条（板上的东西切不开），有多不透明。JE 的镜头俯角 50 度，
+#                          往 0.8 宽、0.625 深的缝里看到的多半是切面——食物自己的颜色照侧面的明暗压到六成上下
 
 
 def dashes(length):
@@ -37,6 +41,11 @@ def markAlpha(age):
     """fade（1206-1208）：新的一条虚线出现 age 秒时的不透明度：MARK_ALPHA 按 age / MARK_FADE 线性长到全，Math.round 取整到字节。"""
     share = min(1.0, max(0.0, age / MARK_FADE))
     return int(math.floor(MARK_ALPHA * share + 0.5)) / 255.0
+
+
+def gapAfter(gap, dt):
+    """frame（790-792）：张开中的缝再过 dt 秒有多宽：每秒长 GAP / GAP_TIME，到 GAP 为止。"""
+    return min(GAP, gap + GAP * dt / GAP_TIME)
 
 
 def offeredAlpha(striking):
