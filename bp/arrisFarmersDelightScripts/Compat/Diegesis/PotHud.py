@@ -15,6 +15,7 @@ import math
 
 from . import PotFx
 from .PotSceneFx import play
+from ...Client import Texts
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules.HandsOn import PotBadge, PotDriftExtras
 
@@ -22,8 +23,9 @@ BADGE_AT = (-0.6, 14.5, 4.6)            # scenes/cooking_pot.json 的 badge 节�
 BADGE_TILT = math.radians(50.0)         # badge 节点朝镜头仰 50 度（rotation [-50, 0, 0]）：牌面上的"下"在场景里是往下、往镜头这边
 APPEAR_FROM = 0.25                      # 镜头来了四分之一之后徽章才开始长出来
 SLOT_SIZE = 3.2                         # scenes/cooking_pot.json：漂着的料（ingredients[i]）和盛好的那格（served）的 slot size，数量字的大小和位置跟着它
-TIPS = {PotBadge.TIP_READY: "%d × %s", PotBadge.TIP_COOKING: "%s，还要 %d 秒", PotBadge.TIP_NAME: "%s"}
-SCOOP_TIP, TAKE_TIP = "盛出 %s", "取回 %s"          # 悬着容器 / 悬着要取回的东西时，光标旁说这一下做什么
+# 徽章上那道菜的提示：(语言文件里的键, 找不到时的中文)。键就是 HoD 的（handson_delight.pot.ready / cooking），占位的次序也一样；只有菜名的那种不用查
+TIPS = {PotBadge.TIP_READY: (PotBadge.TIP_READY, "%d × %s"), PotBadge.TIP_COOKING: (PotBadge.TIP_COOKING, "%s，还要 %d 秒"), PotBadge.TIP_NAME: (None, "%s")}
+SCOOP_TIP, TAKE_TIP = ("arris_fd.pot.scoop", "盛出 %s"), ("arris_fd.pot.take_back", "取回 %s")      # 悬着容器 / 悬着要取回的东西时，光标旁说这一下做什么
 _names = {}
 
 
@@ -100,7 +102,7 @@ class PotHud(object):
             return None
         if view.plateHover:
             tip = self.badge.tooltip(state)
-            return [TIPS[tip[0]] % tip[1]] if tip else None
+            return [Texts.fill(TIPS[tip[0]][0], TIPS[tip[0]][1], tip[1])] if tip else None
         key, slot = self.owner.hover
         look = self.owner.scene.look
         item = look.items[slot] if key == "item" and slot is not None else (look.served if key == "served" else None)
@@ -121,8 +123,8 @@ class PotHud(object):
             return None
         back = offered[2]
         if back is not None:
-            return [TAKE_TIP % nameOf({"newItemName": back})]
-        return [SCOOP_TIP % state["mealName"]] if state["mealName"] else None
+            return [Texts.fill(TAKE_TIP[0], TAKE_TIP[1], nameOf({"newItemName": back}))]
+        return [Texts.fill(SCOOP_TIP[0], SCOOP_TIP[1], state["mealName"])] if state["mealName"] else None
 
     # ---------------------------------------------------------------- 事件与收场
 

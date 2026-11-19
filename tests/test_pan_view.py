@@ -335,7 +335,7 @@ def testHoldingAStackOverThePanOffersPutOneWhereTheRightClickPlacesJustOne():
     behavior, view = make(hand=item("minecraft:beef", 5), food=None)
     for target in ((8.0, 3.0, 8.0), (8.0, 1.0, 8.0), (8.0, 2.0, 22.0)):          # 锅口、食物、锅柄：哪处都一样（onItemClick 不挑节点）
         assert hold(behavior, target) == {"menu": [HoldMenu.PUT_ONE]}, target
-    assert HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    assert HoldMenu.PUT_ONE == {"label": "放一个", "key": "arris_fd.hold.put_one", "button": 1, "quick": False}
     event(behavior, "down", (8.0, 3.0, 8.0))
     event(behavior, "down", (8.0, 3.0, 8.0), button=1)
     assert view.actions == [("place", {"one": False}), ("place", {"one": True})], "点一下整叠、右键一个：真的不一样"
@@ -350,7 +350,7 @@ def testHoldingAStackOverThePanOffersPutOneWhereTheRightClickPlacesJustOne():
 def testEmptyHandOverTheRawFoodOffersTakeAllBackWhereATapWouldToss():
     behavior, view = make()
     assert hold(behavior, (8.0, 1.0, 8.0)) == {"menu": [HoldMenu.TAKE_ALL_BACK]}
-    assert HoldMenu.TAKE_ALL_BACK == {"label": "全部取回", "button": 1, "quick": False}
+    assert HoldMenu.TAKE_ALL_BACK == {"label": "全部取回", "key": "arris_fd.hold.take_all_back", "button": 1, "quick": False}
     event(behavior, "down", (8.0, 1.0, 8.0))
     assert view.actions == [("toss", {"strength": 0.4})], "点一下：颠"
     run(behavior, 0.6)

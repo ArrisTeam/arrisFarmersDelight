@@ -566,7 +566,7 @@ def testHoldingOneThingOverTheGrillOffersPutHereWhereMoreThanOnePlaceIsFree():
     （屏幕右下角的全部 / 单个按钮，单个 = 右键；test_hold_tap_mode），轮盘里不给；只拿着一个时两档都是左键，选哪一格还得靠轮盘。"""
     view = make(pieces={1: item(BEEF)})
     view.setHand(item(BEEF, 5))
-    assert view.holdOf(screenOf(view, 4)) is None and HoldMenu.PUT_HERE == {"label": "只放这一格", "button": 1, "quick": False}
+    assert view.holdOf(screenOf(view, 4)) is None and HoldMenu.PUT_HERE == {"label": "只放这一格", "key": "arris_fd.hold.put_here", "button": 1, "quick": False}
     assert click(view, 4) and actions()[-1] == ("place", {})
     assert click(view, 4, button=1) and actions()[-1] == ("place", {"one": True, "place": 4}), "点一下和右键真的不一样"
     view.setHand(item(BEEF, 1))
@@ -579,7 +579,7 @@ def testHoldingOneThingOverTheGrillOffersPutHereWhereMoreThanOnePlaceIsFree():
 
 def testEmptyHandOverARawPieceOffersTakeWhereATapWouldTurnIt():
     view = make(pieces={0: item(BEEF)})
-    assert view.holdOf(screenOf(view, 0)) == {"menu": [HoldMenu.TAKE_PIECE]} and HoldMenu.TAKE_PIECE == {"label": "取下", "button": 1, "quick": False}
+    assert view.holdOf(screenOf(view, 0)) == {"menu": [HoldMenu.TAKE_PIECE]} and HoldMenu.TAKE_PIECE == {"label": "取下", "key": "arris_fd.hold.take_piece", "button": 1, "quick": False}
     assert click(view, 0) and actions()[-1] == ("turn", {"place": 0}), "点一下：翻面"
     assert click(view, 0, button=1) and actions()[-1] == ("take", {"place": 0}), "右键：取下"
 

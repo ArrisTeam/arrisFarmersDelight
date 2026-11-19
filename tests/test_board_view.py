@@ -799,7 +799,7 @@ def _hold(behavior, key):
 
 def testHoldingAStackOverTheBoardOffersPutOneWhereTheRightClickPlacesJustOne():
     behavior, view = _open(hand=C.item("arris:cabbage", 3))
-    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "key": "arris_fd.hold.put_one", "button": 1, "quick": False}
     behavior.onPointer(C.Event("down", "mouth", button=0))
     behavior.onPointer(C.Event("down", "mouth", button=1))
     assert view.sent == [("place", {"one": False}), ("place", {"one": True})], "点一下整叠、右键一个：真的不一样"
@@ -813,7 +813,7 @@ def testHoldingAStackOverTheBoardOffersPutOneWhereTheRightClickPlacesJustOne():
 
 def testHoldingAToolOverABareBoardOffersCarveAndOverFoodOffersNothing():
     behavior, view = _open(hand=C.item(KNIFE))
-    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.CARVE]} and HoldMenu.CARVE == {"label": "插在板上", "button": 0, "quick": True}
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.CARVE]} and HoldMenu.CARVE == {"label": "插在板上", "key": "arris_fd.hold.carve", "button": 0, "quick": True}
     behavior.onPointer(C.Event("down", "mouth", button=0))
     assert view.sent == [], "点一下：刀点在没有可切的东西上，只敲一声"
     behavior.onPointer(C.Event("down", "mouth", button=0, quick=True))
@@ -830,7 +830,7 @@ def testEmptyHandOverTheFoodOffersTakeBackWhereATapWouldCutOrFinishADish():
     behavior, view = _open(board, data=data)
     assert _hold(behavior, "surface") is None, "没有刀：点一下就是取回"
     C.engine.inventory[8] = C.item(KNIFE)
-    assert _hold(behavior, "surface") == {"menu": [HoldMenu.TAKE_BACK]} and HoldMenu.TAKE_BACK == {"label": "取回", "button": 1, "quick": False}, "背包里有刀：点一下是借来切"
+    assert _hold(behavior, "surface") == {"menu": [HoldMenu.TAKE_BACK]} and HoldMenu.TAKE_BACK == {"label": "取回", "key": "arris_fd.hold.take_back", "button": 1, "quick": False}, "背包里有刀：点一下是借来切"
     cut, icon = _lineOf()
     ray = _cursorOn(behavior, (cut.x, cut.z))
     _frames(behavior)

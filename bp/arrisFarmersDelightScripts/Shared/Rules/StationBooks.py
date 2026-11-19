@@ -30,9 +30,23 @@ def stack(name, aux=0, count=1):
     return {"newItemName": name, "newAuxValue": int(aux), "count": int(count)}
 
 
+SECONDS_KEY = "handson_delight.book.seconds"       # 页脚"多少秒"在语言文件里的键（HoD 的）
+_words = {"seconds": "%d 秒"}                       # 现在用的写法：客户端建书页前按玩家的语言换（wordSeconds），服务端用不着书页的字
+
+
+def wordSeconds(wording):
+    """页脚的"多少秒"换一种写法（带一个数字的占位）；填不上的（语言文件里写坏了）不换，返回换了没有。"""
+    try:
+        wording % 1
+    except (TypeError, ValueError):
+        return False
+    _words["seconds"] = wording
+    return True
+
+
 def _seconds(value):
     """页脚的秒数：Java 的 Math.round（半数进位），不是 Python 的 round（py3 里 2.5 是 2）。"""
-    return "%d 秒" % roundInt(value)
+    return _words["seconds"] % roundInt(value)
 
 
 def _pair(value):

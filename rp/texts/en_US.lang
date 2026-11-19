@@ -1,0 +1,13 @@
+## Only the words of the station screens (Hands-On Delight). Item and block names are not translated yet.
+arris_fd.hold.put_one=Put one
+arris_fd.hold.scoop_all=Serve all
+arris_fd.hold.carve=Stick in
+arris_fd.hold.take_back=Take back
+arris_fd.hold.take_all_back=Take all
+arris_fd.hold.put_here=Just here
+arris_fd.hold.take_piece=Take off
+arris_fd.pot.scoop=Serve %s
+arris_fd.pot.take_back=Take back %s
+handson_delight.pot.ready=%s x %s
+handson_delight.pot.cooking=%s in %s s
+handson_delight.book.seconds=%s s

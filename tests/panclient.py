@@ -50,6 +50,7 @@ class World(object):
         self.endpoints = {}
         self.calls = []
         self.counts = {}                # 引擎组件的接口名 -> 被调了几次（数"没变的东西不碰引擎"用；要数一段就先 counts.clear()）
+        self.lang = {}                  # 语言文件：键 -> 现在这种语言下的那一句（GetChinese）；空 = 都找不到，界面用代码里的中文
         self._next = 0
 
     def nextId(self):
@@ -91,6 +92,10 @@ class Comp(object):
 
     def GetItemBasicInfo(self, name, aux=0):
         return {"itemName": "name:" + name, "maxStackSize": 64}
+
+    def GetChinese(self, key):
+        """CreateGame(levelId).GetChinese：语言文件里 key 对应的那一句，找不到原样返回 key（引擎的规矩）。"""
+        return world.lang.get(key, key)
 
     # ---- 方块 ----
     def GetBlock(self, pos):

@@ -772,7 +772,7 @@ def _hold(behavior, key=None, payload=None):
 def testHoldingAStackOfIngredientsOverTheMouthOffersPutOneWhereTheRightClickPlacesJustOne():
     behavior, view = behaviorOf()
     view.hand = dict(CARROTS)
-    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "button": 1, "quick": False}
+    assert _hold(behavior, "mouth") == {"menu": [HoldMenu.PUT_ONE]} and HoldMenu.PUT_ONE == {"label": "放一个", "key": "arris_fd.hold.put_one", "button": 1, "quick": False}
     assert behavior.onPointer(Event(LEFT, Hit("mouth"))) is True and view.spread.button == LEFT, "点一下是整叠（松手才放）"
     view.spread.cancel()
     assert behavior.onPointer(Event(RIGHT, Hit("mouth"))) is True and view.spread.button == RIGHT, "菜单补的右键：放一个"
@@ -788,7 +788,7 @@ def testHoldingAStackOfIngredientsOverTheMouthOffersPutOneWhereTheRightClickPlac
 def testHoldingTheMealsContainerOffersScoopAllOnlyWhenThereIsMoreThanOneServingAndMoreThanOneContainer():
     # PotPick.withStack：点一下盛一份，Shift 盛到没菜或没容器；哪个节点都一样（mouth、ladle、item_N、served）
     behavior, view = _withMeal((("minecraft:carrot", 1), ("minecraft:potato", 1)), hand=dict(BOWL, count=4))
-    assert HoldMenu.SCOOP_ALL == {"label": "全部盛出", "button": 0, "quick": True}
+    assert HoldMenu.SCOOP_ALL == {"label": "全部盛出", "key": "arris_fd.hold.scoop_all", "button": 0, "quick": True}
     for key, payload in (("mouth", None), ("ladle", None), ("item", 0), ("item", 1), ("served", None)):
         assert _hold(behavior, key, payload) == {"menu": [HoldMenu.SCOOP_ALL]}, key
     for key in ("soup", "sunk", None):

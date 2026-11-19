@@ -9,6 +9,7 @@
 """
 from ...Shared.Rules import BoardStation, GrillStation, PanStation, PotStation
 from ...Shared.Rules import HandsOnOptions as Options
+from ...Client import Texts
 from ...Shared.Rules import StationBooks as Books
 from ...Shared.Rules.HandsOn import PotBonus
 
@@ -20,6 +21,7 @@ class _Source(object):
 
     def pages(self):
         if self._pages is None:
+            Books.wordSeconds(Texts.of(Books.SECONDS_KEY, "%d 秒"))      # 页脚的"多少秒"按玩家的语言写
             self._pages = self.build()
         return self._pages
 
