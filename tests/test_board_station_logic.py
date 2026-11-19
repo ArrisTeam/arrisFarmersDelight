@@ -600,6 +600,32 @@ def testAToolIsStuckIntoTheBareBoardAndPulledOutByAClick():
     assert K.effects()[0] == ("taken", {"stack": {"newItemName": KNIFE, "newAuxValue": 0, "count": 1, "durability": 77}, "at": -1, "carved": True})
 
 
+def testTheCarvedFlagFollowsCarveTakeAndPlaceAndReachesTheClient():
+    """FD 的 IsItemCarved：站点里 Shift 点空板插进去的才是插着的，放上去的是躺着的；标记存在方块实体数据里，也经站点数据给客户端（照它画、照它认取回的动作）。"""
+    manager, data = K.setup()
+    K.opened(manager)
+    assert data["isItemCarved"] is None and "carved" not in _state(manager).getData(), "空板：没有标记"
+    _knife(3, 77)
+    K.do(manager, "a", K.click(K.inv(3)))
+    assert K.do(manager, "a", K.custom("carve"))
+    assert data["isItemCarved"] == 1 and _state(manager).getData()["carved"] is True
+    K.do(manager, "a", K.custom("take"))
+    assert data["isItemCarved"] is None and "carved" not in _state(manager).getData(), "拔出来：标记清掉"
+    assert _place(manager, CABBAGE, 3)
+    assert data["isItemCarved"] == 0 and _state(manager).getData()["carved"] is False, "放上去的：躺着"
+
+
+def testAKnifeLyingFlatFromTheClassicBoardIsNotPulledOutLikeACarvedOne():
+    """经典玩法不潜行放上去的刀是躺着的（标记为假）：站点里取回它不带"拔出来"，它也不挡着往板上放同一种。"""
+    manager, data = K.setup()
+    data["cuttingDict"] = {"newItemName": KNIFE, "newAuxValue": 0, "count": 1}
+    data["isItemCarved"] = 0
+    K.opened(manager)
+    K.effects()
+    K.do(manager, "a", K.custom("take"))
+    assert K.effects()[0][1]["carved"] is False and K.board(data) is None and data["isItemCarved"] is None
+
+
 def testFoodLaidNextToACarvedKnifeSendsTheKnifeToTheCook():
     manager, data = K.setup()
     data["cuttingDict"] = {"newItemName": KNIFE, "newAuxValue": 0, "count": 1}

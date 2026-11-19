@@ -10,10 +10,22 @@ from .BlockItems import PublishBoardDish
 from .Drops import ScatterItem
 from .Fx import ToAllPlayerPlaySound
 from .Player import GiveOrDropItem
+from ...Shared.Rules.BoardStation import CARVED_DATA
 from ...Shared.Rules.HandsOn import ItemData
 
 LAYERS_KEY = "dishLayers"
 DONE_KEY = "dishDone"
+
+
+def carvedOf(blockEntityData):
+    """板上这件是不是插着的（FD 的 IsItemCarved，方块实体数据的 BoardStation.CARVED_DATA）：True / False；None = 不知道（板空着、或加这个标记之前的老存档）。"""
+    flag = blockEntityData[CARVED_DATA] if blockEntityData else None
+    return None if flag is None else bool(flag)
+
+
+def setCarved(blockEntityData, carved):
+    """记下标记：True 插着 / False 躺着 / None 清掉（板空了）。"""
+    blockEntityData[CARVED_DATA] = None if carved is None else (1 if carved else 0)
 
 
 def stack(item, count=None):

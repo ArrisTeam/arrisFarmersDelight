@@ -40,7 +40,7 @@ class BoardViewMixin(object):
 
     def __init__(self, view):
         super(BoardViewMixin, self).__init__(view)
-        self.env = Rules.Env(BlockItems.isKnife, typeOf, view.ports.maxStack)
+        self.env = Rules.Env(BlockItems.isKnife, typeOf, view.ports.maxStack, lambda: (view.data or {}).get(Rules.CARVED))
         self.draw = None
         self.cutter = None
         self.screen = None

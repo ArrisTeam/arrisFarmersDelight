@@ -22,6 +22,10 @@ GROUP_BOARD = "board"
 GROUP_LAYERS = "layers"
 # FD 潜行使用会把这些插进空板（Cutting.canStick，216-218：TieredItem 是刀 / 剑 / 斧 / 镐 / 锹 / 锄，再加 TridentItem、ShearsItem）；键是引擎的物品类型
 STICKABLE_TYPES = frozenset(("sword", "axe", "hoe", "shovel", "pickaxe", "trident", "shears"))
+# 板上这件是不是插着的（FD 的 CuttingBoardBlockEntity.isItemCarvingBoard，存档里叫 IsItemCarved）：方块实体数据里的键，1 插着 / 0 躺着；
+# 没有这个键 = 不知道（板空着，或是加这个标记之前的老存档）：读的人照老办法推断（Env.isCarving）
+CARVED_DATA = "isItemCarved"
+CARVED = "carved"           # 同一个标记在站点数据（view.data）和世界展示的物品表（Client/BlockItems 的 items）里的键：True / False，没有 = 不知道
 
 _cache = {"stamp": None, "tools": frozenset(), "types": frozenset()}
 
@@ -60,10 +64,11 @@ class Env(object):
     """放上板、托盘、点板要问的几件事。isKnife(物品名) 和 typeOf(物品字典) 要问引擎（刀的标签、物品类型），由两端各自注入；
     其余按 Shared 的数据表答（切的配方、摆盘的菜）。"""
 
-    def __init__(self, isKnife, typeOf, maxStack=None):
+    def __init__(self, isKnife, typeOf, maxStack=None, carved=None):
         self.isKnife = isKnife
         self.typeOf = typeOf
         self.maxStack = maxStack if maxStack is not None else (lambda item: 64)     # 物品最多叠几个
+        self.carved = carved                  # () -> 这块板的 IsItemCarved 标记（True / False / None 不知道）；不给 = 一律不知道
 
     # ---------------------------------------------------------------- 切
 
@@ -130,10 +135,18 @@ class Env(object):
             return False
         return self.typeOf(item) in STICKABLE_TYPES or bool(self.isKnife(key[0]))
 
-    def isCarving(self, item):
-        """板上这件是不是插着的工具（不是等着切的食物）。我们没有 FD 的 IsItemCarved 标记：板上有、却是能插的工具就是。
-        板上怎么画（站点里 Compat/Diegesis/BoardDraw、没开站时 Shared/Rules/BlockDisplay）、取回要不要拔出来的动作都问它，说同一个答案。"""
-        return keyOf(item) is not None and not self.cuttable(item) and self.canStick(item)
+    def isCarving(self, item, flag=None):
+        """板上这件是不是插着的工具（FD 的 isItemCarvingBoard：潜行使用 / 站点里 Shift 点空板插进去的才是，平常放上去的工具躺着）。
+        flag 是这块板的 IsItemCarved 标记（不给就问 self.carved()）：True / False 照它；None = 不知道（加这个标记之前的老存档）——照老办法推断：
+        板上有、切不了、却是能插的工具就是。板上怎么画（站点里 Compat/Diegesis/BoardDraw、没开站时 Shared/Rules/BlockDisplay）、
+        取回要不要拔出来的动作都问它，说同一个答案。"""
+        if keyOf(item) is None:
+            return False
+        if flag is None and self.carved is not None:
+            flag = self.carved()
+        if flag is None:
+            return not self.cuttable(item) and self.canStick(item)
+        return bool(flag)
 
     def isBlock(self, item):
         """板上这件东西画成立着的方块、还是平躺的图标（JE：物品模型立体才是方块，HoD 的 ItemVoxels.icon / FD 的 CuttingBoardRenderer 的 isGui3d）。

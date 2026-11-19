@@ -8,6 +8,7 @@
 import copy
 
 from . import BoardGive
+from ...Server.Helpers import BoardDish as Store
 from ...Server.Helpers.Engine import compFactory, levelId
 from ...Server.Helpers.Items import GetItemType, IsKnife
 from ...Shared.Rules import CuttingStation as Rules
@@ -17,7 +18,7 @@ from ...Shared.Rules.BoardStation import Env
 def envFor(logic):
     """这个站点里问"是不是工具、能不能放"用的 Env：刀的标签、物品类型问引擎，最大堆叠问光标栈上下文（动作之外的默认 64）。"""
     ctx = logic.ctx
-    return Env(IsKnife, GetItemType, ctx.maxStackOf if ctx is not None else None)
+    return Env(IsKnife, GetItemType, ctx.maxStackOf if ctx is not None else None, lambda: Store.carvedOf(logic._data()))
 
 
 def findTool(logic, playerId, onBoard):

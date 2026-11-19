@@ -19,17 +19,19 @@ def _wire(item):
     return {"newItemName": item["newItemName"], "newAuxValue": item.get("newAuxValue", 0) or 0, "count": item["count"]}
 
 
-def Publish(dimensionId, blockPos, kind, items):
-    """items：{"槽": 物品或 None}。"""
+def Publish(dimensionId, blockPos, kind, items, carved=None):
+    """items：{"槽": 物品或 None}。carved（只有砧板用）：板上那件是不是插着的（True / False；None 不带：客户端照老办法推断）。"""
     payload = {"dimensionId": dimensionId, "pos": [int(blockPos[0]), int(blockPos[1]), int(blockPos[2])], "kind": kind,
                "items": dict((str(slot), _wire(item)) for slot, item in items.items())}
+    if carved is not None:
+        payload["carved"] = bool(carved)
     if _record["payloads"] is not None:
         _record["payloads"].append(payload)
     Call("*", ENDPOINT, payload)
 
 
-def PublishBoard(dimensionId, blockPos, item):
-    Publish(dimensionId, blockPos, KIND_BOARD, {"0": item})
+def PublishBoard(dimensionId, blockPos, item, carved=None):
+    Publish(dimensionId, blockPos, KIND_BOARD, {"0": item}, carved if item else None)
 
 
 def PublishBoardDish(dimensionId, blockPos, layers, dish):

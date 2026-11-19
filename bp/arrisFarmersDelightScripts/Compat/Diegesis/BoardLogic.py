@@ -123,7 +123,7 @@ class BoardLogicMixin(object):
     def _apply(self, playerId, result, slot):
         """把 Place 的结果落到方块、光标栈 / 背包、事件和声音上。"""
         if result.board != self.boardItem():
-            self.setBoard(result.board)
+            self.setBoard(result.board, result.carved)
         if result.layers != self.layers():
             self.setLayers(result.layers)
         if result.moved:
@@ -152,8 +152,8 @@ class BoardLogicMixin(object):
     def layers(self):
         return BoardSlots.layersOf(self._data())
 
-    def setBoard(self, item):
-        BoardSlots.writeBoard(self.station.dimensionId, self.station.pos, item)
+    def setBoard(self, item, carved=False):
+        BoardSlots.writeBoard(self.station.dimensionId, self.station.pos, item, carved)
 
     def setLayers(self, layers):
         BoardSlots.writeLayers(self.station.dimensionId, self.station.pos, layers)
@@ -194,6 +194,9 @@ class BoardLogicMixin(object):
         done = Dishes.completed(keys) if keys else None
         if done is not None:
             data["dish"] = str(done["result"][0])
+        carved = Store.carvedOf(self._data())
+        if carved is not None:
+            data[Rules.CARVED] = carved                    # 板上那件是不是插着的：客户端照它画、照它认取回的动作（没有 = 老存档，照老办法推断）
         self.station.state.setData(data)
 
 

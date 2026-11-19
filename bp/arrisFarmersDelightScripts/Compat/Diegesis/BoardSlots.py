@@ -2,7 +2,8 @@
 """BoardSlots - 砧板站点的两个槽组直接绑在方块实体数据上：board（板上的东西）、layers（摆盘的层）（服务端）
 
 对应 Hands-On Delight：station/BoardLogic.java 构造里的 bindSlots（58-93）。站点只是交互层，存档不变：
-    board   1 格 = 方块实体数据 cuttingDict（带数量的物品字典，经典玩法也读写它；做好的菜、插着的工具也躺在这里）
+    board   1 格 = 方块实体数据 cuttingDict（带数量的物品字典，经典玩法也读写它；做好的菜、插着的工具也躺在这里），
+            旁边的 isItemCarved 记着它是不是插进去的（FD 的 IsItemCarved，Server/Helpers/BoardDish.carvedOf）
     layers  9 格 = dishLayers（物品字典的列表，底座在前；Server/Helpers/BoardDish.py 经典玩法读它）
 物品是整件存的：名字、aux、数量加上附魔 / 耐久 / 改名 / extraId / userData（Shared/Rules/HandsOn/ItemData.py：元组换列表、unicode 换 str 写进去，
 读出来再换回），取回原样还；存不进去的数据板根本不收（BoardPlace 的 canHold），所以这里写的都是存得住的。
@@ -37,14 +38,19 @@ def publish(dimensionId, pos, data):
     if layers:
         PublishBoardDish(dimensionId, pos, layers, None)
     else:
-        PublishBoard(dimensionId, pos, boardOf(data))
+        PublishBoard(dimensionId, pos, boardOf(data), Store.carvedOf(data))
 
 
-def writeBoard(dimensionId, pos, item):
-    """板上的东西整个换成 item（None = 清空），广播。改了之后站点状态由 Manager 每次动作 / tick 后的 pollStorages 发现并同步给使用者。"""
+def writeBoard(dimensionId, pos, item, carved=None):
+    """板上的东西整个换成 item（None = 清空），广播。改了之后站点状态由 Manager 每次动作 / tick 后的 pollStorages 发现并同步给使用者。
+    carved：这件是插进去的（True）/ 放上去的（False）；None = 标记不动（内核自己挪槽里的东西：拿走一部分、动作作废时放回去），板清空时一并清掉。"""
     data = GetBlockEntityData(dimensionId, pos)
     if data is not None:
         data["cuttingDict"] = stack(item)
+        if data["cuttingDict"] is None:
+            Store.setCarved(data, None)
+        elif carved is not None:
+            Store.setCarved(data, carved)
         publish(dimensionId, pos, data)
 
 

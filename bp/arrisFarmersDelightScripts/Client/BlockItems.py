@@ -122,7 +122,9 @@ def release(dimensionId, pos):
 def _layoutOf(kind, items, pos):
     """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：三种方块都要朝向和一叠最多几个，砧板还要站点里板底座的偏移和"是不是插着的工具""画成方块还是平躺的图标"。"""
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
-    return BlockDisplay.layout(kind, items, _itemType, pos, offset, _facingYaw(pos), _boardEnv.isCarving, _boardEnv.isBlock, _maxStack)
+    flag = items.get(BoardStation.CARVED)             # 板上那件是不是插着的（服务端的 IsItemCarved 标记；没有 = 老存档，照老办法推断）
+    return BlockDisplay.layout(kind, items, _itemType, pos, offset, _facingYaw(pos), lambda item: _boardEnv.isCarving(item, flag), _boardEnv.isBlock,
+                               _maxStack)
 
 
 def show(dimensionId, pos, kind, items):
@@ -152,6 +154,9 @@ def show(dimensionId, pos, kind, items):
 def _itemsFromExData(kind, exData):
     if kind == BlockDisplay.KIND_BOARD:
         items = {"0": unwrapDeep(exData.get("cuttingDict")), BlockDisplay.DISH_KEY: unwrapDeep(exData.get("dishDone"))}
+        carved = unwrapDeep(exData.get(BoardStation.CARVED_DATA))
+        if carved is not None:
+            items[BoardStation.CARVED] = bool(carved)
         layers = unwrapDeep(exData.get("dishLayers"))
         for index, layer in enumerate(layers if isinstance(layers, list) else []):
             items[BlockDisplay.layerKey(index)] = layer
@@ -190,4 +195,7 @@ def OnDimensionChange(args=None):
 def OnBlockItems(payload):
     # 服务端广播给全体客户端：别的维度的不画（show 里按当前维度过滤）
     if isinstance(payload, dict) and payload.get("kind") and isinstance(payload.get("items"), dict):
-        show(payload["dimensionId"], payload["pos"], payload["kind"], payload["items"])
+        items = payload["items"]
+        if payload.get("carved") is not None:
+            items[BoardStation.CARVED] = bool(payload["carved"])       # 砧板：板上那件是不是插着的（服务端的 IsItemCarved 标记）
+        show(payload["dimensionId"], payload["pos"], payload["kind"], items)

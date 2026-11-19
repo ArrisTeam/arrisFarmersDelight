@@ -2,6 +2,8 @@
 """CuttingBoard - 砧板：放上一叠物品、用对的工具一件件切、空手取回（服务端）
 
 照 JE（FD 的 CuttingBoardBlock.use）：板空着时手里什么都能整叠放上去（同一种再放接着叠，叠满为止；创造模式手里留着），每切一下切一件、提示还剩几个；
+潜行着拿工具对着空板使用是把它插进板里（ToolCarvingEvent / carveToolOnBoard：有材质等级的工具、三叉戟、剪刀），板上记一个 IsItemCarved 标记（Helpers/BoardDish.carvedOf）：
+插着工具的板放不上别的、也切不了，空手取回才清掉；平常放上去的工具是躺着的（标记为假）。
 板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）就当是拿工具来切：工具不对提示换工具（判定和站点同一套：Shared/Rules/CuttingStation.fitsTool），
 带 chance 的产物按概率给，从板的侧面带着初速弹出去（CuttingBoardBlockEntity:89-92，Helpers/Drops.PopFromBoard）。空手取回，创造模式取回的东西不给玩家（:68）。
 放上去、取回、切一件各响 FD 自己的那一声（Shared/Rules/BoardSounds 的 FD_PLACE / FD_TAKE / processed），切一件还飞出 5 颗这件东西的碎屑（Client/Endpoints.PlayCrumbs）。
@@ -20,7 +22,7 @@ from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
 from .Helpers.Items import CanStack, GetItemType, GetMaxStack, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data.Cutting import CuttingBoardDict
-from ..Shared.Rules import BoardSounds, BoardSupport, CuttingStation
+from ..Shared.Rules import BoardSounds, BoardStation, BoardSupport, CuttingStation
 from ..Shared.Rules.HandsOn import ItemData
 
 CUTTING_BOARD = "arris:cutting_board"
@@ -55,6 +57,33 @@ def OnTryPlaceCuttingBoard(args):
 @registerHandler("ServerItemUseOnEvent", match=CUTTING_BOARD, priority=100)
 def OnServerCuttingBoardItemUse(args):
     args["ret"] = True
+    _carveWhenSneaking(args)
+
+
+def _carveWhenSneaking(args):
+    """JE 的 ToolCarvingEvent：潜行着拿工具对着砧板使用——插进空板（carveToolOnBoard：有材质等级的工具、三叉戟、剪刀，板得是空的），响插工具的那一声，
+    创造模式手里的留着。潜行拿着东西时引擎不发方块使用（ServerBlockUseEvent），所以挂在物品使用上；摆着菜的层的板不插（站点里的 carve 也不插）。"""
+    playerId = args["entityId"]
+    if compFactory.CreatePlayer(playerId).isSneaking() is True:
+        carve(playerId, (args["x"], args["y"], args["z"]), args["dimensionId"])
+
+
+def carve(playerId, blockPos, dimensionId):
+    """手里的工具插进这块空板（carveToolOnBoard）；插不了什么都不做。返回插了没有。"""
+    blockEntityData = GetBlockEntityData(dimensionId, blockPos)
+    carried = GetCarriedItem(playerId, True)
+    if not blockEntityData or not carried or blockEntityData["cuttingDict"] or BoardDish.hasAny(blockEntityData):
+        return False
+    if not BoardStation.Env(IsKnife, GetItemType).canStick(carried) or SetPlayerUsedCD(playerId) is True:
+        return False
+    stack = ItemData.stored(carried, 1)
+    blockEntityData["cuttingDict"] = stack
+    BoardDish.setCarved(blockEntityData, True)
+    if not IsCreative(playerId):
+        SetCarriedItem(playerId, None)
+    ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.CARVE)
+    PublishBoard(dimensionId, blockPos, stack, True)
+    return True
 
 
 @registerHandler("ServerBlockUseEvent", match=CUTTING_BOARD)
@@ -81,6 +110,7 @@ def OnServerCuttingBoardBlockUse(args):
             SetCarriedItem(playerId, ItemData.restored(cuttingDict))
         ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.FD_TAKE)
         blockEntityData["cuttingDict"] = None
+        BoardDish.setCarved(blockEntityData, None)             # removeItem：isItemCarvingBoard = false
         PublishBoard(dimensionId, blockPos, None)
 
 
@@ -101,6 +131,8 @@ def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
     if carriedDict["newItemName"] == "arris:skillet_item":
         return                           # 煎锅物品潜行才放成方块（Server/SkilletItem.py），这一下不当东西摆上板
     board = blockEntityData["cuttingDict"]
+    if board and BoardDish.carvedOf(blockEntityData):
+        return                           # 插着工具的板：放不上去、也切不了（CuttingBoardBlockEntity 的 canAddItem / processStoredItemUsingTool 开头就返回）
     if not board or _stacksOnto(board, carriedDict):
         _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId)      # FD 的 canAddItem：板空着，或是同一种还有空位
     else:
@@ -118,12 +150,13 @@ def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
     stack = dict(board) if board else ItemData.stored(carriedDict)
     stack["count"] = have + moved
     blockEntityData["cuttingDict"] = stack
+    BoardDish.setCarved(blockEntityData, False)              # 放上去的是躺着的（addItem 不碰 isItemCarvingBoard，它这时本来就是假）
     if not IsCreative(playerId):
         left = dict(carriedDict)
         left["count"] -= moved
         SetCarriedItem(playerId, left if left["count"] > 0 else None)
     ToAllPlayerPlaySound(dimensionId, _center(blockPos), *BoardSounds.FD_PLACE)
-    PublishBoard(dimensionId, blockPos, stack)
+    PublishBoard(dimensionId, blockPos, stack, False)
 
 
 def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerId):
@@ -155,7 +188,8 @@ def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensi
         ShowTip(playerId, "还剩%d个……" % left)
     else:
         blockEntityData["cuttingDict"] = None
-    PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"])
+        BoardDish.setCarved(blockEntityData, None)
+    PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"], BoardDish.carvedOf(blockEntityData))
 
 
 @registerHandler("BlockRemoveServerEvent", match=CUTTING_BOARD)

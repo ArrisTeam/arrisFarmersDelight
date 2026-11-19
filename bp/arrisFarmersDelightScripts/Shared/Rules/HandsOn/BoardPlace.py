@@ -40,9 +40,10 @@ def eventStack(item, count):
 
 class Placed(object):
     """一步的结果。board / layers 是新的板和层；moved 是手上那叠少了几个；give 是还给厨师的整叠；events 是 [(名字, 数据)]；
-    restart 为真板上换了东西、刀口要重布；finish 为真放的是一层、该看看做成没有；ignored 为真是工具，什么也没发生。"""
+    restart 为真板上换了东西、刀口要重布；finish 为真放的是一层、该看看做成没有；ignored 为真是工具，什么也没发生；
+    carved 为真新的 board 是插进去的工具（FD 的 isItemCarvingBoard：只有 carve 是，放上去的都躺着）。"""
 
-    __slots__ = ("board", "layers", "moved", "give", "events", "restart", "finish", "ignored")
+    __slots__ = ("board", "layers", "moved", "give", "events", "restart", "finish", "ignored", "carved")
 
     def __init__(self, board, layers):
         self.board = board
@@ -53,6 +54,7 @@ class Placed(object):
         self.restart = False
         self.finish = False
         self.ignored = False
+        self.carved = False
 
     def refuse(self, carried, quiet):
         """板不收：手上这叠弹回去（带一个当样子）；quiet（开站时手里的）一声不吭。"""
@@ -129,6 +131,6 @@ def carve(carried, board, layers, env):
     if keyOf(carried) is None or not env.canStick(carried) or layers or keyOf(board) is not None:
         return result.refuse(carried, False)
     result.board = stackOf(carried, 1)
-    result.moved, result.restart = 1, True
+    result.moved, result.restart, result.carved = 1, True, True
     result.events.append((CARVED, {}))
     return result
