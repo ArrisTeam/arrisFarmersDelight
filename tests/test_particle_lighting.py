@@ -32,6 +32,7 @@ TABLE = [
     ("arris_skillet_steam.json", LIT, "同上（煎锅和厨锅放的是同一个 SteamParticle）"),
     ("sparkle.json", BRIGHT, "SparkleParticle.java:19 覆盖了 getLightColor"),
     ("arris_board_mark.json", BRIGHT, "刀口虚线 setShape(..., WHITE, true)：BoardBehavior.java:1193，glows 为真时满亮度（SceneRenderer.java:631）"),
+    ("arris_board_tool.json", LIT, "借来的工具是场景里的物品节点，只是染成半透明（BoardBehavior.java:868 / 932 的 setTint(OFFERED)）：SceneRenderer.java:848 的 renderStatic 带着站点的光照"),
 ]
 
 

@@ -193,7 +193,7 @@ def testTheToolParticleIsAnUprightBlendedIconQuadFromTheItemAtlasTurnedByOneVari
     assert billboard["size"] == ["variable.half", "variable.half"]
     assert components["minecraft:particle_motion_parametric"] == {"rotation": "variable.turn"}, "图标在平面里转多少度：逐帧由脚本给"
     assert components["minecraft:particle_appearance_tinting"]["color"] == [1, 1, 1, "variable.alpha"]
-    assert "minecraft:particle_appearance_lighting" not in components
+    assert components.get("minecraft:particle_appearance_lighting") == {}, "借来的工具是场景里的一件物品（SceneRenderer.java:848 的 renderStatic 带着站点的光照），暗处跟着暗"
     assert _used(effect) <= _declared(effect) == {"u", "v", "w", "h", "half", "turn", "alpha"}
     for name in ("arris_board_mark.json", "arris_board_tool.json"):
         life = _definition(name)["components"]

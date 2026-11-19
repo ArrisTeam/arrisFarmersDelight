@@ -51,7 +51,8 @@
           1,
           "variable.alpha"
         ]
-      }
+      },
+      "minecraft:particle_appearance_lighting": {}
     }
   }
 }
