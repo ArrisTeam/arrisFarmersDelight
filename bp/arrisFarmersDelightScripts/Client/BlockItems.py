@@ -123,7 +123,7 @@ def _layoutOf(kind, items, pos):
     """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：三种方块都要朝向和一叠最多几个，砧板还要站点里板底座的偏移和"是不是插着的工具""画成方块还是平躺的图标"。"""
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
     flag = items.get(BoardStation.CARVED)             # 板上那件是不是插着的（服务端的 IsItemCarved 标记；没有 = 老存档，照老办法推断）
-    if kind == BlockDisplay.KIND_BOARD and items.get("0"):
+    if kind == BlockDisplay.KIND_BOARD and BlockDisplay.isItem(items.get("0")):       # 读方块实体数据得来的空值可能是整数之类的占位，不是 None
         items = dict(items, **{"0": BoardStation.shownItem(items["0"])})       # 蘑菇丛画成它的平面物品（JE 里它是一张贴图）
     return BlockDisplay.layout(kind, items, _itemType, pos, offset, _facingYaw(pos), lambda item: _boardEnv.isCarving(item, flag), _boardEnv.isBlock,
                                _maxStack)
@@ -157,7 +157,7 @@ def _itemsFromExData(kind, exData):
     if kind == BlockDisplay.KIND_BOARD:
         items = {"0": unwrapDeep(exData.get("cuttingDict")), BlockDisplay.DISH_KEY: unwrapDeep(exData.get("dishDone"))}
         carved = unwrapDeep(exData.get(BoardStation.CARVED_DATA))
-        if carved is not None:
+        if carved in (0, 1):                       # 只认存进去的 1 / 0：服务端清成 None 的键，这里读到的是引擎的"空"记号（值为 2 的字节），不是 None
             items[BoardStation.CARVED] = bool(carved)
         layers = unwrapDeep(exData.get("dishLayers"))
         for index, layer in enumerate(layers if isinstance(layers, list) else []):
