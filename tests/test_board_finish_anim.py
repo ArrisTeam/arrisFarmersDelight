@@ -351,7 +351,7 @@ def testAStateThatComesWhileTheFinishPlaysIsDrawnOnceTheLayersAreGone():
         assert _live(view) == [TOMATO], (finish, _live(view))
         assert draw.shown["layers"] == [(TOMATO, 0)] and draw.late is None
         tomato = draw.layers[0]
-        assert tomato.mover.scale == 1.0 and tomato.mover.rotation is None and abs(tomato.prop.scale - 1.25) < 1.0e-9, (finish, "放回的第一层不是缩着的、转着的")
+        assert tomato.mover.scale == 1.0 and tomato.mover.rotation is None and abs(tomato.prop.scale - Scene.scaleOf(10.0)) < 1.0e-9, (finish, "放回的第一层不是缩着的、转着的")
         behavior.onClose()
 
 

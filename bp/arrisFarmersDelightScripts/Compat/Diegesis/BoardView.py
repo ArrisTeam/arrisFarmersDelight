@@ -117,7 +117,7 @@ class BoardViewMixin(object):
 
     def onOpen(self):
         BlockItems.hide(self.view.dimensionId, self.view.pos, True)
-        self.draw = Draw(self.view, self.center(), self.env, self.api.Geometry)
+        self.draw = Draw(self.view, self.center(), self.env, self.api.Geometry, getattr(self.api, "ITEM_SPAN", Scene.SPRITE_SPAN))
         self.cutter, self.seams = Cutter(self), Seams(self)
         self.redraw()
         BookSources.attach(self.view, "board")

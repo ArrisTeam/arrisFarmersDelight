@@ -22,7 +22,7 @@ from ...Shared.Rules import GrillStation as Rules
 from ...Shared.Rules.HandsOn import StoveFx, StoveLayout, StoveLook, StoveMotion
 
 PLACES = StoveLayout.PLACES
-SCALE = StoveLayout.SIZE / 8.0       # 一件 5 像素宽（客户端掉落物缩放 1 时边长 8 像素）
+SCALE = StoveLayout.SIZE / 7.2       # 一件 5 像素宽（客户端掉落物缩放 1 时边长 7.2 像素，Shared/Rules/ItemPose.ITEM_SPAN）
 GRACE = 0.1                          # 朝上那面的样子变了、又没见到翻面的效果：等这么久再重画（前置包先发状态、后发表现事件）
 
 

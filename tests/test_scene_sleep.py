@@ -135,7 +135,7 @@ def testTheSameColdPanSleepsWithRawFoodAndPulsesWithFinishedFood():
     PanScenes.OnPanLook(panLook(name="minecraft:beef"))
     run(scene, 6.0)
     assert scene.frame(DT) is False, "换回生肉：鼓的收了，歇"
-    assert abs(world.drops[sorted(world.drops)[0]]["scale"] - 7.5 / 8.0) < 1e-9, "收了鼓：食物回到原来的大小"
+    assert abs(world.drops[sorted(world.drops)[0]]["scale"] - 7.5 / 7.2) < 1e-9, "收了鼓：食物回到原来的大小"
 
 
 def testABroadcastWakesASleepingPanAndTheNewFoodIsDrawn():
@@ -238,7 +238,7 @@ def testWhatTheEngineRefusesIsSentAgainNextFrame():
 def centerOf(drop):
     """掉落物的视觉中心：轴心 + 贴图的"上"方向 * 半边长（R = Rz·Rx·Ry，第二列是 (-sin z cos x, cos z cos x, sin x)）。"""
     x, y, z = [math.radians(angle) for angle in drop["euler"]]
-    half = 8.0 / 16.0 * drop["scale"] * 0.5
+    half = ItemPose.ITEM_SPAN / 16.0 * drop["scale"] * 0.5
     up = (-math.sin(z) * math.cos(x), math.cos(z) * math.cos(x), math.sin(x))
     return tuple(drop["pivot"][axis] + up[axis] * half for axis in range(3))
 

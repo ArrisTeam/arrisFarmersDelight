@@ -24,10 +24,10 @@ from ...Shared.Rules.HandsOn import FromPlayer
 
 class Draw(DrawEvents):
     """一个打开着的砧板的画面。view 是 StationView，center 是板面中心（站点像素 x, z），env 是站点的 BoardStation.Env（问物品类型、是不是插着的工具），
-    geometry 是内核的 Geometry。"""
+    geometry 是内核的 Geometry，span 是内核把道具的中心换成轴心时用的贴图边长（Api.Client.ITEM_SPAN）。"""
 
-    def __init__(self, view, center, env, geometry):
-        self.view = view
+    def __init__(self, view, center, env, geometry, span=Scene.SPRITE_SPAN):
+        self.view, self.span = view, span
         self.cx, self.cz = center
         self.env = env
         self.typeOf = env.typeOf

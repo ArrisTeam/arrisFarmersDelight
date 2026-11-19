@@ -29,8 +29,8 @@ KIND_STOVE = "stove"
 BOARD_TOP = 1.0 / 16.0
 STOVE_SLOTS = StoveLayout.blockFractions()        # FD 的 getStoveItemOffset 的六个位置（HoD 炉灶场景里也是它们，炉灶朝北的那一份）；炉灶朝别处时 StoveFacing.turnFraction 转过去
 
-# ---- FD 的渲染器（client/renderer/*.java）。贴图物品的 FIXED 变换缩放 1、方块物品缩放 0.5，掉落物缩放 1 时贴图 8 像素宽、立方体 4 像素：Java 的 scale(s) 都是掉落物缩放 2 * s
-FD_SCALE = 2.0
+# ---- FD 的渲染器（client/renderer/*.java）。贴图物品的 FIXED 变换缩放 1、方块物品缩放 0.5，掉落物缩放 1 时贴图 7.2 像素宽、立方体 4 像素：Java 的 scale(s) 换成掉落物缩放，立方体是 2 * s（FD_SCALE），贴图是 16 / 7.2 * s（FD_SPRITE；2026-11-19 之前贴图也按 8 像素算，画出来小一成）
+FD_SCALE, FD_SPRITE = 2.0, 16.0 / BoardScene.SPRITE_SPAN
 FD_LAYER_RISE = 0.03                          # 一叠每张比前一张高这么多：translate(…, base + 0.03 * (i + 1), …)
 FD_SPREAD = 0.15 * 0.5                        # x、z 错开 (nextFloat * 2 - 1) * 0.15 * 0.5
 FD_BOARD_LYING = (0.08, 0.6)                  # CuttingBoardRenderer.renderItemLayingDown（java:64-77）：(高度底数, scale)
@@ -38,14 +38,14 @@ FD_BOARD_BLOCK = (0.27, 0.8)                  # renderBlock（:79-89）
 FD_SKILLET = (0.1, 0.5)                       # SkilletRenderer（:45、:55）
 FD_STOVE_HEIGHT = 1.02                        # DefaultStoveRenderer.render：translate(0.5, 1.02, 0.5)
 STOVE_SIZE = 0.375                            # DefaultStoveRenderer.SIZE：一件 0.375 格 = 6 像素宽
-STOVE_SCALE = STOVE_SIZE * FD_SCALE
+STOVE_SCALE = STOVE_SIZE * FD_SPRITE
 
 # ---- 站点里的摆法（HoD，BoardScene）
 BLOCK_SCALE = BoardScene.itemScale(True)     # 方块类在板上是棱长 5.2 像素的立方体（HoD 的 BLOCK_SCALE 0.65：整块方块放在板上会挡住上面的东西）
 BOARD_FOOD_SCALE = BoardScene.itemScale()    # 板上等着切的东西 10 像素
 CARVED_SCALE = BoardScene.scaleOf(BoardScene.CARVED_SCALE * 16.0)
 PILE_TURN = 17.0                              # 一叠的底下那张转的角度（scene 里 pile 节点的 rotation）
-FOOD_SCALE = 1.2                              # 做好的菜 9.6 像素
+FOOD_SCALE = BoardScene.scaleOf(9.6)          # 做好的菜 9.6 像素
 
 
 class Placement(object):
@@ -149,7 +149,7 @@ def fdBoardLayout(item, itemType, carving, isBlock, yaw=0, maxStack=64):
         else:
             base, javaScale = FD_BOARD_LYING
             center = (0.5 + dx, base + FD_LAYER_RISE * (layer + 1), 0.5 + dz)
-            placements.append(_lying(shown, center, StoveFacing.turnOffset(yaw, 1.0, 0.0), itemType == "block", javaScale * FD_SCALE))
+            placements.append(_lying(shown, center, StoveFacing.turnOffset(yaw, 1.0, 0.0), itemType == "block", javaScale * FD_SPRITE))
     return placements
 
 
@@ -209,7 +209,7 @@ def skilletLayout(item, yaw=0, maxStack=64):
     placements = []
     for layer in range(modelCount(item.get("count", 1) or 1, maxStack)):
         dx, dz = _scatter(seed, layer)
-        placements.append(Placement(shown, (0.5 + dx, base + FD_LAYER_RISE * (layer + 1), 0.5 + dz), True, along, 0.0, javaScale * FD_SCALE))
+        placements.append(Placement(shown, (0.5 + dx, base + FD_LAYER_RISE * (layer + 1), 0.5 + dz), True, along, 0.0, javaScale * FD_SPRITE))
     return placements
 
 

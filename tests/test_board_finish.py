@@ -92,6 +92,23 @@ def _bottomOf(view, name):
     return pivot + Scene.CUBE_LIFT - prop.scale * Scene.CUBE_SPAN / 2.0
 
 
+def testTheBlockSitsOnTheBoardWhicheverSpriteSizeTheKernelCountsWith():
+    """方块类的立方体是经前置包的道具接口画的：前置包把报的"中心"照它自己的贴图边长换成轴心（2026-11-19 之前的前置包按 8 像素、之后按 7.2），
+    砧板读 Api.Client.ITEM_SPAN 来补那一段，所以新旧前置包上立方体的底面都正好在板面上。"""
+    old = C.FakeApi.ITEM_SPAN
+    try:
+        for span in (8.0, 7.2):
+            C.FakeApi.ITEM_SPAN = span
+            behavior, view = _open(C.item("minecraft:gravel", 1), data=_data("dig", plan=3))
+            _frames(behavior, 2)
+            prop = _live(view, "minecraft:gravel")[0]
+            pivot = prop.center[1] - prop.scale * span / 2.0                # 前置包的 pivotFor：轴心在报的中心下方半个它认的贴图边长
+            assert abs(pivot + Scene.CUBE_LIFT - prop.scale * Scene.CUBE_SPAN / 2.0 - Scene.TOP) < 1e-9, span
+            behavior.onClose()
+    finally:
+        C.FakeApi.ITEM_SPAN = old
+
+
 def testAShovelShrinksTheBlockFourteenPercentPerShovelfulAndItStaysOnTheBoard():
     data = _data("dig", plan=3)
     behavior, view = _open(C.item("minecraft:gravel", 1), data=data)

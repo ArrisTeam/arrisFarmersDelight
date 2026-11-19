@@ -284,7 +284,7 @@ class FakeApi(object):
     """前置包客户端 Api 里表现用得到的那几样。"""
     StationBehavior = StationBehavior
     Geometry = Geometry
-    ITEM_SPAN = 8.0
+    ITEM_SPAN = dgtest.load("Client.PropMath").ITEM_SPAN        # 前置包真的那个数（2026-11-19 起 7.2；老版本是 8，test_board_finish 里有一条用老的）
     Schema = KernelSchema
     TOUCH = "touch"
     API_VERSION = 3

@@ -16,8 +16,8 @@ import fdtest
 Pose = fdtest.load("Shared.Rules.ItemPose")
 
 LIFT = 3.2                 # 0.2 格（站点像素）
-SPAN = 8.0                 # 缩放 1 时贴图边长
-ROW = 2.5                  # 轴心离贴图底边：16 像素的贴图里从下往上第 5 行 = 5/16 x 8
+SPAN = 7.2                 # 缩放 1 时贴图边长（0.45 格：2026-11-19 重量过，上面 2026-11-18 的几个数是按 8 换算着记的）
+ROW = 5.0 / 16.0 * SPAN     # 轴心离贴图底边：16 像素的贴图里从下往上第 5 行 = 5/16 x 7.2 = 2.25
 
 
 def _engineCentre(pivot, matrix, scale):
@@ -33,7 +33,7 @@ def _spritePivot(center, matrix, scale):
 
 
 def testTheConstantsAreTheMeasuredOnes():
-    assert Pose.BLOCK_LIFT == LIFT and Pose.RAISED_PIVOT == ROW and Pose.ITEM_SPAN == SPAN
+    assert Pose.BLOCK_LIFT == LIFT and abs(Pose.RAISED_PIVOT - ROW) < 1e-12 and Pose.ITEM_SPAN == SPAN and abs(ROW - 2.25) < 1e-12
     assert abs(Pose.RAISED_PIVOT - 5.0 / 16.0 * Pose.ITEM_SPAN) < 1e-12, "离底边 5/16 个边长"
 
 
@@ -62,9 +62,11 @@ def testLyingFlatItComesDownByTheLiftWhateverTheScaleAndSlidesAlongItsOwnUp():
 
 
 def testUprightTheMeasuredBottomEdgesComeOut():
-    """竖着量到的两个数：底边比轴心高 0.044 格（缩放 1）、低 0.11 格（缩放 2）。"""
+    """竖着时底边离轴心多高：0.2 格 - 5/16 个边长 x 缩放（边长 0.45 格）：缩放 1 高 0.059 格、缩放 2 低 0.081 格。
+    2026-11-19 实机（羊肉和野生卷心菜同一个轴心并排竖着，量两条底边差多少个贴图高）：缩放 1 是 0.105（这个式子 0.132）、缩放 1.5 是 -0.010（-0.016）；
+    原来按边长 0.5 格记的 0.044 / -0.1125 在缩放 1.5 上差得多（-0.051）。"""
     matrix = Pose.uprightMatrix(0.0, -1.0, 0.0)
-    for scale, measured in ((1.0, 0.044), (2.0, -0.1125)):
+    for scale, measured in ((1.0, 0.2 - 5.0 / 16.0 * 0.45), (2.0, 0.2 - 2.0 * 5.0 / 16.0 * 0.45)):
         centre = _engineCentre((0.0, 0.0, 0.0), matrix, scale)
         bottom = (centre[1] - SPAN / 2.0 * scale) / 16.0
         assert abs(bottom - measured) < 0.004, (scale, bottom)

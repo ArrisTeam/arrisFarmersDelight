@@ -178,7 +178,7 @@ def testAFlowerAndAWildCropLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
         _frames(behavior, 2)
         assert behavior.draw.kindOf(C.item(name)) == "flat" and not behavior.draw.isBlock(C.item(name)), name
         props = _live(view, name)
-        assert len(props) == 1 and props[0].flat and abs(props[0].scale - 1.25) < 1e-6, "和食物一样：10 像素的图标平躺，缩放 1.25（%s）" % name
+        assert len(props) == 1 and props[0].flat and abs(props[0].scale - Scene.scaleOf(10.0)) < 1e-6, "和食物一样：10 像素的图标平躺（%s）" % name
         behavior, view = _open(C.item(name, 5))
         _frames(behavior, 2)
         assert len(_live(view, name)) == 2 and all(prop.flat for prop in _live(view, name)), "一叠：底下再垫一张（%s）" % name
@@ -189,7 +189,7 @@ def testAFlowerAndAWildCropLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
     _frames(behavior, 2)
     assert behavior.draw.kindOf(C.item("arris:red_mushroom_colony")) == "flat" and not _live(view, "arris:red_mushroom_colony"), "蘑菇丛：不画它自己（掉落物是立体的小模型）"
     looks = _live(view, "arris:red_mushroom_colony_look")
-    assert len(looks) == 1 and looks[0].flat and abs(looks[0].scale - 1.25) < 1e-6, "画成它那件平面物品，和食物一样平躺（JE 里它是一张贴图）"
+    assert len(looks) == 1 and looks[0].flat and abs(looks[0].scale - Scene.scaleOf(10.0)) < 1e-6, "画成它那件平面物品，和食物一样平躺（JE 里它是一张贴图）"
 
 
 def testAFlatFlowerSitsOnTheBoardLikeFoodAndDoesNotFloatAboveIt():
@@ -232,7 +232,7 @@ def testALoneItemIsDrawnFlatAndAPileGetsASecondOneUnderIt():
     behavior, view = _open(C.item("arris:cabbage", 1))
     _frames(behavior, 2)
     props = _live(view, "arris:cabbage")
-    assert len(props) == 1 and props[0].flat and abs(props[0].scale - 1.25) < 1e-6, "10 像素的图标：缩放 1.25"
+    assert len(props) == 1 and props[0].flat and abs(props[0].scale - Scene.scaleOf(10.0)) < 1e-6, "10 像素的图标"
     assert abs(props[0].center[0] - behavior.draw.cx) < 1e-6 and abs(props[0].center[2] - behavior.draw.cz) < 1e-6
     behavior, view = _open(C.item("arris:cabbage", 5))
     _frames(behavior, 2)
@@ -343,7 +343,7 @@ def testAStuckToolSitsWhereFarmersDelightPutsItAndIsTurnedByItsKind():
             prop, = _live(view, name)
             world = view.toWorld(*prop.center)
             assert abs(world[0] - (C.STATION_POS[0] + 0.5)) < 1e-6 and abs(world[2] - (C.STATION_POS[2] + 0.5)) < 1e-6 and abs(world[1] - (C.STATION_POS[1] + 0.23)) < 0.004, name
-            assert prop.roll == turn and abs(prop.scale - 1.2) < 1e-6, name
+            assert prop.roll == turn and abs(prop.scale - Scene.scaleOf(9.6)) < 1e-6, name
             assert abs(_worldDirection(view, prop)[0]) < 1e-6 and abs(_worldDirection(view, prop)[1] - 1.0) < 1e-6, "朝北的板（FACING 朝北）：贴图的正面朝南"
             behavior.onClose()
     finally:
@@ -394,7 +394,7 @@ def testLayersAreStackedEachWithItsOwnTurnAndTheFirstIsTheBigOne():
     assert len(props) == 3
     heights = [prop.center[1] for prop in props]
     assert heights == sorted(heights) and heights[1] - heights[0] > 0.5
-    assert abs(props[0].scale - 1.25) < 1e-6 and abs(props[1].scale - 9.0 / 8.0) < 1e-6, "第 0 层 10 像素，以后的 9 像素"
+    assert abs(props[0].scale - Scene.scaleOf(10.0)) < 1e-6 and abs(props[1].scale - Scene.scaleOf(9.0)) < 1e-6, "第 0 层 10 像素，以后的 9 像素"
     for index, prop in enumerate(props):
         want = ItemPose.lyingMatrix(-Scene.layerPose(index)["turn"])          # 平躺的东西按姿态矩阵摆：每层转自己的角度（和没开站时 BlockDisplay 的 along = (cos, sin) 一个朝向）
         assert all(abs(a - b) < 1.0e-9 for row, wrow in zip(prop.matrix, want) for a, b in zip(row, wrow)), index

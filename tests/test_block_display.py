@@ -54,7 +54,7 @@ def testABoardShowsOneItemAndTheRightPose():
     block, = _board({"0": _item("minecraft:oak_log")})
     assert not block.flat, "方块类立在板上"
     assert abs(block.scale - 5.2 / 4.0) < 1e-9, "方块的掉落物是立方体（缩放 1 棱长 4 像素）：棱长 5.2 像素要缩放 1.3"
-    pivot = block.center[1] - block.scale * 8.0 / 2.0 / 16.0                 # 道具按贴图物品摆：轴心在"中心"下方半个贴图边长
+    pivot = block.center[1] - block.scale * Pose.ITEM_SPAN / 2.0 / 16.0                 # 道具按贴图物品摆：轴心在"中心"下方半个贴图边长
     assert abs(pivot + 3.2 / 16.0 - (BD.BOARD_TOP + 2.6 / 16.0)) < 1e-9, "引擎把立方体画在轴心上方 3.2 像素：它的中心在板面上方半个棱长"
     tool, = _board({"0": _item("arris:iron_knife")})
     assert not tool.flat and tool.roll == Scene.carvedRoll("sword") == 180.0, "插着的工具竖着、刀身朝板的正面斜着（FD 的 180 度）"
@@ -253,7 +253,7 @@ def testAPoseFollowsTheLastOneSoThePivotDoesNotJumpWhenTheSpriteIsTurnedUpsideDo
     old, new = Pose.pivotFor(center, before, 1.25), Pose.pivotFor(center, kept, 1.25)
     assert max(abs(a - b) for a, b in zip(old, new)) < 1e-9, "轴心没动"
     jumped = Pose.pivotFor(center, after, 1.25)
-    assert abs(jumped[1] - old[1]) > 0.6, "原样摆的话轴心跳一个边长（8 / 16 x 1.25 格）"
+    assert abs(abs(jumped[1] - old[1]) - Pose.ITEM_SPAN / 16.0 * 1.25) < 1e-9, "原样摆的话轴心跳一个边长（7.2 / 16 x 1.25 格）"
     assert all(abs(kept[r][2] - after[r][2]) < 1e-12 for r in range(3)), "朝外的还是同一面（法线没变）"
     assert all(abs(kept[r][0] + after[r][0]) < 1e-12 and abs(kept[r][1] + after[r][1]) < 1e-12 for r in range(3)), "贴图在自己的平面里转了半圈"
     again = Pose.steadied(Pose._mul(Pose._ry(31.0), Pose._rx(-80.0)), kept)

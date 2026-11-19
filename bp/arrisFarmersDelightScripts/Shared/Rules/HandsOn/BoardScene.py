@@ -20,7 +20,7 @@ SURFACE = ((1.0, 0.0, 1.0), (15.0, 5.0, 15.0))   # 空手点的
 TOP = 1.0                    # 板面（FD 的板 1 像素高）
 BASE_X, BASE_Z = 6.5, 8.0    # 东西躺的地方：板底座的中间，方块自己的坐标
 LAYER_SIZE = 9.0             # 摆盘的层（除第 0 层）画多大
-SPRITE_SPAN = 8.0            # 掉落物缩放 1 时贴图边长
+SPRITE_SPAN = 7.2            # 掉落物缩放 1 时贴图边长（0.45 格；原来按 8 算，2026-11-19 实机重量过，见 Shared/Rules/ItemPose.ITEM_SPAN）
 CUBE_SPAN = 4.0              # 方块物品的掉落物是个小立方体：缩放 1 时棱长（贴图物品边长的一半；2026-11-17 实机标定，前置包 Client/PropMath）
 CUBE_LIFT = 3.2              # 立方体的中心固定在掉落物轴心正上方 0.2 格，不跟缩放和旋转走（引擎定格那一支的 T(0, 0.2, 0)）
 FLAT_LIFT = 0.32             # 平躺的贴图中心离它躺着的面多高
@@ -66,11 +66,12 @@ def itemScale(isBlock=False):
     return BLOCK_SIZE / CUBE_SPAN if isBlock else scaleOf(ITEM_SIZE)
 
 
-def blockLift(scale):
+def blockLift(scale, span=SPRITE_SPAN):
     """方块类的东西坐在一个面上时，道具的"中心"要写在面上方多高。道具按贴图物品的规矩摆（轴心 = 中心下方半个贴图边长），
     而引擎把立方体画在轴心上方 CUBE_LIFT：立方体的中心该在面上方半个棱长，所以是 半棱长 - CUBE_LIFT + 半个贴图边长。
-    scale 用现在的缩放（铲一铲缩一点时底面一直贴着面）。"""
-    return scale * CUBE_SPAN / 2.0 - CUBE_LIFT + scale * SPRITE_SPAN / 2.0
+    scale 用现在的缩放（铲一铲缩一点时底面一直贴着面）。span 是替我们把中心换成轴心的那一方用的贴图边长：自己画（Client/BlockItems）是
+    SPRITE_SPAN；站点里是前置包换的，用它自己的那个数（Api.Client.ITEM_SPAN：2026-11-19 之前的前置包是 8）。"""
+    return scale * CUBE_SPAN / 2.0 - CUBE_LIFT + scale * span / 2.0
 
 
 def layerPose(index):

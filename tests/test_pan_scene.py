@@ -76,7 +76,7 @@ def testTheBroadcastDrawsTheFoodAsLyingDropItemsOnThePan():
     drops = [d for d in world.drops.values() if d["item"]["newItemName"] == "minecraft:beef"]
     assert len(drops) == 2 and all(d["item"]["count"] == 1 for d in drops)
     for drop in drops:
-        assert near(drop["scale"], 7.5 / 8.0), "两块：每块 7.5 像素（边长 / 8 = 缩放）"
+        assert near(drop["scale"], 7.5 / 7.2), "两块：每块 7.5 像素（边长 / 7.2 = 缩放）"
         assert abs(drop["pivot"][0] - (POS[0] + 0.5)) < 0.4 and abs(drop["pivot"][2] - (POS[2] + 0.5)) < 0.4
         assert POS[1] <= drop["pivot"][1] < POS[1] + 0.3, "躺在锅底上"
     xs = sorted(d["pivot"][0] for d in drops)

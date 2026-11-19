@@ -231,7 +231,7 @@ def testALayerLaidAfterADishHasMeltedIsNotLeftShrunk():
     behavior.onState(type("Changes", (), {"hasSlot": lambda self, ref: True})())
     _frames(behavior, 1.0)
     cabbage = [prop for prop in view.props.live() if prop.item["newItemName"] == CABBAGE]
-    assert len(cabbage) == 1 and abs(cabbage[0].scale - 1.25) < 1.0e-9, "第 0 层画 10 像素（缩放 1.25），不是缩着的 0.125"
+    assert len(cabbage) == 1 and abs(cabbage[0].scale - Scene.scaleOf(10.0)) < 1.0e-9, "第 0 层画 10 像素，不是缩着的"
 
 
 def testWithoutAnythingNewToLandTheDishMeltsAtOnceAndMakesItsSoundsAtOnce():

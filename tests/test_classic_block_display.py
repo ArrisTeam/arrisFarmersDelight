@@ -154,7 +154,7 @@ def testAPileOnTheBoardIsStackedThreeHundredthsHigherEachAndScatteredLikeTheRend
     for layer, placement in enumerate(pile):
         assert abs(placement.center[1] - (0.08 + 0.03 * (layer + 1))) < 1e-9, layer
         assert abs(placement.center[0] - 0.5) <= 0.075 + 1e-9 and abs(placement.center[2] - 0.5) <= 0.075 + 1e-9, layer
-        assert placement.direction == pile[0].direction and placement.scale == pile[0].scale == 1.2 and placement.flat
+        assert placement.direction == pile[0].direction and placement.scale == pile[0].scale and abs(placement.scale * Pose.ITEM_SPAN - 9.6) < 1e-9 and placement.flat
     spots = [(p.center[0], p.center[2]) for p in pile]
     assert len(set(spots)) == 3 and any(abs(x - 0.5) > 0.005 or abs(z - 0.5) > 0.005 for x, z in spots), "每张各错开一点"
     again = _board({"0": _item("minecraft:beef", 20)}, yaw=90)
@@ -210,7 +210,7 @@ def testAStuckToolIsStillFarmersDelightsCarvedToolInBothModes():
             _standalone()
         for yaw in (0, 90, 180, 270):
             tool, = _board({"0": _item("arris:iron_knife")}, yaw=yaw, offset=(-1.5 / 16.0, 0.0))
-            assert not tool.flat and _close(tool.center, (0.5, 0.23, 0.5)) and abs(tool.scale * 8.0 / 16.0 - 0.6) < 1e-9, (linked, yaw)
+            assert not tool.flat and _close(tool.center, (0.5, 0.23, 0.5)) and abs(tool.scale * Pose.ITEM_SPAN / 16.0 - 0.6) < 1e-9, (linked, yaw)
             assert tool.roll == Scene.carvedRoll("sword") and tool.direction == BD.carvedFront(yaw)
     _standalone()
 
@@ -221,7 +221,7 @@ def testWithTheBoardStationOnTheBoardKeepsTheStationsLayoutAndWithItOffFarmersDe
     food = {"0": _item("minecraft:beef", 5)}
     _standalone()
     fd = _board(food)
-    assert len(fd) == _javaCount(5, 64) == 2 and abs(fd[0].scale - 1.2) < 1e-9, "FD：1 + ceil(5 / 64 * 4) = 2 张，9.6 像素宽"
+    assert len(fd) == _javaCount(5, 64) == 2 and abs(fd[0].scale * Pose.ITEM_SPAN - 9.6) < 1e-9, "FD：1 + ceil(5 / 64 * 4) = 2 张，9.6 像素宽"
     linkkit.link()
     try:
         hod = _board(food, offset=(-1.5 / 16.0, 0.0))
@@ -248,7 +248,7 @@ def testTheSkilletDrawsFarmersDelightsPointFiveSizedThingsScatteredEvenWhenAlone
     _standalone()
     for yaw in (0, 90, 180, 270):
         lone, = _skillet(_item("minecraft:beef", 1), yaw=yaw)
-        assert lone.flat and abs(lone.center[1] - 0.13) < 1e-9 and abs(lone.scale * 8.0 / 16.0 - 0.5) < 1e-9, yaw
+        assert lone.flat and abs(lone.center[1] - 0.13) < 1e-9 and abs(lone.scale * Pose.ITEM_SPAN / 16.0 - 0.5) < 1e-9, yaw
         assert abs(lone.center[0] - 0.5) <= 0.075 + 1e-9 and abs(lone.center[2] - 0.5) <= 0.075 + 1e-9
         facing = JAVA_OPPOSITE[FRONT_OF_YAW[yaw]]                      # 锅的 FACING = 放它的人面朝的方向 = 锅柄那一侧的反方向
         right, up, size = _ours(lone)
@@ -277,7 +277,7 @@ def testASkilletPileGoesUpThreeHundredthsPerLayerAndIsTheSameEveryTime():
     pile = _skillet(_item("minecraft:beef", 40))
     assert len(pile) == _javaCount(40, 64) == 4
     assert [round(p.center[1], 6) for p in pile] == [0.13, 0.16, 0.19, 0.22]
-    assert all(p.direction == pile[0].direction and p.scale == 1.0 for p in pile), "只有错开，没有每张各转一点"
+    assert all(p.direction == pile[0].direction and abs(p.scale * Pose.ITEM_SPAN - 8.0) < 1e-9 for p in pile), "只有错开，没有每张各转一点"
     assert [p.center for p in _skillet(_item("minecraft:beef", 40), pos=(9, 9, 9))] == [p.center for p in pile], "和锅在哪个位置无关，同一种东西每次一个样"
     assert _skillet(_item("minecraft:beef", 0)) == [] and _skillet({}) == [] and _skillet(None) == []
 
@@ -291,7 +291,7 @@ def testTheStoveIsFarmersDelightsDefaultStoveRendererAtOnePointZeroTwo():
     for yaw in (0, 90, 180, 270):
         slots = dict((str(place), _item("minecraft:beef")) for place in range(6))
         for placement in BD.layout(BD.KIND_STOVE, slots, _typeOf, (0, 64, 0), yaw=yaw):
-            assert abs(placement.center[1] - 1.02) < 1e-9 and abs(placement.scale * 8.0 / 16.0 - 0.375) < 1e-9, yaw
+            assert abs(placement.center[1] - 1.02) < 1e-9 and abs(placement.scale * Pose.ITEM_SPAN / 16.0 - 0.375) < 1e-9, yaw
             right, up, size = _ours(placement)
             wantRight, wantUp, wantSize = _javaFlat(JAVA_OPPOSITE[FRONT_OF_YAW[yaw]], 0.375)
             assert _close(right, wantRight) and _close(up, wantUp) and abs(size - wantSize) < 1e-9, (yaw, right, wantRight)

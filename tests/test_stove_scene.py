@@ -88,7 +88,7 @@ def drops(name=None):
 def centerOf(drop):
     """掉落物的视觉中心：轴心 + 贴图的"上"方向 * 半边长（R = Rz·Rx·Ry，第二列是 (-sin z cos x, cos z cos x, sin x)）。"""
     x, y, z = [math.radians(angle) for angle in drop["euler"]]
-    half = 8.0 / 16.0 * drop["scale"] * 0.5
+    half = 7.2 / 16.0 * drop["scale"] * 0.5                      # 缩放 1 时贴图边长 7.2 像素（Shared/Rules/ItemPose.ITEM_SPAN）
     up = (-math.sin(z) * math.cos(x), math.cos(z) * math.cos(x), math.sin(x))
     return tuple(drop["pivot"][axis] + up[axis] * half for axis in range(3))
 
@@ -164,7 +164,7 @@ def testTheBroadcastDrawsEachPieceWhereTheWorldHasItAndNobodyNeedsToOpenTheStati
     centers = sorted((round(centerOf(d)[0] - POS[0], 3), round(centerOf(d)[2] - POS[2], 3)) for d in live)
     assert centers == sorted(FRACTIONS), "stove.json 的 piece_0 ~ piece_5"
     assert all(abs(centerOf(d)[1] - (POS[1] + 16.3 / 16.0)) < 1.0e-6 for d in live), "躺在烤架面上"
-    assert all(abs(d["scale"] - 5.0 / 8.0) < 1.0e-9 for d in live), "一件 5 像素宽"
+    assert all(abs(d["scale"] - 5.0 / 7.2) < 1.0e-9 for d in live), "一件 5 像素宽"
     assert len(set(tuple(round(v, 3) for v in d["euler"]) for d in live)) == 6, "每件摆得各转一点，没有两件同向"
     assert not scene.focused and all(world.shadows[key] is False for key in world.drops), "没人开站点；掉落物的影子关着"
 
@@ -346,7 +346,7 @@ def testATakenPieceLeavesAGhostAndGoesAtOnceWhicheverArrivesFirst():
         run(scene, DT)
         assert len(drops()) == 1 and scene.pieces.shown[3] is None, "真的那件马上没了，换成虚影"
         run(scene, 0.1)
-        assert len(drops()) == 1 and drops()[0]["scale"] < 5.0 / 8.0, "虚影缩小"
+        assert len(drops()) == 1 and drops()[0]["scale"] < 5.0 / 7.2, "虚影缩小"
         run(scene, 0.3)
         assert drops() == [], "虚影走完收掉"
 

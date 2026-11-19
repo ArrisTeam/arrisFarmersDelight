@@ -136,7 +136,7 @@ def testTheWorldDisplayIsFarmersDelightsRendererAtTheScenePositionsWhateverTheFa
     """没开站点 / 没装前置包时世界里的展示（BlockDisplay.stoveLayout）是 FD 的 DefaultStoveRenderer：位置和场景里一样（getStoveItemOffset 就是 piece_0 ~ 5，
     经 StoveFacing 转到世界），每件 0.375 格 = 6 像素宽（SIZE）、朝向都一样，那个朝向就是场景里不多转的那一件（poseRows 的转角 0）经 axes 换到世界的姿态；
     HoD 场景里每件各转一点、5 像素宽，是装了前置包时场景接管之后的样子（那时这里的展示收起来，Client/BlockItems.hide）。"""
-    assert BD.STOVE_SIZE == 0.375 and BD.STOVE_SCALE == 0.75, "FD 的 SIZE 0.375 格 = 6 像素；贴图缩放 1 是 8 像素"
+    assert BD.STOVE_SIZE == 0.375 and abs(BD.STOVE_SCALE - 6.0 / 7.2) < 1e-12, "FD 的 SIZE 0.375 格 = 6 像素；贴图缩放 1 是 7.2 像素"
     for yaw in Protocol.YAWS:
         slots = dict((str(place), {"newItemName": "minecraft:beef", "newAuxValue": 0, "count": 1}) for place in range(6))
         placements = BD.layout(BD.KIND_STOVE, slots, lambda item: "", (0, 0, 0), yaw=yaw)

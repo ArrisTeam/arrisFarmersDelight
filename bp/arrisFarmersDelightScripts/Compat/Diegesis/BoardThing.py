@@ -124,7 +124,7 @@ class Thing(object):
         scale = self.size * self.mover.scale
         upright = self.kind == UPRIGHT
         if upright and self.draw.isBlock(self.item):
-            lift = Scene.blockLift(scale)                 # 方块类：立方体，轴心的规矩和贴图物品不一样
+            lift = Scene.blockLift(scale, self.draw.span)         # 方块类：立方体，轴心的规矩和贴图物品不一样
         else:
             lift = Scene.uprightLift(scale) if upright else Scene.FLAT_LIFT * self.mover.scale
         center = (self.draw.cx + x, Scene.TOP + y + lift, self.draw.cz + z)
