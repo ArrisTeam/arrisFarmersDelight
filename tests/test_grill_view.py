@@ -561,18 +561,19 @@ def testAnOldFrontDoorGetsNoBehavior():
 HoldMenu = fdtest.load("Compat.Diegesis.HoldMenu")
 
 
-def testHoldingAStackOverTheGrillOffersPutHereWhereMoreThanOnePlaceIsFree():
-    """点一下：每个空位摆一件（先摆第一个空位）；右键：只摆离光标最近的空位那一件——空位不止一个，选哪一格才有区别（东西只有一个也一样）。"""
+def testHoldingOneThingOverTheGrillOffersPutHereWhereMoreThanOnePlaceIsFree():
+    """点一下：每个空位摆一件（先摆第一个空位）；右键：只摆离光标最近的空位那一件——空位不止一个，选哪一格才有区别。拿着一叠时这归前置包的数量档管
+    （屏幕右下角的全部 / 单个按钮，单个 = 右键；test_hold_tap_mode），轮盘里不给；只拿着一个时两档都是左键，选哪一格还得靠轮盘。"""
     view = make(pieces={1: item(BEEF)})
     view.setHand(item(BEEF, 5))
-    assert view.holdOf(screenOf(view, 4)) == {"menu": [HoldMenu.PUT_HERE]} and HoldMenu.PUT_HERE == {"label": "只放这一格", "button": 1, "quick": False}
+    assert view.holdOf(screenOf(view, 4)) is None and HoldMenu.PUT_HERE == {"label": "只放这一格", "button": 1, "quick": False}
     assert click(view, 4) and actions()[-1] == ("place", {})
     assert click(view, 4, button=1) and actions()[-1] == ("place", {"one": True, "place": 4}), "点一下和右键真的不一样"
     view.setHand(item(BEEF, 1))
     assert view.holdOf(screenOf(view, 4)) == {"menu": [HoldMenu.PUT_HERE]}, "手上只有一个：选哪一格照样有区别"
     assert view.holdOf((5.0, 5.0)) is None, "点在烤架以外：不接，没有变体"
     view = make(pieces=dict((place, item(BEEF)) for place in range(5)))
-    view.setHand(item(BEEF, 5))
+    view.setHand(item(BEEF, 1))
     assert view.holdOf(screenOf(view, 5)) is None, "只剩一个空位：左键右键放在同一处"
 
 

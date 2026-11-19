@@ -8,6 +8,8 @@
 条目 {"label": 几个字, "button": 0 或 1, "quick": 布尔}：只放"和点一下不一样的右键 / Shift 点击变体"，字说这一下在这里做什么；没有新的动作，
 都是表现今天本来就认的右键 / Shift 点击。每个站点在自己的 *Hold.py 里按状态判断这里有没有这样的变体（照 JE / HoD 点一下和右键、Shift 点击各做什么）。
 老版本的前置包没有这个钩子（Protocol.HOLD_MENU）：它永远不会问，表现照旧。
+"拿着一叠只放一个"（PUT_ONE，炉灶拿着一叠时的 PUT_HERE）在有数量档的前置包上不再给（tapMode）：屏幕右下角的"全部 / 单个"按钮管它，"单个"档里点一下就是右键
+（用户 2026-11-19 定的：放多少用切换按钮，不用长按出轮盘）。
 """
 
 PUT_ONE = {"label": "放一个", "button": 1, "quick": False}             # 拿着一叠点放东西的地方：右键只放一个（左键整叠）
@@ -17,6 +19,12 @@ TAKE_BACK = {"label": "取回", "button": 1, "quick": False}             # 砧�
 TAKE_ALL_BACK = {"label": "全部取回", "button": 1, "quick": False}     # 煎锅：右键把锅里的食物全拿回背包（左键是颠）
 PUT_HERE = {"label": "只放这一格", "button": 1, "quick": False}        # 炉灶：右键只放离光标最近的空位那一件（左键每个空位一件）
 TAKE_PIECE = {"label": "取下", "button": 1, "quick": False}            # 炉灶：右键取下这一件（左键是翻面）
+
+
+def tapMode(view):
+    """前置包有触屏的数量档（Protocol.TAP_MODE：视图上有 tap）：拿着不止一个的一叠点一下放多少归那个按钮管，轮盘里不再放"放一个"。
+    老版本的前置包没有它：照旧给轮盘条目，不然触屏上够不着右键。"""
+    return getattr(view, "tap", None) is not None
 
 
 def menu(*entries):
