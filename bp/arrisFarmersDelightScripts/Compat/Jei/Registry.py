@@ -13,9 +13,9 @@ def GetJeiApiModule():
     registry = jeiApiModule.JeiRecipeRegistry.getInstance()
     return registry
 
-def SetHoverText(recipeControl, renderPath, itemName, aux=0, userData=None):
+def SetHoverText(recipeControl, renderPath, itemName, aux=0, userData=None, extra=None):
     """
-    设置物品鼠标悬停文本
+    设置物品鼠标悬停文本；extra 是再加在最后的一行（说明这个位置的东西怎么用）
     """
     hoverTextControl = recipeControl.GetChildByPath(renderPath + "/button_ref/hover/hover_text")
     if not hoverTextControl:
@@ -31,5 +31,7 @@ def SetHoverText(recipeControl, renderPath, itemName, aux=0, userData=None):
     # 添加命名空间标识
     namespace = itemName.split(":")[0].capitalize()
     hoverText += "\n§9" + namespace
+    if extra:
+        hoverText += "\n§7" + extra
 
     hoverTextControl.SetPropertyBag({"#hover_text": hoverText})

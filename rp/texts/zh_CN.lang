@@ -283,3 +283,5 @@ arris_fd.pot.take_back=取回 %s
 handson_delight.pot.ready=%d × %s
 handson_delight.pot.cooking=%s，还要 %d 秒
 handson_delight.book.seconds=%d 秒
+handson_delight.assembly=砧板摆盘
+handson_delight.assembly.first=先放在砧板上

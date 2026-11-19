@@ -323,6 +323,246 @@
             }
         ]
     },
+    "jeiBoardAssemblyRecipe": {
+        "type": "panel",
+        "size": [
+            "100%c+30px",
+            "100%c+5px"
+        ],
+        "layer": 1,
+        "property_bag": {
+            "force_update": false
+        },
+        "controls": [
+            {
+                "bg": {
+                    "type": "image",
+                    "size": [
+                        158,
+                        58
+                    ],
+                    "layer": 1,
+                    "nineslice_size": [
+                        2.0,
+                        2.0,
+                        2.0,
+                        2.0
+                    ],
+                    "texture": "textures/ui/jeiFarmersDelight/single_recipe_background",
+                    "uv": [
+                        0.0,
+                        0.0
+                    ],
+                    "controls": [
+                        {
+                            "area": {
+                                "type": "panel",
+                                "size": [
+                                    154,
+                                    54
+                                ],
+                                "layer": 1,
+                                "controls": [
+                                    {
+                                        "board": {
+                                            "type": "image",
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                4,
+                                                29
+                                            ],
+                                            "size": [
+                                                40,
+                                                22
+                                            ],
+                                            "layer": 1,
+                                            "texture": "textures/ui/jeiFarmersDelight/cutting_board"
+                                        }
+                                    },
+                                    {
+                                        "base@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                16,
+                                                27
+                                            ],
+                                            "size": [
+                                                16,
+                                                16
+                                            ],
+                                            "layer": 2
+                                        }
+                                    },
+                                    {
+                                        "layer0@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                50,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer1@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                68,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer2@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                86,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer3@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                50,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer4@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                68,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer5@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                86,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer6@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                50,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "layer7@jei_farmers_delight.jeiInputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                68,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2,
+                                            "$bgVisible": true
+                                        }
+                                    },
+                                    {
+                                        "arrow": {
+                                            "type": "image",
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                109,
+                                                19
+                                            ],
+                                            "size": [
+                                                22,
+                                                16
+                                            ],
+                                            "layer": 1,
+                                            "texture": "textures/ui/jeiFarmersDelight/recipe_arrow_filled"
+                                        }
+                                    },
+                                    {
+                                        "result@jei_farmers_delight.jeiOutputItemRender": {
+                                            "anchor_from": "top_left",
+                                            "anchor_to": "top_left",
+                                            "offset": [
+                                                136,
+                                                18
+                                            ],
+                                            "size": [
+                                                18,
+                                                18
+                                            ],
+                                            "layer": 2
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
     "jeiCuttingBoardRecipe": {
         "type": "panel",
         "size": [
