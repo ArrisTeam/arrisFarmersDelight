@@ -133,16 +133,24 @@ def testThePotAndTheSkilletUseTheSameSteamParticleAndOnlyTheStartingSpotDiffers(
     起点不同（煎锅的 x、z 偏移由脚本掷，锅的写在粒子里）。"""
     pot, skillet = POT["components"], SKILLET["components"]
     for name in ("minecraft:emitter_rate_instant", "minecraft:emitter_lifetime_once", "minecraft:particle_initial_speed", "minecraft:particle_lifetime_expression",
-                 "minecraft:particle_motion_dynamic", "minecraft:particle_appearance_billboard", "minecraft:particle_appearance_tinting", "minecraft:particle_appearance_lighting"):
+                 "minecraft:particle_motion_dynamic", "minecraft:particle_motion_collision", "minecraft:particle_appearance_billboard",
+                 "minecraft:particle_appearance_tinting", "minecraft:particle_appearance_lighting"):
         assert pot[name] == skillet[name], name
     assert pot["minecraft:emitter_shape_point"]["direction"] == skillet["minecraft:emitter_shape_point"]["direction"]
     assert pot["minecraft:emitter_shape_point"]["offset"][1] == skillet["minecraft:emitter_shape_point"]["offset"][1] == 0.3
     assert POT["description"]["basic_render_parameters"] == SKILLET["description"]["basic_render_parameters"]
 
 
-def testThePotSteamStaysInsideTheColumnAbovePotWhichIsTheOnlyPlaceItExpires():
-    """原来就有的：离开锅和空气就消失（经典的粗略碰撞）。JE 是碰到方块停住，这里没改。"""
-    assert POT["components"]["minecraft:particle_expire_if_not_in_blocks"] == ["minecraft:air", "arris:cooking_pot"]
+def testTheSteamStopsUnderABlockLikeJavasParticleInsteadOfVanishingInsideIt():
+    """JE 的 SteamParticle 每刻走 Particle.move：有碰撞（hasPhysics 缺省为真，setSize(0.25, 0.25)），顶到方块就停在那里、到寿命才淡掉（stoppedByCollision 之后不再动）。
+    原来用的是"离开锅和空气就消失"（particle_expire_if_not_in_blocks）：锅上面盖着方块时蒸汽一进去就没了。现在是引擎的粒子碰撞：半径 0.125（边长 0.25 的一半）、
+    不弹、碰上之后很快停住、不因为碰到而消失。起点在锅底上 0.8 格（定位器 0.5 + 粒子里的 0.3），减去半径在锅的碰撞盒顶（0.625）上面，不会一出来就卡住。"""
+    for effect in (POT, SKILLET):
+        components = effect["components"]
+        assert "minecraft:particle_expire_if_not_in_blocks" not in components
+        assert components["minecraft:particle_motion_collision"] == {"collision_radius": 0.125, "coefficient_of_restitution": 0.0, "collision_drag": 10.0,
+                                                                     "expire_on_contact": False}
+    assert 0.5 + POT["components"]["minecraft:emitter_shape_point"]["offset"][1] - 0.125 > 0.625, "起点（减去半径）在锅的碰撞盒顶上面"
 
 
 # ---------------------------------------------------------------- 实体怎么放它

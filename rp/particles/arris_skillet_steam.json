@@ -38,6 +38,12 @@
           0
         ]
       },
+      "minecraft:particle_motion_collision": {
+        "collision_radius": 0.125,
+        "coefficient_of_restitution": 0.0,
+        "collision_drag": 10.0,
+        "expire_on_contact": false
+      },
       "minecraft:particle_appearance_billboard": {
         "size": [
           "0.2 + variable.particle_random_1 * 0.2",
