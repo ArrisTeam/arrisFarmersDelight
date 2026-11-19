@@ -118,7 +118,7 @@ def _sourceOf(ws, key, dst, left):
     for index in range(PLAYER_SIZE):
         ref = (COMBINED, index)
         stack = ws.get(ref)
-        if Book.keyOf(stack) == key and left.get(ref, Items.count(stack)) > 0 and ws.canLeave(ref, stack)                 and ws.room(dst, stack) > 0:
+        if Book.keyOf(stack) == key and left.get(ref, Items.count(stack)) > 0 and ws.canLeave(ref, stack) and ws.room(dst, stack) > 0:
             return ref
     return None
 

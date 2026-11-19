@@ -157,7 +157,8 @@ class PotViewMixin(object):
             return True
         picked, self.picked = self.picked, None
         target = self._slotOf(key, payload)
-        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < TouchFeel.doubleClick(self.view, DOUBLE_CLICK)                 and target == picked[0] and not getattr(self.view, "dropping", False):
+        if picked is not None and event.button == 0 and not event.quick and self.clock - picked[1] < TouchFeel.doubleClick(self.view, DOUBLE_CLICK) \
+                and target == picked[0] and not getattr(self.view, "dropping", False):
             # 双击：同一格、左键、不按 Shift（FocusInput.clickItem 的 PICKUP_ALL）——锅里和背包里同一种的都收到手上；手上的东西服务端
             # 可能还没发回来，以"刚拿起过"为准。拖着放补的那一下点击（view.dropping）不算
             self.view.click(picked[0], 0, self.api.PICKUP_ALL)
