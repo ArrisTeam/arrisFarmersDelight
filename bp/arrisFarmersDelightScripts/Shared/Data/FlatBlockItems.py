@@ -11,12 +11,19 @@ item/generated（一张贴图），JE 把它们像别的食物一样平躺着切
 （14 种花、7 种野生作物、2 种蘑菇丛）；别的方块（原木、石头……）父模型是 block/…，门 / 告示牌 / 船 / 矿车 / 皮甲 / 食物基岩版本来就不是 block、
 在 tools/gen_item_masks.py 的图标表里。FD 自己的 flat_on_cutting_board 标签（三叉戟、望远镜、两个别的模组的火鸡 / 箭袋）一件也不在砧板配方里，
 三叉戟在这里是插着的工具（BoardStation.Env.isCarving）。
-**两种蘑菇丛不在表里**（和 JE 不一样的一处）：实机（3.10，2026-11-18）它们的掉落物不是一张贴图，是方块模型缩小的立体小蘑菇，放平了是侧躺着的一小撮，
-所以照旧当方块立着摆；要像 JE 那样平躺得另做一件只用来显示的平面物品。表里是 21 件。
+**两种蘑菇丛不在这张表里**：实机（3.10，2026-11-18）它们的掉落物不是一张贴图，是方块模型缩小的立体小蘑菇，放平了是侧躺着的一小撮。
+JE 里它们的物品模型也是一张贴图（item/generated，贴图 block/<名>_stage3），所以另做了两件只用来显示的平面物品（ShownAs：图标就是 stage3 那张贴图，
+bp/netease_items_beh/arris_*_mushroom_colony_look.json，创造栏里没有）：板上、世界里的展示、手上画的都是那一件，照普通贴图物品平躺。表里是 21 件。
 引擎画这 21 件和画贴图物品还有一处不同：照方块物品的规矩整体抬高 0.2 格、轴心在离贴图底边 5/16 处，摆的时候要扣掉（Shared/Rules/ItemPose.raisedShift，
 BoardStation.Env.isRaised 说是不是这一类）——不扣的话平躺在板上会浮起 0.2 格。
 这几件的图标掩码（刀口怎么穿过它）在 Shared/Data/ItemMasks，也由 tools/gen_item_masks.py 生成；下游往配方里追加的花不在这里，照旧画成方块。
 """
+# 画出来换成另一件物品的（只用来显示）：真物品名 -> 显示用的物品名。换过之后就是一件普通的贴图物品（不是 block、不用扣抬高）
+ShownAs = {
+    "arris:brown_mushroom_colony": "arris:brown_mushroom_colony_look",
+    "arris:red_mushroom_colony": "arris:red_mushroom_colony_look",
+}
+
 FlatBlockItems = frozenset((
     # 花（minecraft:item/generated，贴图 block/<名>）
     "minecraft:allium",

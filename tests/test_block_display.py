@@ -64,15 +64,23 @@ def testABoardShowsOneItemAndTheRightPose():
 
 def testAFlowerAndAWildCropLieFlatLikeAnyFoodThoughTheEngineCallsThemBlocks():
     """JE 的物品模型是一张贴图（item/generated，HoD 的 ItemVoxels.icon / FD 的 isGui3d 都按它判），所以像别的食物一样平躺着切、一叠底下垫一张；
-    基岩版的 itemType 对它们也是 block，所以按名字认（Data/FlatBlockItems）。真的方块（原木）照旧立着；蘑菇丛的掉落物是缩小的立体模型，也立着。"""
+    基岩版的 itemType 对它们也是 block，所以按名字认（Data/FlatBlockItems）。真的方块（原木）照旧立着；蘑菇丛的掉落物是缩小的立体模型，
+    画的时候换成它那件只用来显示的平面物品（BoardStation.shownItem，客户端摆之前换），照普通贴图物品平躺、不用扣抬高。"""
     for name in ("minecraft:poppy", "arris:wild_cabbages"):
         lone, = _board({"0": _item(name, 1)})
         assert lone.flat and lone.direction == (1.0, 0.0) and abs(lone.scale - BD.BOARD_FOOD_SCALE) < 1e-9, name
         pile = _board({"0": _item(name, 5)})
         assert len(pile) == 2 and all(p.flat for p in pile) and pile[1].center[1] > pile[0].center[1], "一叠：底下再垫一张：%s" % name
-    for name in ("minecraft:oak_log", "arris:brown_mushroom_colony", "arris:red_mushroom_colony"):
-        block, = _board({"0": _item(name)})
-        assert not block.flat and abs(block.scale - BD.BLOCK_SCALE) < 1e-9, "立着：%s" % name
+    block, = _board({"0": _item("minecraft:oak_log")})
+    assert not block.flat and abs(block.scale - BD.BLOCK_SCALE) < 1e-9, "原木：立着"
+    for name in ("arris:brown_mushroom_colony", "arris:red_mushroom_colony"):
+        shown = Station.shownItem(_item(name, 3))
+        assert shown == {"newItemName": name + "_look", "newAuxValue": 0, "count": 3}, "蘑菇丛换成显示用的平面物品，数量照旧"
+        pile = _board({"0": shown})
+        food = _board({"0": _item("arris:cabbage", 3)})
+        assert [p.item["newItemName"] for p in pile] == [name + "_look"] * 2 and all(p.flat for p in pile), "平躺，一叠底下垫一张：%s" % name
+        assert [p.center for p in pile] == [p.center for p in food], "和同样摆着的食物在同一个地方（不是方块物品，不用扣抬高）"
+    assert Station.shownItem(_item("minecraft:poppy")) == _item("minecraft:poppy") and Station.shownItem(None) is None, "别的东西不换"
 
 
 def testAFlatFlowerIsReportedWhereTheEngineWillDrawItOnTheBoardNotFloatingAboveIt():

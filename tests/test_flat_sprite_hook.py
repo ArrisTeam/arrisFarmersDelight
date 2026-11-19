@@ -33,10 +33,12 @@ class Api(object):
     StationBehavior = Base
     Schema = dgtest.load("Shared.Schema")
 
-    def __init__(self, flat):
+    def __init__(self, flat, shown=False):
         self.registered = []
         if flat:
             self.FLAT_SPRITES = True
+        if shown:
+            self.SHOWN_AS = True                   # 这一版还认"手上的东西画成另一件物品"（Protocol.SHOWN_AS）
 
     def registerBehavior(self, *args, **kwargs):
         self.registered.append((args, kwargs))
@@ -62,6 +64,8 @@ def testTheAnswerIsTheBoardsTableOfFlatBlockItems():
         assert name in FlatBlockItems and FlatSprites.flatSprite(None, item(name)) is True
     for name in (CARROT, LOG, COLONY, "minecraft:stone", "minecraft:bowl"):
         assert FlatSprites.flatSprite(None, item(name)) is False, "%s 不是平面图的方块物品：蘑菇丛的掉落物是缩小的立体小蘑菇" % name
+    assert FlatSprites.shownAs(None, dict(item(COLONY), count=2)) == {"newItemName": COLONY + "_look", "newAuxValue": 0, "count": 2}, "蘑菇丛：手上画成它那件平面物品"
+    assert FlatSprites.shownAs(None, item(POPPY)) is None and FlatSprites.shownAs(None, item(CARROT)) is None and FlatSprites.shownAs(None, None) is None, "别的不换"
     assert FlatSprites.flatSprite(None, None) is False and FlatSprites.flatSprite(None, {}) is False
 
 
@@ -71,6 +75,9 @@ def testTheHookIsOnlyGivenToAFrontDoorThatKnowsTheFlag():
     with_hook = FlatSprites.attrs(Api(True), base)
     assert with_hook is not base and with_hook["flatSprite"] is FlatSprites.flatSprite and with_hook["api"] == 1 and "flatSprite" not in base
     assert Protocol.FLAT_SPRITES is True, "前置包这一版认它（Protocol.FLAT_SPRITES）"
+    both = FlatSprites.attrs(Api(True, True), base)
+    assert both["shownAs"] is FlatSprites.shownAs and both["flatSprite"] is FlatSprites.flatSprite and "shownAs" not in with_hook, "认 SHOWN_AS 的前置包才挂换物品的钩子"
+    assert Protocol.SHOWN_AS is True
 
 
 def testAllFourStationsAnswerTheHookOnANewFrontDoor():

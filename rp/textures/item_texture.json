@@ -103,6 +103,12 @@
         "arris:dumplings": {
             "textures": "textures/items/dumplings"
         },
+        "arris:brown_mushroom_colony_look": {
+            "textures": "textures/blocks/brown_mushroom_colony_stage3"
+        },
+        "arris:red_mushroom_colony_look": {
+            "textures": "textures/blocks/red_mushroom_colony_stage3"
+        },
         "arris:egg_look_0": {
             "textures": "textures/items/egg_look_0"
         },

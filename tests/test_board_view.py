@@ -187,7 +187,9 @@ def testAFlowerAndAWildCropLieFlatOnTheBoardThoughTheEngineCallsThemBlocks():
     assert behavior.draw.kindOf(C.item("minecraft:oak_log")) == "block" and not _live(view, "minecraft:oak_log")[0].flat, "原木是真的方块：立着"
     behavior, view = _open(C.item("arris:red_mushroom_colony", 1))
     _frames(behavior, 2)
-    assert behavior.draw.kindOf(C.item("arris:red_mushroom_colony")) == "block" and not _live(view, "arris:red_mushroom_colony")[0].flat, "蘑菇丛：立着"
+    assert behavior.draw.kindOf(C.item("arris:red_mushroom_colony")) == "flat" and not _live(view, "arris:red_mushroom_colony"), "蘑菇丛：不画它自己（掉落物是立体的小模型）"
+    looks = _live(view, "arris:red_mushroom_colony_look")
+    assert len(looks) == 1 and looks[0].flat and abs(looks[0].scale - 1.25) < 1e-6, "画成它那件平面物品，和食物一样平躺（JE 里它是一张贴图）"
 
 
 def testAFlatFlowerSitsOnTheBoardLikeFoodAndDoesNotFloatAboveIt():

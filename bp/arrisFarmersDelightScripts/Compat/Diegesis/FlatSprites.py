@@ -9,6 +9,7 @@
 手上拿着的东西在哪个站点里都画。
 """
 from ...Shared.Data.FlatBlockItems import FlatBlockItems
+from ...Shared.Rules.BoardStation import shownItem
 
 
 def flatSprite(owner, item):
@@ -17,6 +18,14 @@ def flatSprite(owner, item):
     return name in FlatBlockItems
 
 
+def shownAs(owner, item):
+    """表现的 shownAs 钩子（前置包的 Protocol.SHOWN_AS）：手上这件画出来用哪件物品——蘑菇丛换成它的平面物品，别的不换（None）。"""
+    shown = shownItem(item) if item else item
+    return shown if shown is not item else None
+
+
 def attrs(api, base):
-    """表现类的属性：前置包认 FLAT_SPRITES 才加上 flatSprite 钩子（老版本既不认也不会问，不加）。base 是原来要交给 type() 的属性字典。"""
-    return dict(base, flatSprite=flatSprite) if getattr(api, "FLAT_SPRITES", False) else base
+    """表现类的属性：前置包认 FLAT_SPRITES 才加上 flatSprite 钩子、认 SHOWN_AS 才加上 shownAs 钩子（老版本既不认也不会问，不加）。
+    base 是原来要交给 type() 的属性字典。"""
+    found = dict(base, flatSprite=flatSprite) if getattr(api, "FLAT_SPRITES", False) else base
+    return dict(found, shownAs=shownAs) if getattr(api, "SHOWN_AS", False) else found

@@ -285,3 +285,5 @@ handson_delight.pot.cooking=%s，还要 %d 秒
 handson_delight.book.seconds=%d 秒
 handson_delight.assembly=砧板摆盘
 handson_delight.assembly.first=先放在砧板上
+item.arris:brown_mushroom_colony_look.name=棕色蘑菇菌落（展示用）
+item.arris:red_mushroom_colony_look.name=红色蘑菇菌落（展示用）

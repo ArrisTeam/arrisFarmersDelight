@@ -9,7 +9,7 @@ client/BoardBehavior.usable（1502-1505）。放上板的判定树在 HandsOn/Bo
 物品是 (物品名, aux)；这里的物品字典是引擎的 {"newItemName", "newAuxValue", "count", ...}。
 """
 from ..Data.Cutting import CuttingBoardDict, axeList, knifeList
-from ..Data.FlatBlockItems import FlatBlockItems
+from ..Data.FlatBlockItems import FlatBlockItems, ShownAs
 from . import DishStation
 from .CuttingStation import BOARD_BLOCKS, STATION_ID, fitsTool  # noqa: F401 - 站点和测试从这里取
 from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最多 9 层
@@ -43,6 +43,15 @@ def _tools():
         _cache["tools"] = frozenset(name for recipe in CuttingBoardDict.values() for name in recipe.get("tool") or ())
         _cache["types"] = frozenset(recipe["item_type"] for recipe in CuttingBoardDict.values() if recipe.get("item_type"))
     return _cache["tools"], _cache["types"]
+
+
+def shownItem(item):
+    """这件东西画出来用哪件物品：蘑菇丛换成只用来显示的平面物品（Data/FlatBlockItems.ShownAs，数量照旧），别的就是它自己。
+    站点里画板上的东西（Compat/Diegesis/BoardThing）、没开站时的世界展示（Client/BlockItems）、手上拿着的（前置包的 shownAs 钩子）都问它。"""
+    key = keyOf(item)
+    if key is None or key[0] not in ShownAs:
+        return item
+    return {"newItemName": ShownAs[key[0]], "newAuxValue": 0, "count": item.get("count", 1) or 1}
 
 
 def acceptsNothing(item):
@@ -153,7 +162,7 @@ class Env(object):
         基岩版的物品类型是 block 的才可能是方块，其中花、野生作物、蘑菇丛的模型在 JE 里是一张贴图（Data/FlatBlockItems），要平躺。
         站点里画板上的东西（Compat/Diegesis/BoardDraw）、没开站时的世界展示（Shared/Rules/BlockDisplay）、切一刀的效果里的 block（BoardChop）都问它，说同一个答案。"""
         key = keyOf(item)
-        return key is not None and self.typeOf(item) == "block" and key[0] not in FlatBlockItems
+        return key is not None and self.typeOf(item) == "block" and key[0] not in FlatBlockItems and key[0] not in ShownAs
 
     def isRaised(self, item):
         """平躺着画的这件东西，引擎是不是照方块物品的规矩抬高着画的（物品类型是 block、掉落物却是一张贴图：花、野生作物）：

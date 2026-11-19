@@ -9,6 +9,7 @@
 import math
 import random
 
+from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules import ItemPose
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
@@ -139,6 +140,6 @@ class Thing(object):
         if self.draw.isRaised(self.item):                 # 花、野生作物：引擎照方块物品的规矩抬高着画，摆之前扣掉
             center = tuple(a + b for a, b in zip(center, ItemPose.raisedShift(matrix, scale)))
         if self.prop is None:
-            self.prop = self.draw.view.props.item(self.item, center, flat=True, scale=scale, matrix=matrix)
+            self.prop = self.draw.view.props.item(Rules.shownItem(self.item), center, flat=True, scale=scale, matrix=matrix)       # 蘑菇丛画成它的平面物品
         else:
             self.prop.move(center=center, scale=scale, matrix=matrix)

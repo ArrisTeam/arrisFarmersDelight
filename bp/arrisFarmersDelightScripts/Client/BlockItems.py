@@ -123,6 +123,8 @@ def _layoutOf(kind, items, pos):
     """这个方块上的东西怎么摆（Shared/Rules/BlockDisplay.layout）：三种方块都要朝向和一叠最多几个，砧板还要站点里板底座的偏移和"是不是插着的工具""画成方块还是平躺的图标"。"""
     offset = _boardOffset(pos) if kind == BlockDisplay.KIND_BOARD else (0.0, 0.0)
     flag = items.get(BoardStation.CARVED)             # 板上那件是不是插着的（服务端的 IsItemCarved 标记；没有 = 老存档，照老办法推断）
+    if kind == BlockDisplay.KIND_BOARD and items.get("0"):
+        items = dict(items, **{"0": BoardStation.shownItem(items["0"])})       # 蘑菇丛画成它的平面物品（JE 里它是一张贴图）
     return BlockDisplay.layout(kind, items, _itemType, pos, offset, _facingYaw(pos), lambda item: _boardEnv.isCarving(item, flag), _boardEnv.isBlock,
                                _maxStack)
 

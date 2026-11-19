@@ -65,7 +65,10 @@ def testOnlyBlocksTheEngineCallsBlocksAndJavaDrawsAsBlocksStandUp():
         assert ENV.isBlock(_item(name)), "立着：%s" % name
     assert ENV.isBlock(_item("x:downstream_flower")), "下游往配方里追加的方块类东西不在表里：照旧立着"
     for name in MUSHROOMS:
-        assert ENV.isBlock(_item(name)) and (name, 0) in Table.CuttingBoardDict, "蘑菇丛的掉落物是缩小的立体模型，不是一张贴图：立着（%s）" % name
+        assert not ENV.isBlock(_item(name)) and (name, 0) in Table.CuttingBoardDict, "蘑菇丛在 JE 里也是一张贴图：不当方块（%s）" % name
+        assert not ENV.isRaised(_item(name)), "它画的是另一件平面物品（不是 block），不用扣抬高：%s" % name
+        assert Station.shownItem(_item(name, 4)) == {"newItemName": name + "_look", "newAuxValue": 0, "count": 4}, name
+        assert name not in Flat and fdtest.load("Shared.Data.FlatBlockItems").ShownAs[name] == name + "_look", "不在引擎画成平面图的那张表里：它的掉落物是立体的小模型，所以换一件物品来画"
     assert not ENV.isBlock(_item("arris:cabbage")) and not ENV.isBlock(_item("minecraft:beef")), "食物本来就平躺"
     assert not ENV.isBlock(None) and not ENV.isBlock({}) and not ENV.isBlock({"newItemName": "", "count": 1}), "没有东西不是方块"
     assert ENV.isBlock(dict(_item("minecraft:oak_log", 5), newAuxValue=2)) and not ENV.isBlock(dict(_item("minecraft:poppy", 5), newAuxValue=2)), "数量和 aux 不影响"
