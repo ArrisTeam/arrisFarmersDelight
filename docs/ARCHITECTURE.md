@@ -103,6 +103,7 @@ Client/                 客户端
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
   Endpoints.py          服务端调用的 5 个客户端端点：放声音（可带音量 / 音调）、砧板切一件的碎屑、粒子、方块实体 molang、挥手
   TableSync.py          客户端端点 OnTableSync：把服务端发来的"下游追加的表内容"并进本端自己的表，重算依赖它的缓存
+  Texts.py              站点界面上我们自己写的字按玩家的语言给：of(键, 缺省中文) / fill(键, 缺省, 值)，查 rp/texts 的语言文件，见「砧板和站点的几处补齐」
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
   Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
   BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
@@ -110,13 +111,13 @@ Client/                 客户端
   CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
 Compat/
-  Jei/                  arrisJei 配方页（未安装则不做任何事）
+  Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
                         ServerSteps / ClientSteps 是步骤表（只放数据）、每个站点一步，步骤的实现是 BoardServerLink / PotServerLink / PanServerLink / GrillServerLink 和
                         BoardClientLink / PotClientLink / PanClientLink / GrillClientLink（调站点的 register，登记上了再开连带的东西）；站点模块在步骤里才导入，见「联动（场景交互前置）」，
                         BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools / BoardEmit（服务端）+ BoardView + BoardDraw /
-                        BoardDrawEvents / BoardThing / BoardFinishPlay（做成一道菜之前的十种收尾）/ BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardStand（立着的刀 / 工具，
+                        BoardDrawEvents / BoardThing / BoardFinishPlay（做成一道菜之前的十种收尾）/ BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardSeams（切过的缝，暗色半透明粒子）+ BoardStand（立着的刀 / 工具，
                         借来的半透明粒子）/ BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
                         声音按 Shared/Rules/BoardSounds，旁边没开站点的人由 Server/BoardLook 广播 + BoardWatch（客户端）补上声音；
                         PotLogic + PotSync + PotScoop（服务端）+ PotView + PotPick + PotHud + PotOffer（客户端，开着站点的人：点击、拾取盒和
@@ -132,7 +133,7 @@ Compat/
                         TouchFeel（客户端，四个站点共用：触屏的轻震、双击间隔、点选的东西飞上站点，问前置包的 view.buzz / view.doubleSeconds / view.flyIn，老版本没有就算了，
                         docs/diegesis/DESIGN.md §9；砧板、煎锅、炉灶在发 place 的地方调 flyIn，只在照客户端的状态放得上去时调，厨锅走内核自己的点击）；
                         FlatSprites（客户端，纯逻辑，四个站点的表现类共用：答前置包的可选钩子 flatSprite，手上拿着的方块物品里哪些引擎画成一张平面图——查 Shared/Data/FlatBlockItems；
-                        前置包没有 FLAT_SPRITES 就不挂，docs/diegesis/DESIGN.md §9）；
+                        前置包没有 FLAT_SPRITES 就不挂，docs/diegesis/DESIGN.md §9；同一个模块还答 shownAs：蘑菇丛在手上画成它那件只用来显示的平面物品，前置包没有 SHOWN_AS 就不挂）；
                         HoldMenu + PotHold / BoardHold / PanHold / GrillHold（客户端，触屏长按菜单：前置包的可选钩子 onHold 的条目和各站点的判断，只给和点一下不一样的右键 /
                         Shift 点击变体，老版本的前置包没有 HOLD_MENU 就永远不会被问，docs/diegesis/DESIGN.md §9）；
                         四个站点的开关、搅拌、食谱书、烹饪倍率读 Shared/Data/HandsOnConfig（docs/diegesis/DESIGN.md §4.1）：每个站点的 register 在配置里关了返回 None
@@ -526,8 +527,10 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 - 经典厨锅（没有站点）的蒸汽：实体动画 `animation.cooking_pot.smoke` 每秒（JE `CookingPotBlockEntity.animationTick` 每刻 5%，平均每秒一颗）在模型的 `steam` 定位点（方块中心、离底面 8 像素 = JE 的 `pos.y + 0.5`）放一颗 `arris:steam`。
   它和煎锅的蒸汽是同一个 FD `SteamParticle`（速度、寿命、大小、渐隐、重力、挑图、光照一样，`tests/test_pot_steam.py` 逐项对），只有起点不同：锅的 x、z ±0.2 和 Factory 的 +0.3 写在粒子里，煎锅的 x、z 由脚本掷。
   JE 在 `steam.json` 的 12 张图里每颗随机挑一张（`pickSprite`）：十二张图叠成一张 `rp/textures/particle/arris_steam.png`（16 x 192，和 JE 的 `steam_0` 到 `steam_11` 逐像素一样），
-  UV 的纵向写 `math.floor(variable.particle_random_2 * 12) * 16`（原版营火烟也这么挑图；大小用随机数 1，两个量各掷各的，和 JE 一样）。没做的：JE 的蒸汽碰到方块停住（`Particle.move` 的碰撞，这里只有
-  「离开锅和空气就消失」的粗略做法，原来就有）、横向每刻的随机游走（走完一生约 0.07 格）。粒子、实体、动画、模型都改了，没进过游戏，要完整重启后看。
+  UV 的纵向写 `math.floor(variable.particle_random_2 * 12) * 16`（原版营火烟也这么挑图；大小用随机数 1，两个量各掷各的，和 JE 一样）。JE 的蒸汽有碰撞（`Particle.move`，`hasPhysics` 缺省为真，`setSize(0.25, 0.25)`）：顶到方块就停在下面、到寿命才淡掉。
+  2026-11-19 起两种蒸汽（`arris:steam`、`arris:skillet_steam`）用引擎的粒子碰撞 `minecraft:particle_motion_collision`（半径 0.125、不弹、`collision_drag` 10 即碰上很快停住、不因为碰到而消失），
+  原来是「离开锅和空气就消失」（`particle_expire_if_not_in_blocks`）：锅上面盖着方块时蒸汽一进去就没了。起点减去半径在锅的碰撞盒顶上面，不会一出来就卡住（`tests/test_pot_steam.py`）。
+  没做的：横向每刻的随机游走（走完一生约 0.07 格）。实机（2026-11-19，3.10.0.467018）只核过改完的两个粒子建得出来、日志没有报错；停在方块下面的样子没看。
 - 经典厨锅（没有站点）的气泡：同一个 `animationTick`（`CookingPotBlockEntity.java:244-251`）只看加热着，每刻 20% 的概率在方块中心 x、z 各 ±0.3、`pos.y + 0.7` 放一颗原版的 `ParticleTypes.BUBBLE_POP`、初速 0。
   实体动画 `animation.cooking_pot.bubble` 每 0.25 秒（每秒 4 颗 = 每秒 20 刻 x 20%）在定位点 `blister`（11.2 像素 = `y + 0.7`）放一颗 `arris:bubble_pop`（`rp/particles/arris_bubble_pop.json`），
   x、z 的 ±0.3 在粒子里每颗各掷。基岩版的粒子没有按刻掷骰的办法，所以和 JE 差在节奏：平均一样，这里间隔是匀的；条件同蒸汽（`mod_heat` 加盖着、没有站点场景接管，站点里的气泡是它自己的）。
@@ -689,6 +692,39 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
    关着的门 1.5 高挡得住；门布的两片没有闪烁。
 6. `netease:fuel`（长垫子 / 栅栏 / 门 10 秒，榻榻米 20 秒，短垫 5 秒，绳子 10 秒）在熔炉里的时长（200 刻 = 10 秒，榻榻米 400 刻）。
 
+## 砧板和站点的几处补齐（2026-11-19，对照 JE）
+
+- **板上插着的工具照 FD 的 `IsItemCarved` 认**（`CuttingBoardBlockEntity.isItemCarvingBoard`：只有 `carveToolOnBoard` 置真，`removeItem` 清掉）。原来靠推断（板上有、切不了、却是能插的工具），
+  平常放上去的工具也会立起来。现在是方块实体数据里的 `isItemCarved`（`BoardStation.CARVED_DATA`）：1 插着 / 0 躺着 / 没有 = 不知道（板空着，或加这个标记之前的老存档——只有这时才照老办法推断，
+  `BoardStation.Env.isCarving(item, flag)`）；读写在 `Server/Helpers/BoardDish.carvedOf / setCarved`。放上去写 0、插进去写 1、取回和切完最后一件清掉。站点的数据和世界展示的载荷里是 `carved`
+  （`BoardLogic.setBoard(item, carved)`、`Helpers/BlockItems.PublishBoard(.., carved)`，客户端 `Client/BlockItems`；HoD 的 `BoardPlace.Placed.carved` 只有 `carve` 是真）。
+  经典玩法补上了 JE 的 `ToolCarvingEvent`（`Server/CuttingBoard._carveWhenSneaking` / `carve`）：潜行着拿能插的工具（有材质等级的工具、三叉戟、剪刀）对着**空**板使用就插进去，响插工具的那一声，
+  创造模式手里的留着；潜行拿着东西时引擎不发方块使用，所以挂在 `ServerItemUseOnEvent` 上。插着工具的板拿着东西点它什么都不做（放不上去、也切不了，JE 的 `canAddItem` / `processStoredItemUsingTool` 开头就返回），空手取回。
+  实机（3.10.0.467018，`d:/tmp/mcdk-multi/checks/chk_batch1119.py carve`、`chk_carve_input.py`）：投递的 Shift 按住 + 右键，铁刀插进空板——标记 1、创造模式手里的刀还在、客户端画一件立着的、没有开站点；
+  取回后标记清掉；平常放上去的铁剑躺着（标记 0）；区块卸载再加载标记还在、空板重新加载不报错。
+- **蘑菇丛在砧板上、手上照 JE 平躺**：JE 里蘑菇丛的物品是一张平面图（`item/generated`，贴图是 stage3 那张方块贴图），这里它是自定义几何的方块，掉落物是缩小的立体小模型。另做了两件只用来显示的平面物品
+  `arris:brown_mushroom_colony_look` / `arris:red_mushroom_colony_look`（图标就是 `textures/blocks/<颜色>_mushroom_colony_stage3`，不进创造栏；`Shared/Data/FlatBlockItems.ShownAs` 是对照表），
+  砧板上的那一件画成它（`BoardStation.shownItem`：站点里 `BoardThing`、世界里 `Client/BlockItems._layoutOf`），手上的经前置包的可选钩子 `shownAs`（`Compat/Diegesis/FlatSprites`）。板上存的、取回的仍是蘑菇丛本身。
+  实机：红蘑菇丛放上板，客户端画的是那件平面物品（平躺的两片），取回后没有残留。`tests/test_colony_looks.py`。
+- **JEI 里的"砧板摆盘"分类**（HoD 的 `HandsOnJeiPlugin` + `AssemblyCategory`；`Compat/Jei/BoardAssembly.py`，纯规则在 `Shared/Rules/DishJei.py`）：只在联动着、砧板站点开着时登记
+  （`JeiClient` 用 `HandsOnMode.whenDecided("client", ...)` 等判定）。一道菜一页：打底的那一样躺在板上（提示多一行"先放在砧板上"），别的层三个一排，箭头，成品；只差一个位置的几行并成一页、那个位置轮着显示
+  （JE 的 `Ingredient`；`Dishes.DishList` 的 86 行并成 48 页）。界面是 `rp/ui/jei_farmers_delight.json` 的 `jeiBoardAssemblyRecipe`，位置照 HoD 的 `AssemblyLayout`。
+  被拦的工作台配方（`DishCrafts`，配置 `remove_crafting_recipes`）同时从 JEI 里藏起来：arrisJei 新加的 `hideRecipes(藏的人, 配方种类, 判断)`（能力标志 `HIDE_RECIPES`；那一版之前的 arrisJei 上只多出分类、工作台配方照旧显示）。
+  实机：分类登记上了；鸡蛋三明治的工作台配方藏起来了（不藏时 1 条）；苹果派两条里留下派切片拼回去的那条；配方页的控件在 `AssemblyLayout` 的位置上。
+  限制：登记只做一次，下游之后才追加的摆盘菜不在 JEI 里（「联动契约与客户端的表」一节的限制里说的同一件事）。`tests/test_dish_jei.py`、`tests/test_jei_board_assembly.py`。
+- **站点界面上的字按玩家的语言给**（`Client/Texts.py`）：我们自己写的字——四个站点触屏长按轮盘的七条条目（`arris_fd.hold.*`，条目带 `"key"`，前置包替它查）、厨锅的提示（`arris_fd.pot.*` 和 HoD 的键
+  `handson_delight.pot.ready / cooking`）、食谱书页脚的秒数（`handson_delight.book.seconds`）、JEI 分类的名字和提示（`handson_delight.assembly*`）——进了 `rp/texts/zh_CN.lang`，并新建 `rp/texts/en_US.lang`（只有这些界面字，
+  物品和方块的英文名还没补）。`Texts.of(键, 缺省)` 用 `CreateGame(levelId).GetChinese` 查，查不到用代码里的缺省中文；`Texts.fill` 填占位，译文的占位写坏了就退回缺省。
+  服务端发的提示（`ShowTip` 那几句）和经典厨锅界面里的字还是中文。实机（zh_CN）：这些键都查得到。`tests/test_station_texts.py`。
+- **触屏的数量档**（前置包的按钮，屏幕右下角 全部 / 单个）在场时，四个站点的长按轮盘不再给"放一个"：拿着一叠放多少归那个按钮管（`HoldMenu.tapMode(view)`：`view.tap` 不是 None）；
+  炉灶的"只放这一格"在拿着不止一个时也让给它。老版本的前置包没有 `view.tap`，轮盘照旧。`tests/test_hold_tap_mode.py`。
+- **切开的缝**（`Compat/Diegesis/BoardSeams.py`）：HoD 每切一刀把食物沿刀口分开 0.8 像素（`ItemVoxels.build` 的 `gap`，0.12 秒张开），看得出切到哪了；这里板上的东西是掉落物、切不开，
+  原来每一刀只有落刀、声音、碎屑和下一条虚线。现在每条切过的线上、食物顶面上方压一条 0.8 像素宽的黑色半透明细条（粒子 `arris:board_seam`，不透明度 0.4），只画在图标的实心像素那一段；
+  切过几刀 = 服务端说的 + 本地刚落还没回话的；同一件东西又多切一刀，所有的缝从 0 重新张开（JE 的 `gap` 只有一个数）；方块类、插着的工具、摆着层的板不画。
+  和 JE 不一样的：两半并不真的挪开，缝里是压暗的食物而不是板和切面；只有开着站点的人看得到。`tests/test_board_seams.py`。没进过游戏（新粒子要完整重启）。
+- **借来的工具跟着环境光变暗**：砧板站点上借来的那把刀 / 工具（半透明粒子 `arris:board_tool`）加了 `minecraft:particle_appearance_lighting`——JE 是照物品画的（`SceneRenderer.java:848` 的 `renderStatic` 带着站点的光照），
+  原来暗处也是满亮度。实机只核过粒子建得出来。
+
 ## 引擎坑（踩过的）
 
 - 方块实体数据（`GetBlockEntityData`）是引擎对象，不是 dict：没有 `.get()`，缺键读出来是 `None`，用 `data["k"] or 缺省值`。
@@ -718,7 +754,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 客户端读方块实体数据拿到的是 NBT 形式，每个值包成 `{"__type__": …, "__value__": …}`（`Client.Engine.unwrap`）。
 - 世界时间（`CreateTime().GetTime()`）会被 `/time set` 改、被 `doDaylightCycle false` 冻住，不能拿来做 tick 节拍：
   用 `Shared/Rules/Ticks.Pacer`（真实时间）。
-- 客户端读方块实体数据时，服务端存的 None 可能读成整数之类的占位，先校验类型再用（`BlockDisplay.isItem`）。
+- 客户端读方块实体数据时，服务端存的 None 读出来不是 None、也不是缺键：实机（3.10.0.467018）是 `{'__type__': 1, '__value__': 2}`，解包后是整数 2。
+  所以物品先过 `BlockDisplay.isItem` 再用，开关只认 `in (0, 1)`（砧板的"插着"标记清掉以后曾被读成插着；取回过东西的空砧板，区块一重新加载客户端就报
+  `'int' object has no attribute 'get'`——`Client/BlockItems._itemsFromExData`，`tests/test_block_items_exdata.py`）。
 - 服务端 `SetBlockNew` 放的方块，客户端不发 `ModBlockEntityLoadedClientEvent`；这个事件也可能重复触发——客户端渲染要幂等，
   内容以服务端广播为准。
 - 客户端掉落物（`AddDropItemToWorld`）：轴心在贴图底边中点，缩放 1 时半格；`SetDropItemTransform` 的 `rot=(x,y,z)` 是
