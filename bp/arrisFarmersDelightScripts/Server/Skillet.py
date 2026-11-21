@@ -34,7 +34,7 @@ SKILLET = "arris:skillet"
 COOK_TIMER = 7
 # 液体层里的水：JE 的 WATERLOGGED（含水的煎锅不能煎，锅里的东西浮出来）
 _WATER = ("minecraft:water", "minecraft:flowing_water")
-# 手里拿着这些物品点煎锅时拦截交互（不把它们当食物，也不在煎锅上放方块）
+# 手里拿着这些物品点煎锅时拦截交互：不把它们当食物、也不提示（锅上不放方块是 OnUseItemOnPlacedSkillet 拦的，方块使用的 cancel 拦不住）
 _BLOCKED_ITEMS = ("arris:spatula", "arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
 # 每个煎锅每 TICK_STEP 秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响），计时按步长累加
 TICK_STEP = 0.25
@@ -50,6 +50,18 @@ def _timerStart(blockEntityData):
 def _isWaterlogged(dimensionId, blockPos):
     liquid = compFactory.CreateBlockInfo(levelId).GetLiquidBlock(blockPos, dimensionId)
     return bool(liquid) and liquid.get("name") in _WATER
+
+
+# 优先级 100（和砧板一样）：对着放下的煎锅用手里的东西，这一下归煎锅——JE 的 SkilletBlock.use 只要方块实体在就是 SUCCESS / CONSUME、从不 PASS，
+# 手里的东西不再对着锅用出去：方块不放到锅上、水桶不倒水、打火石不点火、刷怪蛋不出怪（放食物、提示由下面的方块使用做，它先到）。
+# 实机量过：拦得住的是 ServerItemUseOnEvent 的 ret；ServerBlockUseEvent 的 cancel 拦不住，方块照样放上去。
+# 潜行拿着东西时原版不调 use：放过，照常用出去（潜行拿着煎锅是再放一口锅，Server/SkilletItem.py 接着放）
+@registerHandler("ServerItemUseOnEvent", match=SKILLET, priority=100)
+def OnUseItemOnPlacedSkillet(args):
+    if compFactory.CreatePlayer(args["entityId"]).isSneaking() is True:
+        return None
+    args["ret"] = True
+    return True
 
 
 @registerHandler("ServerBlockUseEvent", match=SKILLET)

@@ -54,19 +54,23 @@ def OnTryPlaceCuttingBoard(args):
         args["cancel"] = True
 
 
-# 优先级 100：在其它 ServerItemUseOnEvent 处理之前取消物品使用（不在砧板上放方块、不吃掉手里的食物）
+# 优先级 100：在其它 ServerItemUseOnEvent 处理之前把这一下物品使用拦下（ret；ServerBlockUseEvent 的 cancel 拦不住，实机量过）：
+# JE 的 CuttingBoardBlock.use 对板的每一下都是 SUCCESS / CONSUME，手里的东西不再对着板用出去（不在板上放方块、不倒水、不点火、不出怪）。
+# 潜行拿着东西时原版不调 use：插得进的工具插进去（这一下归板），别的照常用出去（方块放到板旁边，和 JE 一样）
 @registerHandler("ServerItemUseOnEvent", match=CUTTING_BOARD, priority=100)
 def OnServerCuttingBoardItemUse(args):
-    args["ret"] = True
-    _carveWhenSneaking(args)
+    if _carveWhenSneaking(args) is not False:
+        args["ret"] = True
 
 
 def _carveWhenSneaking(args):
     """JE 的 ToolCarvingEvent：潜行着拿工具对着砧板使用——插进空板（carveToolOnBoard：有材质等级的工具、三叉戟、剪刀，板得是空的），响插工具的那一声，
-    创造模式手里的留着。潜行拿着东西时引擎不发方块使用（ServerBlockUseEvent），所以挂在物品使用上；摆着菜的层的板不插（站点里的 carve 也不插）。"""
+    创造模式手里的留着。潜行拿着东西时引擎不发方块使用（ServerBlockUseEvent），所以挂在物品使用上；摆着菜的层的板不插（站点里的 carve 也不插）。
+    返回 None：没潜行；潜行时返回插进去了没有。"""
     playerId = args["entityId"]
-    if compFactory.CreatePlayer(playerId).isSneaking() is True:
-        carve(playerId, (args["x"], args["y"], args["z"]), args["dimensionId"])
+    if compFactory.CreatePlayer(playerId).isSneaking() is not True:
+        return None
+    return carve(playerId, (args["x"], args["y"], args["z"]), args["dimensionId"])
 
 
 def carve(playerId, blockPos, dimensionId):

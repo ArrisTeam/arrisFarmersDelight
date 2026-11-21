@@ -102,16 +102,25 @@ def testCreativeKeepsTheToolInTheHandWhenCarving():
 
 
 def testSneakUsingSomethingThatIsNotAToolOrOnAnOccupiedBoardCarvesNothing():
+    # 没插进去：这一下不归板，手里的东西照原版用出去（ret 不设；潜行时 JE 不调 use，方块会放到板旁边）
     data = T._setUp(hand=T._item("minecraft:stick", 3))
-    _sneakUse()
+    args = _sneakUse()
     assert data["cuttingDict"] is None and data[FLAG] is None and T._hand()["count"] == 3 and world.soundArgs == [], "不是工具：不插"
+    assert args["ret"] is False, "不是工具：照原版用出去"
     data = T._setUp(hand=T._item(KNIFE), board=T._item(CABBAGE, 2))
-    _sneakUse()
+    args = _sneakUse()
     assert data["cuttingDict"]["newItemName"] == CABBAGE and data[FLAG] is None and T._hand()["newItemName"] == KNIFE, "板上有东西：不插（addItem 放不进）"
+    assert args["ret"] is False
     data = T._setUp(hand=T._item(KNIFE))
     data[Store.LAYERS_KEY] = [T._item("minecraft:bread", 1)]
     _sneakUse()
     assert data["cuttingDict"] is None and data[FLAG] is None, "板上摆着菜的层：不插"
+
+
+def testSneakingWithABlockLetsItBePlacedBesideTheBoard():
+    # 实机（2026-11-21，不装前置包）：潜行拿着石头右键砧板，原来物品使用一律取消、石头放不下去；JE 潜行时不调 CuttingBoardBlock.use，石头放到板旁边
+    T._setUp(hand=T._item("minecraft:stone"))
+    assert _sneakUse()["ret"] is False
 
 
 def testWithoutSneakingTheItemUseOnlyCancels():

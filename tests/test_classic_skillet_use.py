@@ -184,5 +184,32 @@ def testAnEmptyHandTakesTheWholeStackBackAndCreativeDoesNotGetIt():
     assert _published()[-1] == {}, "锅里清空了，客户端的展示也清掉"
 
 
+# ---------------------------------------------------------------- 手里的东西不再对着锅用出去（JE SkilletBlock.use：方块实体在就 SUCCESS / CONSUME）
+
+def _useItemOn(hand, sneaking=False):
+    """对着放下的煎锅用手里的东西：引擎先发方块使用（放食物、提示），再发物品使用（ServerItemUseOnEvent：ret 为真就不再用出去）。"""
+    _setUp(hand=hand)
+    if sneaking:
+        world.sneaking.add("p1")
+    args = {"x": POS[0], "y": POS[1], "z": POS[2], "dimensionId": 0, "entityId": "p1", "itemDict": dict(hand), "ret": False}
+    return Skillet.OnUseItemOnPlacedSkillet(args), args
+
+
+def testWhatIsHeldIsNotUsedOnThePlacedSkillet():
+    # 实机（2026-11-21，不装前置包）：拿着石头右键放下的煎锅，提示之后石头还放到了锅上；水桶倒出水、打火石在锅上点火、刷怪蛋出了一头猪。
+    # 方块使用的 cancel 拦不住（实机量过），要在物品使用上 ret：这一下归煎锅，后面的物品使用处理也不再看（返回真）
+    for name in ("minecraft:stone", "minecraft:water_bucket", "minecraft:flint_and_steel", "minecraft:pig_spawn_egg", "arris:skillet_item",
+                 "minecraft:beef"):
+        handled, args = _useItemOn(_item(name))
+        assert args["ret"] is True and handled is True, name
+
+
+def testSneakingLeavesTheHeldItemToItsOwnUse():
+    # 潜行拿着东西时原版不调方块的 use（JE 同）：方块放到锅旁边、潜行拿煎锅是再放一口锅（Server/SkilletItem.py），照常
+    for name in ("minecraft:stone", "arris:skillet_item"):
+        handled, args = _useItemOn(_item(name), sneaking=True)
+        assert args["ret"] is False and handled is None, name
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
