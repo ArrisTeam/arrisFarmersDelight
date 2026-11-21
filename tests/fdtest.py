@@ -25,6 +25,12 @@ def load(dotted):
     return importlib.import_module(SCRIPTS + "." + dotted)
 
 
+def tipText(tip, values=()):
+    """服务端的一句提示（Shared/Data/Tips 的 (键, 中文) 加 ShowTip 给的值）在中文的游戏里显示成什么：假引擎的 ShowTip 记下它，
+    测试照旧对着玩家看到的那句中文比。值里的词 (键, 中文) 取它的中文。"""
+    return tip[1] % tuple(value[1] if isinstance(value, tuple) else value for value in values)
+
+
 def run(namespace):
     """执行 namespace（通常是 globals()）里所有 test 开头的函数，返回退出码。"""
     names = sorted(k for k, v in namespace.items() if k.startswith("test") and callable(v))

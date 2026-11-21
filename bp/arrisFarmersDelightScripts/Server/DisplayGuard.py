@@ -6,7 +6,8 @@ arris:item_display 是旧版砧板 / 煎锅 / 炉灶上展示物品用的实体�
 arris:corpse_display 仍在使用，守卫与删除器对它照常生效。这几道守卫不要删。
 """
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, levelId, DestroyEntity, GetCarriedItem, SetCarriedItem, GetEngineTypeStr
+from .Helpers.Engine import compFactory, levelId, DestroyEntity, GetCarriedItem, SetCarriedItem, GetEngineTypeStr, ShowTip
+from ..Shared.Data import Tips
 
 DISPLAY_ENTITY = "arris:item_display"
 _REMOVABLE = ("arris:item_display", "arris:corpse_display")
@@ -52,5 +53,5 @@ def OnDamageDisplay(args):
     carriedDict = GetCarriedItem(playerId)
     if carriedDict and carriedDict["newItemName"] == REMOVER_ITEM:
         DestroyEntity(entityId)
-        compFactory.CreateGame(playerId).SetOneTipMessage(playerId, "§7物品展示实体 §a删除成功!")
+        ShowTip(playerId, Tips.DISPLAY_REMOVED)
         SetCarriedItem(playerId, {})

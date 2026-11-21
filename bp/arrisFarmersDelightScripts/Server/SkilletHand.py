@@ -22,6 +22,7 @@ import time
 from .Helpers.Engine import compFactory, levelId, Call, ItemPosType, GetBlockName, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import GiveOrDropItem
+from ..Shared.Data import Tips
 from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
 from ..Shared.Rules import SkilletHandRules as Hand
 from ..Shared.Rules import SkilletRules as Rules
@@ -88,11 +89,11 @@ def _begin(playerId, now):
     quiet = compFactory.CreatePlayer(playerId).isSneaking() is True
     if result is None:
         if not quiet:
-            ShowTip(playerId, Rules.TIP_HOW_TO_COOK)
+            ShowTip(playerId, Tips.SKILLET_HOW_TO_COOK)
         return
     if _underWater(footPos, dimensionId):
         if not quiet:
-            ShowTip(playerId, Rules.TIP_UNDERWATER_HAND)
+            ShowTip(playerId, Tips.SKILLET_UNDERWATER_HAND)
         return
     seconds = Rules.cookingSeconds(Rules.CAMPFIRE_TICKS, Rules.fireAspectLevel(held))
     _sessions[playerId] = Hand.HandCook(food["newItemName"], result, seconds, now)

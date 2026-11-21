@@ -19,12 +19,7 @@ TICKS_PER_SECOND = 20
 MINIMUM_COOKING_TICKS = 60
 # 营火配方的烹饪时间：JE 里 FD 与原版的营火配方都是 600 刻（30 秒）；没写时间（<= 0）也按它算
 CAMPFIRE_TICKS = 600
-
-# 提示文字，照 JE zh_cn（item. 的是手里的煎锅，block. 的是放下去的煎锅）
-TIP_HOW_TO_COOK = "用另一只手拿着原料！"
-TIP_UNDERWATER_HAND = "在水里可没法煎啊……"
-TIP_INVALID_ITEM = "这东西可不能被烹饪……"
-TIP_UNDERWATER_BLOCK = "被水泡着可没法烹饪啊……"
+# 提示的那几句（拿着煎锅、放下的煎锅）和别的服务端提示一起在 Shared/Data/Tips：带着语言文件的键，客户端按玩家的语言给
 
 # 放下的煎锅上放食物的声音，(声音名, 音量, 音调)：每次放进去一声挂灯（SkilletBlock.java:83 LANTERN_PLACE 0.7 / 1.0），锅是空的又在热源上再加一声下料
 # （SkilletBlockEntity.java:189 BLOCK_SKILLET_ADD_FOOD 0.8 / 1.0）；取回没有声音（SkilletBlock.java:71-77）

@@ -122,7 +122,7 @@ def setup(events="sync", entity="now", swapMode=None, **kwargs):
     fake.blockAux[KEY] = 0
     StoveSwap.time = K.Stove.time
     StoveSwap._swaps.clear()
-    K.Stove.ShowTip = lambda playerId, text: fake.tips.append((playerId, text))
+    K.Stove.ShowTip = lambda playerId, tip, *values: fake.tips.append((playerId, fdtest.tipText(tip, values)))
     return manager, data
 
 

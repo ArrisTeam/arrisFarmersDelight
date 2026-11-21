@@ -11,6 +11,7 @@
   键必须是 str；列表里元素类型要一致；值不能是 unicode（不满足时引擎只打日志，不报错）。
 """
 from ...QuModLibs.Server import serverApi, levelId, System, Call, DestroyEntity  # noqa: F401
+from ...Shared.Rules import TipWire
 
 compFactory = serverApi.GetEngineCompFactory()
 ItemPosType = serverApi.GetMinecraftEnum().ItemPosType
@@ -46,8 +47,11 @@ def SetCarriedItem(playerId, itemDict):
     compFactory.CreateItem(playerId).SetEntityItem(ItemPosType.CARRIED, itemDict, 0)
 
 
-def ShowTip(playerId, text):
-    compFactory.CreateGame(playerId).SetOneTipMessage(playerId, text)
+def ShowTip(playerId, tip, *values):
+    """这个玩家的物品栏上方弹一句提示：tip 是 Shared/Data/Tips 里的一句 (语言文件的键, 中文)，values 填它的 %d / %s（也可以是一个词 (键, 中文)）。
+    服务端不知道玩家用什么语言，所以不在这里拼字（原来的 SetOneTipMessage 发的是写死的中文）：只告诉那个玩家的客户端"哪一句、填什么"，
+    由客户端按自己的语言查出来再弹（Client/Endpoints.OnTip，同一种提示）。Call 只管发出去，对方还没登记这个端点也不会在服务端出错。"""
+    Call(playerId, TipWire.ENDPOINT, TipWire.message(tip, values))
 
 
 def GetLoadedEntities():

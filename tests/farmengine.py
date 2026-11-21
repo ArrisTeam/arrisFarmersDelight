@@ -150,7 +150,7 @@ def install(level):
     engine.System = System
     engine.GetBlockName = lambda pos, dim: level.nameAt(pos, dim)
     engine.GetCarriedItem = lambda playerId, getUserData=False: level.hands.get(playerId)
-    engine.ShowTip = lambda playerId, text: level.tips.append((playerId, text))
+    engine.ShowTip = lambda playerId, tip, *values: level.tips.append((playerId, fdtest.tipText(tip, values)))
     engine.DestroyEntity = lambda entityId: level.destroyed.append(entityId)
 
     fx = types.ModuleType(PACKAGE + ".Fx")

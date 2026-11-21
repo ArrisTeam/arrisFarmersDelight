@@ -21,6 +21,7 @@ from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarried
 from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
 from .Helpers.Items import CanStack, GetItemType, GetMaxStack, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
+from ..Shared.Data import Tips
 from ..Shared.Data.Cutting import CuttingBoardDict
 from ..Shared.Rules import BoardSounds, BoardStation, BoardSupport, CuttingStation
 from ..Shared.Rules.HandsOn import ItemData
@@ -142,7 +143,7 @@ def _useWithItem(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
 def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
     """手里那一叠放上板（板上已有同一种时叠上去，叠满为止）；创造模式手里的不少。数据（附魔、改名……）存不进方块实体数据的不放，不然取回时会丢数据。"""
     if not ItemData.storable(carriedDict):
-        ShowTip(playerId, "这东西放不上砧板……")
+        ShowTip(playerId, Tips.BOARD_UNSTORABLE)
         return
     board = blockEntityData["cuttingDict"]
     have = board["count"] if board else 0
@@ -163,11 +164,11 @@ def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerI
     """JE 的 processStoredItemUsingTool：板上的东西没有切法提示不能切，手里的工具不对提示换工具，对了切一件。"""
     result = CuttingBoardDict.get(_kind(board))
     if not result:
-        ShowTip(playerId, "这东西可不能切啊……")
+        ShowTip(playerId, Tips.BOARD_INVALID_ITEM)
     elif CuttingStation.fitsTool(carriedDict["newItemName"], GetItemType(carriedDict), result, IsKnife):
         _cutOne(blockEntityData, board, result, carriedDict, blockPos, dimensionId, playerId)
     else:
-        ShowTip(playerId, "或许得换个工具……")
+        ShowTip(playerId, Tips.BOARD_INVALID_TOOL)
 
 
 def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensionId, playerId):
@@ -185,7 +186,7 @@ def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensi
     if left > 0:
         cuttingDict["count"] = left
         blockEntityData["cuttingDict"] = cuttingDict
-        ShowTip(playerId, "还剩%d个……" % left)
+        ShowTip(playerId, Tips.BOARD_REMAINING, left)
     else:
         blockEntityData["cuttingDict"] = None
         BoardDish.setCarved(blockEntityData, None)

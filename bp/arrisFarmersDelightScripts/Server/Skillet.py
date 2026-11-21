@@ -23,6 +23,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Heat import RefreshHeat
 from .Helpers.Items import CanStack, GetMaxStack
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
+from ..Shared.Data import Tips
 from ..Shared.Data.Cooking import CanCookedFoodDict
 from ..Shared.Rules import SkilletRules as Rules
 from ..Shared.Rules.BlockDisplay import modelCount
@@ -70,7 +71,7 @@ def OnServerSkilletBlockUse(args):
             # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
             args["cancel"] = True
         else:
-            ShowTip(playerId, Rules.TIP_INVALID_ITEM)
+            ShowTip(playerId, Tips.SKILLET_INVALID_ITEM)
         return
     cookingDict = blockEntityData["cookingDict"]
     if cookingDict:
@@ -85,7 +86,7 @@ def OnServerSkilletBlockUse(args):
 def _addFood(dimensionId, blockPos, blockEntityData, carriedDict, playerId):
     """JE SkilletBlockEntity.addItemToCook：含水的提示；锅空着、或锅里是同一种（数据也一样）就放进去，叠到一叠的最大数量为止，剩下的留在手里。"""
     if _isWaterlogged(dimensionId, blockPos):
-        ShowTip(playerId, Rules.TIP_UNDERWATER_BLOCK)
+        ShowTip(playerId, Tips.SKILLET_UNDERWATER)
         return
     pan = blockEntityData["cookingDict"]
     have = pan["count"] if pan else 0

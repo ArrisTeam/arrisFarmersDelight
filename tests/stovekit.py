@@ -14,7 +14,7 @@ import potfake
 fake = potfake.install()
 _engine = sys.modules[fdtest.SCRIPTS + ".Server.Helpers.Engine"]
 for _name, _value in (("GetEngineTypeStr", lambda entityId: "minecraft:player"), ("IsLiving", lambda entityId: True),
-                      ("ShowTip", lambda playerId, text: None)):
+                      ("ShowTip", lambda playerId, tip, *values: None)):
     if not hasattr(_engine, _name):
         setattr(_engine, _name, _value)
 

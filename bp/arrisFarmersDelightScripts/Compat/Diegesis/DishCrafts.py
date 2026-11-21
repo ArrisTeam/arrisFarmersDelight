@@ -11,6 +11,7 @@
 from ...Server.CraftReturns import readGrid
 from ...Server.EventRegistry import registerHandler
 from ...Server.Helpers.Engine import ShowTip
+from ...Shared.Data import Tips
 from ...Shared.Rules import Crafting, DishStation
 
 PRIORITY = 50                    # 先于合成后补还剩余物（Server/CraftReturns.py）：取消了就不还
@@ -26,7 +27,7 @@ def onCraft(args):
     if not DishStation.isDishCraft(_resultName(args), Crafting.namesOf(readGrid(playerId))):
         return None
     args["cancel"] = True
-    ShowTip(playerId, "这道菜要在砧板上摆：右键砧板，先放底座再一层层往上放")
+    ShowTip(playerId, Tips.DISH_ON_BOARD)
     return True
 
 

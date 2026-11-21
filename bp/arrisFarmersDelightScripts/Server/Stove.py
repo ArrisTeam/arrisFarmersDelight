@@ -22,6 +22,7 @@ from .Helpers.Engine import compFactory, GetBlockEntityData, GetBlockName, GetEn
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
+from ..Shared.Data import Tips
 from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
 from ..Shared.Rules import GrillBlocks, StoveBurn, StoveCover
 from ..Shared.Rules.BlockDisplay import KIND_STOVE
@@ -85,7 +86,7 @@ def OnServerStoveItemUse(args):
     EnsureStoveData(blockEntityData)
     DropLegacyDisplays(blockEntityData)
     if StoveCover.covers(GetBlockName((x, y + 1, z), dimensionId)):
-        ShowTip(playerId, "炉灶上方被挡住了……")
+        ShowTip(playerId, Tips.STOVE_BLOCKED)
         return
     freeIndex = _freeSlot(blockEntityData)
     if freeIndex is None:
@@ -106,7 +107,7 @@ def OnServerStoveItemUse(args):
         else:
             ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 0.5, z + 0.5), *GrillBlocks.SOUND_FOOD)       # FD 的 LANTERN_PLACE 0.5 / 1.0
     elif itemDict["newItemName"] not in _PASS_ITEMS and not GrillBlocks.isTool(itemDict["newItemName"], GetItemType(itemDict)):
-        ShowTip(playerId, "这东西可不能被烹饪……")
+        ShowTip(playerId, Tips.STOVE_INVALID_ITEM)
 
 
 def _dropWhenCovered(dimensionId, blockPos, blockEntityData, hand):

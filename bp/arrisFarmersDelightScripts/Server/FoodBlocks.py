@@ -6,6 +6,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerBlockMolang
 from .Helpers.Items import IsKnife
 from .Helpers.Placement import FacingOfAux
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetNotCreateItem, GiveOrDropItem
+from ..Shared.Data import Tips
 from ..Shared.Data.Food import pieList, platePackagedFoodDict
 from ..Shared.Data.Slicing import PIE_BITES, SLICE_SOUND, pieSliceItems
 from ..Shared.Rules.Eating import SATURATION, canEat, eatenFood
@@ -84,7 +85,7 @@ def OnServePlatedFood(args):
     itemDict = {"itemName": packagedFoodDict.get("item"), "count": 1}
     needsBowl = blockName[0:28] != "arris:rice_roll_medley_block"
     if needsBowl and handItemDict.get("newItemName") != "minecraft:bowl":
-        ShowTip(playerId, "你需要一个碗以食用它。")
+        ShowTip(playerId, Tips.FEAST_USE_CONTAINER, Tips.BOWL)         # JE 填的是盛菜容器的名字：客户端按玩家的语言查碗叫什么
         return
     if name is None:
         # 没有空盘可留的菜：最后一份盛出，整道菜消失

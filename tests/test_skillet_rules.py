@@ -148,17 +148,7 @@ def testBreakMarksExpireAndAreTakenOnce():
     assert marks.take((0, 9, 9, 9), 100.0) is False
 
 
-def _text(value):
-    """py2 下模块里的中文是 UTF-8 的 str，和本文件的 unicode 字面量比之前先解码。"""
-    return value.decode("utf-8") if isinstance(value, bytes) else value
-
-
-def testTipsAreTheJeZhCnTexts():
-    # JE lang zh_cn：item.farmersdelight.skillet.how_to_cook / .underwater，block.farmersdelight.skillet.invalid_item / .underwater
-    assert _text(Rules.TIP_HOW_TO_COOK) == "用另一只手拿着原料！"
-    assert _text(Rules.TIP_UNDERWATER_HAND) == "在水里可没法煎啊……"
-    assert _text(Rules.TIP_INVALID_ITEM) == "这东西可不能被烹饪……"
-    assert _text(Rules.TIP_UNDERWATER_BLOCK) == "被水泡着可没法烹饪啊……"
+# 煎锅的四句提示连同 JE 的键在 Shared/Data/Tips，和别的服务端提示一起由 tests/test_tips.py 核对
 
 
 if __name__ == "__main__":

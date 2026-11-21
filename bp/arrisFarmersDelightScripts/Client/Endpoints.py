@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Endpoints - 服务端调用的客户端端点：音效、碎屑、粒子、方块实体 molang、挥手（客户端）
+"""Endpoints - 服务端调用的客户端端点：音效、碎屑、粒子、方块实体 molang、挥手、提示（客户端）
 
-服务端用 Call("*", ...) 广播给全部客户端，这里按维度过滤（见 Server/Helpers/Fx.py）。
+音效、碎屑这些服务端用 Call("*", ...) 广播给全部客户端，这里按维度过滤（见 Server/Helpers/Fx.py）；提示只发给那一个玩家（OnTip）。
 端点名就是函数名，服务端按名字调用，改名要两边一起改。
 """
 from ..QuModLibs.Client import AllowCall
+from . import Texts
 from .Engine import compFactory, levelId, playerId
 from ..Shared.Data.FoodColors import FoodColors
-from ..Shared.Rules import BoardDust
+from ..Shared.Rules import BoardDust, TipWire
 
 
 def _elsewhere(args):
@@ -57,3 +58,13 @@ def SetEntityBlockMolang(args):
 @AllowCall
 def PlayAttackAnimationCommon(args):
     compFactory.CreatePlayer(playerId).Swing()
+
+
+@AllowCall
+def OnTip(payload):
+    """服务端的一句提示（Server/Helpers/Engine.ShowTip，载荷见 Shared/Rules/TipWire）：按这个玩家的语言查出那一句和值里的词，填好弹在物品栏上方。
+    和服务端原来的 SetOneTipMessage 是同一种提示（客户端的 SetTipMessage，官方文档也建议在客户端弹）。语言文件里没有这一句、或者那里的写法填不上值，
+    用跟着发来的中文（Texts.fill）：不丢、不露键名。"""
+    key, text, values = TipWire.read(payload)
+    words = tuple(Texts.of(*value) if isinstance(value, tuple) else value for value in values)
+    compFactory.CreateGame(levelId).SetTipMessage(Texts.fill(key, text, words))

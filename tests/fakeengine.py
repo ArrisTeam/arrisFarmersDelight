@@ -269,7 +269,7 @@ def install():
     module.GetEngineTypeStr = lambda entityId: (world.entities.get(entityId) or {}).get("type")
     module.GetCarriedItem = lambda playerId, getUserData=False: world.comp("Item", playerId).GetPlayerItem(0, 0, getUserData)
     module.SetCarriedItem = lambda playerId, itemDict: world.comp("Item", playerId).SetEntityItem(0, itemDict, 0)
-    module.ShowTip = lambda playerId, text: world.calls.append((playerId, "ShowTip", text))
+    module.ShowTip = lambda playerId, tip, *values: world.calls.append((playerId, "ShowTip", fdtest.tipText(tip, values)))
     module.serverApi = _Comp({"GetPlayerList": lambda: sorted(world.players)})
     sys.modules[ENGINE_MODULE] = module
     # 声音广播走 Call("*", "OnPlaySound", ...)：把它翻成 sounds 清单，测试读起来直接

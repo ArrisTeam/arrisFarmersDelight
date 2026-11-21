@@ -14,6 +14,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from .BoneMeal import ApplyBoneMeal
 from .MushroomColony import PlaceColony
+from ..Shared.Data import Tips
 from ..Shared.Data.Farming import cropsDict
 from ..Shared.Rules.ColonyRules import COLONY_BLOCKS
 from ..Shared.Rules.Ticks import probability
@@ -118,7 +119,7 @@ def _plantRice(playerId, itemDict, blockName, face, pos, dimensionId):
     if blockName not in _RICE_GROUND or face != 1:
         return                           # 和 JE 的 RiceItem 一样：不是泥土类 / 耕地的顶面就不提示
     if GetBlockName((x, y + 1, z), dimensionId) != "minecraft:water":
-        ShowTip(playerId, "这株作物很难在水洼外生存。")
+        ShowTip(playerId, Tips.RICE_INVALID_PLACEMENT)
         return
     SetNotCreateItem(playerId, itemDict)
     ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "dig.grass")
