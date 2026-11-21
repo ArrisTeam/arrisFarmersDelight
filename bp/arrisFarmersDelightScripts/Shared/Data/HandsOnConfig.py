@@ -6,7 +6,7 @@ JE 说明文字里别的模组的键（keg、kettle、grill、basin、cuisine_bo
 
 改哪里：基岩版没有玩家自己改的配置文件，整合包作者 / 服主直接改下面 CONFIG 的值，重启游戏（服务器）后生效：
 站点登记（Compat/Diegesis 步骤表里各站点的 register）只在启动时看一次，倍率和别的开关每次用到时现读。
-这张表只在装了场景交互前置、联动了（Shared/Rules/HandsOnMode）时才生效；没装前置包或它太旧时 Hands-On Delight 不在，表里写什么都不看，农夫乐事走原样。
+这张表只在装了沉浸式交互前置、联动了（Shared/Rules/HandsOnMode）时才生效；没装前置包或它太旧时 Hands-On Delight 不在，表里写什么都不看，农夫乐事走原样。
 服务端和客户端是同一份脚本，客户端用的是服务端的包带过来的这个文件：JE 里"配方书里的时间照服务端"在这里自然成立，
 站点开关也两端一致；JE 里 recipe_book 是每个玩家自己的偏好，这里是整个包统一的一个值。
 这张表不经联动契约（Api/LegacyModAttr.py）交给下游模组。

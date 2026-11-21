@@ -9,7 +9,7 @@ JE（FD 1.20）：
 基岩版：嗞嗞声由方块 JSON 的 netease:block_animate_random_tick（trigger_rate 1，每次轮到都发 BlockAnimateRandomTickEvent，和 JE 的 animateTick 同一个节奏），
 蒸汽和星星由 netease:block_entity 的 client_tick（ModBlockEntityTickClientEvent，每秒 20 次，对上 JE 的每刻）给出每次机会（和炉灶的火同一种做法，
 Shared/Rules/StoveFlame.py）；这里只管概率和位置，放声音放粒子在 Client/SkilletSteam.py。
-装了场景交互前置、煎锅站点开着时，场景（Compat/Diegesis/PanFx）画煎锅的声音和烟，方块实体的 mod_scene 为 1：这里不放，免得两份。
+装了沉浸式交互前置、煎锅站点开着时，场景（Compat/Diegesis/PanFx）画煎锅的声音和烟，方块实体的 mod_scene 为 1：这里不放，免得两份。
 """
 from .BlockDisplay import isItem
 from .StoveFlame import PARTICLE_RANGE, inRange  # noqa: F401 - 粒子离镜头超过 32 格不放（LevelRenderer.addParticleInternal），炉灶的火也是这一条

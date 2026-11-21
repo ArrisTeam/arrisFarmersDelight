@@ -35,7 +35,7 @@ BOWL = ("item.bowl.name", "碗")           # 一个词：原版碗的名字（�
 # 稻米只能种在浅水里（JE RiceItem.useOn）
 RICE_INVALID_PLACEMENT = ("block.farmersdelight.rice.invalid_placement", "这株作物很难在水洼外生存。")
 
-# 场景交互前置在场时，砧板上摆的菜工作台不出（Compat/Diegesis/DishCrafts.py）
+# 沉浸式交互前置在场时，砧板上摆的菜工作台不出（Compat/Diegesis/DishCrafts.py）
 DISH_ON_BOARD = ("arris_fd.tip.dish_on_board", "这道菜要在砧板上摆：右键砧板，先放底座再一层层往上放")
 
 # 拿展示实体删除器打掉了一个展示实体（Server/DisplayGuard.py）

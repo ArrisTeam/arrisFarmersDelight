@@ -3,7 +3,7 @@
 """没联动（前置包没装 / 太旧 / 还没判定）时 Hands-On Delight 的配置不生效，农夫乐事走自己原样的时间和玩法：
 HandsOnOptions 的每个取值函数在三种没联动的模式里都说 HoD 不在（站点开关假、倍率 1.0），不看 Shared/Data/HandsOnConfig.py 的表；联动了才照表读；
 厨锅按配方自己的时间煮、不要搅拌；存档里留着手放的煎锅 / 炉灶（以前装过前置包）交给农夫乐事原样煎 / 烤；从厨锅盛菜不往玩家数据里记 HoD 的"做过几份"。
-只用本仓库的东西（假引擎是 fakeengine / skilletkit，不要场景交互前置包的源码）。"""
+只用本仓库的东西（假引擎是 fakeengine / skilletkit，不要沉浸式交互前置包的源码）。"""
 from __future__ import print_function
 
 import fakeengine

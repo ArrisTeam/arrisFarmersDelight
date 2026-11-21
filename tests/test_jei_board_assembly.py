@@ -2,7 +2,7 @@
 # runner: both
 """JEI 的"砧板摆盘"分类（Compat/Jei/BoardAssembly.py、JeiClient.py；界面定义 rp/ui/jei_farmers_delight.json 的 jeiBoardAssemblyRecipe）。
 
-HoD 的 JEI 插件：登记摆盘分类、把这些菜的工作台配方藏起来。这里：只在场景交互前置联动上、砧板站点开着时登记（配置里 remove_crafting_recipes 关了就不藏）；
+HoD 的 JEI 插件：登记摆盘分类、把这些菜的工作台配方藏起来。这里：只在沉浸式交互前置联动上、砧板站点开着时登记（配置里 remove_crafting_recipes 关了就不藏）；
 按成品、按每样配料都查得到；老版本的 arrisJei 没有 hideRecipes 时只多出分类；一条配方画出来——打底的躺在板上、提示多一行，别的层三个一排上下居中，
 用不上的格子收起，成品写个数，有几种可换的那一格轮着显示。假的 JEI 注册表、假的界面控件。
 """

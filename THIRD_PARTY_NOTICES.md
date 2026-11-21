@@ -6,7 +6,7 @@
 | 原项目 | 许可 | 移植到 |
 |---|---|---|
 | [Hands-On Delight](https://github.com/Pocky-l/handson-delight) | MIT，Copyright (c) 2026 Pocky | `bp/arrisFarmersDelightScripts/Shared/Rules/HandsOn/`、`tests/test_handson_*.py` |
-| [Diegesis](https://github.com/Pocky-l/diegesis) | MIT，Copyright (c) 2026 Pocky | 汤面的着色器（见下表）。Diegesis 内核本身的移植在另一个作品「场景交互 · 前置」里，不在本仓库，它的声明随那个包走 |
+| [Diegesis](https://github.com/Pocky-l/diegesis) | MIT，Copyright (c) 2026 Pocky | 汤面的着色器（见下表）。Diegesis 内核本身的移植在另一个作品「沉浸式交互前置」里，不在本仓库，它的声明随那个包走 |
 
 除了代码，下面这些随包分发的素材和照着写的着色器也来自这两个项目（同一份 MIT 许可）：
 

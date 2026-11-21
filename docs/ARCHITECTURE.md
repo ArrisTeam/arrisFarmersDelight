@@ -37,7 +37,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
                         StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数；页脚的秒数带着配置的倍率）
                         HandsOnOptions（HoD 配置表的读法：JE 的缺省、read / readTime 的兜法、倍率夹进 0.1..10、派生规则、scaled；每次现读表，两端共用；没联动时说 HoD 不在）
-                        HandsOnMode（场景交互前置联动了没有：每端一个运行模式 pending / linked / outdated / standalone，linked() 问整个进程，whenDecided；只有 Compat/Diegesis/Presence 往里写）
+                        HandsOnMode（沉浸式交互前置联动了没有：每端一个运行模式 pending / linked / outdated / standalone，linked() 问整个进程，whenDecided；只有 Compat/Diegesis/Presence 往里写）
                         SyncTables  TableWire  TableDiff  TableMerge（下游在服务端追加的表怎么发给客户端：登记哪些表 / 编码 / 算差异 / 并表，见"联动契约与客户端的表"）
                         TipWire（服务端提示发给那个玩家的客户端的写法：哪一句、填什么）
                         FoodEffects（吃喝之后的追加结算：牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤；只返回动作，Server/FoodEffects 执行）
@@ -118,9 +118,9 @@ Client/                 客户端
 Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来
   Create/               机械动力配方（未安装则不做任何事）
-  Diegesis/             场景交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
+  Diegesis/             沉浸式交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
                         ServerSteps / ClientSteps 是步骤表（只放数据）、每个站点一步，步骤的实现是 BoardServerLink / PotServerLink / PanServerLink / GrillServerLink 和
-                        BoardClientLink / PotClientLink / PanClientLink / GrillClientLink（调站点的 register，登记上了再开连带的东西）；站点模块在步骤里才导入，见「联动（场景交互前置）」，
+                        BoardClientLink / PotClientLink / PanClientLink / GrillClientLink（调站点的 register，登记上了再开连带的东西）；站点模块在步骤里才导入，见「联动（沉浸式交互前置）」，
                         BoardLogic + BoardSlots / BoardGive / BoardChop / BoardAssemble / BoardTools / BoardEmit（服务端）+ BoardView + BoardDraw /
                         BoardDrawEvents / BoardThing / BoardFinishPlay（做成一道菜之前的十种收尾）/ BoardHandDraw（液体层倒、蛋层磕的那只手）/ BoardCutter + BoardMarkLine（刀口虚线，半透明粒子）+ BoardSeams（切过的缝，暗色半透明粒子）+ BoardStand（立着的刀 / 工具，
                         借来的半透明粒子）/ BoardEffects / BoardFx / BoardInv / BoardGlow（客户端）= 切菜板站点（切、摆盘、插工具），
@@ -159,7 +159,7 @@ Compat/
 - `Server/` 与 `Client/` 互不导入，也不导入 `Compat/`；联动模块在 `modMain.py` 里单独登记。
   联动模块按端分：服务端的（如 `Compat/Diegesis/BoardLogic.py`）不导入 `Client/`，客户端的反之。
   联动的入口、判定和步骤表（`ServerBoot` / `ClientBoot` / `Presence` / `Steps` / `ServerSteps` / `ClientSteps`）规则表里带一份"只许导入"的清单（QuModLibs、它们自己这一组、`Shared/Rules/HandsOnMode`、
-  客户端入口提醒用的 `Client/Engine`），站点模块只能在步骤里才导入（见「联动（场景交互前置）」）。
+  客户端入口提醒用的 `Client/Engine`），站点模块只能在步骤里才导入（见「联动（沉浸式交互前置）」）。
 - 一律显式导入，不用星号导入（`modMain.py` 的 QuMod 模板除外）。
 - 不出现 `import sys`、`__import__`、`namedtuple`、`eval` / `exec`、`pickle.loads`（网易机审与安全规则）。
 - 每个相对导入都要解析到真实模块；层级写错只有引擎加载时才报错，还会连累整条导入链。
@@ -240,9 +240,9 @@ def OnServerSkilletBlockUse(args):
 没实机核对客户端有没有这个接口）；JEI 联动（`Compat/Jei`，界面就绪时一次性登记）读的是登记那一刻的客户端表，晚到的下游内容不在 JEI 里；站点开着时表又变了，托盘亮不亮等下次开站才按新表算
 （`BoardView._usable` 每次开站建一份）；已经加载好的下游炉灶方块，场景要等下次加载 / 广播才建。
 
-## 联动（场景交互前置）
+## 联动（沉浸式交互前置）
 
-亲手做菜的站点（Hands-On Delight 的移植）要装单独的作品「场景交互 · 前置」才有；本包不依赖它：没装时就是原样的农夫乐事，Hands-On Delight 的东西一样也不跑。
+亲手做菜的站点（Hands-On Delight 的移植）要装单独的作品「沉浸式交互前置」才有；本包不依赖它：没装时就是原样的农夫乐事，Hands-On Delight 的东西一样也不跑。
 本文里写的 `docs/diegesis/DESIGN.md`（前置包内核和四个站点照 JE 怎么做的、实机量到的事实）是**前置包仓库里的文档**，不在本仓库、不随本仓库上传（2026-11-18 起）；
 两个仓库叠在同一个目录的开发机上它就在那个路径上，只有本仓库时没有这份文档。
 联动的做法照机械动力系列的附属包（无中生有等）：运行模式每端判定一次、记在一个地方，注册写成步骤表，业务模块在自己的步骤里才导入，一步出错不拦别的步骤。
@@ -274,7 +274,7 @@ def OnServerSkilletBlockUse(args):
   `tests/test_classic_block_display.py`），联动着但配置里关了砧板站点时一样；只有砧板站点在场（`HandsOnOptions.cuttingBoard()`）时板上的东西才摆成站点里的样子（HoD 的 `BoardScene`），开站、关站不跳。
   煎锅、炉灶不分模式：站点在场时场景接管、这份展示收起来。
 - **前置包太旧的提醒**（`ClientBoot`）：客户端的模式是 `outdated` 时，本地玩家进了世界（`OnLocalPlayerStopLoading`）在左上角（`CreateTextNotifyClient(levelId).SetLeftCornerNotify`，文字是 `str`）
-  提醒"前置模组场景交互 · 前置版本过旧，亲手做菜的站点不会启用，请更新"，隔 8 秒再提醒，共三次。没装前置包（`standalone`）不提醒、不打扰玩家；服务端没有这个提醒（日志里有一行）。
+  提醒"前置模组沉浸式交互前置版本过旧，亲手做菜的站点不会启用，请更新"，隔 8 秒再提醒，共三次。没装前置包（`standalone`）不提醒、不打扰玩家；服务端没有这个提醒（日志里有一行）。
 - **看现在的状况**：每次判定在日志里留一行（`[arrisFarmersDelight] 联动（server 端）：linked，前置包接口 3，board=ok，pot=ok，pan=ok，grill=ok`）；游戏里用 `execute_code`
   （`is_client` 为假是服务端、为真是客户端）：`from arrisFarmersDelightScripts.Compat.Diegesis import Presence as P; return P.report("server")`（客户端写 `"client"`），
   返回本端的模式、`linked`（整个进程）、前置包接口版本和每一步的 `[步骤名, 状态, 说明]`（状态是 `ok` / `skipped` / `failed`）。
@@ -874,7 +874,7 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 - dolorContainer：`test_dolor_vendor.py`（库文件与编译产物的哈希、界面文件登记、导入闭包；随库装入，不手改）、`test_rpc_caller_id.py`
   （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅的食谱书规则与
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
-- 场景交互前置包不在这个仓库里（它是单独的作品）。亲手做菜的站点要拿它的源码一起测：开发机上把它的两个包放在仓库根下的
+- 沉浸式交互前置包不在这个仓库里（它是单独的作品）。亲手做菜的站点要拿它的源码一起测：开发机上把它的两个包放在仓库根下的
   `diegesisBp/`、`diegesisRp/`，它自己的测试和测试小工具（`tests/test_diegesis_*.py`、`tests/dg*.py`）也放在 `tests/` 里，都不入库
   （`.git/info/exclude` 里忽略）。用到它的用例先 `import prereq`（`tests/prereq.py`）：旁边没有前置包时以 77 退出，跑器记成跳过。
   只有本仓库时 `py -3 tools/run_tests.py` 的最后一行是「N 项，失败 0，跳过 M」；`test_architecture.py` 只守本包，
@@ -896,7 +896,7 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   派生规则、`scaled`）、`bootkit.py` + `test_handson_options_boot.py`（真的 `ServerBoot` / `ClientBoot`（经 `Presence` 和步骤表）和站点模块，引擎换成"什么名字都给无害替身"的模块，前置包服务端 Api 和客户端 Registry 是真的：
   每个开关只关自己的站点（它的步骤是 `skipped`）和连带的东西、32 种组合两端一致、前置包 API 低于 3 整个不联动、没装前置包是 `standalone`）、`test_handson_options_pot.py` / `_pan.py` / `_skillet.py` / `_stove.py`（三种倍率对着 JE 的 `sideTicks` / `timeFor`、FD 右键放的不乘、站点关了的交还）、
   `test_handson_options_book.py`（食谱书开关）；`test_pot_view.py` 里还有拿着容器点锅的哪些节点算盛。
-- 联动（场景交互前置）：这几个只用本仓库的东西（`linkkit.py` 是它们的小工具：`link()` / `Modes` 拨联动状态、`install()` 装两端入口的假环境），旁边没有前置包也能跑——
+- 联动（沉浸式交互前置）：这几个只用本仓库的东西（`linkkit.py` 是它们的小工具：`link()` / `Modes` 拨联动状态、`install()` 装两端入口的假环境），旁边没有前置包也能跑——
   `test_handson_mode.py`（模式状态机、`linked()`、`whenDecided`）、`test_presence.py`（判定的各种先后：导入时就在 / 事件时才在 / 一直没有 / 太旧，客户端事件之前什么也不碰，模式先于步骤拨到 `linked`）、
   `test_presence_steps.py`（步骤执行器：出错 / 跳过 / 条件；两张表每个目标都存在）、`test_presence_boots.py`（真的入口和步骤模块，站点的 `register` 换成记账的：一个站点一步、连带的东西、关了的站点两端一致）、
   `test_presence_standalone.py`（没装 / 太旧时 `sys.modules` 里没有站点模块、没有它们的监听和端点；装了才有）、`test_presence_notice.py`（前置包太旧的提醒：三次、隔 8 秒、`str`）、

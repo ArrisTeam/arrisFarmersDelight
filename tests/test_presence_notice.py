@@ -4,6 +4,10 @@
 没装前置包（STANDALONE）、联动了（LINKED）、还没判定时什么也不提醒。真的 ClientBoot，引擎是 linkkit 里的假环境。只用本仓库的东西。"""
 from __future__ import print_function
 
+import glob
+import io
+import os
+
 import fdtest
 import linkkit as L
 
@@ -56,8 +60,19 @@ def testTheNoticeIsAStrWithTheCornerTextSayingWhatToDo():
     playerLoaded()
     text = env.notices[0]
     assert type(text) is str, "引擎的文本接口只收 str，unicode 会静默失败：%r" % (type(text),)
-    for word in ("农夫乐事", "场景交互", "前置", "更新", "站点"):
+    for word in ("农夫乐事", "沉浸式交互前置", "更新", "站点"):
         assert word in text, word
+    assert "场景交互" not in text, "前置包 2026-11-22 改名叫沉浸式交互前置（用户定的），旧名不再给玩家看"
+
+
+def testNoTextThePlayerReadsStillCallsThePrerequisiteByItsOldName():
+    """本包给玩家看的字（两个 manifest、语言文件）里没有前置包的旧名“场景交互”：2026-11-22 起它叫沉浸式交互前置。"""
+    found = []
+    for path in [os.path.join(fdtest.ROOT, "bp", "manifest.json"), os.path.join(fdtest.ROOT, "rp", "manifest.json")] + \
+            sorted(glob.glob(os.path.join(fdtest.ROOT, "rp", "texts", "*.lang"))):
+        with io.open(path, encoding="utf-8-sig") as handle:
+            found += [(os.path.basename(path), number) for number, line in enumerate(handle, 1) if u"场景交互" in line]
+    assert not found, found
 
 
 def testNothingIsReportedWithoutThePrerequisiteWithAGoodOneOrBeforeTheDecision():

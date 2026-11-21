@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""PanContents - 煎锅里的东西：方块实体数据里的 cookingDict 那一格，给场景交互前置的站点当槽组绑（服务端）
+"""PanContents - 煎锅里的东西：方块实体数据里的 cookingDict 那一格，给沉浸式交互前置的站点当槽组绑（服务端）
 
 前置包的 bindSlots 要的存储（size / get / set）：站点读写它就是读写方块自己的数据——FD 原样的右键放料、煎锅自己一件件煎、
 手工煎制的两面进度（HandFrying）、没人开站点时路过的人看到的，都是同一份。HoD 的 SkilletLogic 对 FD 煎锅的 getStoredStack / setItem

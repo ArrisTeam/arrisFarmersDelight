@@ -39,7 +39,7 @@ _TARGETS = {
     "wolfComponentsDict": Mobs.wolfComponentsDict,
     "uiGuideBookPath": GuideBook.uiGuideBookPath,
     "uiGuideBookScreen": GuideBook.uiGuideBookScreen,
-    # 场景交互前置在场时四个站点读的（2026-11-19 加进白名单；不装前置包时追加了也没人读）：
+    # 沉浸式交互前置在场时四个站点读的（2026-11-19 加进白名单；不装前置包时追加了也没人读）：
     "DishList": Dishes.DishList,                    # 砧板上摆的菜：一行一道，写法见 Shared/Data/Dishes.py
     "OneSidedList": Cooking.OneSidedList,           # 煎锅上只煎一面、不用翻的物品名
     "NotOnGrillList": Cooking.NotOnGrillList,       # 炉灶的烤架不收的物品名

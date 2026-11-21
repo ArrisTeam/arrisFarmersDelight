@@ -5,7 +5,7 @@
 放食物不看 LIT；只有点着的会烤，熄着的 FD 原样的件每一步冷却（AbstractStoveBlockEntity.coolItems：进度每刻 -2，不低于 0），手放的件不动（HoD）。
 点火 / 灭火换方块、数据带过去在 StoveSwap.py（用打火石、铲子等在 StoveFire.py）。
 烤位上的东西只存在方块实体数据 "0".."5"，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
-炉灶站点（场景交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
+炉灶站点（沉浸式交互前置在场时）手放 / 手翻过的烤位由 HandGrill.py 两面分开烤、等着翻（进度存在方块实体数据 handGrill 里，重启后在第一次 tick 接上）；
 右键放上去的照这里每件 30 秒烤好弹出。
 站在点燃的炉灶上会被烫（JE 的 stepOn，规则在 Shared/Rules/StoveBurn.py；引擎事件 OnStandOnBlockServerEvent 要方块带 netease:on_stand_on）。
 上面盖了东西（锅、煎锅、任何方块，Shared/Rules/StoveCover）：烤架上的东西全丢出来，生的熟的、手放的 FD 的都一样（FD 的 shouldDropItems）；

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""HandsOnMode - 场景交互前置（Hands-On Delight 的站点）在本端联动了没有：等着判定、联动着、前置太旧、没装前置（双端，纯逻辑）
+"""HandsOnMode - 沉浸式交互前置（Hands-On Delight 的站点）在本端联动了没有：等着判定、联动着、前置太旧、没装前置（双端，纯逻辑）
 
 联动的判定只在 Compat/Diegesis/Presence.py 做，结果经 decide 记在这里；本包别的地方都问这里，不自己去找前置包
 （和机械动力系列的附属包问 CreateSDK.Presence.mode 是同一个做法）。判定之前一律当没联动：农夫乐事就是原样的农夫乐事。

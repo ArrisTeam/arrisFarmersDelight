@@ -18,7 +18,7 @@ FD 里写了 sound 的只有削皮的 21 条配方（原木、去皮前的木头
     TURTLE_EGG_CRACK           block.turtle_egg.crack（手磕蛋层：KitchenLooks.crack）
     被切东西的材质击打 / 破坏    hit.* / dig.*（按物品名里的词分类，认不出是木头，和 JE 的 material() 一样）
 随机的那一点音调由调用方传进来的 rng 给（测试里换成定值）。站点里的人（客户端 BoardView）和旁观的人（客户端 BoardWatch）用同一份，所以两边听到的一样。
-经典玩法（没装场景交互前置的 FD 原样砧板，Server/CuttingBoard.py）放的是 FD 自己的那几声（文件末尾的 FD_PLACE / FD_TAKE / processed），不带 HoD 站点的拿起声、刀口声。
+经典玩法（没装沉浸式交互前置的 FD 原样砧板，Server/CuttingBoard.py）放的是 FD 自己的那几声（文件末尾的 FD_PLACE / FD_TAKE / processed），不带 HoD 站点的拿起声、刀口声。
 """
 import random
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""经典厨锅界面上玩家看得到的字按玩家的语言给（dolorContainer 的界面：没装场景交互前置、或者 HoD 配置里关了厨锅站点时右键厨锅开的那个）。
+"""经典厨锅界面上玩家看得到的字按玩家的语言给（dolorContainer 的界面：没装沉浸式交互前置、或者 HoD 配置里关了厨锅站点时右键厨锅开的那个）。
 
 字从哪来、谁来查：
 - 标题：容器类型的标题（Server/CookingPotHost.TITLE）是 JE 的容器标题键 container.farmersdelight.cooking_pot，库在客户端按玩家的语言查；

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""经典玩法的煎锅（Server/Skillet.py 的右键放食物 / 空手取回，没装场景交互前置 / 站点关了时走的）对 FD 的 SkilletBlock.use 和 SkilletBlockEntity.addItemToCook，用假引擎驱动。
+"""经典玩法的煎锅（Server/Skillet.py 的右键放食物 / 空手取回，没装沉浸式交互前置 / 站点关了时走的）对 FD 的 SkilletBlock.use 和 SkilletBlockEntity.addItemToCook，用假引擎驱动。
 
 JE：addItemToCook 把手里的食物 insertItem 进锅里那一格（ItemStackHandler）：空着、或是同一种（isSameItemSameTags）就放进去，叠到一叠的最大数量为止，剩下的留在手里；
 放进去了（数量变了）才算成功，成功一次这一件的进度从头算（cookingTime = 0）；放不进去什么也不发生；含水的提示 underwater，没有营火配方的提示 invalid_item。

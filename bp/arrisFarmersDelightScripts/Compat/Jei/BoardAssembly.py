@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BoardAssembly - JEI 的"砧板摆盘"分类，和藏起被拦的工作台配方（客户端）
 
-对应 Hands-On Delight：compat/jei/HandsOnJeiPlugin.java + AssemblyCategory.java。只在场景交互前置联动上、砧板站点开着时才登记（JeiClient 判）：
+对应 Hands-On Delight：compat/jei/HandsOnJeiPlugin.java + AssemblyCategory.java。只在沉浸式交互前置联动上、砧板站点开着时才登记（JeiClient 判）：
 那时三明治这类菜改在砧板上摆、工作台上的合成被拦（Compat/Diegesis/DishCrafts），JEI 里要看得到它们在砧板上怎么摆，而且不该再看到那条做不出的工作台配方
 （配置里的 remove_crafting_recipes 关了就不藏，和服务端拦不拦是同一个开关）。没装前置包时这个模块不会被调，JEI 照旧只有工作台配方。
 画法照 AssemblyLayout：打底的那一样躺在板上（提示里多一行"先放在砧板上"），别的层三个一排放在格子里（几排上下居中），箭头，成品；

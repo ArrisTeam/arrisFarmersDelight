@@ -2,7 +2,7 @@
 # runner: py3
 """架构守卫：分层与导入方向、机审禁用写法、相对导入可解析、RPC 端点身份注入、文件与函数长度。
 
-查的是农夫乐事行为包（bp/arrisFarmersDelightScripts）。场景交互前置包不在这个仓库里：它的规则表和它自己多出来的两条在它那边
+查的是农夫乐事行为包（bp/arrisFarmersDelightScripts）。沉浸式交互前置包不在这个仓库里：它的规则表和它自己多出来的两条在它那边
 （tests/dgarch.py、tests/test_diegesis_architecture.py），那份测试把这里的 PACKS 换成它的规则表，同一套检查再跑一遍。
 规则（违反即失败；确需例外写进 PACKS 里的 allowLong 并注明理由）：
 1. Shared/ 不导入引擎（mod.*）、QuModLibs、Server、Client、Compat、Api；Server/ 与 Client/ 互不导入，也不导入 Compat/。
@@ -13,7 +13,7 @@
 4. 服务端的 @AllowCall 端点必须同时 @InjectHttpPlayerId：玩家身份只认引擎注入的；端点名在同一端唯一
 5. 模块名不与 py2 会被隐式相对导入劫持的标准库 / 引擎顶层名同名（random.py、time.py、common.py……）
 6. 代码文件 ≤ 250 行（Shared/Data/ 纯数据表除外）、函数 ≤ 120 行
-7. 规则表里带 "only" 的文件只许导入那几个前缀（任何位置的相对导入都算）：场景交互前置的联动入口（ServerBoot / ClientBoot）、判定（Presence、Steps）和两张步骤表
+7. 规则表里带 "only" 的文件只许导入那几个前缀（任何位置的相对导入都算）：沉浸式交互前置的联动入口（ServerBoot / ClientBoot）、判定（Presence、Steps）和两张步骤表
    只导入它们自己这一组、Shared 的 HandsOnMode、QuModLibs 和客户端入口要的 Client/Engine——站点模块在步骤里才导入，没装前置包时它们连同它们的 @Listen / @AllowCall 一个也不会被导入
 8. 绝对导入只许引擎（mod.*）、本包自己（脚本根的包名）和在游戏里导入过的标准库模块（ENGINE_STDLIB）：引擎的 Python 是删减过的（没有 numbers 这些），
    离线的 CPython 什么都有，用了没有的模块测试照样过、进游戏整条导入链就断。这一条连拷入的 dolorContainer、生成的 dolorLayouts.py 一起查（它们也在游戏里跑），只有 QuModLibs 不查

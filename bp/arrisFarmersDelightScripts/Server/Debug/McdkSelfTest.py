@@ -139,7 +139,7 @@ def _custom(name, data=None):
 
 
 def caseCuttingBoardStation(playerId, base):
-    """场景交互前置在场时：开站 -> 把背包里的 3 块生牛肉整叠放上去（place，from 是背包格）-> 铁刀在背包里（选中的快捷栏格）切 1 刀 ->
+    """沉浸式交互前置在场时：开站 -> 把背包里的 3 块生牛肉整叠放上去（place，from 是背包格）-> 铁刀在背包里（选中的快捷栏格）切 1 刀 ->
     6 块碎牛肉进背包、板清空 -> 关站。直接驱动前置包服务端的 Manager（与客户端点击走同一条校验路径），前置没装则跳过。"""
     started = time.time()
     runtime = serverApi.ImportModule("arrisDiegesisScripts.Server.Runtime")

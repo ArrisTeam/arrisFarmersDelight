@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BoardDish - 砧板摆盘的存档：板上叠着的层、做好的那叠（服务端）
 
-只在场景交互 · 前置在场时由砧板站点（Compat/Diegesis/BoardDish.py）往里放；经典玩法也认它：右键砧板把它们全还给玩家，
+只在沉浸式交互前置在场时由砧板站点（Compat/Diegesis/BoardDish.py）往里放；经典玩法也认它：右键砧板把它们全还给玩家，
 拆砧板时掉出来。存在方块实体数据 dishLayers（物品字典的列表，底座在前）和 dishDone（做好的那叠或 None），
 整件存：名字、aux、数量和附魔 / 耐久 / 改名 / extraId / userData（Shared/Rules/HandsOn/ItemData.py），读出来换回物品字典，还给玩家 / 掉出来都原样（掉出来是随机散开，Helpers/Drops.ScatterItem）；
 变了就广播给各客户端画（Helpers/BlockItems.PublishBoardDish）。

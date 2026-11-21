@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""prereq - 要场景交互前置包（arrisDiegesis）源码的用例先导入它（不是测试本身，跑器只收 test_*.py）
+"""prereq - 要沉浸式交互前置包（arrisDiegesis）源码的用例先导入它（不是测试本身，跑器只收 test_*.py）
 
 前置包是单独的作品，不在这个仓库里：玩家装了它，农夫乐事才启用亲手做菜的站点（Compat/Diegesis）。开发机上它的两个包放在仓库根下的
 diegesisBp/、diegesisRp/，它自己的测试小工具是 tests/dg*.py（都不入库）；站点的用例要拿它的源码一起跑。
@@ -17,5 +17,5 @@ PACK = os.path.join(ROOT, "diegesisBp", "arrisDiegesisScripts")
 KIT = os.path.join(ROOT, "tests", "dgtest.py")
 
 if not (os.path.isdir(PACK) and os.path.isfile(KIT)):
-    print("跳过：旁边没有场景交互前置包（diegesisBp/ 和它的测试小工具 tests/dg*.py），它不在这个仓库里")
+    print("跳过：旁边没有沉浸式交互前置包（diegesisBp/ 和它的测试小工具 tests/dg*.py），它不在这个仓库里")
     sys.exit(77)

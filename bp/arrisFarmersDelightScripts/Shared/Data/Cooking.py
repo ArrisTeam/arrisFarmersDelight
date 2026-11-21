@@ -47,7 +47,7 @@ StoveList = [
     "arris:stove"
 ]
 
-# 煎锅站点（场景交互前置在场时）上只煎一面、不用翻的东西（HoD 的 KitchenTags.ONE_SIDED，JE 的物品标签，默认只有蛋）。下游模组经联动契约往里追加名字
+# 煎锅站点（沉浸式交互前置在场时）上只煎一面、不用翻的东西（HoD 的 KitchenTags.ONE_SIDED，JE 的物品标签，默认只有蛋）。下游模组经联动契约往里追加名字
 OneSidedList = ["minecraft:egg"]
 
 # 炉灶站点的烤架不收的东西（HoD 的 KitchenTags.NOT_ON_GRILL：会从烤架的缝里漏下去，默认只有蛋；煎锅照收）。下游模组经联动契约往里追加名字

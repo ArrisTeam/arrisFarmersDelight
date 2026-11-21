@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """linkkit - 联动（Shared/Rules/HandsOnMode、Compat/Diegesis 的 Presence 和两个入口）离线测试的共用小工具（不是测试本身，跑器只收 test_*.py）
 
-只用本仓库的东西：旁边没有场景交互前置包也能跑，所以这里不导入 dg* 小工具、也不 import prereq。
+只用本仓库的东西：旁边没有沉浸式交互前置包也能跑，所以这里不导入 dg* 小工具、也不 import prereq。
 - link() / unlink() / Modes：把两端的联动状态拨成已联动 / 还没判定 / 指定的模式。要站点和 HoD 的配置照常生效的测试在导入小工具时 link() 一次
   （optkit、potfake、boardkit、panfake、stovekit、bootkit 都这样）；没联动时 HandsOnOptions 说 HoD 不在。
 - Loose / loosen：缺的名字补一个无害替身的模块，把引擎入口换成"什么名字都能 from import"的模块。

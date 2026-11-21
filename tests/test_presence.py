@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""场景交互前置的联动判定（Compat/Diegesis/Presence.attach）：每端判定一次，找到前置包的接口、API_VERSION 够（REQUIRED_API_VERSION，一个数）就先把模式拨到 LINKED 再跑步骤表，
+"""沉浸式交互前置的联动判定（Compat/Diegesis/Presence.attach）：每端判定一次，找到前置包的接口、API_VERSION 够（REQUIRED_API_VERSION，一个数）就先把模式拨到 LINKED 再跑步骤表，
 找到但太旧是 OUTDATED、一步不跑，到了"全部 Addon 脚本加载完成"那个事件还没有就是 STANDALONE。服务端导入时先找一次，客户端只在事件里找。
 前置包、引擎、步骤模块都是假的（直接调 Presence.attach，不经入口模块），只用本仓库的东西。"""
 from __future__ import print_function

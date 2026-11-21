@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """StationBooks - 四个站点旁的食谱书页：厨锅、砧板（摆盘 + 切）、煎锅、炉灶（双端，纯规则）
 
-对应 Hands-On Delight 的 PotBook / BoardBook / SkilletBook / StoveBook。页的写法见场景交互 · 前置的 Shared/Book.py：
+对应 Hands-On Delight 的 PotBook / BoardBook / SkilletBook / StoveBook。页的写法见沉浸式交互前置的 Shared/Book.py：
 {"key", "item"（成品）, "ways"（写法：[[这一格能放的 (物品名, aux), ...], ...]）, "foot"（脚注物品）, "note", "kind"（标签）}。
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，

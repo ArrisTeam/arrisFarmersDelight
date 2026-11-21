@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""经典玩法的砧板（Server/CuttingBoard.py，没装场景交互前置 / 站点关了 / 潜行右键时走的）对 FD 的 CuttingBoardBlock.use 和 CuttingBoardBlockEntity，用假引擎驱动。
+"""经典玩法的砧板（Server/CuttingBoard.py，没装沉浸式交互前置 / 站点关了 / 潜行右键时走的）对 FD 的 CuttingBoardBlock.use 和 CuttingBoardBlockEntity，用假引擎驱动。
 
 JE：板空着、没插工具时 canAddItem 对任何东西都成立（ItemStackHandler 什么都收），所以什么都能摆上去；板上有东西、放不上去的（别的东西、同一种但叠满了或数据不一样）
 走 processStoredItemUsingTool：板上的东西没有切法提示 invalid_item，手里的工具不对提示 invalid_tool，对了切一件、提示 remaining_items；

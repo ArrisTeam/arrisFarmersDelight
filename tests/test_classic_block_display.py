@@ -2,7 +2,7 @@
 # runner: both
 """没装前置包（或砧板站点关着）时砧板 / 煎锅 / 炉灶上东西的世界展示是 FD 自己的渲染器（Shared/Rules/BlockDisplay.py）：
 CuttingBoardRenderer、SkilletRenderer、DefaultStoveRenderer 的 PoseStack 逐条照抄成这里的 Java 公式，和我们的摆法逐项对：位置、大小、高度、错开、朝向、一叠几张。
-没有场景交互前置包的东西：不导入 dg* 小工具、不 import prereq，只用本仓库的联动小工具（linkkit）拨运行模式。
+没有沉浸式交互前置包的东西：不导入 dg* 小工具、不 import prereq，只用本仓库的联动小工具（linkkit）拨运行模式。
 
 FD 的几条规矩（client/renderer/*.java）：
 - 画的是 ItemDisplayContext.FIXED：贴图物品（item/generated）的 FIXED 变换是绕 Y 转 180 度、缩放 1，所以 scale(s) = s 格宽；方块物品（父模型 block/block）FIXED 缩放 0.5，

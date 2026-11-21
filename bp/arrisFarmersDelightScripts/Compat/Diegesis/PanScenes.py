@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """PanScenes - 本客户端全部煎锅场景的登记与调度：方块实体加载 / 卸载、服务端广播、每帧推进（客户端）
 
-装了场景交互前置才启用（PanClientLink 这一步导入本模块、调 enable）；没装时本模块不会被导入，煎锅照旧是农夫乐事原样（食物由 Client/BlockItems 摆）。
+装了沉浸式交互前置才启用（PanClientLink 这一步导入本模块、调 enable）；没装时本模块不会被导入，煎锅照旧是农夫乐事原样（食物由 Client/BlockItems 摆）。
 - 方块实体在本端加载：建场景，按方块实体数据里存的（cookingDict、heatEnable、panFrying）先摆出来；重复加载（区块重载）当作重建；
 - 服务端 Server/PanLook.py 广播给 32 格内的人：OnPanLook(payload)，带 event 的是一次性的表现（放进来、被拒、颠、取走、煎好）；
 - 每个渲染帧：近的每帧算，远的隔几帧算一次、不放粒子声音，太远的不算。

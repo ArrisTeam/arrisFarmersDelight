@@ -3,7 +3,7 @@
 
 煎锅物品放成方块（只有潜行才放）、方块里记着那一件煎锅、拆掉原样掉回在 Server/SkilletItem.py，放置本身在 Server/ItemToBlock.py（与派共用一份）。
 锅里的东西只存在方块实体数据 cookingDict，画面由各客户端按广播自己渲染（Helpers/BlockItems.py），不再生成展示实体。
-煎锅站点（场景交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
+煎锅站点（沉浸式交互前置在场时）手放的一批由 HandFrying.py 两面分开煎、等着颠锅；右键放进来的照这里一件一件煎。
 一件煎多久照 JE（SkilletBlock.getSkilletCookingTime：6 秒，方块里那件煎锅带火焰附加 I 是 4 秒、II 起 3 秒）；
 含水的煎锅（液体层有水）不能煎：放食物提示"被水泡着可没法烹饪啊……"，锅里已有的东西浮出来（JE SkilletBlockEntity.cookingTick：ItemUtils.dropItems，
 每叠从方块里随机一点掉出来）。煎好的一件从锅心往上、往侧面带着初速弹出去（cookAndOutputItems:102-105，Helpers/Drops.PopFromPan）；拆了锅锅里的东西也是随机散出来

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""没装场景交互前置（或它太旧）时 Hands-On Delight 相关的东西一样也不跑：两个入口只挂 Presence，Compat/Diegesis 里除了两个入口、Presence、Steps、两张步骤表，
+"""没装沉浸式交互前置（或它太旧）时 Hands-On Delight 相关的东西一样也不跑：两个入口只挂 Presence，Compat/Diegesis 里除了两个入口、Presence、Steps、两张步骤表，
 别的模块一个也不导入——所以它们的 @Listen / @AllowCall 也一个都不存在（原来入口在顶层导入全部站点模块，没装前置包时场景模块每帧的监听和端点照样挂着）。
 装了、够新时站点模块由步骤导入、监听和端点才出现；客户端在"全部 Addon 脚本加载完成"之前什么也不碰。真的入口，引擎是 linkkit 里的假环境。只用本仓库的东西。"""
 from __future__ import print_function

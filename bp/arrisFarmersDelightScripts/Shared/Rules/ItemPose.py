@@ -3,7 +3,7 @@
 
 实机标定（3.10，2026-11-16；边长 2026-11-19 重量）：物品贴图轴心在底边中点，缩放 1 时边长 0.45 格（ITEM_SPAN）；rot = (0, 0, 0) 竖立、正面朝 -Z；
 rot = (x, y, z) 表示 R = Rz(z)·Rx(x)·Ry(y)。坐标是格，方向是世界的 (dx, dz)。
-与场景交互前置包的 Client/PropMath.py 同一套（两个包互不依赖，各带一份）；离线测试见 tests/test_block_display.py。
+与沉浸式交互前置包的 Client/PropMath.py 同一套（两个包互不依赖，各带一份）；离线测试见 tests/test_block_display.py。
 """
 import math
 

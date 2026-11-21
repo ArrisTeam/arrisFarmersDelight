@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ClientBoot - 场景交互前置的客户端联动入口：只挂 Presence，装了前置包才按步骤表联动；前置包太旧时提醒玩家更新（客户端）
+"""ClientBoot - 沉浸式交互前置的客户端联动入口：只挂 Presence，装了前置包才按步骤表联动；前置包太旧时提醒玩家更新（客户端）
 
 单独在 modMain 里登记，Client/ 不导入 Compat/。和 ServerBoot 一样不导入任何站点模块（它们在 ClientSteps 的步骤里才被导入），
 前置包没装时不联动、不提醒，什么也不做：方块照农夫乐事原样用，右键开经典界面或放料取料。
@@ -13,7 +13,7 @@ from ...Shared.Rules import HandsOnMode
 from . import Presence
 from .ClientSteps import STEPS
 
-NOTICE = "§c[农夫乐事] §f前置模组 §e场景交互 · 前置§f 版本过旧，亲手做菜的站点不会启用，请更新。"     # 引擎的文本接口只收 str
+NOTICE = "§c[农夫乐事] §f前置模组 §e沉浸式交互前置§f 版本过旧，亲手做菜的站点不会启用，请更新。"     # 引擎的文本接口只收 str
 NOTICE_TIMES = 3
 NOTICE_GAP = 8.0
 
