@@ -13,7 +13,9 @@ Layout = fdtest.load("Shared.Rules.HandsOn.PanLayout")
 Land = fdtest.load("Shared.Rules.HandsOn.PanLand")
 Toss = fdtest.load("Shared.Rules.HandsOn.PanToss")
 EggLook = fdtest.load("Shared.Rules.EggLook")
+Cooking = fdtest.load("Shared.Data.Cooking")
 BEEF, COOKED, EGG, FRIED = "minecraft:beef", "minecraft:cooked_beef", "minecraft:egg", "arris:fried_egg"
+POTATO, BAKED = "minecraft:potato", "minecraft:baked_potato"
 DT = 1.0 / 120.0
 
 
@@ -460,6 +462,31 @@ def testNoOtherFoodIsEverDrawnAsAnEggLook():
         assert show.nodes["piece_0"].item["newItemName"] == BEEF
     apply(show, BEEF, 1, down=1.0, up=1.0)
     assert show.nodes["piece_0"].item["newItemName"] == COOKED
+
+
+def testAOneSidedFoodThatIsNotAnEggIsNeitherDrawnAsAnEggNorCracked():
+    """HoD 的 one_sided（只煎一面、不翻）不是 cracked（蛋）：下游往 OneSidedList 里加的马铃薯照样画它自己（朝上那面熟了画烤马铃薯），
+    第二块直接落进来、热锅里嗞一声，不用手在锅沿磕（SkilletBehavior 274 行看的是 isCracked）；蛋照旧。测完从活的列表里删掉。"""
+    Cooking.OneSidedList.append(POTATO)
+    try:
+        show = make(heated=True)
+        apply(show, POTATO, 1, down=0.5, up=0.5)
+        assert show.nodes["piece_0"].item["newItemName"] == POTATO, "不画成煎蛋"
+        apply(show, POTATO, 2, down=0.5, up=0.5)
+        assert show.cracking[1] is None and show.nodes["piece_1"].visible and not show.waitingIn[1], "不磕：直接落进来"
+        events = run(show, 1.2)
+        assert not kinds(events, type="sound", name="egg_crack") and not kinds(events, type="particle", style="dust")
+        assert not show.nodes["hand_1"].visible and not show.nodes["spill_1"].visible
+        assert len(kinds(events, type="particle", style="fat")) >= 6, "落进热锅溅油星（hitsTheFat）"
+        apply(show, POTATO, 2, down=1.0, up=1.0)
+        assert show.nodes["piece_0"].item["newItemName"] == BAKED
+    finally:
+        Cooking.OneSidedList.remove(POTATO)
+    assert Cooking.OneSidedList == [EGG]
+    show = make(heated=True)
+    apply(show, EGG, 1)
+    apply(show, EGG, 2)
+    assert show.nodes["piece_0"].item["newItemName"] == EggLook.ITEMS[0] and show.cracking[1] is not None, "蛋照旧：画打开的蛋、在锅沿磕"
 
 
 def testEggRimAndStartFollowTheCursorOnlyForTheCook():

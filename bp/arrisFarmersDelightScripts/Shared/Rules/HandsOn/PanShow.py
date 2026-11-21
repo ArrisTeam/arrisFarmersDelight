@@ -10,7 +10,8 @@ Java 里用节点（piece_N 上面的、under_N 垫在下面的、lift_N 走的�
 
 整件事分在几个模块：PanLayout（摆法）、PanLand（落、走、蛋）、PanToss（颠锅）、PanHeat（油星热气声音）、PanOil（油膜）、PanStroke（手势）。
 这里是它们共用的状态和 refresh（refresh 228-305）、drawPiece（312-334）、frame（465-488）、onEffect（880-916）。
-规则（能不能煎、熟了变什么、蛋只煎一面）由调用方给的 rules 回答：canFry / friedOf / isOneSided。
+规则（能不能煎、熟了变什么、是不是蛋）由调用方给的 rules 回答：canFry / friedOf / isCracked。蛋看的是 isCracked（KitchenTags.CRACKED），
+不是只煎一面的 isOneSided（ONE_SIDED，服务端的煎法）：下游往 OneSidedList 里加的照样画它自己、直接落进来。
 """
 from functools import partial
 
@@ -79,7 +80,8 @@ class PanShow(object):
     # ---- 食物的样子 ----
 
     def isCracked(self, stack):
-        return stack is not None and self.rules.isOneSided(stack["newItemName"])
+        """是蛋（KitchenLooks.isCracked）：画打开的蛋、在锅沿磕开。"""
+        return stack is not None and self.rules.isCracked(stack["newItemName"])
 
     def cookedOf(self, raw):
         """营火把它做成什么：熟的样子（没有就是它自己，347-350）。"""

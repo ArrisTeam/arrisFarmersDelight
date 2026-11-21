@@ -12,7 +12,8 @@
 - 不用染了（件拿走了、熟了换成熟的图、朝上那面还生着、换成别的东西、场景收掉）：粒子删掉；
 - 没变的不碰引擎：每帧只比一下掉落物的样子和要染的颜色，变了的才发；
 - 进世界头几秒图集和粒子系统还没好（GetIconInfo 回 None、Create 回 0）：这一帧不画，下一帧再试；老引擎没有 GetIconInfo（3.10 之前）：一件都不染。
-和 JE 不一样的：只染朝上那面的顶面（JE 连底面、四边一起乘），只在停着时染（JE 飞着、翻着也染着）。蛋是 EggLook 那几件预染色的显示物品，不叠；
+和 JE 不一样的：只染朝上那面的顶面（JE 连底面、四边一起乘），只在停着时染（JE 飞着、翻着也染着）。蛋（KitchenTags.CRACKED，PanStation.isCracked）
+是 EggLook 那几件预染色的显示物品，不叠——只煎一面的（ONE_SIDED）不一定是蛋，下游追加进 OneSidedList 的照别的食物染；
 物品类型是方块的（画成立方体的、画成平面却按方块抬高的，Shared/Data/FlatBlockItems）不叠，营火配方里没有（海带实机看过：itemType 是空串、
 掉落物是普通的平面贴图，照染）；下游追加、表里没有颜色的不染。实机核对（2026-11-22，测试的会话 tint）：俯视、斜 30°、四个炉灶朝向都盖得严，
 白天 / 夜里 / 方块光下受光和掉落物一样，颠锅、翻面时收起、落稳 0.1 秒后按翻上来那面的颜色再亮。
@@ -146,7 +147,7 @@ def _colorOf(name, cookedName, up):
 
 def panWanted(show, props):
     """一口煎锅（PanScene 的 show、props）这一帧要染的件：{节点名: (物品, 中心, 姿态, 缩放, 颜色)}。JE 的 drawPiece 给锅里每一块（piece_N、under_N）
-    同一个颜色：锅里那一份朝上那面画到哪（shownUp，每 1/12 才变）；蛋不叠。"""
+    同一个颜色：锅里那一份朝上那面画到哪（shownUp，每 1/12 才变）；蛋（PanShow.isCracked）不叠，只煎一面的别的东西照染。"""
     shown = show.shown
     if shown is None or show.isCracked(shown):
         return {}
@@ -159,11 +160,12 @@ def panWanted(show, props):
 
 def stoveWanted(pieces):
     """一座炉灶（StoveScene 的 GrillPieces.Pieces）这一帧要染的件：{烤位: (物品, 中心, 姿态, 缩放, 颜色)}。每件按自己朝上那面画到哪（Pieces.up，
-    StoveBehavior.draw 的 shownUp[place]）；单面的（蛋：EggLook 的显示物品）、掉落物没建成的（引擎没给实体，WorldProp 没有姿态）不叠。"""
+    StoveBehavior.draw 的 shownUp[place]）；蛋（isCracked：EggLook 的显示物品）、掉落物没建成的（引擎没给实体，WorldProp 没有姿态）不叠，
+    只煎一面的别的东西（下游追加进 OneSidedList 的）照染。"""
     wanted = {}
     for place, entry in enumerate(pieces.props):
         item = pieces.shown[place]
-        if entry is None or not entry[1].alive or item is None or GrillStation.isOneSided(item["newItemName"]):
+        if entry is None or not entry[1].alive or item is None or GrillStation.isCracked(item["newItemName"]):
             continue
         color = _colorOf(item["newItemName"], GrillStation.grilledOf(item["newItemName"]), pieces.up[place])
         if color is not None:

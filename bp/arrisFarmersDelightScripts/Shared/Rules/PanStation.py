@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
-"""PanStation - 煎锅站点的纯规则：站点声明（schema）、放得进吗、蛋只煎一面、一面要多久（双端）
+"""PanStation - 煎锅站点的纯规则：站点声明（schema）、放得进吗、哪些只煎一面、哪些是蛋、一面要多久（双端）
 
 对应 Hands-On Delight：station/SkilletStation.java（schema：PAN 槽一格、kept、什么都不让"库"自己放）与 station/SkilletCooking.java 的
 takes / isOneSided / sideTicks / place。两面进度的状态机在 HandsOn/Frying.py。本移植的煎锅一件 6 秒（营火 30 秒的 20%，FD 原样，
 火焰附加 I 4 秒、II 起 3 秒），手放的一批按 Frying.sideSeconds 算一面：6 * sqrt(件数) / 1.5 / 2，一件 2 秒一面、16 件 8 秒一面。
+
+HoD 的两个物品标签分开问：isOneSided（KitchenTags.ONE_SIDED，只煎一面、不翻：服务端怎么煎，SkilletCooking.fry / StoveCooking.tick）
+和 isCracked（KitchenTags.CRACKED，蛋：打开了躺着、画成煎蛋、在锅沿磕开，客户端的样子，KitchenLooks.isCracked / opened / fryingTint）。
+缺省两样都只有蛋（JE 的 one_sided 是 #cracked）；下游经联动契约往 OneSidedList 里加的只煎一面，样子照旧是它自己。
 
 JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的点击：放走自定义动作 place（光标上的一叠，左键整叠、右键一个；托盘里 Shift 点
 走 onInventoryShiftClick），取走 take。基岩版内核对非空槽先问 mayTake，所以光标栈放进有东西的锅只能走 place；托盘里 Shift 点是内核的
 QUICK_MOVE，它只看 pan 槽组的规则（accepts、一批 16 件的上限）和 mayPlace——两条路用的是同一份判断（mayPlace / SlotRules）。
 """
 from ..Data.Cooking import CanCookedFoodDict, OneSidedList
+from ..Data.PotSunk import CRACKED as CRACKED_KINDS
 from . import HandsOnOptions as Options
 from .HandsOn import Frying
 
@@ -20,6 +25,7 @@ BATCH = Frying.BATCH                          # 一锅最多放几件
 SKILLET_SECONDS = 6.0                         # FD 原样煎一件要多久（Server/Skillet.py 的 COOK_TIMER 从 7 倒数到 1）
 CAMPFIRE_SECONDS = 30.0                       # 营火配方的时间（600 刻）：煎锅的时间从它算
 ONE_SIDED = OneSidedList                      # 只煎一面、不用翻（HoD 的 KitchenTags.ONE_SIDED）：数据表里的那个列表本身，下游经联动契约追加的也算
+CRACKED = frozenset(name for name, _aux in CRACKED_KINDS)    # 蛋（HoD 的 KitchenTags.CRACKED）：和厨锅、砧板同一张 PotSunk.CRACKED
 
 
 def canFry(itemName):
@@ -31,7 +37,13 @@ def friedOf(itemName):
 
 
 def isOneSided(itemName):
+    """只煎一面、不翻（SkilletCooking.isOneSided）：服务端的煎法——从下往上一次煎透、两面的时间、不要人颠。"""
     return itemName in ONE_SIDED
+
+
+def isCracked(itemName):
+    """是蛋（KitchenLooks.isCracked）：客户端的样子——不连壳躺着画煎蛋、蛋清从灰清成白（EggLook）、落下时在锅沿磕开。"""
+    return itemName in CRACKED
 
 
 def sideSeconds(batch, fireAspect=0):

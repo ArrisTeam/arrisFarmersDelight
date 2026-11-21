@@ -25,7 +25,7 @@ TABLES = (
     ("CookingPotRecipeList", ROWS, CookingPotRecipes.CookingPotRecipeList),  # 厨锅：托盘里哪些亮、放不放得下、书页、汤色用的成品
     ("platePackagedFoodDict", MAP, Food.platePackagedFoodDict),             # 盘装的盛宴：砧板上的物品类型（客户端和服务端的 GetItemType 一致）
     ("DishList", ROWS, Dishes.DishList),                                    # 砧板摆盘的菜：托盘里哪些亮、层接不接得上、食谱书、悬着的成品
-    ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 煎锅站点：只煎一面的不画翻面、不给翻
+    ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 炉灶的食谱书：只煎一面的写几秒（样子上的蛋看 PotSunk.CRACKED）
     ("NotOnGrillList", ITEMS, Cooking.NotOnGrillList),                      # 炉灶站点：烤架不收的，托盘里不亮、放不上去
 )
 BY_NAME = dict((name, (kind, container)) for name, kind, container in TABLES)

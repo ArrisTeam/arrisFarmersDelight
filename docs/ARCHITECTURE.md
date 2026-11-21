@@ -26,7 +26,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotPiecesLook（汤里的碎料交给着色器的数：配料槽、出现 / 缩走的钟）  PotItem（拆下来的锅带着菜）
                         PotSupport（厨锅的支架：没有 / 托盘 / 吊把手，放下时点的是不是方块的下面、两个旗读成哪种、切换的声音）
                         PotWater（厨锅里清水的颜色：锅所在区块里 5x5 列的群系水色取平均，群系名由客户端 Compat/Diegesis/PotBiome 问来）
-                        PanStation（煎锅站点：能煎什么、蛋只煎一面、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
+                        PanStation（煎锅站点：能煎什么、哪些只煎一面 / 哪些是蛋、一面多久、徽章与提示文字）  PanLookState（煎锅"看上去是什么样"的广播怎么读）
                         GrillStation（炉灶站点：能放什么、一面多久、这一下右键开不开）  StoveCover（炉灶上面盖没盖东西：锅、煎锅、砧板、别的方块）
                         GrillBlocks（灶方块 = 点着的 `StoveList` + 熄着的孪生方块 `arris:stove_extinguish`：isLit / isGrill / twinOf、前置包登记站点用的活容器 `GRILL_BLOCKS`（只读，`in`、长度、下标、遍历都行：原来的 `STOVE_BLOCKS` 就是 `StoveList` 这个列表）、
                         熄着时 FD 的件怎么冷却 `cooledTimer`、什么点得着 / 灭得了炉灶 `useOf`）
@@ -208,7 +208,7 @@ def OnServerSkilletBlockUse(args):
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 | `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
-| `OneSidedList` | 追加名字 | `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅站点上只煎一面、不用翻 |
+| `OneSidedList` | 追加名字 | `StationBooks._cookPages`（炉灶书页写几秒）；服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染 |
 | `NotOnGrillList` | 追加名字 | `GrillStation.canGrill`（`NOT_ON_GRILL` 就是这个列表）：炉灶站点的烤架不收，托盘里不亮 |
 
 没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的 + 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、
@@ -585,7 +585,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 JE 依据：Hands-On Delight 的 `SkilletBehavior.drawPiece`（327 行）/ `StoveBehavior.draw`（206 行）给整件 `node.setTint(KitchenLooks.fryingTint(shown, cooked(shown), shownUp, SEARED, SEAR))`，
 Diegesis 的 `TintedConsumer` 把整件体素模型每个顶点的颜色乘上它；朝上那面每 1/12 才重画（`look`）。朝上那面没熟时画生的图、从白往"熟的主色 / 生的主色"走
 （逐通道相除、封顶 1），肉和鱼（`food.isMeat() || ItemTags.FISHES`）先往焦色 `0xB8875C` 走 4 成，最多走到七成（`SEAR` 0.7）；熟了（up >= 1）换成熟的图、不染。
-两面食材只有厨师没等贴锅 / 贴灶那面熟透就翻过来时，朝上那面才是半熟；蛋（单面）是从透亮清成白，这边早就做成了预染色的显示物品（`Shared/Rules/EggLook`），不归这一节。
+两面食材只有厨师没等贴锅 / 贴灶那面熟透就翻过来时，朝上那面才是半熟；蛋（HoD 的 `cracked`，`PanStation.isCracked` 认 `PotSunk.CRACKED`）是从透亮清成白，
+这边早就做成了预染色的显示物品（`Shared/Rules/EggLook`），不归这一节。只煎一面（`one_sided`，`OneSidedList`）的不一定是蛋：下游追加进去的从下往上煎透，朝上那面跟着熟，照这一节染。
 
 这边（只在联动时，场景模块本来就只在联动时导入）：
 - 颜色：`Shared/Rules/FryingTint.tintOf`——生熟两张图的主色查 `Shared/Data/BrothColors.MainColors`（JE 的 `FoodColors.main`：色相分 12 份取最大一族，

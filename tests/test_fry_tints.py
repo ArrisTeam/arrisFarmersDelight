@@ -223,6 +223,30 @@ def testAnEggAndFoodWithoutColoursAndBlockItemsGetNoParticle():
     assert len(lit()) == 2, "不是方块的海带照染"
 
 
+def testAOneSidedFoodThatIsNotAnEggIsTintedOnThePanAndOnTheStove():
+    """HoD 的 one_sided 不是 cracked：fryingTint 只给蛋（isCracked）走 RAW_EGG 那一支。下游往 OneSidedList 里加的马铃薯在锅里、烤架上
+    都画它自己、照别的食物染（服务端给只煎一面的发 both）；蛋照旧画 EggLook 的显示物品、不叠，烤架上（FD 自己的右键放得上去）也一样。"""
+    Cooking.OneSidedList.append("minecraft:potato")
+    try:
+        scene = panSetup()
+        PanScenes.OnPanLook(panLook(name="minecraft:potato", count=2, down=0.5, up=0.5, both=True))
+        run(scene, 0.3)
+        assert [d["item"]["newItemName"] for d in world.drops.values()] == ["minecraft:potato"] * 2, "不画成煎蛋"
+        assert len(lit()) == 2 and allPaired("minecraft:potato"), "照染"
+        alpha = colorOf("minecraft:potato", 0.5)[3]
+        assert alpha > 0.0 and all(near(p["vars"]["variable.alpha"], round(alpha, 4), 1e-4) for p in lit())
+        scene = stoveSetup({1: piece("minecraft:potato", 0.0, 0.5)})
+        run(scene, 0.3)
+        assert [d["item"]["newItemName"] for d in world.drops.values()] == ["minecraft:potato"], "烤架上也不画成煎蛋"
+        assert len(lit()) == 1 and allPaired("minecraft:potato")
+    finally:
+        Cooking.OneSidedList.remove("minecraft:potato")
+    assert Cooking.OneSidedList == [EGG]
+    scene = stoveSetup({1: piece(EGG, 0.0, 0.5)})
+    run(scene, 0.3)
+    assert tints() == [] and [d["item"]["newItemName"] for d in world.drops.values()] == ["arris:egg_look_1"], "蛋照旧"
+
+
 def testNothingIsDrawnUntilTheAtlasAndTheParticleSystemAreReady():
     """进世界头几秒 GetIconInfo 回 None、粒子 Create 回 0：那时不画，之后再试；问到的图标记下，不再问。"""
     scene = panSetup()

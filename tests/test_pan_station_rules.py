@@ -8,6 +8,8 @@ import dgtest
 import fdtest
 
 Rules = fdtest.load("Shared.Rules.PanStation")
+Grill = fdtest.load("Shared.Rules.GrillStation")
+Cooking = fdtest.load("Shared.Data.Cooking")
 Kit = dgtest.load("Shared.Schema")
 
 
@@ -19,6 +21,22 @@ def testWhatFriesAndWhatItBecomes():
     assert Rules.canFry("minecraft:beef") and Rules.friedOf("minecraft:beef") == "minecraft:cooked_beef"
     assert not Rules.canFry("minecraft:cooked_beef"), "煎好的不再煎"
     assert Rules.isOneSided("minecraft:egg") and not Rules.isOneSided("minecraft:beef")
+
+
+def testOnlyTheEggIsCrackedAndOneSidedIsAnotherList():
+    """HoD 的两个标签：cracked（蛋：打开了躺着、画成煎蛋、在锅沿磕开，KitchenLooks.isCracked / opened）和 one_sided（只煎一面、不翻，
+    SkilletCooking.isOneSided，缺省是 #cracked）。这边一个是 PotSunk.CRACKED，一个是联动契约的 OneSidedList，缺省两样都只有蛋；
+    下游往 OneSidedList 里加的只煎一面，不因此变成蛋。炉灶和煎锅同一张表。"""
+    assert Rules.isCracked("minecraft:egg") and not Rules.isCracked("minecraft:beef") and not Rules.isCracked("arris:fried_egg")
+    assert Cooking.OneSidedList == ["minecraft:egg"] and Rules.CRACKED == frozenset(["minecraft:egg"]), "缺省：两样都只有蛋"
+    assert Grill.isCracked is Rules.isCracked and Grill.isOneSided is Rules.isOneSided
+    Cooking.OneSidedList.append("minecraft:potato")
+    try:
+        assert Rules.isOneSided("minecraft:potato") and not Rules.isCracked("minecraft:potato"), "只煎一面的马铃薯不是蛋"
+        assert Rules.isCracked("minecraft:egg") and Rules.isOneSided("minecraft:egg"), "蛋照旧"
+    finally:
+        Cooking.OneSidedList.remove("minecraft:potato")
+    assert Cooking.OneSidedList == ["minecraft:egg"]
 
 
 def testASideTakesLongerForABiggerBatch():

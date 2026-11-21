@@ -107,7 +107,7 @@ class Pieces(object):
             self._drop(place)
             return
         name = item["newItemName"]
-        look = StoveLook.shownName(name, Rules.grilledOf(name) or name, self.up[place], Rules.isOneSided(name))
+        look = StoveLook.shownName(name, Rules.grilledOf(name) or name, self.up[place], Rules.isCracked(name))
         if not motion.moving:
             motion.settle()
         key = (look, item.get("newAuxValue") or 0)

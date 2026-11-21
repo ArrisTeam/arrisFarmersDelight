@@ -14,7 +14,7 @@ from .BlockDisplay import STOVE_SLOTS
 from . import HandsOnOptions as Options
 from .GrillBlocks import GRILL_BLOCKS
 from .HandsOn import Grill
-from .PanStation import canFry as hasRecipe, friedOf as grilledOf, isOneSided  # noqa: F401 - 炉灶与煎锅同一张表
+from .PanStation import canFry as hasRecipe, friedOf as grilledOf, isCracked, isOneSided  # noqa: F401 - 炉灶与煎锅同一张表
 
 STATION_ID = "arris:stove"
 STOVE_BLOCKS = GRILL_BLOCKS       # 活的"in"容器：点着的（StoveList，附属包追加的炉灶也开站）和熄着的炉灶都开站，HoD 的 opens 不看 LIT
