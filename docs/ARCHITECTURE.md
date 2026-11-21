@@ -16,6 +16,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         BiomeWater（各群系的水色，tools/gen_biome_water.py 按原版资源包每个群系的 water_appearance 生成；厨锅里的清水取它）
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
+                        Tips（服务端提示说的每一句：(语言文件的键, 中文)，客户端按玩家的语言查，见「砧板和站点的几处补齐」）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
                         CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
@@ -35,6 +36,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         HandsOnOptions（HoD 配置表的读法：JE 的缺省、read / readTime 的兜法、倍率夹进 0.1..10、派生规则、scaled；每次现读表，两端共用；没联动时说 HoD 不在）
                         HandsOnMode（场景交互前置联动了没有：每端一个运行模式 pending / linked / outdated / standalone，linked() 问整个进程，whenDecided；只有 Compat/Diegesis/Presence 往里写）
                         SyncTables  TableWire  TableDiff  TableMerge（下游在服务端追加的表怎么发给客户端：登记哪些表 / 编码 / 算差异 / 并表，见"联动契约与客户端的表"）
+                        TipWire（服务端提示发给那个玩家的客户端的写法：哪一句、填什么）
                         FoodEffects（吃喝之后的追加结算：牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤；只返回动作，Server/FoodEffects 执行）
                         BlockDisplay（砧板 / 煎锅 / 炉灶上的物品怎么摆） ItemPose（客户端掉落物姿态换算，实机标定）
                         BoardSupport（砧板下面撑不撑得住：JE 的 canSurvive，下面那格的顶面要盖住正中 2x2 像素——按引擎给的碰撞盒判，包围盒说不准的按名字）
@@ -101,7 +103,7 @@ Server/                 服务端
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
-  Endpoints.py          服务端调用的 5 个客户端端点：放声音（可带音量 / 音调）、砧板切一件的碎屑、粒子、方块实体 molang、挥手
+  Endpoints.py          服务端调用的 6 个客户端端点：放声音（可带音量 / 音调）、砧板切一件的碎屑、粒子、方块实体 molang、挥手、提示（OnTip：按玩家的语言查出那一句再弹）
   TableSync.py          客户端端点 OnTableSync：把服务端发来的"下游追加的表内容"并进本端自己的表，重算依赖它的缓存
   Texts.py              站点界面上我们自己写的字按玩家的语言给：of(键, 缺省中文) / fill(键, 缺省, 值)，查 rp/texts 的语言文件，见「砧板和站点的几处补齐」
   BlockEntityRestore.py BlockItems.py（方块上的物品用客户端掉落物渲染）
@@ -294,6 +296,7 @@ def OnServerSkilletBlockUse(args):
 - 食谱书：搜索、选中、换变体、"添加食材"都是动作（`search` / `pick` / `nextVariant` / `addFood`），选中的食谱和变体记在服务端会话里
   （每位查看者各一份）。客户端不传位置、玩家、背包下标；`addFood` 在会话的工作副本上从玩家背包搬运，整体成功或整体不做。
 - 布局：仓库根的 `layouts/cooking_pot.json`（手写）经 `tools/vendor.py` 编译成 `rp/ui/dolor_layout_*.json` 与 `dolorLayouts.py`。
+  按钮、页签上的字和搜索框的提示写语言文件的键（`arris_fd.pot_screen.*`，见「砧板和站点的几处补齐」），不写字。
   经典版照旧界面的三栏（中间厨锅，左详情、右列表）；携带版整屏，右半屏"烹饪""食谱"两页。
 - 退回旧界面：`CookingPotHost.DOLOR_SCREEN = False` 时宿主放行，引擎照旧开 `screen_name` 的原生界面。旧代理（`Client/Ui/CookingPotProxy.py`、
   `CookingPotScreen.py`）、`rp/ui/arrisCookingPot.json`、`CookingPotAddFood` 端点、`PlayerSession.py` 推食谱表的 ModAttr 都还在。
@@ -715,7 +718,20 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - **站点界面上的字按玩家的语言给**（`Client/Texts.py`）：我们自己写的字——四个站点触屏长按轮盘的七条条目（`arris_fd.hold.*`，条目带 `"key"`，前置包替它查）、厨锅的提示（`arris_fd.pot.*` 和 HoD 的键
   `handson_delight.pot.ready / cooking`）、食谱书页脚的秒数（`handson_delight.book.seconds`）、JEI 分类的名字和提示（`handson_delight.assembly*`）——进了 `rp/texts/zh_CN.lang`，并新建 `rp/texts/en_US.lang`（只有这些界面字，
   物品和方块的英文名还没补）。`Texts.of(键, 缺省)` 用 `CreateGame(levelId).GetChinese` 查，查不到用代码里的缺省中文；`Texts.fill` 填占位，译文的占位写坏了就退回缺省。
-  服务端发的提示（`ShowTip` 那几句）和经典厨锅界面里的字还是中文。实机（zh_CN）：这些键都查得到。`tests/test_station_texts.py`。
+  实机（zh_CN）：这些键都查得到。`tests/test_station_texts.py`。服务端发的提示、经典厨锅界面和 JEI 另外四类上的字原来还是写死的中文，2026-11-21 也改了，见下面两条。
+- **服务端的提示按玩家的语言给**（2026-11-21，`Shared/Data/Tips`、`Shared/Rules/TipWire`）：物品栏上方弹的那一行提示（砧板切不了 / 换工具 / 还剩几个、煎锅和炉灶放不进、手持煎锅、盘装菜要碗、稻米要种在水里……）
+  原来是服务端拼好中文、`SetOneTipMessage` 发的，谁看都是中文：服务端不知道每个玩家用什么语言（服务端的 `GetChinese` 给的是服务端那边的语言），官方文档里 `SetOneTipMessage` 的 message 就是要显示的字、没有交值的地方。
+  现在 `Server/Helpers/Engine.ShowTip(玩家, 句子, 值...)` 只把"哪一句、填什么"`Call` 给那一个玩家（载荷：键、那句中文、每个值包成一个字典——网易 Call 载荷的列表里只能有一种类型），
+  客户端端点 `Client/Endpoints.OnTip` 用 `Texts.of / fill` 按自己的语言查出这一句和值里的词、填好，再用客户端的 `SetTipMessage` 弹（同一种提示）。中文跟着发过去：语言文件里没有这一句、
+  或者那里的写法填不上值时显示中文，不丢、不露键名；客户端什么都不往回发。句子都在 `Shared/Data/Tips`：JE 有的用 JE 的键（`block.farmersdelight.*` / `item.farmersdelight.*`，英文照 JE 的 en_us.json，
+  中文是我们原来的写法），移植加的用 `arris_fd.tip.*`；值可以是数、字，或者一个词 (键, 中文)——盘装菜那句照 JE 填盛菜容器的名字，传的是原版碗的键 `item.bowl.name`。
+  **加一句提示**：在 `Shared/Data/Tips` 写 (键, 中文) 并列进 `SENTENCES`，`rp/texts/zh_CN.lang`（和代码里的中文一字不差）、`en_US.lang` 各加一行，调用处写 `ShowTip(玩家, Tips.某句, 值...)`；
+  不在服务端拼字，不直接调 `SetOneTipMessage`。`tests/test_tips.py` 核对两个语言文件、JE 的键和英文、每一处 `ShowTip` 给的值和占位一样多、别处不再弹提示、载荷的规矩和客户端的回退。没进过游戏。
+- **经典厨锅界面和 JEI 上的字**（2026-11-21）：厨锅界面的标题是 JE 的容器标题键 `container.farmersdelight.cooking_pot`（`CookingPotHost.TITLE`；原来的方块名键只有中文）；按钮、页签上的字和搜索框的提示
+  在 `layouts/cooking_pot.json` 里写 `arris_fd.pot_screen.*` 的键（按钮、页签由库在客户端查，搜索框的提示由引擎的文字控件查；改了要照「厨锅界面」一节重新 vendor）；食谱书详情的标题 `bookTitle`
+  是库的可本地化文字 `Data.Lang`，没选食谱时是键（`CookingPotBook.UNPICKED_TITLE`）。库和引擎查不到键时显示键名本身，所以这些键两个语言文件里都要有；英文挑了放得进的短写法（经典版的按钮只有 65 宽）。
+  只在 `DOLOR_SCREEN` 关掉时用的旧原生界面换成同一组键。JEI 的厨锅、砧板、煎锅、炉灶四类的名字（`jei.farmersdelight.cooking / cutting`、`arris_fd.jei.skillet / stove`）和配方页的秒数
+  （`handson_delight.book.seconds`）在客户端经 `Texts` 查。`tests/test_pot_screen_texts.py`、`tests/test_jei_texts.py`。没进过游戏。
 - **触屏的数量档**（前置包的按钮，屏幕右下角 全部 / 单个）在场时，四个站点的长按轮盘不再给"放一个"：拿着一叠放多少归那个按钮管（`HoldMenu.tapMode(view)`：`view.tap` 不是 None）；
   炉灶的"只放这一格"在拿着不止一个时也让给它。老版本的前置包没有 `view.tap`，轮盘照旧。`tests/test_hold_tap_mode.py`。
 - **按住直接做**（前置包的 `Protocol.HOLD_ACT`，2026-11-21）：这样一来四个站点的长按菜单处处只有一条，前置包不再为它弹一条臂的轮盘——按住到点当场在原落点补那一下右键 / Shift 点击，
@@ -797,7 +813,9 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
 `tests/` 只测不依赖引擎的部分（`Shared/`、`Api/`、`Server/EventRegistry.py`）和静态结构；
 与引擎交互的部分用 Strata 的 `script_inspect` / `script_run`（沙箱加载、按剧本驱动事件）和游戏内实测。
 
-- `fdtest.py`：农夫乐事包的导入与用例收集；`test_handson_*.py` 是 HoD 规则内核的测试。
+- `fdtest.py`：农夫乐事包的导入与用例收集（`tipText`：服务端的一句提示在中文的游戏里显示成什么，假引擎的 `ShowTip` 记它）；`test_handson_*.py` 是 HoD 规则内核的测试。
+- 按玩家的语言给的字：`test_tips.py`（服务端提示：语言文件、JE 的键、每一处调用、载荷、真的 `ShowTip` / `OnTip`）、`test_pot_screen_texts.py`（经典厨锅界面）、`test_jei_texts.py`（JEI 四类），
+  站点上的字在 `test_station_texts.py`（要前置包）。
 - 食物 / 小刀对 JE 1.3.4 的核对：`jefood.py`（参照表，抄自 FoodValues.java / ModItems.java，不依赖 .refs）、`test_food_values.py`
   （营养、饱和度、容器、使用时长、效果、提示）、`test_knife_values.py`（耐久、附魔能力、防火）；`test_food_effects_rules.py` 测
   `Shared/Rules/FoodEffects.py`，`test_food_effects_server.py` 把假的 Engine 模块塞进 `sys.modules` 来驱动 `Server/FoodEffects.py` 的事件处理。
