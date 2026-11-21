@@ -1,4 +1,4 @@
-## Only UI words: the station screens (Hands-On Delight), the tips the server sends (Shared/Data/Tips) and the classic cooking pot screen. Item and block names are not translated yet.
+## Only UI words: the station screens (Hands-On Delight), the tips the server sends (Shared/Data/Tips), the classic cooking pot screen and the JEI categories. Item and block names are not translated yet.
 arris_fd.hold.put_one=Put one
 arris_fd.hold.scoop_all=Serve all
 arris_fd.hold.carve=Stick in
@@ -33,3 +33,7 @@ arris_fd.pot_screen.add_food=Add food
 arris_fd.pot_screen.search=Search...
 arris_fd.pot_screen.tab_pot=Cooking
 arris_fd.pot_screen.tab_book=Recipes
+jei.farmersdelight.cooking=Cooking
+jei.farmersdelight.cutting=Cutting Board
+arris_fd.jei.skillet=Skillet
+arris_fd.jei.stove=Stove

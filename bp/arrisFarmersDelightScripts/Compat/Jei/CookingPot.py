@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from .Registry import GetJeiApiModule, SetHoverText
+from ...Client import Texts
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
+
+TITLE = ("jei.farmersdelight.cooking", "烹饪")      # 分类名：JE 的键（英文 Cooking），客户端按玩家的语言查，语言文件里没有时用中文
 
 def RegisterCookingPotRecipes():
     registry = GetJeiApiModule()
@@ -10,7 +13,7 @@ def RegisterCookingPotRecipes():
     registry.registerRecipeType(
         recipeTag,
         ("arris:cooking_pot", 0),
-        "烹饪",
+        Texts.of(*TITLE),
         CookingPotRecipe,
         "jei_farmers_delight.jeiCookingPotRecipe",
         65

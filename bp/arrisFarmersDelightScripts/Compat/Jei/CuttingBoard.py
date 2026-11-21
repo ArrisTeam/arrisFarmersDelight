@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from .Registry import GetJeiApiModule, SetHoverText
+from ...Client import Texts
 from ...Shared.Data.Cutting import CuttingBoardDict
+
+TITLE = ("jei.farmersdelight.cutting", "砧板")      # 分类名：JE 的键（英文 Cutting Board），客户端按玩家的语言查，语言文件里没有时用中文
 
 def RegisterCuttingBoardRecipes():
     registry = GetJeiApiModule()
@@ -10,7 +13,7 @@ def RegisterCuttingBoardRecipes():
     registry.registerRecipeType(
         recipeTag,
         ("arris:cutting_board", 0),
-        "砧板",
+        Texts.of(*TITLE),
         CuttingBoardRecipe,
         "jei_farmers_delight.jeiCuttingBoardRecipe",
         45
