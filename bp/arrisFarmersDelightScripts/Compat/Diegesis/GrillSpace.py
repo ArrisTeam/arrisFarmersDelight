@@ -9,7 +9,6 @@
 - WorldSpace：谁都看得见的场景（StoveScene.py）用的：不开站点也要有，所以不借前置包的视图，自己按炉灶的朝向把站点像素转到世界（StoveFacing.worldPoint）。
   本人开着站点时，站点把"从屏幕哪里飞来"交进来（focus），旁观的人没有。
 """
-from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import StoveFacing
 from ...Shared.Rules.HandsOn import FromPlayer, StoveLayout, StoveMotion
 
@@ -63,8 +62,9 @@ class Space(Layout):
 
     def fromPlayer(self, index, count):
         """一次放好几件时第 index 件（共 count 件）从哪出发：相对它落点的 (x, z)，站点像素（FromPlayer.offset）。
-        屏幕下沿的一点投到 LAND_FROM 高的水平面上，减去屏幕正中投到同一个面上的点；拿不到屏幕或相机返回 None。"""
-        size = compFactory.CreateGame(levelId).GetScreenSize()
+        屏幕下沿的一点投到 LAND_FROM 高的水平面上，减去屏幕正中投到同一个面上的点；拿不到屏幕或相机返回 None。
+        屏幕大小问前置包的端口（view.ports.uiSize）：和 view.rayAt 换算界面点用的是同一个数。"""
+        size = self.view.ports.uiSize()
         if not size:
             return None
         fx, fy = FromPlayer.startAt(index, count)

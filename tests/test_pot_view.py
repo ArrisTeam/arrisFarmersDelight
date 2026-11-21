@@ -57,10 +57,19 @@ class Api(object):
         return Box(key, lo, hi, payload)
 
 
+class Ports(object):
+    """前置包 Ports 的替身：只答界面大小（PotView._starts 用，和 view.rayAt 换算界面点的同一个数）。"""
+
+    @staticmethod
+    def uiSize():
+        return (960.0, 540.0)
+
+
 class FakeView(object):
     """前置包给表现类的 view：只记下发出去的动作、内核点击、拿放的轻响和放料的调用；平分手势用前置包真的。"""
 
     def __init__(self):
+        self.ports = Ports()
         self.hand = None
         self.data = {}
         self.input = "mouse"

@@ -72,8 +72,9 @@ class PanViewMixin(object):
         return self.api.box(key, tuple(min(a[i], b[i]) for i in range(3)), tuple(max(a[i], b[i]) for i in range(3)))
 
     def _screenOn(self, x, y, height):
-        """屏幕上一点（占屏的几分之几）落在场景里高度 height 的水平面上的哪一点（场景坐标）；算不出 None。"""
-        size = compFactory.CreateGame(levelId).GetScreenSize()
+        """屏幕上一点（占屏的几分之几）落在场景里高度 height 的水平面上的哪一点（场景坐标）；算不出 None。
+        屏幕大小问前置包的端口（view.ports.uiSize）：和 view.rayAt 换算界面点用的是同一个数。"""
+        size = self.view.ports.uiSize()
         ray = self.view.rayAt((size[0] * x, size[1] * y)) if size else None
         point = self.api.Geometry.planeAtHeight(ray, height) if ray is not None else None
         return self._toScene(point) if point is not None else None

@@ -15,7 +15,6 @@ from . import BoardFx
 from .BoardDrawEvents import CARVED_SCALE, GHOSTS, DrawEvents
 from .BoardHandDraw import Hand
 from .BoardThing import FLAT, UPRIGHT, Thing
-from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules.BoardStation import MOST_LAYERS, keyOf
 from ...Shared.Rules.HandsOn import BoardMotion as Motion
 from ...Shared.Rules.HandsOn import BoardScene as Scene
@@ -91,8 +90,9 @@ class Draw(DrawEvents):
 
     def fromPlayer(self, height=Scene.TOP + Motion.DROP_HEIGHT):
         """书里放的层从哪飞来，相对它落点的水平偏移 (x, z)（FromPlayer.offset(view, height, 0, 1)）：屏幕下沿正中那点投到 height 高的水平面上，
-        减去屏幕正中投到同一个面上的点；拿不到屏幕或相机时是 (0, 0)，从正上方落下。"""
-        size = compFactory.CreateGame(levelId).GetScreenSize()
+        减去屏幕正中投到同一个面上的点；拿不到屏幕或相机时是 (0, 0)，从正上方落下。屏幕大小问前置包的端口（view.ports.uiSize）：
+        和 view.rayAt 换算界面点用的是同一个数，不另问引擎（两处在手机上可能不一样）。"""
+        size = self.view.ports.uiSize()
         if not size:
             return (0.0, 0.0)
         fx, fy = FromPlayer.startAt(0, 1)

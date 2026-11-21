@@ -23,7 +23,7 @@
 from . import BookSources, FlatSprites, PotHold, PotPick, PotScenes, TouchFeel
 from .PotHud import PotHud
 from .PotOffer import PotOffer
-from ...Client.Engine import clientApi, compFactory, levelId
+from ...Client.Engine import clientApi
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PotLookState
 from ...Shared.Rules import PotStation as Rules
@@ -221,8 +221,8 @@ class PotViewMixin(object):
         self.view.sendAction("stir", {"x": round(x, 3), "z": round(z, 3), "at": round(at, 3)})
 
     def _starts(self, count):
-        """一次放进 count 件：各从屏幕底边的一点出发（投到液面上方 9 像素的平面上），返回相对锅心的 (x, z) 列表。"""
-        size = compFactory.CreateGame(levelId).GetScreenSize()
+        """一次放进 count 件：各从屏幕底边的一点出发（投到液面上方 9 像素的平面上），返回相对锅心的 (x, z) 列表。屏幕大小和 view.rayAt 用同一个（ports.uiSize）。"""
+        size = self.view.ports.uiSize()
         height = self.scene.liquid.surfaceY() + PotDrift.ARRIVE_FROM
         starts = []
         for index in range(count):

@@ -236,6 +236,10 @@ class FakePorts(object):
         """前置包 Ports.iconUV：图标在图集里的位置，图集还没好问不到 None。"""
         return engine.icons.get(item["newItemName"])
 
+    def uiSize(self):
+        """前置包 Ports.uiSize：界面大小（view.rayAt 换算界面点用的同一个数）；和假引擎的 GetScreenSize、假 rayAt 的换算一样。"""
+        return (1920.0, 1080.0)
+
 
 class FakeView(object):
     def __init__(self):
