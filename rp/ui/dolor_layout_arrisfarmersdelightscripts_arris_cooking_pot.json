@@ -626,7 +626,7 @@
             8
           ],
           "layer": 2,
-          "$place_holder_text": "搜索食谱",
+          "$place_holder_text": "arris_fd.pot_screen.search",
           "$text_box_name": "dc_text_3",
           "$text_edit_box_content_binding_type": "none",
           "enabled_newline": false,
@@ -1117,7 +1117,7 @@
             0
           ],
           "layer": 2,
-          "$place_holder_text": "搜索食谱",
+          "$place_holder_text": "arris_fd.pot_screen.search",
           "$text_box_name": "dc_text_19",
           "$text_edit_box_content_binding_type": "none",
           "enabled_newline": false,

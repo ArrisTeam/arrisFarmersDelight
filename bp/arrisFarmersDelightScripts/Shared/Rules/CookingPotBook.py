@@ -16,6 +16,9 @@ POT_SLOTS = 8
 BOOK_CELLS = 8
 # 搜索词最多几个字
 SEARCH_LIMIT = 16
+# 还没选食谱时详情上方的标题：dolorContainer 的可本地化文字（Data.Lang 的写法 {"t": 语言文件的键}），服务端只给键，
+# 客户端按玩家的语言查（rp/texts 的 zh_CN.lang / en_US.lang）；选了食谱时标题是食谱表里那道菜的 text，原样显示
+UNPICKED_TITLE = {"t": "arris_fd.pot_screen.pick_recipe"}
 
 try:
     _TEXT = unicode  # noqa: F821 - py2
@@ -69,6 +72,15 @@ def pickedRecipe(search, picked):
     """（搜索词，在过滤后的列表里选中的序号）-> 食谱字典；没选中或越界为 None。"""
     shown = visibleRecipes(search)
     return recipeAt(shown[picked]) if 0 <= picked < len(shown) else None
+
+
+def titleOf(recipe):
+    """选中食谱时详情上方的标题：食谱表里那道菜的 text，原样显示。下游写的 text 不一定是字：和原来的文字字段一样 str() 一下，
+    界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
+    text = recipe.get("text")
+    if isinstance(text, (bytes, _TEXT)):
+        return text
+    return "" if text is None else str(text)
 
 
 def variantCount(recipe):

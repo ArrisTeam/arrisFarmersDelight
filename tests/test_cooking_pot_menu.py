@@ -274,7 +274,8 @@ def testViewerStartsWithNothingSelectedAndTheWholeList():
     assert viewer == {"picked": -1, "variant": 0, "search": ""}
     values = menu.viewerValues(_Instance(), viewer)
     assert len(values["recipes"]) == len(Recipes.CookingPotRecipeList)
-    assert values["book"] == {} and values["bookTitle"] == "请选择食谱" and values["bookVariant"] == ""
+    assert values["book"] == {} and values["bookTitle"] == Book.UNPICKED_TITLE and values["bookVariant"] == "", \
+        "没选食谱时标题是语言文件的键（客户端按玩家的语言查，tests/test_pot_screen_texts.py）"
     for name, value in values.items():
         assert menu.data[name].scope == "viewer"
         assert menu.data[name].encode(value) is not None

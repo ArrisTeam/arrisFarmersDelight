@@ -1,4 +1,4 @@
-## Only UI words: the station screens (Hands-On Delight) and the tips the server sends (Shared/Data/Tips). Item and block names are not translated yet.
+## Only UI words: the station screens (Hands-On Delight), the tips the server sends (Shared/Data/Tips) and the classic cooking pot screen. Item and block names are not translated yet.
 arris_fd.hold.put_one=Put one
 arris_fd.hold.scoop_all=Serve all
 arris_fd.hold.carve=Stick in
@@ -26,3 +26,10 @@ block.farmersdelight.feast.use_container=You need a %s to eat this.
 block.farmersdelight.rice.invalid_placement=This seed must be planted in shallow water.
 arris_fd.tip.dish_on_board=This dish is assembled on a Cutting Board: right-click the board, place the base first, then stack the layers on top
 arris_fd.tip.display_removed=§7Item display entity §aremoved!
+container.farmersdelight.cooking_pot=Cooking Pot
+arris_fd.pot_screen.pick_recipe=Pick a recipe
+arris_fd.pot_screen.next_variant=Next variant
+arris_fd.pot_screen.add_food=Add food
+arris_fd.pot_screen.search=Search...
+arris_fd.pot_screen.tab_pot=Cooking
+arris_fd.pot_screen.tab_book=Recipes

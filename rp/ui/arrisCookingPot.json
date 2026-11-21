@@ -183,7 +183,7 @@
                                                                                                             0,
                                                                                                             0
                                                                                                         ],
-                                                                                                        "$place_holder_text": "请输入食谱",
+                                                                                                        "$place_holder_text": "arris_fd.pot_screen.search",
                                                                                                         "$place_holder_text_color": [
                                                                                                             0.5,
                                                                                                             0.5,
@@ -359,7 +359,7 @@
                                                                                                             0.207843137254902
                                                                                                         ],
                                                                                                         "font_type": "default",
-                                                                                                        "text": "食谱名称",
+                                                                                                        "text": "arris_fd.pot_screen.pick_recipe",
                                                                                                         "text_alignment": "center"
                                                                                                     }
                                                                                                 }
@@ -583,7 +583,7 @@
                                                                                                                         0.2470588235294118
                                                                                                                     ],
                                                                                                                     "font_type": "default",
-                                                                                                                    "text": "一键添加食材",
+                                                                                                                    "text": "arris_fd.pot_screen.add_food",
                                                                                                                     "text_alignment": "center"
                                                                                                                 }
                                                                                                             }

@@ -4,6 +4,8 @@
   // 经典版：中间是厨锅（左边 3 × 2 食材格，下面是火焰，中间进度箭头，右边预览框、容器格与成品格），下面是玩家物品栏；
   // 左边的侧栏是选中食谱的详情（食材、容器、成品、换变体、添加食材），右边的侧栏是食谱列表（带搜索框），与旧界面的位置一样。
   // 携带版：照原版携带版的整屏界面，左半屏物品栏，右半屏两页——"烹饪"（厨锅）与"食谱"（列表与详情），页签切换。
+  // 按钮、页签上的字和搜索框的提示写的是语言文件的键（rp/texts 的 arris_fd.pot_screen.*）：按钮和页签由库在客户端按玩家的语言查，
+  // 搜索框的提示由引擎的文字控件查；字数照英文的宽度挑过（经典版的按钮只有 65 宽）。
   "namespace": "arris_cooking_pot",
   "$dc_layout": "arris:cooking_pot",
   "$dc_menu": "arris:cooking_pot",
@@ -136,11 +138,11 @@
         "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 94]
       }},
       {"next@dc.button": {
-        "$dc_action": "nextVariant", "$dc_label": "换一种配方", "$dc_visible": ["picked", "!=", -1],
+        "$dc_action": "nextVariant", "$dc_label": "arris_fd.pot_screen.next_variant", "$dc_visible": ["picked", "!=", -1],
         "size": [65, 16], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 128], "layer": 2
       }},
       {"add@dc.button": {
-        "$dc_action": "addFood", "$dc_label": "添加食材", "$dc_visible": ["picked", "!=", -1],
+        "$dc_action": "addFood", "$dc_label": "arris_fd.pot_screen.add_food", "$dc_visible": ["picked", "!=", -1],
         "size": [65, 16], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 150], "layer": 2
       }}
     ]
@@ -154,7 +156,7 @@
     "controls": [
       {"bg@common.common_panel": {"$show_close_button": false}},
       {"search@dc.text_box": {
-        "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "搜索食谱",
+        "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "arris_fd.pot_screen.search",
         "size": [67, 14], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [8, 8], "layer": 2
       }},
       {"recipe_list@arris_cooking_pot.recipe_list": {"offset": [4, 28]}}
@@ -241,11 +243,11 @@
           {"inner@arris_cooking_pot.half_inner": {
             "controls": [
               {"pot_tab@dc.tab": {
-                "$dc_value": "page", "$dc_tab": "pot", "$dc_label": "烹饪", "$dc_edge": "left",
+                "$dc_value": "page", "$dc_tab": "pot", "$dc_label": "arris_fd.pot_screen.tab_pot", "$dc_edge": "left",
                 "size": [44, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [0, 0], "layer": 2
               }},
               {"book_tab@dc.tab": {
-                "$dc_value": "page", "$dc_tab": "book", "$dc_label": "食谱",
+                "$dc_value": "page", "$dc_tab": "book", "$dc_label": "arris_fd.pot_screen.tab_book",
                 "size": [44, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [46, 0], "layer": 2
               }},
               {"pot_page@arris_cooking_pot.pocket_pot": {"$dc_visible": ["page", "pot"]}},
@@ -296,7 +298,7 @@
     "anchor_to": "top_left",
     "controls": [
       {"search@dc.text_box": {
-        "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "搜索食谱",
+        "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "arris_fd.pot_screen.search",
         "size": [60, 14], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [0, 0], "layer": 2
       }},
       {"recipe_list@arris_cooking_pot.pocket_list": {"offset": [0, 18]}},
@@ -322,11 +324,11 @@
         "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 112]
       }},
       {"next@dc.button": {
-        "$dc_action": "nextVariant", "$dc_label": "换一种配方", "$dc_visible": ["picked", "!=", -1],
+        "$dc_action": "nextVariant", "$dc_label": "arris_fd.pot_screen.next_variant", "$dc_visible": ["picked", "!=", -1],
         "size": [86, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 126], "layer": 2
       }},
       {"add@dc.button": {
-        "$dc_action": "addFood", "$dc_label": "添加食材", "$dc_visible": ["picked", "!=", -1],
+        "$dc_action": "addFood", "$dc_label": "arris_fd.pot_screen.add_food", "$dc_visible": ["picked", "!=", -1],
         "size": [86, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 148], "layer": 2
       }}
     ]

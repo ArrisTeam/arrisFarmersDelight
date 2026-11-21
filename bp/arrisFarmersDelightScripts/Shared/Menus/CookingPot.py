@@ -148,10 +148,10 @@ class CookingPotMenu(Menus.Menu):
     dataEvery = DATA_EVERY
     data = {
         "heated": Data.Bool(), "progress": Data.Float(digits=3), "preview": Data.Item(),
-        # 食谱书（每位查看者各一份）：列表每行的成品、选中食谱的详情格（0-5 食材，6 容器，7 成品）、标题与变体序号的字
+        # 食谱书（每位查看者各一份）：列表每行的成品、选中食谱的详情格（0-5 食材，6 容器，7 成品）、标题（可本地化的文字，没选时客户端按玩家的语言查）与变体序号的字
         "recipes": Data.List(Data.Item(), scope=Data.VIEWER),
         "book": Data.SlotValues(Data.Item(), BOOK, scope=Data.VIEWER),
-        "bookTitle": Data.Text(scope=Data.VIEWER),
+        "bookTitle": Data.Lang(scope=Data.VIEWER),
         "bookVariant": Data.Text(scope=Data.VIEWER),
     }
     # picked 是过滤后列表里的序号（-1 没选）；variant 是选中食谱的第几个变体
@@ -186,12 +186,12 @@ class CookingPotMenu(Menus.Menu):
 
     def viewerValues(self, instance, viewer):
         shown = Book.visibleRecipes(viewer.get("search") or "")
-        values = {"recipes": Book.listRows(shown), "book": {}, "bookTitle": "请选择食谱", "bookVariant": ""}
+        values = {"recipes": Book.listRows(shown), "book": {}, "bookTitle": Book.UNPICKED_TITLE, "bookVariant": ""}
         recipe = _pickedRecipe(viewer)
         if recipe is not None:
             variant, count = viewer.get("variant", 0), Book.variantCount(recipe)
             values["book"] = Book.bookCells(recipe, variant)
-            values["bookTitle"] = recipe.get("text") or ""
+            values["bookTitle"] = Book.titleOf(recipe)
             values["bookVariant"] = "%d / %d" % (variant % count + 1, count) if count > 1 else ""
         return values
 

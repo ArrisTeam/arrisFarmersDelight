@@ -23,6 +23,9 @@ from .CookingPot import COOKING_POT, COOK_SECONDS
 from .Helpers.Engine import GetBlockEntityData
 
 CONTAINER_TYPE = "arris:cooking_pot"
+# 界面的标题：JE 的容器标题键（container.farmersdelight.cooking_pot，英文 Cooking Pot），客户端按玩家的语言查。
+# 原来用的是方块名的键 tile.arris:cooking_pot.name：方块名只有中文的语言文件里有（物品、方块的英文名还没补），英文的游戏里标题露出键名
+TITLE = "container.farmersdelight.cooking_pot"
 # 界面开关：True 时右键厨锅开库的界面；False 时放行给引擎，开方块 JSON 里 netease:block_container 的 screen_name 旧界面
 # （旧界面代理与 rp/ui/arrisCookingPot.json 还在，供实机验证不过时退回）
 DOLOR_SCREEN = True
@@ -64,5 +67,5 @@ def readState(key):
 
 PotMenu.setStateReader(readState)
 PotMenu.setTakenHandler(taken)
-Api.registerContainerType(Api.ContainerType(CONTAINER_TYPE, "tile.arris:cooking_pot.name", PotMenu.MENU,
+Api.registerContainerType(Api.ContainerType(CONTAINER_TYPE, TITLE, PotMenu.MENU,
                                             host=CookingPotHost((COOKING_POT,))))

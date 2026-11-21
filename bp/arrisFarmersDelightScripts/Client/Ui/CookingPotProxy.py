@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """CookingPotProxy - 厨锅自定义容器界面的代理：配方书、预览槽、进度箭头（客户端）"""
 from ...QuModLibs.Client import Call
+from .. import Texts
 from ..Engine import clientApi, compFactory, levelId, playerId
 
 CustomUIScreenProxy = clientApi.GetUIScreenProxyCls()
@@ -224,7 +225,8 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         previewItem.SetVisible(False)
         vesselItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/vessel/item_renderer")
         vesselItem.SetVisible(False)
-        self.screenNode.GetBaseUIControl(cookRecipePanel + "/food_title/title").asLabel().SetText("请选择食谱")
+        # 和 dolor 界面同一句（Shared/Rules/CookingPotBook.UNPICKED_TITLE 的键），按玩家的语言给，语言文件里没有时用这句中文
+        self.screenNode.GetBaseUIControl(cookRecipePanel + "/food_title/title").asLabel().SetText(Texts.of("arris_fd.pot_screen.pick_recipe", "请选择食谱"))
         for index in range(6):
             recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1))
             itemRenderer = recipeItem.GetChildByName("item_renderer")
