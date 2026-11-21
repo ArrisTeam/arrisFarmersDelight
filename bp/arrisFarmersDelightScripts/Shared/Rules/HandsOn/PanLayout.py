@@ -18,7 +18,7 @@ NODE_Y = 1.01            # piece / under / lift 节点在锅里的高度（skill
 BATCH = 16               # 一锅最多煎几件（SkilletCooking.BATCH）
 LOOK_STEPS = 12          # 上面那一面的熟度分 12 档（308-310）
 RAW_LOOK, DONE_LOOK = -1, 100
-SEARED = 0xFFB8875C      # 生的那面煎着时最多染成这个色（45-46）；SEAR 是染多重。基岩版的掉落物没法着色，这两个只留着对照
+SEARED = 0xFFB8875C      # 生的那面煎着时最多染成这个色（45-46）；SEAR 是染多重。熟色用的是 KitchenLooks 里同值的那两个（FryingTint），这两个只留着对照
 SEAR = 0.7
 
 

@@ -12,7 +12,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         Dishes（砧板摆盘的菜谱，tools/gen_dishes.py 从合成配方生成）
                         Remainders（原料用掉后剩下的容器：JE 的合成剩余物 + 厨锅的特例表）
                         CraftReturns（无序合成配方补还的剩余物，tools/gen_crafts.py 从合成配方生成）
-                        FoodColors  BrothColors（按贴图算的颜色：FoodColors 是厨锅汤色用的图标加权平均；BrothColors 里有汤色、碎料色、倒进锅里的液体色，和砧板碎屑的颜色 MainColors，tools/gen_food_colors.py / gen_broth_colors.py 生成）
+                        FoodColors  BrothColors（按贴图算的颜色：FoodColors 是厨锅汤色用的图标加权平均；BrothColors 里有汤色、碎料色、倒进锅里的液体色，和砧板碎屑、煎锅 / 炉灶上东西朝上那面的熟色用的主色 MainColors，tools/gen_food_colors.py / gen_broth_colors.py 生成）
+                        Fishes（JE 的物品标签 minecraft:fishes：煎着的东西朝上那面"肉和鱼"多带一点焦色的鱼那一半）
                         BiomeWater（各群系的水色，tools/gen_biome_water.py 按原版资源包每个群系的 water_appearance 生成；厨锅里的清水取它）
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
@@ -31,6 +32,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         熄着时 FD 的件怎么冷却 `cooledTimer`、什么点得着 / 灭得了炉灶 `useOf`）
                         StoveFacing（炉灶的朝向：方块的 aux -> 站点朝向，炉灶自己的坐标 / 姿态 -> 世界，六件跟着炉灶转）
                         StoveLookState（炉灶"看上去是什么样"：广播和方块实体里存的那份怎么读）  EggLook（煎锅 / 炉灶里的蛋从生到熟的三档专用图标）
+                        FryingTint（煎锅 / 炉灶上一件朝上那面的熟色：JE 的 fryingTint 用哪两张主色、哪些算肉和鱼，叠层粒子的颜色和不透明度）
+                        TopOverlay（叠在一件平躺的掉落物朝上那面上的图标粒子摆在哪、SetRot 转多少、多大，掉落物停稳了没有）
                         DishStation（砧板摆盘：哪些菜搬到砧板、什么能打底、下一层、做成哪道、做几份）
                         StationBooks（四个站点旁的食谱书页：厨锅、砧板摆盘 + 切、煎锅、炉灶；服务端放料挑写法、凑份数；页脚的秒数带着配置的倍率）
                         HandsOnOptions（HoD 配置表的读法：JE 的缺省、read / readTime 的兜法、倍率夹进 0.1..10、派生规则、scaled；每次现读表，两端共用；没联动时说 HoD 不在）
@@ -131,6 +134,7 @@ Compat/
                         GrillLogic（服务端）+ GrillView（客户端，开着站点的人：机位、托盘、命中盒、点击变动作）+ StoveScenes / StoveScene /
                         StoveWorld / GrillPieces / GrillSpace / GrillGhosts / GrillFx（客户端，谁都看得见的烤架场景：东西、落下 / 翻面 / 取走的动作、
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
+                        FryTints（客户端，两个场景共用：朝上那面半熟的件上叠一颗熟色粒子，见「煎锅 / 炉灶上东西朝上那面的熟色」）；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
                         TouchFeel（客户端，四个站点共用：触屏的轻震、双击间隔、点选的东西飞上站点，问前置包的 view.buzz / view.doubleSeconds / view.flyIn，老版本没有就算了，
                         docs/diegesis/DESIGN.md §9；砧板、煎锅、炉灶在发 place 的地方调 flyIn，只在照客户端的状态放得上去时调，厨锅走内核自己的点击）；
@@ -576,6 +580,38 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 5. 放下的煎锅：火焰附加 I / II 煎一件 4 / 3 秒；水能不能流进煎锅所在的格（`GetLiquidBlock` 读到水）——能的话放食物提示、锅里的东西浮出来。
 6. 打人音效：连点是轻击、隔 1 秒再打是重击。
 
+## 煎锅 / 炉灶上东西朝上那面的熟色（联动时，对照 HoD）
+
+JE 依据：Hands-On Delight 的 `SkilletBehavior.drawPiece`（327 行）/ `StoveBehavior.draw`（206 行）给整件 `node.setTint(KitchenLooks.fryingTint(shown, cooked(shown), shownUp, SEARED, SEAR))`，
+Diegesis 的 `TintedConsumer` 把整件体素模型每个顶点的颜色乘上它；朝上那面每 1/12 才重画（`look`）。朝上那面没熟时画生的图、从白往"熟的主色 / 生的主色"走
+（逐通道相除、封顶 1），肉和鱼（`food.isMeat() || ItemTags.FISHES`）先往焦色 `0xB8875C` 走 4 成，最多走到七成（`SEAR` 0.7）；熟了（up >= 1）换成熟的图、不染。
+两面食材只有厨师没等贴锅 / 贴灶那面熟透就翻过来时，朝上那面才是半熟；蛋（单面）是从透亮清成白，这边早就做成了预染色的显示物品（`Shared/Rules/EggLook`），不归这一节。
+
+这边（只在联动时，场景模块本来就只在联动时导入）：
+- 颜色：`Shared/Rules/FryingTint.tintOf`——生熟两张图的主色查 `Shared/Data/BrothColors.MainColors`（JE 的 `FoodColors.main`：色相分 12 份取最大一族，
+  不是砧板碎屑 / 汤色用的 `FoodColors.sample` 加权平均；`tools/gen_broth_colors.py` 把营火配方的每件和它煎熟的样子都收进来，原来缺海带），
+  肉是 `Shared/Data/PotPieceTraits.MEAT`（JE 的 isMeat），鱼是新表 `Shared/Data/Fishes`（JE 1.20.1 原版标签 `minecraft:fishes`：生熟鳕鱼、生熟鲑鱼、河豚、热带鱼；
+  农夫乐事的鱼片不是肉也不在这个标签里，所以 JE 里鱼片不带焦色，这边一样）。下游经联动契约往 `CanCookedFoodDict` 追加的东西 JE 运行时从图标现算，这边没有贴图、
+  表里没有：不染。
+- 画法：客户端掉落物本身染不了色。每件要染的、躺着不动的食物，在它朝上那面上叠一颗粒子 `arris:fry_tint`（`rp/particles/arris_fry_tint.json`：平躺的
+  `emitter_transform_xz`、`particles_blend`、贴图 `atlas.items`，图标在图集里的位置由 `GetIconInfo` 给，颜色 / 不透明度 / 半边长 / UV 是变量，带
+  `particle_appearance_lighting` 跟环境光），一颗活到被删（前置包影子 `Client/Shade.py` 的做法）。整件乘上 c 用普通的 alpha 混合近似（`FryingTint.overlay`）：
+  不透明度 a = 1 - min(c)、颜色 q = (c - min(c)) / a，叠出来 (1 - a) + a·q = c；c 是白时什么都不画，偏差只和染的深浅成正比。
+- 摆法（`Shared/Rules/TopOverlay`）：粒子的轴和掉落物的轴一一对上（图标右 = 掉落物的 -X、图标上 = +Y、法线 = 正面 -Z，发射器朝向 E = M·P，SetRot 按
+  `Rz·Ry·Rx` 分解；平躺朝上时只转 y，是砧板的缝、前置包的影子实机核对过的那一支），位置在贴图正中沿法线抬 `TOP_FACE`·缩放 + `LIFT_MARGIN`，
+  半边长 = 7.2 像素·缩放 / 2。掉落物的厚度照 Strata 引擎知识库 ITEM_RENDER_ENGINE §3–§4：逐像素挤出一个贴图像素厚、从轴心平面往正面那边挤，所以平躺朝上时
+  顶面在中心平面上方 7.2 / 16 像素·缩放（和 2026-11-17 砧板上量的"0.555 陷进去、0.655 露出来"对得上）；`LIFT_MARGIN` 0.1 像素是估的。
+  受光：物品材质按法线算明暗，朝上的面系数正好是 1（实体着色器的 `_lightIntensity`），和带 `particle_appearance_lighting` 的粒子乘的是同一处的光。
+  只给平躺朝上的件：锅里、烤架上停着的件都平躺朝上，斜着的只在半路上。
+- 什么时候亮（`TopOverlay.Stillness`、客户端 `Compat/Diegesis/FryTints`）：掉落物的位置按游戏刻插值、晚到一两帧，粒子不晚，所以掉落物的样子一变（落下、颠起、
+  翻面、挪位、换大小）粒子就收着（不透明度 0），连着 0.1 秒（两个游戏刻）没变才摆好、亮出来；熟了换成熟的图、朝上那面还生、件拿走、换了东西、场景收掉
+  （方块没了、重建、炉灶转向、换维度）就删。`PanScene.frame` / `StoveScene.frame` 每帧把要染的件交给 `FryTints.TopTints`；没变的不碰引擎（歇着的锅照样只剩核对）。
+  进世界头几秒 `GetIconInfo` 回 None、`Create` 回 0：那时不画，之后再试；老引擎没有 `GetIconInfo` 一件都不染；物品类型是方块的不叠。
+- 和 JE 不一样的：只染朝上那面的顶面（JE 连底面、四边一起乘），动着的时候不染（JE 飞着、翻着也染着）；颜色经 alpha 混合近似，粒子和掉落物受光不完全一样时
+  深色的那几档会有偏差。`tests/test_frying_tint.py`（颜色）、`tests/test_top_overlay.py`（摆法、停稳）、`tests/test_fry_tints.py`（接线、假引擎）守着。
+- 还没实机核对的：`LIFT_MARGIN`（0.1 像素，估的）够不够、会不会看得出浮着；粒子和掉落物顶面在白天 / 夜里 / 火把旁受光是不是真的一样（上面是从知识库推的）；
+  海带的物品类型和掉落物是不是一张普通的贴图物品；带俯仰 / 侧倾的 SetRot 是不是 `Rz·Ry·Rx`（只转 y 的那一支实机核对过）。
+
 ## 篮子、绳子、安全网、炉灶（对照 JE）
 
 JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、SafetyNetBlock、AbstractStoveBlock、ModDamageTypes、ModBlocks、Configuration。
@@ -855,4 +891,9 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   `test_presence_steps.py`（步骤执行器：出错 / 跳过 / 条件；两张表每个目标都存在）、`test_presence_boots.py`（真的入口和步骤模块，站点的 `register` 换成记账的：一个站点一步、连带的东西、关了的站点两端一致）、
   `test_presence_standalone.py`（没装 / 太旧时 `sys.modules` 里没有站点模块、没有它们的监听和端点；装了才有）、`test_presence_notice.py`（前置包太旧的提醒：三次、隔 8 秒、`str`）、
   `test_handson_options_gate.py`（没联动时每个取值函数说 HoD 不在、厨锅 / 煎锅 / 炉灶走农夫乐事原样、不写"做过几份"）。要站点和 HoD 配置照常生效的假引擎小工具（`optkit`、`potfake`、`panclient`、`boardclient`）开头 `linkkit.link()`。
+- 煎锅 / 炉灶上东西朝上那面的熟色：`test_frying_tint.py`（`FryingTint`：表里真的颜色、肉和鱼、没有颜色不染、叠层的 (q, a) 叠回 c）、
+  `test_top_overlay.py`（`TopOverlay`：粒子的轴和掉落物的轴对上、平躺只转 y、斜着扣着不给、`Rz·Ry·Rx` 分解、抬高的上下界、停稳两个游戏刻），这两个不要前置包；
+  `test_fry_tints.py`（接在 `PanScene` / `StoveScene` 上的 `FryTints`，`panclient.py` 的假引擎记粒子的 `Create` / `SetPos` / `SetRot` / `SetVariable` / `Remove` 和
+  `GetIconInfo`：躺稳才亮、和掉落物朝上那面严丝合缝、颠 / 翻时收着、熟了 / 拿走 / 场景没了就删、蛋 / 没颜色 / 方块物品不叠、图集和粒子系统没好时再试、
+  老引擎不染、歇着不碰引擎；要前置包）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。

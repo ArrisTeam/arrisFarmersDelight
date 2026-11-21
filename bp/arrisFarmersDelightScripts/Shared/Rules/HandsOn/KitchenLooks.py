@@ -4,7 +4,8 @@
 移植自 Hands-On Delight：client/KitchenLooks.java 的 RAW_EGG / SHELL（25-27）、fryingTint（78-99）、mix（102-110）。
 颜色是 32 位 ARGB 的非负整数（Java 的 int 在这里取无符号）。鸡蛋打开了从不躺在蛋壳里（画成煎蛋的样子）、液体倒出来容器不跟着进菜里
 这两条要查物品标签（opened / isCracked / isPoured），标签在 Java 里是数据包，这里由调用方判断后把结果传进来。
-基岩版的客户端掉落物不能染色，所以炉灶暂时用不上 fryingTint（见 StoveLook）；煎锅里的蛋、手持煎锅的画法可以拿它。
+基岩版的客户端掉落物本身染不了色：蛋那一支（蛋清从透亮清成白，带半透明）烤进了 EggLook 那几件预染色的显示物品；别的食物朝上那面的熟色由
+Shared/Rules/FryingTint 拿生熟两张图的主色调 fryingTint，在掉落物朝上那面上叠一张同图标的半透明粒子近似（Compat/Diegesis/FryTints，煎锅、炉灶都是）。
 """
 from .Mth import roundInt
 
