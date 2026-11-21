@@ -6,7 +6,9 @@
 JE 的 JEI 有的分类用它的键（jei.farmersdelight.cooking / cutting，英文照 JE 的 en_us）；煎锅、炉灶在 JE 归原版的营火一类，这里是我们的键 arris_fd.jei.*；
 秒数和站点食谱书页脚是同一句，用 HoD 的键 handson_delight.book.seconds。
 这里核对：Compat/Jei 里写死的中文（说明、注释除外）都是 (键, 中文) 的缺省或 Texts 调用的缺省，键两个语言文件里都有、中文和代码里的一样、占位的个数对得上；
-登记分类时给的名字都经 Texts.of 查。
+登记分类时给的名字都经 Texts.of 查；再把真的四个模块装在假的 Client/Engine 上（GetChinese 按语言文件答，arrisJei 的注册表记下名字），
+登记四类、建煎锅和炉灶的配方页，看中文、英文、语言文件里一句都没有时页上写出来的字——秒数要和站点食谱书的页脚一样是整数
+（StationBooks.shownSeconds：煎锅 6.0、炉灶 30.0 秒原来直接填进英文的 %s，写成了 6.0 s / 30.0 s）。
 """
 from __future__ import print_function
 
@@ -14,6 +16,8 @@ import ast
 import io
 import os
 import re
+import sys
+import types
 
 import fdtest
 
@@ -109,6 +113,132 @@ def testEveryCategoryNameIsLookedUpWhenItIsRegistered():
                 assert isinstance(title, ast.Call) and _isTexts(title, "of"), "%s:%d 分类名要经 Texts.of 查" % (name, node.lineno)
                 registered.append(name)
     assert sorted(registered) == ["BoardAssembly.py", "CookingPot.py", "CuttingBoard.py", "Skillet.py", "Stove.py"], registered
+
+
+# ---------------------------------------------------------------- 真的四个模块，假的引擎：页上写出来的字
+
+lang, titles, written = {}, {}, {}
+
+
+class _Control(object):
+    """配方页上的一个控件：记下写进去的字。"""
+
+    def __init__(self, path):
+        self.path = path
+
+    def asLabel(self):
+        return self
+
+    def asItemRenderer(self):
+        return self
+
+    def SetText(self, text):
+        written[self.path] = text
+
+    def SetUiItem(self, *args):
+        return True
+
+
+class _Page(object):
+    """一张配方页：悬停文本的控件不给（SetHoverText 当场返回），别的都给。"""
+
+    @staticmethod
+    def GetChildByPath(path):
+        return None if path.endswith("/hover_text") else _Control(path)
+
+
+class _Registry(object):
+    """arrisJei 的注册表：记下登记的分类名，配方一概收下。"""
+
+    @staticmethod
+    def registerRecipeType(tag, icon, title, *rest):
+        titles[tag] = title
+
+    @staticmethod
+    def getAllRegisteredItems():
+        return []
+
+    @staticmethod
+    def setRecipeByResult(*args):
+        return None
+
+    @staticmethod
+    def setRecipeByInput(*args):
+        return None
+
+
+def _install():
+    """JEI 的模块只经 Client/Engine 碰引擎：GetChinese 照 lang 答（unicode，和引擎一样；没有的键原样还回去），ImportModule 给出假的 arrisJei。"""
+    class _Game(object):
+        @staticmethod
+        def GetChinese(key):
+            return lang.get(_u(key), key)
+
+    class _Factory(object):
+        @staticmethod
+        def CreateGame(target):
+            return _Game()
+
+    jei = types.ModuleType("arrisJeiScripts.api.jei")
+    jei.JeiRecipeRegistry = type("JeiRecipeRegistry", (object,), {"getInstance": staticmethod(_Registry)})
+    engine = types.ModuleType(fdtest.SCRIPTS + ".Client.Engine")
+    engine.compFactory, engine.levelId = _Factory(), "level"
+    engine.clientApi = type("ClientApi", (object,), {"ImportModule": staticmethod(lambda path: jei)})
+    sys.modules[engine.__name__] = engine
+    return dict((name, fdtest.load("Compat.Jei." + name)) for name in ("CookingPot", "CuttingBoard", "Skillet", "Stove"))
+
+
+MODULES = _install()
+Books = fdtest.load("Shared.Rules.StationBooks")
+REGISTER = (("CookingPot", "RegisterCookingPotRecipes"), ("CuttingBoard", "RegisterCuttingBoardRecipes"),
+            ("Skillet", "RegisterSkilletRecipes"), ("Stove", "RegisterStoveRecipes"))
+PAGES = (("Skillet", "SkilletRecipe"), ("Stove", "StoveRecipe"))
+SHOWN = {
+    "zh_CN": ({"cooking_pot": u"烹饪", "cutting_board": u"砧板", "skillet": u"煎锅", "stove": u"炉灶"}, {"Skillet": u"6 秒", "Stove": u"30 秒"}),
+    "en_US": ({"cooking_pot": u"Cooking", "cutting_board": u"Cutting Board", "skillet": u"Skillet", "stove": u"Stove"}, {"Skillet": u"6 s", "Stove": u"30 s"}),
+}
+
+
+def _render(language):
+    """按 language 的语言文件（None：一句都查不到）登记四类、建煎锅和炉灶的配方页：({分类: 名字}, {模块: 页上的秒数})。"""
+    lang.clear()
+    if language:
+        lang.update(_lang(language + ".lang"))
+    titles.clear()
+    for module, register in REGISTER:
+        getattr(MODULES[module], register)()
+    seconds = {}
+    for module, page in PAGES:
+        written.clear()
+        getattr(MODULES[module], page)(None, _Page(), {"input": "minecraft:beef", "output": "minecraft:cooked_beef"}, 0, ("minecraft:beef", 0)).OnCreate()
+        assert isinstance(written["/bg/timer"], str), "py2 里是 utf-8 的字节串（标签的接口只收 str）"
+        seconds[module] = _u(written["/bg/timer"])
+    assert all(isinstance(title, str) for title in titles.values())
+    return dict((tag, _u(title)) for tag, title in titles.items()), seconds
+
+
+def testTheJeiPagesSayTheirWordsInThePlayersLanguageWithWholeSeconds():
+    for language, shown in sorted(SHOWN.items()):
+        assert _render(language) == shown, (language, _render(language))
+    assert _render(None) == SHOWN["zh_CN"], "语言文件里一句都没有：分类名和秒数都是代码里的中文"
+
+
+def testThePagesAndTheBookFooterTurnSecondsIntoTheSameNumber():
+    for module, constant in (("Skillet", "SKILLET_SECONDS"), ("Stove", "RECIPE_SECONDS")):
+        seconds = getattr(MODULES[module], constant)
+        number = Books.shownSeconds(seconds)
+        assert isinstance(number, int) and number == int(seconds), (module, seconds, number)
+        assert _render(None)[1][module] == u"%d 秒" % number and _render("en_US")[1][module] == u"%d s" % number
+        assert MODULES[module].SECONDS[0] == Books.SECONDS_KEY, "和页脚同一个键"
+    assert Books.shownSeconds(2.5) == 3 and Books.shownSeconds(2.4) == 2, "Java 的 Math.round：半数进位"
+    assert Books._seconds(2.5) == "3 秒", "页脚也经 shownSeconds"
+    for module, constant in (("Skillet", "SKILLET_SECONDS"), ("Stove", "RECIPE_SECONDS")):
+        kept = getattr(MODULES[module], constant)
+        setattr(MODULES[module], constant, 2.5)
+        try:
+            assert _render(None)[1][module] == u"3 秒" and _render("en_US")[1][module] == u"3 s", "配方页也是半数进位（不是截掉小数）：经的是 shownSeconds"
+        finally:
+            setattr(MODULES[module], constant, kept)
 
 
 if __name__ == "__main__":

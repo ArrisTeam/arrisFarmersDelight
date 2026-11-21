@@ -44,9 +44,16 @@ def wordSeconds(wording):
     return True
 
 
+def shownSeconds(value):
+    """一段时长在页上写成几秒：Java 的 Math.round（半数进位），不是 Python 的 round（py3 里 2.5 是 2），得到整数。
+    站点食谱书的页脚和 JEI 里煎锅 / 炉灶配方页上的秒数都由这里换成数，只有这一种换法：JEI 原来把 6.0 直接填进语言文件的句子，
+    中文的 %d 写成 6，英文的 %s 却写成 6.0。"""
+    return roundInt(value)
+
+
 def _seconds(value):
-    """页脚的秒数：Java 的 Math.round（半数进位），不是 Python 的 round（py3 里 2.5 是 2）。"""
-    return _words["seconds"] % roundInt(value)
+    """页脚的秒数：shownSeconds 换出的整数，按现在用的那一句（wordSeconds）写。"""
+    return _words["seconds"] % shownSeconds(value)
 
 
 def _pair(value):

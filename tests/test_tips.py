@@ -331,5 +331,26 @@ def testAWordTheLanguageFileLacksFallsBackOnItsOwn():
     assert _u(shown[0]) == u"You need a 碗 to eat this.", "句子查得到、词查不到：词用中文，句子照当前语言"
 
 
+def testANumberIsWrittenTheWayTheChineseSentenceWritesItInEveryLanguage():
+    """中文写 %d 的一格，英文常写 %s（JE、HoD 的英文就是）：数照中文的 %d 先换成整数，不会写成 3.0。
+    还剩几个是整数，可网上过来的数、别处交来的时长都可能是小数（JEI 的秒数就是 6.0：英文原来写成了 6.0 s）。"""
+    Texts = Endpoints.Texts
+    for language, expected in (("en_US", u"3 remaining..."), ("zh_CN", u"还剩3个……"), (None, u"还剩3个……")):
+        lang.clear()
+        if language:
+            lang.update(_lang(language + ".lang"))
+        del shown[:]
+        endpoints["OnTip"](TipWire.message(Tips.BOARD_REMAINING, (3.0,)))
+        assert _u(shown[0]) == expected, (language, shown)
+    lang.clear()
+    lang.update(_lang("en_US.lang"))
+    assert Texts.fill("handson_delight.book.seconds", "%d 秒", 6.0) == "6 s" and Texts.fill("handson_delight.book.seconds", "%d 秒", 30.0) == "30 s"
+    assert Texts.fill("handson_delight.pot.cooking", "%s，还要 %d 秒", ("Soup", 7.9)) == "Soup in 7 s", "和中文的 %d 一样截掉小数"
+    assert Texts.fill("arris_fd.pot.scoop", "盛出 %s", "Soup") == "Serve Soup", "只有一个值、不是元组也照旧"
+    lang.clear()
+    assert Texts.fill("handson_delight.pot.cooking", "%s，还要 %d 秒", ("Soup", 7.9)) == "Soup，还要 7 秒"
+    assert Texts.fill("k", "100%% %s", 2.5) == "100% 2.5", "%% 不算占位；中文写 %s 的一格照原样"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

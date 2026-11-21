@@ -717,7 +717,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   限制：登记只做一次，下游之后才追加的摆盘菜不在 JEI 里（「联动契约与客户端的表」一节的限制里说的同一件事）。`tests/test_dish_jei.py`、`tests/test_jei_board_assembly.py`。
 - **站点界面上的字按玩家的语言给**（`Client/Texts.py`）：我们自己写的字——四个站点触屏长按轮盘的七条条目（`arris_fd.hold.*`，条目带 `"key"`，前置包替它查）、厨锅的提示（`arris_fd.pot.*` 和 HoD 的键
   `handson_delight.pot.ready / cooking`）、食谱书页脚的秒数（`handson_delight.book.seconds`）、JEI 分类的名字和提示（`handson_delight.assembly*`）——进了 `rp/texts/zh_CN.lang`，并新建 `rp/texts/en_US.lang`（只有这些界面字，
-  物品和方块的英文名还没补）。`Texts.of(键, 缺省)` 用 `CreateGame(levelId).GetChinese` 查，查不到用代码里的缺省中文；`Texts.fill` 填占位，译文的占位写坏了就退回缺省。
+  物品和方块的英文名还没补）。`Texts.of(键, 缺省)` 用 `CreateGame(levelId).GetChinese` 查，查不到用代码里的缺省中文；`Texts.fill` 填占位（中文写 `%d` 的一格，数先换成整数：译文写 `%s` 也是同一个数，不会写成 6.0），译文的占位写坏了就退回缺省。
   实机（zh_CN）：这些键都查得到。`tests/test_station_texts.py`。服务端发的提示、经典厨锅界面和 JEI 另外四类上的字原来还是写死的中文，2026-11-21 也改了，见下面两条。
 - **服务端的提示按玩家的语言给**（2026-11-21，`Shared/Data/Tips`、`Shared/Rules/TipWire`）：物品栏上方弹的那一行提示（砧板切不了 / 换工具 / 还剩几个、煎锅和炉灶放不进、手持煎锅、盘装菜要碗、稻米要种在水里……）
   原来是服务端拼好中文、`SetOneTipMessage` 发的，谁看都是中文：服务端不知道每个玩家用什么语言（服务端的 `GetChinese` 给的是服务端那边的语言），官方文档里 `SetOneTipMessage` 的 message 就是要显示的字、没有交值的地方。
@@ -731,7 +731,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   在 `layouts/cooking_pot.json` 里写 `arris_fd.pot_screen.*` 的键（按钮、页签由库在客户端查，搜索框的提示由引擎的文字控件查；改了要照「厨锅界面」一节重新 vendor）；食谱书详情的标题 `bookTitle`
   是库的可本地化文字 `Data.Lang`，没选食谱时是键（`CookingPotBook.UNPICKED_TITLE`）。库和引擎查不到键时显示键名本身，所以这些键两个语言文件里都要有；英文挑了放得进的短写法（经典版的按钮只有 65 宽）。
   只在 `DOLOR_SCREEN` 关掉时用的旧原生界面换成同一组键。JEI 的厨锅、砧板、煎锅、炉灶四类的名字（`jei.farmersdelight.cooking / cutting`、`arris_fd.jei.skillet / stove`）和配方页的秒数
-  （`handson_delight.book.seconds`）在客户端经 `Texts` 查。`tests/test_pot_screen_texts.py`、`tests/test_jei_texts.py`。没进过游戏。
+  （`handson_delight.book.seconds`；秒数和站点食谱书的页脚一样先经 `StationBooks.shownSeconds` 半数进位成整数）在客户端经 `Texts` 查。`tests/test_pot_screen_texts.py`、`tests/test_jei_texts.py`。没进过游戏。
 - **触屏的数量档**（前置包的按钮，屏幕右下角 全部 / 单个）在场时，四个站点的长按轮盘不再给"放一个"：拿着一叠放多少归那个按钮管（`HoldMenu.tapMode(view)`：`view.tap` 不是 None）；
   炉灶的"只放这一格"在拿着不止一个时也让给它。老版本的前置包没有 `view.tap`，轮盘照旧。`tests/test_hold_tap_mode.py`。
 - **按住直接做**（前置包的 `Protocol.HOLD_ACT`，2026-11-21）：这样一来四个站点的长按菜单处处只有一条，前置包不再为它弹一条臂的轮盘——按住到点当场在原落点补那一下右键 / Shift 点击，
