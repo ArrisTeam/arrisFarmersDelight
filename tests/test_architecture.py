@@ -15,6 +15,8 @@
 6. 代码文件 ≤ 250 行（Shared/Data/ 纯数据表除外）、函数 ≤ 120 行
 7. 规则表里带 "only" 的文件只许导入那几个前缀（任何位置的相对导入都算）：场景交互前置的联动入口（ServerBoot / ClientBoot）、判定（Presence、Steps）和两张步骤表
    只导入它们自己这一组、Shared 的 HandsOnMode、QuModLibs 和客户端入口要的 Client/Engine——站点模块在步骤里才导入，没装前置包时它们连同它们的 @Listen / @AllowCall 一个也不会被导入
+8. 绝对导入只许引擎（mod.*）、本包自己（脚本根的包名）和在游戏里导入过的标准库模块（ENGINE_STDLIB）：引擎的 Python 是删减过的（没有 numbers 这些），
+   离线的 CPython 什么都有，用了没有的模块测试照样过、进游戏整条导入链就断。这一条连拷入的 dolorContainer、生成的 dolorLayouts.py 一起查（它们也在游戏里跑），只有 QuModLibs 不查
 """
 from __future__ import print_function
 
@@ -32,6 +34,15 @@ VENDORED_DIRS = ("QuModLibs", "dolorContainer")
 GENERATED_FILES = ("dolorLayouts.py",)
 SHADOW_NAMES = {"random", "time", "math", "copy", "json", "string", "types", "traceback", "common", "mod",
                 "collections", "re", "os", "uuid", "weakref", "functools", "itertools"}
+# 规则 8：引擎（网易 3.10）的 Python 标准库是删减过的。2026-11-21 在游戏里两端逐个 import 过，下面这些有（导入得了；机审许不许用另说，见规则 2），
+# ENGINE_MISSING 那些没有——离线的 CPython 都有，测试照样过，进游戏整条导入链就断（前置包的 TouchKeep 写过 import numbers：内核的客户端一个模块都没起来、站点一个都开不了）。
+# 要用这里没有的模块，先在游戏里两端 import 一下（d:/tmp/mcdk-multi/checks/s_stdlib_probe.py 那样）再加进来。前置包的规则表（tests/dgarch.py）里有一样的一份，
+# 两份要一样（tests/test_prereq_constants.py，前置包在旁边才跑）：加一个模块两份都加。
+ENGINE_STDLIB = {"__future__", "abc", "array", "ast", "base64", "binascii", "bisect", "calendar", "codecs", "collections", "colorsys", "contextlib",
+                 "copy", "cPickle", "cStringIO", "datetime", "functools", "glob", "hashlib", "heapq", "inspect", "io", "itertools", "json", "keyword",
+                 "marshal", "math", "operator", "os", "pickle", "random", "re", "string", "StringIO", "struct", "textwrap", "threading", "time",
+                 "traceback", "types", "uuid", "warnings", "weakref", "zlib"}
+ENGINE_MISSING = {"numbers", "fractions", "decimal", "unicodedata", "cmath", "sets"}
 _SHARED_RULE = {"forbid": {"Server", "Client", "Compat", "Api", "QuModLibs"}, "engine": False}
 # 联动入口、判定、步骤表只许导入这些（点分路径的前缀）：站点模块在步骤里才导入，没装前置包时它们连同 @Listen / @AllowCall 一个也不会被导入（规则 7）
 ENTRY_ONLY = ("QuModLibs", "Shared.Rules.HandsOnMode", "Client.Engine", "Compat.Diegesis.ServerBoot", "Compat.Diegesis.ClientBoot",
@@ -349,6 +360,41 @@ def testEveryFarmersDelightBroadcastHasItsClientEndpoint():
     assert len(names) >= 6, "至少有这几个：OnPotLook、OnPanLook、OnStoveLook、OnBoardLook、OnBlockItems、OnTableSync；找到 %r" % (names,)
     missing = ["%s 的 %s" % found for found in names if ("client", found[1]) not in seen]
     assert not missing, "客户端没有同名的 @AllowCall 函数: %s" % missing
+
+
+def _shipped(pack):
+    """进游戏的每个脚本（规则 8 用）：拷入的 dolorContainer、生成的 dolorLayouts.py 也算（它们一样在游戏里跑），只有 QuModLibs 不算（kit 拷入的框架，不改）。"""
+    scriptsDir = PACKS[pack]["dir"]
+    for root, dirs, files in os.walk(scriptsDir):
+        rel = os.path.relpath(root, scriptsDir).replace("\\", "/")
+        if rel.split("/", 1)[0] == "QuModLibs":
+            continue
+        for name in files:
+            if name.endswith(".py"):
+                yield (name if rel == "." else rel + "/" + name), io.open(os.path.join(root, name), encoding="utf-8").read()
+
+
+def testImportsOnlyModulesTheEnginesPythonHas():
+    """规则 8：绝对导入只许引擎（mod.*）、本包自己和在游戏里导入过的标准库模块（ENGINE_STDLIB）。前置包跑这一套检查时用的是它自己同名的那一条
+    （tests/test_diegesis_architecture.py，表在 tests/dgarch.py，和这里的一样）。"""
+    assert not ENGINE_STDLIB & ENGINE_MISSING
+    problems = []
+    for pack in sorted(PACKS):
+        own = os.path.basename(PACKS[pack]["dir"])
+        for relPath, source in _shipped(pack):
+            for node in ast.walk(ast.parse(source)):
+                if isinstance(node, ast.Import):
+                    names = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom) and not node.level:
+                    names = [node.module or ""]
+                else:
+                    continue
+                for name in names:
+                    top = name.split(".")[0]
+                    if top not in ("mod", own) and top not in ENGINE_STDLIB:
+                        problems.append("%s/%s:%d 导入了 %s：引擎的 Python 里%s（ENGINE_STDLIB）" % (
+                            pack, relPath, node.lineno, name, "没有这个模块" if top in ENGINE_MISSING else "没验过有没有"))
+    assert not problems, "\n".join(problems)
 
 
 def testModuleNamesDoNotShadow():
