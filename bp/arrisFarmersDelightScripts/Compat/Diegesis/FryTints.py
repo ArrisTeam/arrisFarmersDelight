@@ -13,7 +13,9 @@
 - 没变的不碰引擎：每帧只比一下掉落物的样子和要染的颜色，变了的才发；
 - 进世界头几秒图集和粒子系统还没好（GetIconInfo 回 None、Create 回 0）：这一帧不画，下一帧再试；老引擎没有 GetIconInfo（3.10 之前）：一件都不染。
 和 JE 不一样的：只染朝上那面的顶面（JE 连底面、四边一起乘），只在停着时染（JE 飞着、翻着也染着）。蛋是 EggLook 那几件预染色的显示物品，不叠；
-物品类型是方块的（画成立方体的、画成平面却按方块抬高的，Shared/Data/FlatBlockItems）不叠，营火配方里只有海带待实机核；下游追加、表里没有颜色的不染。
+物品类型是方块的（画成立方体的、画成平面却按方块抬高的，Shared/Data/FlatBlockItems）不叠，营火配方里没有（海带实机看过：itemType 是空串、
+掉落物是普通的平面贴图，照染）；下游追加、表里没有颜色的不染。实机核对（2026-11-22，测试的会话 tint）：俯视、斜 30°、四个炉灶朝向都盖得严，
+白天 / 夜里 / 方块光下受光和掉落物一样，颠锅、翻面时收起、落稳 0.1 秒后按翻上来那面的颜色再亮。
 """
 from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import FryingTint, GrillStation, PanStation, TopOverlay
