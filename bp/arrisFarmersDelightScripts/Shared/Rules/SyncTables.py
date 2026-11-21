@@ -4,7 +4,8 @@
 背景：Api/LegacyModAttr.py 把 Shared/Data 里的配置表按引用交给下游模组，它们在服务端的 LoadServerAddonScriptsAfter 里往里追加自己的配方、刀、
 可烹饪物、炉灶。客户端是另一个进程，有自己的一份 Shared/Data，下游追加的内容它没有——经典玩法全在服务端判，不受影响，但四个站点的客户端表现要读
 这些表（托盘里哪些亮、借哪把刀、点板是切还是敲、食谱书的页、哪些方块开炉灶站点……）。所以服务端把"现在的表 - 导入时的表"发过去（TableDiff），
-客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张，别的在 NOT_SYNCED 里写明为什么不发。
+客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张（OneSidedList 例外：客户端眼下不读，
+照旧发，见它那一行），别的在 NOT_SYNCED 里写明为什么不发。
 三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，两端必须一一对上）。
 """
 from ..Data import Cooking, CookingPotRecipes, Cutting, Dishes, Food
@@ -25,7 +26,7 @@ TABLES = (
     ("CookingPotRecipeList", ROWS, CookingPotRecipes.CookingPotRecipeList),  # 厨锅：托盘里哪些亮、放不放得下、书页、汤色用的成品
     ("platePackagedFoodDict", MAP, Food.platePackagedFoodDict),             # 盘装的盛宴：砧板上的物品类型（客户端和服务端的 GetItemType 一致）
     ("DishList", ROWS, Dishes.DishList),                                    # 砧板摆盘的菜：托盘里哪些亮、层接不接得上、食谱书、悬着的成品
-    ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 炉灶的食谱书：只煎一面的写几秒（样子上的蛋看 PotSunk.CRACKED）
+    ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 客户端眼下不读（蛋的样子看 PotSunk.CRACKED，书页的秒数照 JE 不看它）；照旧发：下游在用这张契约表，两端一样
     ("NotOnGrillList", ITEMS, Cooking.NotOnGrillList),                      # 炉灶站点：烤架不收的，托盘里不亮、放不上去
 )
 BY_NAME = dict((name, (kind, container)) for name, kind, container in TABLES)

@@ -6,7 +6,8 @@
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
   脚注是全部产物（产物不止一种才有，含主产物，BoardBook.java:55）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
-- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（SkilletBook / StoveBook：2 * sideTicks，蛋也是两面的时间）；只看。
+- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（SkilletBook 31 行 / StoveBook 36 行：2 * sideTicks，不看 one_sided——只煎一面的
+  从下往上煎透，用的也是两面的时间）；只看。
 三种时间都带着配置里的倍率（cooking_pot_time / skillet_time / stove_time，站点关了算 1.0），书上写的就是服务端此刻的时间（两端同一份配置表）。
 """
 from ..Data.Cooking import CanCookedFoodDict
@@ -189,20 +190,18 @@ def boardCurrent(layers, item):
 # ---------------------------------------------------------------- 煎锅、炉灶
 
 def _cookPages(sideSeconds):
-    pages = []
-    for raw in sorted(CanCookedFoodDict):
-        sides = 1 if PanStation.isOneSided(raw) else 2
-        pages.append({"key": raw, "item": stack(CanCookedFoodDict[raw]), "ways": [[[(raw, 0)]]], "foot": [stack(CLOCK)],
-                      "note": _seconds(sides * sideSeconds), "kind": None})
-    return pages
+    """能煎 / 烤的一件一页，每道都写两面一共几秒（2 * sideTicks）：不看 one_sided（只煎一面的从下往上煎透，用的也是两面的时间）。"""
+    return [{"key": raw, "item": stack(CanCookedFoodDict[raw]), "ways": [[[(raw, 0)]]], "foot": [stack(CLOCK)],
+             "note": _seconds(2 * sideSeconds), "kind": None} for raw in sorted(CanCookedFoodDict)]
 
 
 def panPages():
-    """煎锅的书：每道都是两面的时间（SkilletBook：2 * sideTicks；蛋不翻面、从下往上煎透，用的也是两面的时间）。"""
-    return [dict(page, note=_seconds(2 * PanStation.sideSeconds(1))) for page in _cookPages(PanStation.sideSeconds(1))]
+    """煎锅的书（SkilletBook）：营火配方的每一件，蛋也在。"""
+    return _cookPages(PanStation.sideSeconds(1))
 
 
 def grillPages():
+    """炉灶的书（StoveBook）：只列烤架收的（不收蛋，NOT_ON_GRILL）。"""
     return [page for page in _cookPages(GrillStation.sideSeconds()) if GrillStation.canGrill(page["key"])]
 
 

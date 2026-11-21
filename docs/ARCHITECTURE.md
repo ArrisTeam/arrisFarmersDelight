@@ -197,7 +197,7 @@ def OnServerSkilletBlockUse(args):
 摆盘的菜是配方，数据包都能加；我们这边原来是规则里写死的 frozenset 和不在白名单里的生成表，下游够不着。
 同步是旁路：服务端在模块导入时记下各张表的样子，下游追加完之后把"现在 - 基线"发给客户端，客户端并进它自己的表。
 
-**同步哪些表**（表名即契约的变量名，`Shared/Rules/SyncTables.py` 登记；客户端真有地方读的才同步）：
+**同步哪些表**（表名即契约的变量名，`Shared/Rules/SyncTables.py` 登记；客户端真有地方读的才同步，`OneSidedList` 例外，见它那一行）：
 
 | 表 | 下游怎么改 | 客户端哪里读 |
 |---|---|---|
@@ -208,7 +208,7 @@ def OnServerSkilletBlockUse(args):
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 | `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
-| `OneSidedList` | 追加名字 | `StationBooks._cookPages`（炉灶书页写几秒）；服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染 |
+| `OneSidedList` | 追加名字 | 客户端眼下没有地方读，照旧同步（下游在用这张契约表，两端一样）。服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染；也不管书上的秒数（`SkilletBook` / `StoveBook` 都写两面的时间，`StationBooks._cookPages`） |
 | `NotOnGrillList` | 追加名字 | `GrillStation.canGrill`（`NOT_ON_GRILL` 就是这个列表）：炉灶站点的烤架不收，托盘里不亮 |
 
 没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的 + 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、

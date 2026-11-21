@@ -104,6 +104,27 @@ def testCookingBooksListWhatThePanAndStoveTake():
     assert next(page for page in grill if page["key"] == "minecraft:beef")["note"] == "20 秒", "两面各 10 秒"
 
 
+def testAOneSidedFoodIsWrittenWithTheTimeOfBothSidesInEitherBook():
+    """HoD 的 SkilletBook（31 行）、StoveBook（36 行）都写 2 * sideTicks、不看 one_sided：只煎一面的从下往上煎透，用的也是两面的时间。
+    缺省（OneSidedList 只有蛋，蛋上不了烤架）两本书都看不出；往 OneSidedList 里临时加一件烤架收的（马铃薯，测完删掉），炉灶书上它照样是两面的 20 秒，
+    煎锅书上和别的一样。"""
+    Cooking = fdtest.load("Shared.Data.Cooking")
+
+    def notes(name):
+        pan = next(page for page in Books.panPages() if page["key"] == name)["note"]
+        return pan, next(page for page in Books.grillPages() if page["key"] == name)["note"]
+
+    beef = notes("minecraft:beef")
+    assert beef[1] == "20 秒" and notes("minecraft:potato") == beef, "缺省：马铃薯和牛肉一样"
+    Cooking.OneSidedList.append("minecraft:potato")
+    try:
+        assert notes("minecraft:potato") == beef, "只煎一面的也写两面的时间：炉灶书不是一面的 10 秒"
+        assert next(page for page in Books.panPages() if page["key"] == "minecraft:egg")["note"] == beef[0], "蛋照旧"
+    finally:
+        Cooking.OneSidedList.remove("minecraft:potato")
+    assert Cooking.OneSidedList == ["minecraft:egg"]
+
+
 def testWhatTheStationIsMakingNow():
     assert Books.potCurrent([_item("arris:tomato", 3), _item("arris:tomato", 2), {}]) == next(
         index for index, recipe in enumerate(Recipes.CookingPotRecipeList) if recipe["CookResult"][0] == "arris:tomato_sauce")
