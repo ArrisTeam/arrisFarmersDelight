@@ -5,7 +5,7 @@
 这里每口加载着的煎锅一份（PanScenes.py 管登记和每帧调度）：状态来自服务端广播（Shared/Rules/PanLookState.py），动作是 HoD 的纯计算
 （Shared/Rules/HandsOn/PanShow 一族，节点的姿态每帧在 show.nodes 里），画法是
 - 方块实体模型：锅被颠时整只锅转着挪着、锅柄描边、油膜（PanModel.py；锅柄描边靠 handle_glow 骨骼的反面壳，油膜靠四片贴图方片 + 透明度）；
-- 食物：客户端掉落物，平躺在锅里，跟着锅的转动走（PanPose）；蛋在锅沿敲开时手里的蛋是立着的；
+- 食物：客户端掉落物，平躺在锅里，跟着锅的转动走（PanPose）；蛋在锅沿敲开时手里的蛋是立着的；朝上那面半熟时上面叠一颗熟色粒子（FryTints）；
 - 粒子、声音：PanFx.py。
 全部用"场景坐标"（HoD 的 skillet.json：锅心 (8, 0, 8)，锅柄朝 +z），出手时经 PanModelMath 换到世界（锅柄永远朝方块的朝向）。
 本人开着这口锅的站点时，PanView 把手交进来：focused、startsOf（一次放进好几件时从玩家屏幕底边飞来）、cursorAt（光标在某个高度的平面上的点）、
@@ -16,6 +16,7 @@ strokeAt（抓着锅柄时光标的高度，每帧读）、hovered（光标在�
 """
 import random
 
+from . import FryTints
 from .PanFx import PanFx
 from .PanModel import PanModel
 from .TouchFeel import settled
@@ -55,6 +56,7 @@ class PanScene(object):
         self.awake = 0.0
         self.sinceCheck = 0.0
         self.props = {}                       # 节点名 -> Prop
+        self.tints = FryTints.TopTints()      # 朝上那面的熟色：叠在道具上的粒子，键也是节点名
         self.hovered = False                  # 光标在锅柄上（本人）
         self.offering = False                 # 本人手上的东西放得进锅：锅身描边
         self.startsOf = None                  # startsOf(高度, 第几个, 共几个) -> (dx, dz)：从玩家屏幕底边飞来的起点相对中心的偏移
@@ -134,6 +136,7 @@ class PanScene(object):
         if y is not None:
             self.show.strokeMove(y)
         self._pose()
+        self.tints.frame(dt, FryTints.panWanted(self.show, self.props))
         self.fx.play(self.show.drain(), near)
         if self.onDrawn is not None:
             drawn, self.onDrawn = self.onDrawn, None
@@ -198,6 +201,7 @@ class PanScene(object):
         for prop in self.props.values():
             itemComp.DeleteClientDropItemEntity(prop.entityId)
         self.props = {}
+        self.tints.clear()
 
     # ---------------------------------------------------------------- 收场
 

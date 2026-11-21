@@ -33,6 +33,8 @@ TABLE = [
     ("sparkle.json", BRIGHT, "SparkleParticle.java:19 覆盖了 getLightColor"),
     ("arris_board_mark.json", BRIGHT, "刀口虚线 setShape(..., WHITE, true)：BoardBehavior.java:1193，glows 为真时满亮度（SceneRenderer.java:631）"),
     ("arris_board_tool.json", LIT, "借来的工具是场景里的物品节点，只是染成半透明（BoardBehavior.java:868 / 932 的 setTint(OFFERED)）：SceneRenderer.java:848 的 renderStatic 带着站点的光照"),
+    ("arris_fry_tint.json", LIT, "煎锅 / 炉灶上食物朝上那面的熟色是食物节点自己的 setTint（SkilletBehavior.java:327、StoveBehavior.java:206），节点的体素形状带着站点的光照画"
+                               "（SceneRenderer.renderShape：没设 glows 就用 light）；叠在掉落物上的这一层要和掉落物受一样的光"),
 ]
 
 

@@ -6,10 +6,12 @@
 这里每座加载着的炉灶一份（StoveScenes.py 管登记和每帧调度）：状态来自服务端广播（Server/StoveLook.py，Shared/Rules/StoveLookState.py 解），
 动作、画法、粒子声音都是 GrillPieces.Pieces 的（站点里原来画在前置包的站点空间，现在画在炉灶朝向的站点空间里，StoveWorld.py）：
 站点的北面是炉灶的正面（JE 的 Orientation.BLOCK），六件的位置、动作、粒子声音的位置都按炉灶的朝向转到世界（Shared/Rules/StoveFacing），
-和开着站点的人看到的是同一套，谁站在哪边看都一样。炉灶方块自己不动，没有模型要推：件、虚影、粒子就是全部。
+和开着站点的人看到的是同一套，谁站在哪边看都一样。炉灶方块自己不动，没有模型要推：件、虚影、粒子就是全部；朝上那面半熟的件上面叠一颗熟色粒子
+（FryTints，件收掉、场景收掉时跟着删）。
 本人开着这座炉灶的站点时，GrillView 把手交进来（focus）：一次放好几件时从玩家屏幕下沿飞来、"自己刚翻过的"那一下不重复演
 （服务端的 turned 到的时候已经演过了）；被拒的虚影谁看都往炉灶的正面弹。
 """
+from . import FryTints
 from .GrillPieces import Pieces
 from .GrillSpace import WorldSpace
 from .StoveWorld import WorldView
@@ -27,6 +29,7 @@ class StoveScene(object):
         self.view = WorldView(dimensionId, self.pos, yaw)
         self.space = WorldSpace(self.pos, yaw)
         self.pieces = Pieces(self.view, self.space)
+        self.tints = FryTints.TopTints()      # 朝上那面的熟色：叠在件上的粒子，键是烤位
         self.known = False                    # 收到过一份状态了（之前不推进：刚建好第一份状态来之前不能把"刚加载不演落下"用掉）
         self.focused = False                  # 本人开着这座炉灶的站点
         self.feel = None                      # feel(种类)：本人开着站点时触屏的一下轻震（TouchFeel），服务端说放上去 / 放不上去时调
@@ -72,6 +75,7 @@ class StoveScene(object):
             self.yaw = self.space.yaw = yaw
             self.view.turn(yaw)
             self.pieces.clear()
+            self.tints.clear()
 
     # ---------------------------------------------------------------- 本人
 
@@ -95,6 +99,7 @@ class StoveScene(object):
             self.pieces.ghosts.frame(dt)
             return False
         self.pieces.frame(dt, near or self.focused)
+        self.tints.frame(dt, FryTints.stoveWanted(self.pieces))
         if self.onDrawn is not None:
             drawn, self.onDrawn = self.onDrawn, None
             drawn()
@@ -105,10 +110,12 @@ class StoveScene(object):
     def rebuilt(self):
         """方块实体在本端重建了（区块重载，加载事件也会重复来）：件全收掉，接着来的那份状态按"刚加载"重画，不演落下。"""
         self.pieces.clear()
+        self.tints.clear()
         self.known = False
 
     def destroy(self):
         """炉灶没了、换了维度或场景停用：道具全收掉。"""
         self.pieces.clear()
+        self.tints.clear()
         self.view.props.clear()
         self.known = False

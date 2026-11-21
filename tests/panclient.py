@@ -51,6 +51,11 @@ class World(object):
         self.calls = []
         self.counts = {}                # 引擎组件的接口名 -> 被调了几次（数"没变的东西不碰引擎"用；要数一段就先 counts.clear()）
         self.lang = {}                  # 语言文件：键 -> 现在这种语言下的那一句（GetChinese）；空 = 都找不到，界面用代码里的中文
+        self.icons = {}                 # 物品名 -> GetIconInfo 回的图集位置 (u, v, 宽, 高)；没写的物品按 ICON 回
+        self.iconsReady = True          # 假：进世界头几秒，GetIconInfo 回 None
+        self.oldEngine = False          # 真：3.10 之前的引擎，物品组件上没有 GetIconInfo
+        self.particleFails = 0          # 接下来这么多次粒子的 Create 回 0（进世界头几秒粒子系统还没好）
+        self.itemTypes = {}             # 物品名 -> GetItemBasicInfo 的 itemType（没写的物品不带这个键）
         self._next = 0
 
     def nextId(self):
@@ -59,6 +64,7 @@ class World(object):
 
 
 world = World()
+ICON = (0.25, 0.5, 1.0 / 32.0, 1.0 / 32.0)      # 没写进 world.icons 的物品的图标在图集里的位置
 
 
 class Comp(object):
@@ -66,6 +72,8 @@ class Comp(object):
         self.owner = owner
 
     def __getattribute__(self, name):
+        if name == "GetIconInfo" and world.oldEngine:
+            raise AttributeError(name)
         found = object.__getattribute__(self, name)
         if callable(found) and not name.startswith("_"):
             world.counts[name] = world.counts.get(name, 0) + 1          # 取出来就是要调：每次取记一次
@@ -91,7 +99,15 @@ class Comp(object):
         return True
 
     def GetItemBasicInfo(self, name, aux=0):
-        return {"itemName": "name:" + name, "maxStackSize": 64}
+        info = {"itemName": "name:" + name, "maxStackSize": 64}
+        if name in world.itemTypes:
+            info["itemType"] = world.itemTypes[name]
+        return info
+
+    def GetIconInfo(self, info):
+        """CreateItem(levelId).GetIconInfo({"itemName", "auxValue"})（3.10 起）：图标在图集里的 (u, v, 宽, 高)；进世界头几秒回 None。"""
+        assert set(info) == {"itemName", "auxValue"}, info
+        return world.icons.get(info["itemName"], ICON) if world.iconsReady else None
 
     def GetChinese(self, key):
         """CreateGame(levelId).GetChinese：语言文件里 key 对应的那一句，找不到原样返回 key（引擎的规矩）。"""
@@ -123,14 +139,34 @@ class Comp(object):
 
     # ---- 粒子、声音 ----
     def Create(self, identifier, pos):
+        if world.particleFails > 0:
+            world.particleFails -= 1
+            return 0                    # 引擎建不出来回 0，不是 None
         particleId = world.nextId()
-        world.particles.append({"id": identifier, "pos": tuple(pos), "vars": {}, "particle": particleId})
+        world.particles.append({"id": identifier, "pos": tuple(pos), "vars": {}, "particle": particleId, "rot": None, "removed": False})
         return particleId
+
+    def _particle(self, particleId):
+        found = [particle for particle in world.particles if particle["particle"] == particleId]
+        assert len(found) == 1 and not found[0]["removed"], "没有这颗粒子，或者已经删了：%r" % (particleId,)
+        return found[0]
 
     def SetVariable(self, particleId, name, value):
         for particle in world.particles:
             if particle["particle"] == particleId:
                 particle["vars"][name] = value
+
+    def SetPos(self, particleId, pos):
+        self._particle(particleId)["pos"] = tuple(pos)
+        return True
+
+    def SetRot(self, particleId, rot):
+        self._particle(particleId)["rot"] = tuple(rot)
+        return True
+
+    def Remove(self, particleId):
+        self._particle(particleId)["removed"] = True
+        return True
 
     def PlayCustomMusic(self, name, pos, volume, pitch, loop, extra):
         world.sounds.append({"name": name, "pos": tuple(pos), "volume": volume, "pitch": pitch})

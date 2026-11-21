@@ -132,6 +132,7 @@ PACKS = {
             "Compat/Diegesis/StoveWorld.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/StoveScene.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/StoveScenes.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/FryTints.py": {"forbid": {"Server"}, "engine": True},      # 煎锅 / 炉灶场景里朝上那面的熟色粒子
             "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True, "only": ENTRY_ONLY},
         },
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},

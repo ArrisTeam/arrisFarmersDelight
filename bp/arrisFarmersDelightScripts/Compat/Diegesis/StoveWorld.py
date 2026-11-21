@@ -32,6 +32,10 @@ class WorldProp(object):
     def _world(self, point):
         return StoveFacing.worldPoint(self.yaw, self.origin, point[0], point[1], point[2])
 
+    def worldCenter(self):
+        """视觉中心在世界里的位置（格）：叠在它朝上那面的熟色粒子（FryTints）跟着它和 drawn（世界里的姿态）摆。"""
+        return self._world(self.center)
+
     def move(self, center=None, matrix=None, scale=None):
         """改位置 / 姿态 / 缩放（不给的不变）。"""
         if self.entityId is None:
