@@ -6,11 +6,16 @@
 """
 from __future__ import print_function
 
+import glob
 import os
 import subprocess
 import sys
+import tempfile
 
 import fdtest
+
+sys.path.insert(0, os.path.join(fdtest.ROOT, "tools"))
+import gen_food_colors as Food  # noqa: E402
 
 Table = fdtest.load("Shared.Data.BrothColors")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList
@@ -18,7 +23,7 @@ Colors = fdtest.load("Shared.Rules.HandsOn.PotColors")
 Sunk = fdtest.load("Shared.Data.PotSunk")
 Cuts = fdtest.load("Shared.Data.Cutting").CuttingBoardDict
 TOOL = os.path.join(fdtest.ROOT, "tools", "gen_broth_colors.py")
-VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
+GAME = "D:/MCStudioDownload/game/MinecraftPE_Netease"      # 本机的游戏目录：每个版本一个目录，升级后旧版本的会被删掉
 
 
 def channels(rgb):
@@ -119,12 +124,38 @@ def testGreensCutIntoLeavesAndTheRestIntoCoins():
     assert not Colors.isGreen(Table.MainColors["minecraft:carrot"]) and not Colors.isGreen(Table.MainColors["arris:tomato"])
 
 
+def _gameVersions():
+    """本机游戏目录里带原版资源包、目录名是版本号的那几个版本。"""
+    found = []
+    for path in glob.glob(GAME + "/*/data/resource_packs/vanilla"):
+        name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(path))))
+        if all(part.isdigit() for part in name.split(".")):
+            found.append(name)
+    return found
+
+
 def testTheTableMatchesTheTextures():
-    # 没有原版资源包的机器上，工具只比读得到的（本包的物品；原版的、盛在原版容器里的沿用现有的值）
-    if not os.path.isdir(VANILLA):
-        print("本机没有原版资源包", VANILLA, "：只比本包的物品")
-    code = subprocess.call([sys.executable, "-B", TOOL, "--check", "--vanilla", VANILLA])
-    assert code == 0, "贴图变了：py -3 tools/gen_broth_colors.py 重新生成 Shared/Data/BrothColors.py"
+    """工具缺省拿本机版本号最高的原版资源包比（原来写死 3.10.0.448891：游戏升级后那个目录删了，这条就悄悄只比本包的物品）。
+    没有游戏目录的机器上（别的机器、CI）只比读得到的：本包的物品；原版的、盛在原版容器里的沿用现有的值，不报错。"""
+    versions = _gameVersions()
+    if not versions:
+        print("本机没有原版资源包：只比本包的物品")
+    run = subprocess.run([sys.executable, "-B", TOOL, "--check"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         env=dict(os.environ, PYTHONIOENCODING="utf-8"), encoding="utf-8")
+    assert run.returncode == 0, "贴图变了：py -3 tools/gen_broth_colors.py 重新生成 Shared/Data/BrothColors.py\n" + run.stdout
+    assert ("原版资源包不在" in run.stdout) == (not versions), "本机有 %s，原版物品却没比：%s" % (versions, run.stdout)
+
+
+def testTheNewestVanillaPackIsPickedByVersionNumber():
+    """缺省的原版资源包：游戏目录下目录名是版本号、带 data/resource_packs/vanilla 的里面版本号最高的一个（逐段按数字比，3.10 比 3.9 新；
+    PCLauncher_x64 这样不是版本号的不算，哪怕里面也有一份）；游戏目录不在返回 None。"""
+    with tempfile.TemporaryDirectory() as game:
+        for name, pack in (("3.9.0.401155", True), ("3.10.0.436581", True), ("3.10.0.467018", True), ("3.11.0.1", False), ("PCLauncher_x64", True)):
+            os.makedirs(os.path.join(game, name, "data", "resource_packs", "vanilla" if pack else "other"))
+        newest = Food.newestVanilla(game)
+        assert newest == os.path.join(game, "3.10.0.467018", "data", "resource_packs", "vanilla").replace("\\", "/"), newest
+        assert Food.newestVanilla(os.path.join(game, "nowhere")) is None
+    assert Food.VANILLA_DEFAULT == Food.newestVanilla(), "工具的缺省就是本机最新的那一份（没有是 None）"
 
 
 def testTheGeneratorStillRunsWithoutTheVanillaPack():

@@ -11,8 +11,8 @@
   PouredColors  倒进锅里的液体（HoD 的 poured 标签里本包有的）：和空容器的图标不一样的像素里最多的那种颜色（ItemVoxels.contents），
                 加上生蛋搅进去的 0xF2DC9A；
   CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked：熟的还是食物才换），碎料按熟的颜色。
-农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10；那个目录不在时，原版物品沿用
-现有 BrothColors.py 里的值、只重算本包的物品，--check 也只比本包的物品）。原版物品读哪张贴图：先看 gen_food_colors.VANILLA 和下面的 VANILLA_MORE
+农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机游戏目录里版本号最高的那一份，gen_food_colors.newestVanilla；
+没有这样的目录时，原版物品沿用现有 BrothColors.py 里的值、只重算本包的物品，--check 也只比本包的物品）。原版物品读哪张贴图：先看 gen_food_colors.VANILLA 和下面的 VANILLA_MORE
 手写的，再按 vanilla_icons 的规则找（平面图标、不规则名字的门 / 船 / 告示牌 / 矿车、方块的侧面贴图）。
 用法：py -3 tools/gen_broth_colors.py [--vanilla <游戏的 resource_packs/vanilla 目录>] [--check]
 """
@@ -258,7 +258,7 @@ def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else gen_food_colors.VANILLA_DEFAULT
     icons = Icons(vanilla)
     if icons.vanilla is None:
-        print("原版资源包不在 %s：原版物品沿用现有的值，只重算本包的物品" % vanilla)
+        print("原版资源包不在 %s：原版物品沿用现有的值，只重算本包的物品" % (vanilla or gen_food_colors.GAME + " 下的任何版本里"))
     previous = loadPrevious()
     tables = compute(icons, previous)
     text = render(tables)

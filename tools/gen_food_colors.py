@@ -3,7 +3,8 @@
 
 照 Hands-On Delight 的 client/FoodColors.sample：贴图里不透明的像素按鲜艳度（1 + 最大分量 - 最小分量）加权平均，
 灰的描边说明不了食物是什么颜色。砧板切东西飞的碎屑按它染色（HoD 的 BoardBehavior）。
-农夫乐事的物品读本包 rp/ 的贴图，原版的食材读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10）。
+农夫乐事的物品读本包 rp/ 的贴图，原版的食材读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机游戏目录里版本号最高的那一份：
+newestVanilla；一份都没有就不生成，原版食材的颜色读不到）。
 用法：py -3 tools/gen_food_colors.py [--vanilla <游戏的 resource_packs/vanilla 目录>] [--check]
 """
 import io
@@ -15,7 +16,22 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "bp", "arrisFarmersDelightScripts", "Shared", "Data", "FoodColors.py")
-VANILLA_DEFAULT = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
+GAME = "D:/MCStudioDownload/game/MinecraftPE_Netease"     # 本机的游戏目录：每个版本一个目录（3.10.0.467018 ……），升级后旧版本的会被删掉
+
+
+def newestVanilla(game=GAME):
+    """game 下目录名是版本号、带原版资源包（data/resource_packs/vanilla）的里面版本号最高的那一份；一份都没有（别的机器、CI）返回 None。
+    版本号逐段按数字比（3.10 比 3.9 新）；不是版本号的目录（PCLauncher_x64，里面也有一份）不算。"""
+    found = []
+    for name in os.listdir(game) if os.path.isdir(game) else ():
+        parts = name.split(".")
+        path = os.path.join(game, name, "data", "resource_packs", "vanilla").replace("\\", "/")
+        if all(part.isdigit() for part in parts) and os.path.isdir(path):
+            found.append((tuple(int(part) for part in parts), path))
+    return max(found)[1] if found else None
+
+
+VANILLA_DEFAULT = newestVanilla()      # 不写死版本：游戏升级、旧目录删了也跟着最新的走
 
 # 原版食材：物品名 -> 贴图（相对原版资源包）
 VANILLA = {
@@ -108,6 +124,9 @@ def render(table):
 
 def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else VANILLA_DEFAULT
+    if not vanilla or not os.path.isdir(vanilla):
+        print("原版资源包不在 %s：原版食材的颜色读不到，不生成" % (vanilla or GAME + " 下的任何版本里"))
+        return 1
     text = render(colors(vanilla))
     current = io.open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
     if "--check" in argv:
