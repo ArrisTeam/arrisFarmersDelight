@@ -8,7 +8,7 @@
 而且两边对不上（沼泽老文件 #4c6559、新文件 #617b64，21 个后来的群系老文件里根本没有）。
 键是群系名，不带 minecraft: 命名空间（客户端 GetBiomeName 回的就是这样），值是 0xRRGGBB；没写 water_appearance 的群系不进表
 （查表时取不到，Shared/Rules/PotWater 给缺省色）。
-原版资源包的路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10。
+原版资源包的路径用 --vanilla 指定，缺省是本机游戏目录里版本号最高的那一份（vanilla_pack.newest；一份都没有就不生成）。
 用法：py -3 tools/gen_biome_water.py [--vanilla <游戏的 resource_packs/vanilla 目录>] [--check]
 """
 import glob
@@ -20,9 +20,11 @@ import sys
 
 sys.dont_write_bytecode = True      # 别在 tools/ 里留 .pyc
 
+import vanilla_pack
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "bp", "arrisFarmersDelightScripts", "Shared", "Data", "BiomeWater.py")
-VANILLA_DEFAULT = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
+VANILLA_DEFAULT = vanilla_pack.newest()      # 不写死版本：游戏升级、旧目录删了也跟着最新的走
 NAMESPACE = "minecraft:"
 COLOR = re.compile(r"^#([0-9a-fA-F]{6})$")
 
@@ -72,6 +74,9 @@ def render(table):
 
 def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else VANILLA_DEFAULT
+    if not vanilla:
+        print("本机没有原版资源包（%s 下的任何版本里都没有）：不生成" % vanilla_pack.GAME)
+        return 1
     text = render(waters(vanilla))
     current = io.open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
     if "--check" in argv:

@@ -21,7 +21,7 @@ Fx = fdtest.load("Server.Helpers.Fx")
 Endpoints = fdtest.load("Client.Endpoints")
 engine = boardclient.engine
 
-VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla/sounds/sound_definitions.json"
+VANILLA = fdtest.vanilla("sounds", "sound_definitions.json")      # 本机最新的原版资源包里的（tools/vanilla_pack.py）；没有游戏目录是 None
 
 
 def _definitions(path):
@@ -60,7 +60,7 @@ def testEveryOwnDefinitionThatCarriesItsOwnVolumeOrPitchIsInTheOneTable():
 
 
 def testTheLanternPlaceSoundCarriesTheVanillaPitch():
-    if not os.path.exists(VANILLA):
+    if VANILLA is None:
         print("（本机没有原版资源包：挂灯放置声的音调没查）")
         return
     samples = _samples(_definitions(VANILLA)["block.lantern.place"])

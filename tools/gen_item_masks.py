@@ -6,7 +6,8 @@ Hands-On Delight 的砧板把板上的物品按它的图标画（ItemVoxels.read
 所以这里把砧板上要切的东西的图标离线读出来，每行一个整数（第 0 列是最低位，实心为 1），客户端照 JE 的算法在这个掩码上算
 （Shared/Rules/HandsOn/BoardMarks.py）。没有贴图的东西（立体的方块、别的包的物品）不进表，客户端按整格实心算。
 基岩版说是方块、JE 里画成一张平面图标的花、野生作物、蘑菇丛（Shared/Data/FlatBlockItems）也进表：它们的图是方块的贴图（terrain_texture.json）。
-农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机 MCDK 用的 3.10）。
+农夫乐事的物品读本包 rp/ 的贴图，原版的读游戏自带的资源包（路径用 --vanilla 指定，缺省是本机游戏目录里版本号最高的那一份：vanilla_pack.newest；
+一份都没有就不生成——原来写死的目录不在时会悄悄写出一张原版物品全丢了的表）。
 用法：py -3 tools/gen_item_masks.py [--vanilla <resource_packs/vanilla 目录>] [--check] [--show 物品名]
 """
 import importlib.util
@@ -15,12 +16,16 @@ import json
 import os
 import sys
 
+sys.dont_write_bytecode = True      # 别在 tools/ 里留 .pyc（下面导入的 vanilla_pack 也算）
+
 from PIL import Image
+
+import vanilla_pack
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "bp", "arrisFarmersDelightScripts")
 OUT = os.path.join(SCRIPTS, "Shared", "Data", "ItemMasks.py")
-VANILLA_DEFAULT = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
+VANILLA_DEFAULT = vanilla_pack.newest()      # 不写死版本：游戏升级、旧目录删了也跟着最新的走
 SOLID = 128                      # ItemVoxels.read：alpha >= 128 算实心
 
 # 原版物品名 -> 贴图（相对原版资源包）：图标名和物品名不一样的列在这里，其余按"去掉 minecraft: 当图标名"去 item_texture.json 里找
@@ -153,6 +158,9 @@ def render(masks):
 
 def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else VANILLA_DEFAULT
+    if not vanilla or not os.path.isdir(vanilla):
+        print("原版资源包不在 %s：原版物品的图标读不到，不生成" % (vanilla or vanilla_pack.GAME + " 下的任何版本里"))
+        return 1
     masks = table(vanilla)
     if "--show" in argv:
         print(preview(masks[argv[argv.index("--show") + 1]]))

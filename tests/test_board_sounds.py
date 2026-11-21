@@ -16,7 +16,7 @@ Cutting = fdtest.load("Shared.Rules.HandsOn.Cutting")
 Table = fdtest.load("Shared.Data.Cutting")
 Station = fdtest.load("Shared.Rules.CuttingStation")
 
-VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla/sounds/sound_definitions.json"
+VANILLA = fdtest.vanilla("sounds", "sound_definitions.json")      # 本机最新的原版资源包里的（tools/vanilla_pack.py）；没有游戏目录是 None
 LOW, HIGH = (lambda: 0.0), (lambda: 1.0)
 
 
@@ -184,7 +184,7 @@ def testEverySoundNameExists():
     own = json.load(io.open(os.path.join(fdtest.ROOT, "rp", "sounds", "sound_definitions.json"), encoding="utf-8"))
     own = own.get("sound_definitions", own)
     assert Sounds.KNIFE_CUT in own, "刀声是本包自己的"
-    if not os.path.exists(VANILLA):
+    if VANILLA is None:
         print("（本机没有原版资源包：别的声音名没查）")
         return
     vanilla = json.load(io.open(VANILLA, encoding="utf-8"))

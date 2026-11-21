@@ -11,7 +11,7 @@ import fdtest
 
 Masks = fdtest.load("Shared.Data.ItemMasks").ItemMasks
 TOOL = os.path.join(fdtest.ROOT, "tools", "gen_item_masks.py")
-VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla"
+VANILLA = fdtest.vanilla()        # 本机版本号最高的原版资源包（tools/vanilla_pack.py，工具的缺省也是它）；没有游戏目录是 None
 
 
 def testEveryMaskHasOneIntegerPerRowAndSomeSolidPixels():
@@ -59,10 +59,11 @@ def testTheIconsTheFinishAnimationsLayThingsAlongAreThereAndTheirAxesAreWhatTheJ
 
 
 def testTheTableMatchesTheTextures():
-    if not os.path.isdir(VANILLA):
-        print("跳过：本机没有原版资源包", VANILLA)
+    """拿本机最新的原版资源包比（工具不带 --vanilla 用的就是它）；本机没有游戏目录（别人的机器、只有本仓库的克隆）跳过。"""
+    if VANILLA is None:
+        print("跳过：本机没有原版资源包")
         return
-    code = subprocess.call([sys.executable, "-B", TOOL, "--check", "--vanilla", VANILLA])
+    code = subprocess.call([sys.executable, "-B", TOOL, "--check"])
     assert code == 0, "贴图变了：py -3 tools/gen_item_masks.py 重新生成 Shared/Data/ItemMasks.py"
 
 

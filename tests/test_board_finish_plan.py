@@ -9,7 +9,6 @@ from __future__ import print_function
 import io
 import json
 import math
-import os
 
 import fdtest
 
@@ -25,7 +24,7 @@ KINDS = (Assembly.FINISH_PRESS, Assembly.FINISH_TOSS, Assembly.FINISH_ROLL, Asse
          Assembly.FINISH_SANDWICH, Assembly.FINISH_SHAPE, Assembly.FINISH_FREEZE, Assembly.FINISH_CHOP)
 STEP = Motion.LAYER_STEP
 COLOR = 0x336699
-VANILLA = "D:/MCStudioDownload/game/MinecraftPE_Netease/3.10.0.448891/data/resource_packs/vanilla/sounds/sound_definitions.json"
+VANILLA = fdtest.vanilla("sounds", "sound_definitions.json")      # 本机最新的原版资源包里的（tools/vanilla_pack.py）；没有游戏目录是 None
 
 
 def _names(count, base="minecraft:bread"):
@@ -403,7 +402,7 @@ def testTheOneSoundNamesTheFinishesNeedAreTheBedrockOnesAndKnownToTheBoardSounds
 def testTheVanillaDefinitionsOfTheNewSoundsCarryNoVolumeOrPitchOfTheirOwn():
     """引擎把调用的音量音调乘上采样自带的（Shared/Rules/SoundMix）：收尾用到的三条原版声音什么都不自带，JE 的数原样交给引擎，不用进 SoundMix.BUILT_IN。"""
     SoundMix = fdtest.load("Shared.Rules.SoundMix")
-    if not os.path.exists(VANILLA):
+    if VANILLA is None:
         print("（本机没有原版资源包：没查）")
         return
     data = json.load(io.open(VANILLA, encoding="utf-8"))
