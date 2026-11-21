@@ -10,6 +10,7 @@ keeps 是原样留下的配料（面团配方的水桶）——它每轮都放�
 做成时怎么收尾（finishOf，客户端挑动画用）照 AssemblyRecipes.Assembly.finish（199-249）：碗里的菜"拌"还是"摆"要看成品是不是方块（盛宴、派、蛋糕）、
 打没打 tossed 标签、配料里有没有肉 / 鱼 / 蛋——标签和物品属性基岩没有，下面几张名单就是它们的替身（JE 的 BoardTests.everyFoodCraftComesToTheBoard 逐道断言过）。
 """
+from ..Data import PotSunk
 from ..Data.Dishes import DishList
 from ..Data.Food import pieList, platePackagedFoodDict
 from .HandsOn import Assembly
@@ -22,10 +23,10 @@ CAKE = "minecraft:cake"
 _TOSSED = frozenset(("arris:mixed_salad", "arris:fruit_salad", "arris:nether_salad", "arris:gleaming_salad_block_stage0"))
 _FROZEN = frozenset(("arris:melon_popsicle",))
 _WRAPPED = frozenset(("arris:mutton_wrap",))
-# FoodProperties.isMeat / #minecraft:fishes 的替身：物品名（冒号后面按下划线拆开）里有这些词的当肉、当鱼；生鸡蛋是 handson_delight:cracked 里的
+# FoodProperties.isMeat / #minecraft:fishes 的替身：物品名（冒号后面按下划线拆开）里有这些词的当肉、当鱼。
+# 蛋（KitchenTags.CRACKED，AssemblyRecipes 244 行）不另抄一份：读 PotSunk.CRACKED，和厨锅、砧板、煎锅同一张（_flagsOf 每次现读）
 _MEAT_WORDS = frozenset(("beef", "porkchop", "chicken", "mutton", "rabbit", "ham", "bacon", "flesh", "patty", "chops", "cuts"))
 _FISH_WORDS = frozenset(("cod", "salmon", "fish", "pufferfish"))
-_CRACKED = frozenset(("minecraft:egg",))
 
 
 def rebuildIndex(dishList=None):
@@ -136,7 +137,8 @@ def isBlockResult(name):
 def _flagsOf(kind):
     """一件配料在 isTossed 眼里是什么（肉 / 鱼 / 生蛋）；名字带 egg、bacon 的 Assembly.isTossed 自己认。"""
     words = set(kind[0].split(":")[-1].split("_"))
-    return {"name": kind[0], "meat": bool(words & _MEAT_WORDS), "fish": bool(words & _FISH_WORDS), "cracked": kind[0] in _CRACKED}
+    cracked = any(kind[0] == name for name, _aux in PotSunk.CRACKED)
+    return {"name": kind[0], "meat": bool(words & _MEAT_WORDS), "fish": bool(words & _FISH_WORDS), "cracked": cracked}
 
 
 def finishOf(dish):

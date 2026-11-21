@@ -128,6 +128,25 @@ def testEveryDishIsFinishedTheWayJavaFinishesIt():
                                         Assembly.FINISH_SKEWER, Assembly.FINISH_FREEZE, Assembly.FINISH_KNEAD), dish["result"]
 
 
+def testACrackedIngredientIsReadFromTheSameTableAsThePotTheBoardAndThePan():
+    """AssemblyRecipes 244 行：碗里有一样 KitchenTags.CRACKED 的料就是摆的、不是拌的。这边的 cracked 和厨锅、砧板、煎锅是同一张
+    PotSunk.CRACKED（缺省只有生鸡蛋）：往里临时加一件（番茄，测完换回去），一碗只有菜叶和番茄的也变成摆。"""
+    Sunk = fdtest.load("Shared.Data.PotSunk")
+
+    def bowl(*ingredients):
+        return {"result": ("test:greens", 0), "ingredients": [("minecraft:bowl", 0)] + list(ingredients), "base": 0, "kind": "bowl"}
+
+    assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_TOSS, "纯植物：拌"
+    assert Rules.finishOf(bowl(LEAF, ("minecraft:egg", 0))) == Assembly.FINISH_ARRANGE, "有生鸡蛋：摆"
+    kept = Sunk.CRACKED
+    Sunk.CRACKED = kept + (TOMATO,)
+    try:
+        assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_ARRANGE, "番茄进了 cracked 那张表：摆"
+    finally:
+        Sunk.CRACKED = kept
+    assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_TOSS and Sunk.CRACKED == (("minecraft:egg", 0),)
+
+
 def testWhatIsAWholeBlockOfFood():
     for name in ("arris:honey_glazed_ham_block_stage0", "arris:roast_chicken_block_stage0", "arris:apple_pie_item",
                  "arris:sweet_berry_cheesecake_item", "arris:chocolate_pie_item", "minecraft:cake"):
