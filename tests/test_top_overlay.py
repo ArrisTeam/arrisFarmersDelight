@@ -118,7 +118,8 @@ def testTiltedOrUpsideDownPiecesGetNoQuad():
 
 
 def testTheEulerAnglesRebuildTheEmitterForAnyTurn():
-    """emitterEuler：E -> (x, y, z)，Rz(z)·Ry(y)·Rx(x) 回到 E；只转 y 的给 (0, y, 0)（实机核对过的那一支），离它不远的转动俯仰、侧倾也小。"""
+    """emitterEuler：E -> (x, y, z)，Rz(z)·Ry(y)·Rx(x) 回到 E；只转 y 的给 (0, y, 0)（实机核对过的那一支），离它不远的转动俯仰、侧倾也小。
+    带俯仰 / 侧倾的约定也在游戏里核过（2026-11-22）：斜 30°、60° 的牛肉掉落物上，照这个分解 SetRot 的叠层盖住 99.1% / 96.5%（剩下的是视差细边）。"""
     rand = random.Random(11)
     for _ in range(200):
         e = mul(mul(ry(rand.uniform(-180, 180)), rx(rand.uniform(-180, 180))), rz(rand.uniform(-180, 180)))
@@ -134,10 +135,18 @@ def testTheEulerAnglesRebuildTheEmitterForAnyTurn():
 def testTheQuadSitsAboveTheMeasuredTopFace():
     """掉落物有厚度：贴图逐像素挤出一个贴图像素厚、往正面那边挤（Strata 引擎知识库 ITEM_RENDER_ENGINE §3–§4），平躺朝上时顶面在中心平面上方
     7.2 / 16 像素 x 缩放。实机（2026-11-17，砧板上缩放 1.25 的平躺食物）：零厚度的虚线在中心上方 0.555 像素陷进去、0.655 露出来——顶面就在这中间；
+    2026-11-22 煎锅上斜 30° 看黑叠层，远边比顶面远边多出 6 像素，按机位换算叠层正好高出顶面 0.10 像素（= LIFT_MARGIN）：顶面就在 TOP_FACE 上。
     粒子要在它上面，但别浮得看得出来（1 像素以内）；跟着缩放走。"""
     assert near(O.TOP_FACE, 7.2 / 16.0) and 0.555 < O.TOP_FACE * 1.25 < 0.655
     assert 0.655 < O.lift(1.25) < 1.0
     assert O.lift(0.694) < O.lift(1.25) and near(O.lift(2.0) - O.lift(1.0), O.TOP_FACE)
+
+
+def testTheQuadNeverLiesInTheTopFacesPlane():
+    """余量不能是 0（实机 2026-11-22）：叠层和顶面在同一个平面上时谁画在上面看浮点运气，一块翻过面的牛肉上叠层整块被顶面吃掉（另一块还亮着）。
+    余量越大，斜着看时叠层远边多出来的那圈视差边越宽（夸张的黑叠层、1.4 格外俯 30°，截图像素：0.1 约 7、0.05 约 4、0.02 约 2），所以上限放在 0.2 个站点像素。"""
+    assert 0.0 < O.LIFT_MARGIN <= 0.2
+    assert O.lift(0.0) == O.LIFT_MARGIN > 0.0
 
 
 def testAPieceMustStayStillForTwoTicksBeforeItsQuadShows():
