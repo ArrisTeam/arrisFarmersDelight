@@ -3,7 +3,8 @@
 
 照 Hands-On Delight 的 FoodColors（取色规则在 Shared/Rules/HandsOn/PotColors.py）。颜色都是 0xRRGGBB。
 BrothColors   每道厨锅菜的汤色（FoodColors.broth：去掉容器自己的颜色，色相分 12 份取最大一族）；没有的菜用 FALLBACK。
-MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main），砧板上切的每件东西飞出的碎屑也是这个。
+MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main），砧板上切的每件东西飞出的碎屑也是这个；
+              煎锅 / 炉灶上能煎的每件和它煎熟的样子也在里面：朝上那面的熟色用生熟两张图的这个颜色（Shared/Rules/FryingTint）。
 PouredColors  倒进锅里的液体的颜色（和空容器不一样的像素里最多的那种），和生蛋搅进去的 RAW_EGG。
 CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked），碎料按熟的颜色。
 """
@@ -217,6 +218,7 @@ MainColors = {
     'minecraft:jungle_sign': 0xBC753E,
     'minecraft:jungle_trapdoor': 0xBA7540,
     'minecraft:jungle_wood': 0xB8840E,
+    'minecraft:kelp': 0x81B816,
     'minecraft:leather_boots': 0xB89C72,
     'minecraft:leather_chestplate': 0xB89C72,
     'minecraft:leather_helmet': 0xB89C72,

@@ -5,7 +5,9 @@
   BrothColors   每道厨锅菜（我们厨锅配方的每个成品）的汤色：FoodColors.broth——色相分 12 份取最大的一族，容器（配方的 Vessel，没有就是
                 物品自带的合成剩余物）自己的颜色去掉，或者容器的颜色没画在菜上就只看图标上面 60% 的行；
   MainColors    每件配料（配方里出现的物品，加上它进炉子烧出来的熟食）切成碎料时的颜色：FoodColors.main；砧板上切的每件东西（Shared/Data/Cutting.py
-                的每个原料，原木、石头、花、船、皮甲……）切出来的碎屑也按它染（BoardBehavior.chopped 的 FoodColors.main(worked)）；
+                的每个原料，原木、石头、花、船、皮甲……）切出来的碎屑也按它染（BoardBehavior.chopped 的 FoodColors.main(worked)）；煎锅 / 炉灶上能煎的
+                每件和它煎熟的样子（Shared/Data/Cooking.py 的 CanCookedFoodDict 的键和值）也在里面：朝上那面的熟色（KitchenLooks.fryingTint 的
+                FoodColors.main(raw) / main(cooked)，Shared/Rules/FryingTint.py）；
   PouredColors  倒进锅里的液体（HoD 的 poured 标签里本包有的）：和空容器的图标不一样的像素里最多的那种颜色（ItemVoxels.contents），
                 加上生蛋搅进去的 0xF2DC9A；
   CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked：熟的还是食物才换），碎料按熟的颜色。
@@ -39,6 +41,7 @@ Recipes = importlib.import_module(SCRIPTS + "Data.CookingPotRecipes")
 Cutting = importlib.import_module(SCRIPTS + "Data.Cutting")
 Remainders = importlib.import_module(SCRIPTS + "Data.Remainders")
 Sunk = importlib.import_module(SCRIPTS + "Data.PotSunk")
+Cooking = importlib.import_module(SCRIPTS + "Data.Cooking")
 
 # gen_food_colors.VANILLA 里没有的原版物品：贴图相对原版资源包
 VANILLA_MORE = {
@@ -152,6 +155,11 @@ def cuttingNames():
     return sorted(set(name for name, _aux in Cutting.CuttingBoardDict))
 
 
+def fryingNames():
+    """煎锅 / 炉灶上能煎的每件东西和它煎熟的样子（营火配方 CanCookedFoodDict 的键和值）的名字，排好序、去掉重复：朝上那面的熟色要两张图的主色。"""
+    return sorted(set(Cooking.CanCookedFoodDict) | set(Cooking.CanCookedFoodDict.values()))
+
+
 def dishes():
     """[(成品名, 盛它的容器名或 None)]：配方表里每个成品第一次出现的那条，容器是配方的 Vessel，没有就是物品自带的合成剩余物。"""
     found = []
@@ -192,7 +200,8 @@ def compute(icons, previous):
         if name in smelting:
             tables["CookedForms"][name] = smelting[name]
     wanted = names + [powder for powder in POWDERS if powder not in names] + sorted(set(tables["CookedForms"].values()))
-    for name in wanted + [cut for cut in cuttingNames() if cut not in wanted]:
+    wanted += [cut for cut in cuttingNames() if cut not in wanted]
+    for name in wanted + [fried for fried in fryingNames() if fried not in wanted]:
         found = icon(name)
         keep("MainColors", name, Colors.sampleMain(found[0], found[1], found[2]) if found else None)
     for name in POURED:
@@ -211,7 +220,8 @@ def render(tables):
         "",
         "照 Hands-On Delight 的 FoodColors（取色规则在 Shared/Rules/HandsOn/PotColors.py）。颜色都是 0xRRGGBB。",
         "BrothColors   每道厨锅菜的汤色（FoodColors.broth：去掉容器自己的颜色，色相分 12 份取最大一族）；没有的菜用 FALLBACK。",
-        "MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main），砧板上切的每件东西飞出的碎屑也是这个。",
+        "MainColors    每件配料和它烧熟之后的样子切成碎料时的颜色（FoodColors.main），砧板上切的每件东西飞出的碎屑也是这个；",
+        "              煎锅 / 炉灶上能煎的每件和它煎熟的样子也在里面：朝上那面的熟色用生熟两张图的这个颜色（Shared/Rules/FryingTint）。",
         "PouredColors  倒进锅里的液体的颜色（和空容器不一样的像素里最多的那种），和生蛋搅进去的 RAW_EGG。",
         "CookedForms   配料 -> 它进炉子烧出来的熟食（CookedPieces.cooked），碎料按熟的颜色。",
         '"""',
