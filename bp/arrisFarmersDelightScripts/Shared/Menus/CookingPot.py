@@ -1,32 +1,43 @@
 # -*- coding: utf-8 -*-
-"""CookingPot - 厨锅的 dolorContainer 界面模型：食材格、容器格、成品格、食谱书（双端）
+"""CookingPot - 厨锅的 dolorContainer 界面模型：食材格、容器格、成品格、食谱格与选中食谱的详情（双端）
 
 格子仍存在 netease:block_container 的 8 个引擎容器格里（0-5 食材，6 容器，7 成品）；烹饪、热源、预览格由
 Server/CookingPot.py 照旧在方块实体数据里推进，界面数据（热源、进度、预览）经 setStateReader 登记的读数函数在服务端读出。
-食谱书：列表（可搜索）、选中食谱的详情（食材、容器、成品，可换变体）、"添加食材"按钮，状态都在每位查看者各自的会话里。
+食谱照旧界面（rp/ui/arrisCookingPot.json）：左边是搜索框与食谱格，右边是选中食谱的详情。食谱格是算出的格子（库的 Choice，
+原版切石机的配方按钮，内容与手势见 PotRecipes）：按这位查看者的搜索词过滤后每道食谱的成品，点一格选中（发 pick，可预测），
+选中的那格换底格；详情是食材（几种写法时每 Book.VARIANT_SECONDS 秒换下一种，服务端按钟算）、容器、成品、标题和"添加食材"
+（挑写法见 PotFill）。搜索、选中都记在每位查看者各自的会话里。
 两端都导入本模块（界面模型两端各建一份，规则一样），所以顶层不碰引擎，只导入 dolorContainer 的纯逻辑部分。
 """
-from ...dolorContainer.Common import Actions, Data, Items, Menus, Rules, Schema
-from ...dolorContainer.Common.Collections import COMBINED, HOTBAR, INVENTORY, PLAYER_SIZE, PROFILE_CLASSIC, PROFILE_POCKET
+import time
+
+from ...dolorContainer.Common import Actions, Data, Menus, Schema
+from ...dolorContainer.Common.Collections import COMBINED, HOTBAR, INVENTORY, PROFILE_CLASSIC, PROFILE_POCKET
 from ...dolorContainer.Common.Slots import SlotType
 from ...dolorContainer.Std import Containers
 from ...dolorContainer.Std.Block import Common as BlockCommon
 from ...dolorContainer.Std.Decor import Decor
 from ...dolorContainer.Std.Slots import Display, Output
 from ..Rules import CookingPotBook as Book
+from . import PotFill, PotRecipes
 
 MENU = "arris:cooking_pot"
 INGREDIENTS = "ingredients"
 VESSEL = "vessel"
 OUTPUT = "output"
 BOOK = "book"
+RECIPES = "recipes"
 SPOON = "textures/ui/spoon"
-# 点列表一行的序号上限（线上校验用；实际范围看现在的食谱数）
+RECIPE_CELLS = PotRecipes.CELLS
+# 点食谱格的格号上限（线上校验用；实际范围看现在过滤出几道）。食谱格就有这么多格：下游模组追加的食谱都排得下，
+# 界面的控件按行回收（scroll_grid），不随格数变
 MAX_PICK = 4095
-# 开着的界面每这么多刻重读一次热源、进度、预览（它们由 Server/CookingPot.py 的 tick 在会话之外改；5 Hz，与烹饪的处理节拍一致）
+RECIPE_CAPACITY = MAX_PICK + 1
+# 开着的界面每这么多刻重读一次热源、进度、预览（它们由 Server/CookingPot.py 的 tick 在会话之外改；5 Hz，与烹饪的处理节拍一致），
+# 同时重算每位查看者的详情（写法轮换跟着变）
 DATA_EVERY = 4
 
-_stateReader, _takenHandler = [None], [None]
+_stateReader, _takenHandler, _clock = [None], [None], [time.time]
 
 
 def setStateReader(reader):
@@ -37,6 +48,11 @@ def setStateReader(reader):
 def setTakenHandler(handler):
     """服务端登记：成品格里的东西被拿走时 handler(玩家 id, 实例键, 物品堆) 记一笔（Server/CookingPotHost.py）。"""
     _takenHandler[0] = handler
+
+
+def setClock(clock=None):
+    """写法轮换用的钟：clock() -> 秒（测试注入；None 回到 time.time）。"""
+    _clock[0] = clock or time.time
 
 
 def stateFrom(data, cookSeconds):
@@ -89,57 +105,25 @@ class IngredientSlot(SlotType):
         return None
 
 
+_search = PotRecipes.searchOf
+
+
 def routes():
-    """去向表与收集顺序：背包 Shift 点击先试容器格，再试食材格（两种格子各挑自己收的东西），经典版最后换到背包的另一半。"""
+    """
+    去向表与收集顺序：背包 Shift 点击先试容器格，再试食材格（两种格子各挑自己收的东西），最后换到背包的另一半；厨锅的格子转进合并背包。
+    两种界面档用同一个布局（物品栏都是快捷栏 + 主背包两个格子区），去向也一样。
+    """
     mine = (INGREDIENTS, VESSEL, OUTPUT)
     into = ((VESSEL, True), (INGREDIENTS, True))
-    quick = {
-        PROFILE_CLASSIC: dict([(name, ((COMBINED, False),)) for name in mine]
-                              + [(HOTBAR, into + ((INVENTORY, False),)), (INVENTORY, into + ((HOTBAR, False),))]),
-        PROFILE_POCKET: dict([(name, ((COMBINED, False),)) for name in mine] + [(COMBINED, into)]),
-    }
-    gather = {
-        PROFILE_CLASSIC: dict([(name, (name, INVENTORY, HOTBAR)) for name in mine]
-                              + [(HOTBAR, (HOTBAR,) + mine + (INVENTORY,)), (INVENTORY, (INVENTORY,) + mine + (HOTBAR,))]),
-        PROFILE_POCKET: dict([(name, (name, COMBINED)) for name in mine] + [(COMBINED, (COMBINED,) + mine)]),
-    }
-    return quick, gather
+    quick = dict([(name, ((COMBINED, False),)) for name in mine]
+                 + [(HOTBAR, into + ((INVENTORY, False),)), (INVENTORY, into + ((HOTBAR, False),))])
+    gather = dict([(name, (name, INVENTORY, HOTBAR)) for name in mine]
+                  + [(HOTBAR, (HOTBAR,) + mine + (INVENTORY,)), (INVENTORY, (INVENTORY,) + mine + (HOTBAR,))])
+    return {PROFILE_CLASSIC: quick, PROFILE_POCKET: quick}, {PROFILE_CLASSIC: gather, PROFILE_POCKET: gather}
 
 
 def _pickedRecipe(viewer):
-    return Book.pickedRecipe(viewer.get("search") or "", viewer.get("picked", -1))
-
-
-def _sourceOf(ws, key, dst, left):
-    """
-    背包里第一格能拿一个 key 这种东西放进 dst 的格子（从快捷栏起；拿得走、dst 放得下）；没有为 None。
-    left 记着这一次已经预定掉的个数（同一堆要拿几次）。
-    """
-    for index in range(PLAYER_SIZE):
-        ref = (COMBINED, index)
-        stack = ws.get(ref)
-        if Book.keyOf(stack) == key and left.get(ref, Items.count(stack)) > 0 and ws.canLeave(ref, stack) and ws.room(dst, stack) > 0:
-            return ref
-    return None
-
-
-def _moves(ws, placements, topUps):
-    """
-    先查后做：给每次"从背包拿一个放进食材格"找来源，返回 [(来源格, 去处格)]，查的时候不动工作副本。放进空格的是必须的，
-    找不到来源（缺食材、被锁住、放不下）整个不做；给已有的格子再加一个的有就加、找不到就算了。
-    """
-    left, moves = {}, []
-    for required, wanted in ((True, placements), (False, topUps)):
-        for slot, key in wanted:
-            dst = (INGREDIENTS, slot)
-            source = _sourceOf(ws, key, dst, left)
-            if source is None:
-                if required:
-                    raise Actions.Refused("missing")
-                continue
-            left[source] = left.get(source, Items.count(ws.get(source))) - 1
-            moves.append((source, dst))
-    return moves
+    return Book.pickedRecipe(_search(viewer), viewer.get("picked", -1))
 
 
 @Menus.register(MENU)
@@ -148,17 +132,13 @@ class CookingPotMenu(Menus.Menu):
     dataEvery = DATA_EVERY
     data = {
         "heated": Data.Bool(), "progress": Data.Float(digits=3), "preview": Data.Item(),
-        # 食谱书（每位查看者各一份）：列表每行的成品、选中食谱的详情格（0-5 食材，6 容器，7 成品）、标题（可本地化的文字，没选时客户端按玩家的语言查）与变体序号的字
-        "recipes": Data.List(Data.Item(), scope=Data.VIEWER),
+        # 选中食谱的详情（每位查看者一份）：食材格与容器格（0-5 食材，6 容器）、成品、标题（可本地化的文字，没选时客户端按玩家的语言查）
         "book": Data.SlotValues(Data.Item(), BOOK, scope=Data.VIEWER),
+        "bookResult": Data.Item(scope=Data.VIEWER),
         "bookTitle": Data.Lang(scope=Data.VIEWER),
-        "bookVariant": Data.Text(scope=Data.VIEWER),
     }
-    # picked 是过滤后列表里的序号（-1 没选）；variant 是选中食谱的第几个变体
-    viewerState = {"picked": Data.Int(), "variant": Data.Int(), "search": Data.Text()}
-    # 携带版右半屏的两页：烹饪、食谱；每次打开都从烹饪页开始
-    clientState = {"page": Data.Enum(("pot", "book"))}
-    freshClientState = ("page",)
+    # picked 是食谱格里选中的格号（过滤后的序号，-1 没选）；pickedAt 是选中的时刻（服务端的钟，写法从这时起轮换）
+    viewerState = {"picked": Data.Int(), "search": Data.Text(), "pickedAt": Data.Float()}
 
     def define(self, s):
         pot = s.container("pot", BlockCommon.ENGINE_CONTAINER, Book.POT_SLOTS)
@@ -167,6 +147,9 @@ class CookingPotMenu(Menus.Menu):
         s.collection(OUTPUT, pot, Book.RESULT_SLOT, 1, Output())
         s.collection(BOOK, s.container("book_view", Containers.VIRTUAL, Book.BOOK_CELLS), 0, Book.BOOK_CELLS,
                      Display(items=BOOK))
+        s.collection(RECIPES, s.container("recipe_view", Containers.VIRTUAL, RECIPE_CAPACITY), 0, RECIPE_CAPACITY,
+                     PotRecipes.RecipeChoice("pick", "picked"))
+        s.derive(RECIPES, PotRecipes.RecipeGrid())
         s.player()
         s.routes(*routes())
 
@@ -185,65 +168,55 @@ class CookingPotMenu(Menus.Menu):
         return {"picked": -1}
 
     def viewerValues(self, instance, viewer):
-        shown = Book.visibleRecipes(viewer.get("search") or "")
-        values = {"recipes": Book.listRows(shown), "book": {}, "bookTitle": Book.UNPICKED_TITLE, "bookVariant": ""}
+        values = {"book": {}, "bookResult": None, "bookTitle": Book.UNPICKED_TITLE}
         recipe = _pickedRecipe(viewer)
         if recipe is not None:
-            variant, count = viewer.get("variant", 0), Book.variantCount(recipe)
+            variant = Book.shownVariant(Book.variantCount(recipe), viewer.get("pickedAt") or 0.0, _clock[0]())
             values["book"] = Book.bookCells(recipe, variant)
+            values["bookResult"] = Book.resultOf(recipe)
             values["bookTitle"] = Book.titleOf(recipe)
-            values["bookVariant"] = "%d / %d" % (variant % count + 1, count) if count > 1 else ""
         return values
 
     # ---------------------------------------------------------------- 动作（服务端校验后执行）
 
     @Actions.action("search", Schema.Text(Book.SEARCH_LIMIT, words=False))
     def search(self, ctx, text):
-        if text == ctx.viewer.get("search"):
-            # 边打边提交的文本框在输入结束时总会再发一次（哪怕字没变；点列表一行、点按钮都会让它失去焦点）：
-            # 同样的字不动选中项，不然刚点中的食谱马上被清掉
-            return
-        ctx.viewer["search"] = text
-        ctx.viewer["picked"] = -1
-        ctx.viewer["variant"] = 0
+        _setSearch(ctx.viewer, text)
+
+    @search.predicting
+    def search(self, view, text):
+        # 客户端当场按新的字过滤食谱格（以服务端的应答为准）
+        _setSearch(view.viewer, text)
 
     @Actions.action("pick", Schema.Int(0, MAX_PICK))
     def pick(self, ctx, index):
-        if index >= len(Book.visibleRecipes(ctx.viewer.get("search") or "")):
+        if index >= Book.shownCount(_search(ctx.viewer)):
             raise Actions.Refused("no_recipe")
         ctx.viewer["picked"] = index
-        ctx.viewer["variant"] = 0
+        ctx.viewer["pickedAt"] = _clock[0]()
 
     @pick.predicting
     def pick(self, view, index):
         view.viewer["picked"] = index
-        view.viewer["variant"] = 0
-
-    @Actions.action("nextVariant")
-    def nextVariant(self, ctx):
-        recipe = _pickedRecipe(ctx.viewer)
-        if recipe is None:
-            raise Actions.Refused("no_recipe")
-        ctx.viewer["variant"] = (ctx.viewer.get("variant", 0) + 1) % Book.variantCount(recipe)
 
     @Actions.action("addFood")
     def addFood(self, ctx):
         """
-        "添加食材"：把选中食谱的选中变体的食材从玩家背包各取一个放进厨锅的食材格（配方书在 Java 版里的"一键放入"）。
-        只认服务端会话里记着的选中项，客户端不传任何位置、格号；缺食材、放不下时整个不做（不会放一半）：先查后做，
-        查的时候不动工作副本。
+        "添加食材"：把选中食谱的一种写法的食材从玩家背包各取一个放进厨锅的食材格（配方书在 Java 版里的"一键放入"）。
+        只认服务端会话里记着的选中项，客户端不传任何位置、格号；挑哪种写法、缺食材或放不下时怎么拒绝见 PotFill。
         """
         recipe = _pickedRecipe(ctx.viewer)
         if recipe is None:
             raise Actions.Refused("no_recipe")
-        ws = ctx.ws
-        slotKeys = [Book.keyOf(ws.get((INGREDIENTS, index))) for index in range(Book.INPUT_SLOTS)]
-        plan = Book.planFill(Book.variantOf(recipe, ctx.viewer.get("variant", 0)), slotKeys)
-        if plan is None:
-            raise Actions.Refused("no_room")
-        moves = _moves(ws, *plan)
-        if not moves:
-            raise Actions.Refused("nothing")
-        for source, dst in moves:
-            if Rules.transfer(ws, source, dst, 1) < 1:
-                raise Actions.Refused("write_failed")
+        PotFill.fill(ctx.ws, recipe, INGREDIENTS)
+
+
+def _setSearch(viewer, text):
+    """
+    换搜索词：选中项清掉（格号是过滤后的序号）。边打边提交的文本框在输入结束时总会再发一次（哪怕字没变；点食谱格、
+    点按钮都会让它失去焦点）：同样的字不动选中项，不然刚点中的食谱马上被清掉。
+    """
+    if text == viewer.get("search"):
+        return
+    viewer["search"] = text
+    viewer["picked"] = -1

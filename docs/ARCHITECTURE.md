@@ -19,7 +19,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
                         Tips（服务端提示说的每一句：(语言文件的键, 中文)，客户端按玩家的语言查，见「砧板和站点的几处补齐」）
   Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
-                        CookingPotBook（厨锅食谱书：容器格号、搜索、详情格、补食材的计划）
+                        CookingPotBook（厨锅经典界面的食谱：容器格号、搜索与食谱格（按搜索词记着，表变了重算）、详情格与写法轮换、补食材的计划与试写法的先后）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
                         PotLookState（厨锅"看上去是什么样"的广播怎么读）  PotModelMath（方块朝向、勺子骨骼的位移和欧拉角）
@@ -65,7 +65,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         出锅的收尾、声音日程、徽章、盛汤和倒 / 打 / 抖的手部动作；
                         砧板的表现也在这里（Board 开头的）：板上东西的动作（落下 / 拿走 / 融掉 / 弹出）、刀口、手倒液体和磕蛋，
                         以及做成一道菜之前的十种收尾（BoardFinishKit 常量 + Plan，BoardFinishGroup / BoardFinishPlace 各种怎么演，BoardFinish.plan 入口）
-  Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅）
+  Menus/                dolorContainer 的界面模型（两端各建一份）：CookingPot（厨锅），PotRecipes（厨锅界面的食谱格：算出的内容、触屏抬起才选中的手势），
+                        PotFill（厨锅界面的"添加食材"：挑写法、找来源、整体搬）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
 Server/                 服务端
@@ -113,7 +114,7 @@ Client/                 客户端
   Input.py              跳跃键、指南书、对着方块拿原版南瓜派不吃、主手煎锅时右键的按住 / 松开上报
   BlockSparkle.py       闪亮沙拉的闪光：收到 BlockAnimateRandomTickEvent 就放 arris:sparkle 粒子
   StoveFlame.py         点着的炉灶自己的火：BlockAnimateRandomTickEvent 在火口放烟和火、1/10 的概率噼啪；ModBlockEntityTickClientEvent 让灶上每件东西冒烟（炉灶站点在场时不放）
-  CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半
+  CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半和食谱格的控件（按行回收的 scroll_grid）
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
 Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来
@@ -205,7 +206,7 @@ def OnServerSkilletBlockUse(args):
 | `knifeList`、`axeList` | 追加名字（`append`） | `Client/BlockItems.isKnife`（站点和没开站时的展示都问它）、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
 | `CanCookedFoodDict` | 追加键 | 煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、`StationBooks.panPages / grillPages`、手持煎锅"煎还是吃"（`Client/Input.py:42`） |
 | `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
-| `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 食谱书的客户端预测（`CookingPotBook`） |
+| `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 经典界面的食谱格与它的客户端预测（`CookingPotBook` 按搜索词记着过滤结果，表的长度或 `CookingPot.revision`（重建索引的次数）变了就重算：并表之后的 `rebuildIndex` 让它跟上） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 | `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
 | `OneSidedList` | 追加名字 | 客户端眼下没有地方读，照旧同步（下游在用这张契约表，两端一样）。服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染；也不管书上的秒数（`SkilletBook` / `StoveBook` 都写两面的时间，`StationBooks._cookPages`） |
@@ -297,11 +298,38 @@ def OnServerSkilletBlockUse(args):
   成品格除外）；Shift 点击时容器格与食材格各挑自己收的：只当容器的碗、玻璃瓶进容器格、不会落进食材格，既是容器又是食材的卷心菜叶当食材
   （容器格里已经是它时才续上）。联机时客户端按自己的食谱表预测 Shift 点击；下游模组只在服务端追加的配方，经 `Server/TableSync` 进服时发给客户端、并进它的表
   （见"联动契约与客户端的表"），预测用的是同一批，没同步到的（条目传不了被跳过、消息还没到）仍以服务端为准。
-- 食谱书：搜索、选中、换变体、"添加食材"都是动作（`search` / `pick` / `nextVariant` / `addFood`），选中的食谱和变体记在服务端会话里
-  （每位查看者各一份）。客户端不传位置、玩家、背包下标；`addFood` 在会话的工作副本上从玩家背包搬运，整体成功或整体不做。
+- 样子照旧原生界面（`rp/ui/arrisCookingPot.json`，2026-11-22 照它重做）：三块并排、顶对齐、都高 175，整体在屏幕正中——
+  左边**食谱选择**（83 宽，底图 `tutorial_book_screen_ui` 原样拉伸：浅色边框 + 深色凹槽）：顶上搜索框（74 × 20，提示字是键，
+  右边一个放大镜图），下面是**食谱格**：4 列、一格 18、一格一道菜的成品，照食谱表的顺序；
+  中间是厨锅本体与玩家物品栏（176 宽，原样没动）；右边**选中食谱的详情**（83 宽，原版对话框的底，摆法照旧界面的 `cookbook_bg`）：
+  标题（22 高的一条，长名字折成两行，裁在这一条里、压不到下面）、3 × 2 食材格、朝下的白箭头、勺子 + 容器格、锅形预览框里的成品
+  （框底的小三角裁掉）、常亮的火焰示意、"+"按钮和下面一行"添加食材"（后两样选了食谱才有）。背后垫一张 `recipe_back_panel`
+  （196 × 168，比中间那块左右各多 10），侧栏各压进去 7，三块之间露出 3 宽的深色折缝；折缝和侧栏的空白处吃掉点击，不算点在界面外面。
+- **食谱格**是算出的格子：集合 `recipes`（`Shared/Menus/PotRecipes.py`：库的 `Std/Slots.Choice`，原版切石机的配方按钮），落在 4096 格的
+  虚拟容器上（点得到的格号上限 `MAX_PICK` 一样大），内容由部件 `RecipeGrid` 按这位查看者的搜索词算（`CookingPotBook.gridCells`；显示几格
+  `shownCount`）。点一格发可预测的 `pick(格号)`：键鼠左右键、Shift、手柄照 Choice 按下就选；触屏改成抬起才选（`TapToPick`：手指拖动过、
+  被滚动视图接走、松开在别的格子上都不算，不然拖着滚食谱格时会把开始按到的那道选上；旧界面的配方按钮也是抬起才算）。
+  选中的那格底格换成 `recipe_book_touch_cell_selected`、一直留着，
+  别的是 `recipe_book_item_bg`（旧界面配方按钮平时与按下的两张）；悬停写成品的悬停文本。布局用按行回收的 `scroll_grid_classic`
+  （12 个行控件 × 4 格，控件数不随食谱数变；客户端导入库的 `Std/Windowed/Client`），列数固定 4，放不下才出现滚动条（格子右边、压在侧栏的
+  边框上），不画滚动面板的底；28 道正好 7 行，不用滚。界面每画一格都问一遍内容，所以过滤结果按搜索词记着（同一个字典），
+  表的长度或 `CookingPot.revision`（重建索引的次数）变了才重算。
+- 动作：`search(字)`（边打边提交，可预测：客户端的食谱格当场跟着字变；字变了才清掉选中，输入结束时那一次同样的字不动它）、
+  `pick(格号)`（按过滤后的个数核对，记下选中的时刻 `pickedAt`）、`addFood`。搜索词、选中项、选中的时刻是每位查看者的状态。
+  客户端不传位置、玩家、背包下标；`addFood` 在会话的工作副本上从玩家背包搬运，整体成功或整体不做。
+- **写法轮换**（照旧界面的 `FoodRecipeTimerSwitch`）：选中的食谱有几种写法时，详情的食材格每 `CookingPotBook.VARIANT_SECONDS`（1 秒）
+  换下一种，从第一种开始（刚选中先完整显示第一种一个周期，再点一次从头来）。服务端在 `viewerValues` 里按钟算（`shownVariant`；
+  钟是 `CookingPot.setClock` 注入的，缺省 `time.time`），开着的界面每 `dataEvery`（4 刻）重算一次，变了才发；只有一种写法的一条更新都不多发。
+  详情的数据：`book`（0-5 食材、6 容器，`BOOK_CELLS` = 7）、`bookResult`（成品，画在预览框里）、`bookTitle`。
+- **"添加食材"挑写法**（`Shared/Menus/PotFill.py`）：不认正在显示的那一种，而是把这道食谱的各种写法按"锅里 6 个食材格已经放着的、这种写法
+  要的件数"从多到少排（一样多的照表里的先后）依次试：空格不够的跳过，必须放进空格的食材在背包里找不齐的跳过，第一种排得出来的就用它；
+  它一件都挪不了（锅里已经齐了、背包里也没有可再加的）就拒绝 `nothing`，不再往后试（不把另一种写法的料混进锅）。全都不行时：
+  有因为缺食材跳过的拒绝 `missing`，否则 `no_room`。格子里已经有配方要的食材时只在放得下时再加一个（反复点就是备多份料，`planFill`）。
 - 布局：仓库根的 `layouts/cooking_pot.json`（手写）经 `tools/vendor.py` 编译成 `rp/ui/dolor_layout_*.json` 与 `dolorLayouts.py`。
-  按钮、页签上的字和搜索框的提示写语言文件的键（`arris_fd.pot_screen.*`，见「砧板和站点的几处补齐」），不写字。
-  经典版照旧界面的三栏（中间厨锅，左详情、右列表）；携带版整屏，右半屏"烹饪""食谱"两页。
+  经典版与携带版**共用一个内容模板**（`content`），携带版只多一个 `$dc_dim`（照原版压暗背后；携带版的底座缺省不画背景）。
+  携带版的物品栏同样是快捷栏 + 主背包两个格子区（`player_inventory_classic`），所以界面模型两种界面档的去向表、收集顺序一样
+  （`routes()`；原来携带版那份按合并背包写）。触屏的物品详情照库的缺省离底边 16（面板在屏幕正中，详情在面板下面）。
+  "添加食材"那一行和搜索框的提示写语言文件的键（`arris_fd.pot_screen.*`，见「砧板和站点的几处补齐」），不写字；"+"按钮没有字（画在贴图上）。
 - 退回旧界面：`CookingPotHost.DOLOR_SCREEN = False` 时宿主放行，引擎照旧开 `screen_name` 的原生界面。旧代理（`Client/Ui/CookingPotProxy.py`、
   `CookingPotScreen.py`）、`rp/ui/arrisCookingPot.json`、`CookingPotAddFood` 端点、`PlayerSession.py` 推食谱表的 ModAttr 都还在。
   实机验证通过后一并删：上面这些，加 `ModClient.py` 的导入、`rp/ui/_ui_defs.json` 里的登记、`tests/test_architecture.py` 里的
@@ -316,8 +344,12 @@ def OnServerSkilletBlockUse(args):
 1. 右键厨锅只出 dolor 界面、不出原生界面（`ServerBlockUseEvent` 的取消能不能压住 `netease_container` 的 `screen_name`）。
 2. `ENGINE_CONTAINER` 在 `netease:block_container` 上：放、拿、Shift、双击、数字键；烹饪 tick 改格子时界面跟得上（成品最多晚 1 秒到）。
 3. 去掉 `netease:listen_block_remove` 后方块和物品图标照常画，拆厨锅时 `OnCookingPotRemove` 照常把预览格里的成品掉出来。
-4. 热源、进度箭头、预览框随烹饪变化；食谱书的搜索、选中、换变体、"添加食材"（食材或空格不够时什么都不动）。
-5. 携带版的两页与手柄焦点；活塞推动的厨锅、`/setblock` 出来的厨锅、断热源、成品格满了。
+4. 热源、进度箭头、预览框随烹饪变化；食谱的搜索、选中、写法每秒轮换、"添加食材"（食材或空格不够时什么都不动）。
+5. 携带版（压暗的背景、物品栏两个格子区的 Shift 与双击）与手柄焦点；活塞推动的厨锅、`/setblock` 出来的厨锅、断热源、成品格满了。
+6. 2026-11-22 照旧界面重做之后（只在 Strata 里出过图）：食谱格选中的底格在游戏里认不认得出（脚本换底格对带九宫格说明的 `recipe_book_*`
+   贴图是不是照样九宫格）、滚动条压在侧栏边框上的样子、标题折成两行时的高度、`rotate_angle` 转的箭头、触屏下食谱格的滑动；
+   携带版里拿放时飞的那一下（0.3 秒）会不会被别的格子的图标盖住：库的携带版根把物品飞行渲染器放在第 12 层（经典版 21），
+   共用的经典样式内容里格子图标累计的层数比 12 高（面板 1、body 5、图标 9 起）。
 
 ## 厨锅物品带着菜（对照 JE）
 
@@ -773,9 +805,10 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   中文是我们原来的写法），移植加的用 `arris_fd.tip.*`；值可以是数、字，或者一个词 (键, 中文)——盘装菜那句照 JE 填盛菜容器的名字，传的是原版碗的键 `item.bowl.name`。
   **加一句提示**：在 `Shared/Data/Tips` 写 (键, 中文) 并列进 `SENTENCES`，`rp/texts/zh_CN.lang`（和代码里的中文一字不差）、`en_US.lang` 各加一行，调用处写 `ShowTip(玩家, Tips.某句, 值...)`；
   不在服务端拼字，不直接调 `SetOneTipMessage`。`tests/test_tips.py` 核对两个语言文件、JE 的键和英文、每一处 `ShowTip` 给的值和占位一样多、别处不再弹提示、载荷的规矩和客户端的回退。没进过游戏。
-- **经典厨锅界面和 JEI 上的字**（2026-11-21）：厨锅界面的标题是 JE 的容器标题键 `container.farmersdelight.cooking_pot`（`CookingPotHost.TITLE`；原来的方块名键只有中文）；按钮、页签上的字和搜索框的提示
-  在 `layouts/cooking_pot.json` 里写 `arris_fd.pot_screen.*` 的键（按钮、页签由库在客户端查，搜索框的提示由引擎的文字控件查；改了要照「厨锅界面」一节重新 vendor）；食谱书详情的标题 `bookTitle`
-  是库的可本地化文字 `Data.Lang`，没选食谱时是键（`CookingPotBook.UNPICKED_TITLE`）。库和引擎查不到键时显示键名本身，所以这些键两个语言文件里都要有；英文挑了放得进的短写法（经典版的按钮只有 65 宽）。
+- **经典厨锅界面和 JEI 上的字**（2026-11-21）：厨锅界面的标题是 JE 的容器标题键 `container.farmersdelight.cooking_pot`（`CookingPotHost.TITLE`；原来的方块名键只有中文）；"+"按钮下面那一行"添加食材"和搜索框的提示
+  在 `layouts/cooking_pot.json` 里写 `arris_fd.pot_screen.*` 的键（那一行由库在客户端查，搜索框的提示由引擎的文字控件查；改了要照「厨锅界面」一节重新 vendor）；食谱详情的标题 `bookTitle`
+  是库的可本地化文字 `Data.Lang`，没选食谱时是键（`CookingPotBook.UNPICKED_TITLE`）。库和引擎查不到键时显示键名本身，所以这些键两个语言文件里都要有；英文挑了放得进的短写法
+  （按默认字体估：那一行 79 宽、搜索框除去放大镜 53、标题 75）。2026-11-22 照旧界面重做时去掉了"换一种配方"和携带版的两个页签，它们的键两个语言文件里都删了。
   只在 `DOLOR_SCREEN` 关掉时用的旧原生界面换成同一组键。JEI 的厨锅、砧板、煎锅、炉灶四类的名字（`jei.farmersdelight.cooking / cutting`、`arris_fd.jei.skillet / stove`）和配方页的秒数
   （`handson_delight.book.seconds`；秒数和站点食谱书的页脚一样先经 `StationBooks.shownSeconds` 半数进位成整数）在客户端经 `Texts` 查。`tests/test_pot_screen_texts.py`、`tests/test_jei_texts.py`。没进过游戏。
 - **触屏的数量档**（前置包的按钮，屏幕右下角 全部 / 单个）在场时，四个站点的长按轮盘不再给"放一个"：拿着一叠放多少归那个按钮管（`HoldMenu.tapMode(view)`：`view.tap` 不是 None）；
@@ -872,8 +905,9 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   `test_block_strength.py`（硬度 / 爆炸抗性 / 亮度）、`test_event_wiring.py`（每个 `registerHandler` 的事件在 ModServer 里有 `@Listen`，触发组件在方块 JSON 里）。
   `RopeAndNet` 导入了离线导入不了的 `QuModLibs.Server`，这几个测试先往 `sys.modules` 里塞一个只有两个装饰器的替身。
 - dolorContainer：`test_dolor_vendor.py`（库文件与编译产物的哈希、界面文件登记、导入闭包；随库装入，不手改）、`test_rpc_caller_id.py`
-  （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅的食谱书规则与
-  界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑）。
+  （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅经典界面的食谱规则与
+  界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑：食谱格按搜索过滤与选中的底格、写法按注入的钟轮换、添加食材挑写法的先后与三种拒绝、
+  两种界面档的 Shift 点击与双击收集、两种界面档编译出的是同一个界面）。
 - 沉浸式交互前置包不在这个仓库里（它是单独的作品）。亲手做菜的站点要拿它的源码一起测：开发机上把它的两个包放在仓库根下的
   `diegesisBp/`、`diegesisRp/`，它自己的测试和测试小工具（`tests/test_diegesis_*.py`、`tests/dg*.py`）也放在 `tests/` 里，都不入库
   （`.git/info/exclude` 里忽略）。用到它的用例先 `import prereq`（`tests/prereq.py`）：旁边没有前置包时以 77 退出，跑器记成跳过。

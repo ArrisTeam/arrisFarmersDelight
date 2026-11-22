@@ -14,7 +14,7 @@
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/Remembered.py": "43901874a6780efffdc17ab73b552423d7da61223967c0d2c502112f3e722d7b",
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/Screen.py": "ea0b6f398ea5519cbfc0b643357d49f6e1344aa76e209d87d644769e051d0c70",
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/Service.py": "d7350bf5dc2f718910def2cff7f4c9857a22e8768c066c1aafdef96f726f102c",
-    "bp/arrisFarmersDelightScripts/dolorContainer/Client/UiDefs.py": "bc57406d42fed88011119ae458c6fd1313013fb4cfe1916dd981b520bd10beb4",
+    "bp/arrisFarmersDelightScripts/dolorContainer/Client/UiDefs.py": "6b4dfebcb02ea2d4781835e0003137f1406fcddf8b29dfb150d03e4ee354c5ca",
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/Views.py": "6b38aa344c7e7c2f99046be1bbb803509406b9e437c6306462ddf0aca4208173",
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/Widgets.py": "c647ac66a11c46e224f614163db12820018608ebb4732cf7552b1c5da347cca8",
     "bp/arrisFarmersDelightScripts/dolorContainer/Client/__init__.py": "8b084a9f378124b2b1a51563bf3c22444eb7ff33692017da28b2136ae56987ed",
@@ -66,20 +66,22 @@
     "bp/arrisFarmersDelightScripts/dolorContainer/Std/Server/__init__.py": "972e9dcaa740f490e41057e737303a2e47a164ecf3c8378118c0dd53c23d4afa",
     "bp/arrisFarmersDelightScripts/dolorContainer/Std/Slots.py": "85e46690f67084edf2c698c6a648cfd8912e91e8faf8994423416a0308b61fba",
     "bp/arrisFarmersDelightScripts/dolorContainer/Std/TextFormat.py": "aa292bd3310b7fd9bcbe17ddd62ad8c2f4670d936a09c4aa5b603e1530f58ecc",
+    "bp/arrisFarmersDelightScripts/dolorContainer/Std/Windowed/Client.py": "22fab3b25e3c1573f2ae3227ffb1b2f04e4b0388fa60209cc110e0719c6d91a8",
+    "bp/arrisFarmersDelightScripts/dolorContainer/Std/Windowed/__init__.py": "06e82a901868589b18bfccd394ae345a70aadd21af38e1f88f9a54cb938d2e9b",
     "bp/arrisFarmersDelightScripts/dolorContainer/Std/__init__.py": "59ee2425a14cb9142850a8ad6c2fa8ed16cd02b09447cf22ee8cb8d7926bb65d",
     "bp/arrisFarmersDelightScripts/dolorContainer/__init__.py": "1c00b14755efeb4c3aeeef99f54feafc7840c2209b10fe49d430548b13245217",
-    "bp/arrisFarmersDelightScripts/dolorLayouts.py": "054c42c8274a84b3336a2a106097a578c05b9c1a23b3692b7c8d7c922916b3b5",
-    "rp/ui/dolor_container_ec08b849.json": "d1a597b2c1b8de59bed39fb2210c35808cc54ae7b25578c073b26afae3fee644",
-    "rp/ui/dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.json": "49884909c9d2e72e149be04c399b874247c3521041394f1eb22cfbe39cfbd2f6",
+    "bp/arrisFarmersDelightScripts/dolorLayouts.py": "8a4adea6f38d816c571bda6fa4d1cbf02e5372b9359bcf072ea4da69b6c53e70",
+    "rp/ui/dolor_container_71b6e45c.json": "286656c4eb3e7995cdc9ec1e0ffa54f0dfeba8621470f88839242f3e1b7c75a6",
+    "rp/ui/dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.json": "5633d2990c28f5e3435bff60a0ca0146e380ac19e81f79f97f005a5e69f839e3",
     "tests/dolor_closure.py": "41f2fee0b3b0973426968776a17b479fd8cf1f077bfae249925f648d68f24f10",
     "tests/dolor_uiprune.py": "4bb181703387fa7cf90d457610ceea074e4c01e6eb68352af0892a06b5f5089e",
     "tests/test_dolor_vendor.py": "110a175a75e7839eb3f15c4ac384062c8e6d4c6ed488cf685ef7b0ee1eb87180",
     "tests/test_rpc_caller_id.py": "76c11c1dec678d59392b1acda8b1f9c36192f7ee25e321d5a6dcedcf49efca6c"
   },
   "inputs": {
-    "layouts/cooking_pot.json": "7ebfc1e8e511e4ec210c1a2e084fba3e09afeda32ef5eeaf715ec4b143c8c5a6"
+    "layouts/cooking_pot.json": "3fbc7536b72046c254a629634e16d2f02a38e9fa2f91eb5a7be601e5c0e1eaf2"
   },
-  "keptModules": 68,
+  "keptModules": 70,
   "layoutFiles": [
     "ui/dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.json"
   ],
@@ -210,8 +212,8 @@
     "Std.Windowed.Components"
   ],
   "templates": [
-    51,
+    43,
     71
   ],
-  "uiFile": "ui/dolor_container_ec08b849.json"
+  "uiFile": "ui/dolor_container_71b6e45c.json"
 }

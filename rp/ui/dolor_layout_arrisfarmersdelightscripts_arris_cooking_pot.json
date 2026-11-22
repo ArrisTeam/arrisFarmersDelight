@@ -1,10 +1,11 @@
 {
   "namespace": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot",
-  "pot_classic@dolor_container_ec08b849.screen_classic": {
-    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.classic_content"
+  "pot_classic@dolor_container_71b6e45c.screen_classic": {
+    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.content"
   },
-  "pot_pocket@dolor_container_ec08b849.screen_pocket": {
-    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.pocket_content"
+  "pot_pocket@dolor_container_71b6e45c.screen_pocket": {
+    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.content",
+    "$dc_dim": true
   },
   "note": {
     "type": "label",
@@ -96,7 +97,16 @@
     "anchor_from": "top_left",
     "anchor_to": "top_left"
   },
-  "classic_content": {
+  "fold": {
+    "type": "input_panel",
+    "size": [
+      3,
+      175
+    ],
+    "layer": 1,
+    "button_mappings": "$dc_panel_mappings"
+  },
+  "content": {
     "type": "panel",
     "size": [
       "100%",
@@ -104,232 +114,269 @@
     ],
     "controls": [
       {
-        "panel@dolor_container_ec08b849.panel_classic": {
+        "back": {
+          "type": "image",
+          "texture": "textures/ui/recipe_back_panel",
           "size": [
-            176,
+            196,
+            168
+          ],
+          "layer": 0,
+          "anchor_from": "center",
+          "anchor_to": "center"
+        }
+      },
+      {
+        "row": {
+          "type": "stack_panel",
+          "orientation": "horizontal",
+          "size": [
+            "100%c",
             175
           ],
+          "anchor_from": "center",
+          "anchor_to": "center",
           "controls": [
             {
-              "bg@common.common_panel": {
-                "$close_button_to_button_id": "#dc.close"
-              }
+              "recipes@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.recipes_side": {}
             },
             {
-              "body": {
-                "type": "panel",
-                "layer": 5,
+              "fold_left@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.fold": {}
+            },
+            {
+              "panel@dolor_container_71b6e45c.panel_classic": {
                 "size": [
-                  "100%",
-                  "100%"
+                  176,
+                  175
                 ],
                 "controls": [
                   {
-                    "title@dolor_container_ec08b849.title": {
-                      "offset": [
-                        7,
-                        6
-                      ]
+                    "bg@common.common_panel": {
+                      "$close_button_to_button_id": "#dc.close"
                     }
                   },
                   {
-                    "ingredients": {
-                      "offset": [
-                        22,
-                        22
-                      ],
-                      "layer": 2,
+                    "body": {
                       "type": "panel",
+                      "layer": 5,
                       "size": [
-                        54,
-                        36
+                        "100%",
+                        "100%"
                       ],
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
                       "controls": [
                         {
-                          "s0@dolor_container_ec08b849.slot_classic": {
-                            "anchor_from": "top_left",
-                            "anchor_to": "top_left",
+                          "title@dolor_container_71b6e45c.title": {
                             "offset": [
-                              0,
-                              0
+                              7,
+                              6
                             ],
-                            "$focus_precedence": 2,
-                            "$focus_id": "ingredients0"
+                            "size": [
+                              140,
+                              "default"
+                            ]
                           }
                         },
                         {
-                          "s1@dolor_container_ec08b849.slot_classic": {
+                          "ingredients": {
+                            "offset": [
+                              22,
+                              22
+                            ],
+                            "layer": 2,
+                            "type": "panel",
+                            "size": [
+                              54,
+                              36
+                            ],
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "controls": [
+                              {
+                                "s0@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    0,
+                                    0
+                                  ],
+                                  "$focus_precedence": 2,
+                                  "$focus_id": "ingredients0"
+                                }
+                              },
+                              {
+                                "s1@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    18,
+                                    0
+                                  ],
+                                  "$focus_id": "ingredients1"
+                                }
+                              },
+                              {
+                                "s2@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    36,
+                                    0
+                                  ],
+                                  "$focus_id": "ingredients2"
+                                }
+                              },
+                              {
+                                "s3@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    0,
+                                    18
+                                  ],
+                                  "$focus_id": "ingredients3"
+                                }
+                              },
+                              {
+                                "s4@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    18,
+                                    18
+                                  ],
+                                  "$focus_id": "ingredients4"
+                                }
+                              },
+                              {
+                                "s5@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    36,
+                                    18
+                                  ],
+                                  "$focus_id": "ingredients5"
+                                }
+                              },
+                              {
+                                "bopen@dolor_container_71b6e45c.bundle_open_classic": {}
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "heat@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.heat": {
+                            "offset": [
+                              40,
+                              62
+                            ]
+                          }
+                        },
+                        {
+                          "progress@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.progress": {
+                            "offset": [
+                              82,
+                              32
+                            ]
+                          }
+                        },
+                        {
+                          "preview_frame@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.preview_frame": {
+                            "offset": [
+                              112,
+                              18
+                            ]
+                          }
+                        },
+                        {
+                          "preview@dolor_container_71b6e45c.item_classic": {
                             "anchor_from": "top_left",
                             "anchor_to": "top_left",
                             "offset": [
+                              122,
+                              28
+                            ],
+                            "layer": 2
+                          }
+                        },
+                        {
+                          "vessel": {
+                            "$dc_placeholder_size": [
+                              14,
+                              14
+                            ],
+                            "offset": [
+                              114,
+                              62
+                            ],
+                            "layer": 2,
+                            "type": "panel",
+                            "size": [
                               18,
-                              0
-                            ],
-                            "$focus_id": "ingredients1"
-                          }
-                        },
-                        {
-                          "s2@dolor_container_ec08b849.slot_classic": {
-                            "anchor_from": "top_left",
-                            "anchor_to": "top_left",
-                            "offset": [
-                              36,
-                              0
-                            ],
-                            "$focus_id": "ingredients2"
-                          }
-                        },
-                        {
-                          "s3@dolor_container_ec08b849.slot_classic": {
-                            "anchor_from": "top_left",
-                            "anchor_to": "top_left",
-                            "offset": [
-                              0,
                               18
                             ],
-                            "$focus_id": "ingredients3"
-                          }
-                        },
-                        {
-                          "s4@dolor_container_ec08b849.slot_classic": {
                             "anchor_from": "top_left",
                             "anchor_to": "top_left",
-                            "offset": [
-                              18,
-                              18
-                            ],
-                            "$focus_id": "ingredients4"
+                            "controls": [
+                              {
+                                "s0@dolor_container_71b6e45c.slot_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    0,
+                                    0
+                                  ],
+                                  "$focus_id": "vessel0"
+                                }
+                              },
+                              {
+                                "bopen@dolor_container_71b6e45c.bundle_open_classic": {}
+                              }
+                            ]
                           }
                         },
                         {
-                          "s5@dolor_container_ec08b849.slot_classic": {
+                          "output": {
+                            "offset": [
+                              140,
+                              58
+                            ],
+                            "layer": 2,
+                            "type": "panel",
+                            "size": [
+                              26,
+                              26
+                            ],
                             "anchor_from": "top_left",
                             "anchor_to": "top_left",
-                            "offset": [
-                              36,
-                              18
-                            ],
-                            "$focus_id": "ingredients5"
+                            "controls": [
+                              {
+                                "s0@dolor_container_71b6e45c.slot_large_classic": {
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "offset": [
+                                    0,
+                                    0
+                                  ],
+                                  "$focus_id": "output0"
+                                }
+                              },
+                              {
+                                "bopen@dolor_container_71b6e45c.bundle_open_large_classic": {}
+                              }
+                            ]
                           }
                         },
                         {
-                          "bopen@dolor_container_ec08b849.bundle_open_classic": {}
+                          "inventory@dolor_container_71b6e45c.player_inventory_classic": {
+                            "anchor_from": "bottom_left",
+                            "anchor_to": "top_left",
+                            "offset": [
+                              7,
+                              -90
+                            ]
+                          }
                         }
-                      ]
-                    }
-                  },
-                  {
-                    "heat@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.heat": {
-                      "offset": [
-                        40,
-                        62
-                      ]
-                    }
-                  },
-                  {
-                    "progress@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.progress": {
-                      "offset": [
-                        82,
-                        32
-                      ]
-                    }
-                  },
-                  {
-                    "preview_frame@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.preview_frame": {
-                      "offset": [
-                        112,
-                        18
-                      ]
-                    }
-                  },
-                  {
-                    "preview@dolor_container_ec08b849.item_classic": {
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
-                      "offset": [
-                        122,
-                        28
-                      ],
-                      "layer": 2
-                    }
-                  },
-                  {
-                    "vessel": {
-                      "$dc_placeholder_size": [
-                        14,
-                        14
-                      ],
-                      "offset": [
-                        114,
-                        62
-                      ],
-                      "layer": 2,
-                      "type": "panel",
-                      "size": [
-                        18,
-                        18
-                      ],
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
-                      "controls": [
-                        {
-                          "s0@dolor_container_ec08b849.slot_classic": {
-                            "anchor_from": "top_left",
-                            "anchor_to": "top_left",
-                            "offset": [
-                              0,
-                              0
-                            ],
-                            "$focus_id": "vessel0"
-                          }
-                        },
-                        {
-                          "bopen@dolor_container_ec08b849.bundle_open_classic": {}
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "output": {
-                      "offset": [
-                        140,
-                        58
-                      ],
-                      "layer": 2,
-                      "type": "panel",
-                      "size": [
-                        26,
-                        26
-                      ],
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
-                      "controls": [
-                        {
-                          "s0@dolor_container_ec08b849.slot_large_classic": {
-                            "anchor_from": "top_left",
-                            "anchor_to": "top_left",
-                            "offset": [
-                              0,
-                              0
-                            ],
-                            "$focus_id": "output0"
-                          }
-                        },
-                        {
-                          "bopen@dolor_container_ec08b849.bundle_open_large_classic": {}
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "inventory@dolor_container_ec08b849.player_inventory_classic": {
-                      "anchor_from": "bottom_left",
-                      "anchor_to": "top_left",
-                      "offset": [
-                        7,
-                        -90
                       ]
                     }
                   }
@@ -337,16 +384,153 @@
               }
             },
             {
-              "details@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.details_side": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_right"
-              }
+              "fold_right@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.fold": {}
             },
             {
-              "recipes@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.recipes_side": {
-                "anchor_from": "top_right",
-                "anchor_to": "top_left"
-              }
+              "details@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.details_side": {}
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "recipes_side": {
+    "type": "input_panel",
+    "size": [
+      83,
+      175
+    ],
+    "layer": 1,
+    "button_mappings": "$dc_panel_mappings",
+    "controls": [
+      {
+        "bg": {
+          "type": "image",
+          "texture": "textures/ui/tutorial_book_screen_ui",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "keep_ratio": false,
+          "layer": 0
+        }
+      },
+      {
+        "search@common.text_edit_box": {
+          "$place_holder_text_color": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "size": [
+            74,
+            20
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            4,
+            8
+          ],
+          "layer": 2,
+          "$place_holder_text": "arris_fd.pot_screen.search",
+          "$text_box_name": "dc_text_1",
+          "$text_edit_box_content_binding_type": "none",
+          "enabled_newline": false,
+          "focus_wrap_enabled": false,
+          "$text_edit_box_label_size": [
+            "default",
+            10
+          ]
+        }
+      },
+      {
+        "glass": {
+          "type": "image",
+          "texture": "textures/ui/magnifyingGlass",
+          "size": [
+            15,
+            15
+          ],
+          "layer": 4,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            61,
+            10.5
+          ]
+        }
+      },
+      {
+        "grid@common.container_scroll_panel": {
+          "$dc_cell_texture": "textures/ui/recipe_book_item_bg",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            5,
+            28
+          ],
+          "size": [
+            77,
+            138
+          ],
+          "layer": 2,
+          "$show_background": false,
+          "$scroll_bar_left_padding_size": [
+            1,
+            0
+          ],
+          "$scroll_view_port_size": [
+            "100%",
+            "100%"
+          ],
+          "$scroll_view_port_offset": [
+            0,
+            0
+          ],
+          "$scrolling_pane_size_touch": [
+            "100%",
+            "100%"
+          ],
+          "$scroll_view_port_size_touch": [
+            "100%",
+            "100%"
+          ],
+          "$scroll_view_port_offset_touch": [
+            0,
+            0
+          ],
+          "$scroll_size_touch": [
+            4,
+            "100%"
+          ],
+          "$wider_scroll_area": false,
+          "$scrolling_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
+          "$scrolling_panel_base_button_mappings": [
+            {
+              "to_button_id": "#dc.panel",
+              "mapping_type": "pressed",
+              "from_button_id": "button.menu_select"
+            },
+            {
+              "to_button_id": "#dc.panel",
+              "mapping_type": "pressed",
+              "from_button_id": "button.menu_ok"
+            },
+            {
+              "to_button_id": "#dc.panel",
+              "mapping_type": "pressed",
+              "from_button_id": "button.controller_secondary_select"
+            },
+            {
+              "to_button_id": "#dc.panel2",
+              "mapping_type": "pressed",
+              "from_button_id": "button.menu_secondary_select"
+            },
+            {
+              "to_button_id": "#dc.panel2",
+              "mapping_type": "pressed",
+              "from_button_id": "button.controller_select"
             }
           ]
         }
@@ -363,374 +547,9 @@
     "button_mappings": "$dc_panel_mappings",
     "controls": [
       {
-        "bg@common.common_panel": {
-          "$show_close_button": false
-        }
-      },
-      {
-        "title@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "size": [
-            75,
-            "default"
-          ],
-          "text_alignment": "center",
-          "anchor_from": "top_middle",
-          "anchor_to": "top_middle",
-          "offset": [
-            0,
-            8
-          ]
-        }
-      },
-      {
-        "cells": {
-          "offset": [
-            14,
-            24
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            54,
-            36
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_id": "book0"
-              }
-            },
-            {
-              "s1@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  18,
-                  0
-                ],
-                "$focus_id": "book1"
-              }
-            },
-            {
-              "s2@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  36,
-                  0
-                ],
-                "$focus_id": "book2"
-              }
-            },
-            {
-              "s3@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  18
-                ],
-                "$focus_id": "book3"
-              }
-            },
-            {
-              "s4@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  18,
-                  18
-                ],
-                "$focus_id": "book4"
-              }
-            },
-            {
-              "s5@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  36,
-                  18
-                ],
-                "$focus_id": "book5"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_classic": {}
-            }
-          ]
-        }
-      },
-      {
-        "book_vessel": {
-          "offset": [
-            10,
-            68
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            18,
-            18
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_id": "book6"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_classic": {}
-            }
-          ]
-        }
-      },
-      {
-        "book_arrow": {
-          "type": "image",
-          "texture": "textures/ui/arrow",
-          "size": [
-            22,
-            15
-          ],
-          "layer": 2,
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            33,
-            69
-          ]
-        }
-      },
-      {
-        "book_result": {
-          "offset": [
-            56,
-            68
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            18,
-            18
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_classic": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_id": "book7"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_classic": {}
-            }
-          ]
-        }
-      },
-      {
-        "variant@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "size": [
-            75,
-            "default"
-          ],
-          "text_alignment": "center",
-          "anchor_from": "top_middle",
-          "anchor_to": "top_middle",
-          "offset": [
-            0,
-            94
-          ]
-        }
-      },
-      {
-        "next@dolor_container_ec08b849.button": {
-          "size": [
-            65,
-            16
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            128
-          ],
-          "layer": 2,
-          "$pressed_button_name": "dc_press_1"
-        }
-      },
-      {
-        "add@dolor_container_ec08b849.button": {
-          "size": [
-            65,
-            16
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            150
-          ],
-          "layer": 2,
-          "$pressed_button_name": "dc_press_2"
-        }
-      }
-    ]
-  },
-  "recipes_side": {
-    "type": "input_panel",
-    "size": [
-      83,
-      175
-    ],
-    "layer": 1,
-    "button_mappings": "$dc_panel_mappings",
-    "controls": [
-      {
-        "bg@common.common_panel": {
-          "$show_close_button": false
-        }
-      },
-      {
-        "search@common.text_edit_box": {
-          "size": [
-            67,
-            14
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            8,
-            8
-          ],
-          "layer": 2,
-          "$place_holder_text": "arris_fd.pot_screen.search",
-          "$text_box_name": "dc_text_3",
-          "$text_edit_box_content_binding_type": "none",
-          "enabled_newline": false,
-          "focus_wrap_enabled": false,
-          "$text_edit_box_label_size": [
-            "default",
-            10
-          ]
-        }
-      },
-      {
-        "recipe_list@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.recipe_list": {
-          "offset": [
-            4,
-            28
-          ]
-        }
-      }
-    ]
-  },
-  "recipe_list": {
-    "type": "panel",
-    "size": [
-      75,
-      138
-    ],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {
-        "list@common.container_scroll_panel": {
-          "size": [
-            75,
-            138
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "layer": 2,
-          "$scrolling_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_2",
-          "$scrolling_panel_base_button_mappings": [
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_select"
-            },
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_ok"
-            },
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.controller_secondary_select"
-            },
-            {
-              "to_button_id": "#dc.panel2",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_secondary_select"
-            },
-            {
-              "to_button_id": "#dc.panel2",
-              "mapping_type": "pressed",
-              "from_button_id": "button.controller_select"
-            }
-          ]
-        }
-      }
-    ]
-  },
-  "half": {
-    "type": "panel",
-    "size": [
-      "50%",
-      "100%-27px"
-    ],
-    "offset": [
-      0,
-      27
-    ],
-    "layer": 1,
-    "anchor_to": "top_left"
-  },
-  "half_inner": {
-    "type": "panel",
-    "size": [
-      "80%",
-      "95%"
-    ],
-    "anchor_from": "center",
-    "anchor_to": "center"
-  },
-  "pocket_content": {
-    "type": "panel",
-    "size": [
-      "100%",
-      "100%"
-    ],
-    "controls": [
-      {
         "bg": {
           "type": "image",
-          "texture": "textures/ui/background_panel",
+          "texture": "textures/ui/dialog_background_opaque",
           "size": [
             "100%",
             "100%"
@@ -739,435 +558,61 @@
         }
       },
       {
-        "header": {
+        "title_band": {
           "type": "panel",
           "size": [
-            "100%",
-            "100%"
+            75,
+            22
           ],
           "layer": 2,
-          "controls": [
-            {
-              "x@common.legacy_pocket_close_button": {
-                "layer": 3,
-                "$pressed_button_name": "#dc.close"
-              }
-            },
-            {
-              "iheader@dolor_container_ec08b849.pocket_header": {
-                "anchor_from": "top_left",
-                "layer": 1
-              }
-            },
-            {
-              "cheader@dolor_container_ec08b849.pocket_header": {
-                "anchor_from": "top_middle",
-                "layer": 2
-              }
-            }
-          ]
-        }
-      },
-      {
-        "inventory_half@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.half": {
-          "anchor_from": "top_left",
-          "controls": [
-            {
-              "inner@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.half_inner": {
-                "controls": [
-                  {
-                    "items@common.scrolling_panel": {
-                      "layer": 1,
-                      "$allow_scrolling_even_when_content_fits": false,
-                      "$scrolling_pane_size": [
-                        "100%",
-                        "100%-2px"
-                      ],
-                      "$scroll_box_mouse_image_control": "common-classic.button_state_default",
-                      "$scroll_size": [
-                        "8px",
-                        "100%"
-                      ],
-                      "$scrolling_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_3",
-                      "$scrolling_panel_base_button_mappings": [
-                        {
-                          "to_button_id": "#dc.panel",
-                          "mapping_type": "pressed",
-                          "from_button_id": "button.menu_select"
-                        },
-                        {
-                          "to_button_id": "#dc.panel",
-                          "mapping_type": "pressed",
-                          "from_button_id": "button.menu_ok"
-                        },
-                        {
-                          "to_button_id": "#dc.panel",
-                          "mapping_type": "pressed",
-                          "from_button_id": "button.controller_secondary_select"
-                        },
-                        {
-                          "to_button_id": "#dc.panel2",
-                          "mapping_type": "pressed",
-                          "from_button_id": "button.menu_secondary_select"
-                        },
-                        {
-                          "to_button_id": "#dc.panel2",
-                          "mapping_type": "pressed",
-                          "from_button_id": "button.controller_select"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      {
-        "pot_half@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.half": {
+          "clips_children": true,
           "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "offset": [
+            0,
+            0
+          ],
           "controls": [
             {
-              "inner@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.half_inner": {
-                "controls": [
-                  {
-                    "pot_tab@dolor_container_ec08b849.tab": {
-                      "size": [
-                        44,
-                        18
-                      ],
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
-                      "offset": [
-                        0,
-                        0
-                      ],
-                      "layer": 2,
-                      "$dc_tab_back": "textures/ui/TabTopBackLeftMost",
-                      "$dc_tab_back_hover": "textures/ui/TabTopBackLeftMostHover",
-                      "$dc_tab_front": "textures/ui/TabTopFrontLeftMost",
-                      "$dc_tab_front_hover": "textures/ui/TabTopFrontLeftMostHover",
-                      "$pressed_button_name": "dc_press_17"
-                    }
-                  },
-                  {
-                    "book_tab@dolor_container_ec08b849.tab": {
-                      "size": [
-                        44,
-                        18
-                      ],
-                      "anchor_from": "top_left",
-                      "anchor_to": "top_left",
-                      "offset": [
-                        46,
-                        0
-                      ],
-                      "layer": 2,
-                      "$pressed_button_name": "dc_press_18"
-                    }
-                  },
-                  {
-                    "pot_page@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.pocket_pot": {}
-                  },
-                  {
-                    "book_page@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.pocket_book": {
-                      "visible": false
-                    }
-                  }
+              "title@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
+                "size": [
+                  75,
+                  "default"
+                ],
+                "text_alignment": "center",
+                "color": [
+                  0.208,
+                  0.208,
+                  0.208
+                ],
+                "anchor_from": "center",
+                "anchor_to": "center",
+                "offset": [
+                  0,
+                  1
                 ]
               }
             }
-          ]
-        }
-      }
-    ]
-  },
-  "pocket_pot": {
-    "type": "panel",
-    "size": [
-      168,
-      110
-    ],
-    "offset": [
-      0,
-      24
-    ],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {
-        "ingredients": {
-          "offset": [
-            0,
-            0
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            84,
-            56
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_precedence": 2,
-                "$focus_id": "ingredients0"
-              }
-            },
-            {
-              "s1@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  28,
-                  0
-                ],
-                "$focus_id": "ingredients1"
-              }
-            },
-            {
-              "s2@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  56,
-                  0
-                ],
-                "$focus_id": "ingredients2"
-              }
-            },
-            {
-              "s3@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  28
-                ],
-                "$focus_id": "ingredients3"
-              }
-            },
-            {
-              "s4@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  28,
-                  28
-                ],
-                "$focus_id": "ingredients4"
-              }
-            },
-            {
-              "s5@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  56,
-                  28
-                ],
-                "$focus_id": "ingredients5"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
-            }
-          ]
-        }
-      },
-      {
-        "heat@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.heat": {
-          "offset": [
-            33,
-            62
-          ]
-        }
-      },
-      {
-        "progress@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.progress": {
-          "offset": [
-            90,
-            20
-          ]
-        }
-      },
-      {
-        "preview_frame@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.preview_frame": {
-          "offset": [
-            118,
-            0
-          ]
-        }
-      },
-      {
-        "preview@dolor_container_ec08b849.item_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            123,
-            5
-          ],
-          "layer": 2
-        }
-      },
-      {
-        "vessel": {
-          "$dc_placeholder_size": [
-            14,
-            14
-          ],
-          "offset": [
-            90,
-            54
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            28,
-            28
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_id": "vessel0"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
-            }
-          ]
-        }
-      },
-      {
-        "output": {
-          "offset": [
-            126,
-            48
-          ],
-          "layer": 2,
-          "type": "panel",
-          "size": [
-            32,
-            32
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "controls": [
-            {
-              "s0@dolor_container_ec08b849.slot_large_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
-                ],
-                "$focus_id": "output0"
-              }
-            },
-            {
-              "bopen@dolor_container_ec08b849.bundle_open_large_pocket": {}
-            }
-          ]
-        }
-      }
-    ]
-  },
-  "pocket_book": {
-    "type": "panel",
-    "size": [
-      168,
-      232
-    ],
-    "offset": [
-      0,
-      24
-    ],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {
-        "search@common.text_edit_box": {
-          "size": [
-            60,
-            14
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "layer": 2,
-          "$place_holder_text": "arris_fd.pot_screen.search",
-          "$text_box_name": "dc_text_19",
-          "$text_edit_box_content_binding_type": "none",
-          "enabled_newline": false,
-          "focus_wrap_enabled": false,
-          "$text_edit_box_label_size": [
-            "default",
-            10
-          ]
-        }
-      },
-      {
-        "recipe_list@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.pocket_list": {
-          "offset": [
-            0,
-            18
-          ]
-        }
-      },
-      {
-        "title@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "size": [
-            100,
-            "default"
-          ],
-          "text_alignment": "center",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            66,
-            2
           ]
         }
       },
       {
         "cells": {
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
           "offset": [
-            66,
-            18
+            0,
+            22
           ],
           "layer": 2,
           "type": "panel",
           "size": [
-            84,
-            56
+            54,
+            36
           ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
           "controls": [
             {
-              "s0@dolor_container_ec08b849.slot_pocket": {
+              "s0@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
@@ -1178,83 +623,118 @@
               }
             },
             {
-              "s1@dolor_container_ec08b849.slot_pocket": {
+              "s1@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  28,
+                  18,
                   0
                 ],
                 "$focus_id": "book1"
               }
             },
             {
-              "s2@dolor_container_ec08b849.slot_pocket": {
+              "s2@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  56,
+                  36,
                   0
                 ],
                 "$focus_id": "book2"
               }
             },
             {
-              "s3@dolor_container_ec08b849.slot_pocket": {
+              "s3@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
                   0,
-                  28
+                  18
                 ],
                 "$focus_id": "book3"
               }
             },
             {
-              "s4@dolor_container_ec08b849.slot_pocket": {
+              "s4@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  28,
-                  28
+                  18,
+                  18
                 ],
                 "$focus_id": "book4"
               }
             },
             {
-              "s5@dolor_container_ec08b849.slot_pocket": {
+              "s5@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  56,
-                  28
+                  36,
+                  18
                 ],
                 "$focus_id": "book5"
               }
             },
             {
-              "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
+              "bopen@dolor_container_71b6e45c.bundle_open_classic": {}
             }
+          ]
+        }
+      },
+      {
+        "arrow": {
+          "type": "image",
+          "texture": "textures/ui/arrow_active",
+          "size": [
+            22,
+            15
+          ],
+          "rotate_angle": -90.0,
+          "layer": 2,
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "offset": [
+            0,
+            63.5
+          ]
+        }
+      },
+      {
+        "spoon": {
+          "type": "image",
+          "texture": "textures/ui/spoon",
+          "size": [
+            14,
+            14
+          ],
+          "layer": 2,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            9.5,
+            77
           ]
         }
       },
       {
         "book_vessel": {
           "offset": [
-            66,
-            80
+            7.5,
+            93
           ],
           "layer": 2,
           "type": "panel",
           "size": [
-            28,
-            28
+            18,
+            18
           ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
           "controls": [
             {
-              "s0@dolor_container_ec08b849.slot_pocket": {
+              "s0@dolor_container_71b6e45c.slot_classic": {
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
@@ -1265,196 +745,120 @@
               }
             },
             {
-              "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
+              "bopen@dolor_container_71b6e45c.bundle_open_classic": {}
             }
           ]
         }
       },
       {
-        "book_arrow": {
+        "result_frame": {
           "type": "image",
-          "texture": "textures/ui/arrow",
+          "texture": "textures/ui/preview",
           "size": [
-            22,
-            15
+            38,
+            38
           ],
-          "layer": 2,
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
+          "clip_direction": "up",
+          "clip_ratio": 0.13,
+          "layer": 1,
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
           "offset": [
-            98,
-            87
+            0,
+            83
           ]
         }
       },
       {
-        "book_result": {
+        "result@dolor_container_71b6e45c.item_classic": {
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
           "offset": [
-            122,
-            80
+            0,
+            95
+          ],
+          "layer": 2
+        }
+      },
+      {
+        "fire": {
+          "type": "image",
+          "texture": "textures/ui/heat",
+          "size": [
+            18,
+            18
           ],
           "layer": 2,
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "offset": [
+            0,
+            117
+          ]
+        }
+      },
+      {
+        "add_panel": {
           "type": "panel",
           "size": [
-            28,
-            28
+            "100%",
+            "100%"
           ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
+          "layer": 2,
+          "visible": false,
           "controls": [
             {
-              "s0@dolor_container_ec08b849.slot_pocket": {
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  0,
-                  0
+              "add@dolor_container_71b6e45c.button": {
+                "$dc_button_default": "textures/ui/use_recipe_up_ui",
+                "$dc_button_hover": "textures/ui/use_recipe_down_ui",
+                "$dc_button_pressed": "textures/ui/use_recipe_down_ui",
+                "size": [
+                  17,
+                  17
                 ],
-                "$focus_id": "book7"
+                "anchor_from": "top_middle",
+                "anchor_to": "top_middle",
+                "offset": [
+                  0.5,
+                  136.5
+                ],
+                "layer": 1,
+                "$pressed_button_name": "dc_press_2"
               }
             },
             {
-              "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
-            }
-          ]
-        }
-      },
-      {
-        "variant@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "size": [
-            100,
-            "default"
-          ],
-          "text_alignment": "center",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            66,
-            112
-          ]
-        }
-      },
-      {
-        "next@dolor_container_ec08b849.button": {
-          "size": [
-            86,
-            18
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            66,
-            126
-          ],
-          "layer": 2,
-          "$pressed_button_name": "dc_press_20"
-        }
-      },
-      {
-        "add@dolor_container_ec08b849.button": {
-          "size": [
-            86,
-            18
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            66,
-            148
-          ],
-          "layer": 2,
-          "$pressed_button_name": "dc_press_21"
-        }
-      }
-    ]
-  },
-  "pocket_list": {
-    "type": "panel",
-    "size": [
-      60,
-      200
-    ],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {
-        "list@common.scrolling_panel": {
-          "size": [
-            60,
-            200
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "layer": 2,
-          "$scrolling_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_5",
-          "$scrolling_panel_base_button_mappings": [
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_select"
-            },
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_ok"
-            },
-            {
-              "to_button_id": "#dc.panel",
-              "mapping_type": "pressed",
-              "from_button_id": "button.controller_secondary_select"
-            },
-            {
-              "to_button_id": "#dc.panel2",
-              "mapping_type": "pressed",
-              "from_button_id": "button.menu_secondary_select"
-            },
-            {
-              "to_button_id": "#dc.panel2",
-              "mapping_type": "pressed",
-              "from_button_id": "button.controller_select"
+              "add_note@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
+                "size": [
+                  79,
+                  "default"
+                ],
+                "text_alignment": "center",
+                "color": [
+                  0.247,
+                  0.247,
+                  0.247
+                ],
+                "anchor_from": "top_middle",
+                "anchor_to": "top_middle",
+                "offset": [
+                  0.5,
+                  157.5
+                ]
+              }
             }
           ]
         }
       }
     ]
   },
-  "pot_classic_quiet@dolor_container_ec08b849.screen_classic_quiet": {
-    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.classic_content"
+  "pot_classic_quiet@dolor_container_71b6e45c.screen_classic_quiet": {
+    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.content"
   },
-  "pot_pocket_quiet@dolor_container_ec08b849.screen_pocket_quiet": {
-    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.pocket_content"
+  "pot_pocket_quiet@dolor_container_71b6e45c.screen_pocket_quiet": {
+    "$dc_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.content",
+    "$dc_dim": true
   },
   "dc_content_1": {
-    "type": "panel",
-    "size": [
-      "100%",
-      "100%"
-    ],
-    "controls": [
-      {
-        "icon@dolor_container_ec08b849.item_classic": {
-          "anchor_from": "left_middle",
-          "anchor_to": "left_middle",
-          "offset": [
-            1,
-            0
-          ]
-        }
-      },
-      {
-        "name@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "anchor_from": "left_middle",
-          "anchor_to": "left_middle",
-          "offset": [
-            21,
-            0
-          ]
-        }
-      }
-    ]
-  },
-  "dc_content_2": {
     "type": "panel",
     "size": [
       "100%",
@@ -1462,892 +866,695 @@
     ],
     "controls": [
       {
-        "r0@dolor_container_ec08b849.list_row": {
+        "r0": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             0
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_4",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r1@dolor_container_ec08b849.list_row": {
+        "r1": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             18
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_5",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r2@dolor_container_ec08b849.list_row": {
+        "r2": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             36
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_6",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r3@dolor_container_ec08b849.list_row": {
+        "r3": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             54
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_7",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r4@dolor_container_ec08b849.list_row": {
+        "r4": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             72
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_8",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r5@dolor_container_ec08b849.list_row": {
+        "r5": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             90
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_9",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r6@dolor_container_ec08b849.list_row": {
+        "r6": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             108
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_10",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r7@dolor_container_ec08b849.list_row": {
+        "r7": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             126
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_11",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1"
+          ]
         }
       },
       {
-        "r8@dolor_container_ec08b849.list_row": {
+        "r8": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "visible": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             144
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_12",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
-          "visible": false
+          ]
         }
       },
       {
-        "r9@dolor_container_ec08b849.list_row": {
+        "r9": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "visible": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             162
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_13",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
-          "visible": false
+          ]
         }
       },
       {
-        "r10@dolor_container_ec08b849.list_row": {
+        "r10": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "visible": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             180
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_14",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
-          "visible": false
+          ]
         }
       },
       {
-        "r11@dolor_container_ec08b849.list_row": {
+        "r11": {
+          "type": "panel",
           "size": [
             "100%",
             18
           ],
+          "controls": [
+            {
+              "s0@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "s1@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  18,
+                  0
+                ]
+              }
+            },
+            {
+              "s2@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  36,
+                  0
+                ]
+              }
+            },
+            {
+              "s3@dolor_container_71b6e45c.slot_classic": {
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  0
+                ]
+              }
+            }
+          ],
+          "visible": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
           "offset": [
             0,
             198
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_15",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
-          "visible": false
-        }
-      },
-      {
-        "r12@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            18
-          ],
-          "offset": [
-            0,
-            216
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_16",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_1",
-          "visible": false
-        }
-      }
-    ]
-  },
-  "dc_content_3": {
-    "type": "panel",
-    "size": [
-      "100%",
-      28
-    ],
-    "controls": [
-      {
-        "s0@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items0"
-        }
-      },
-      {
-        "s1@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items1"
-        }
-      },
-      {
-        "s2@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items2"
-        }
-      },
-      {
-        "s3@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items3"
-        }
-      },
-      {
-        "s4@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items4"
-        }
-      },
-      {
-        "s5@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items5"
-        }
-      },
-      {
-        "s6@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items6"
-        }
-      },
-      {
-        "s7@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items7"
-        }
-      },
-      {
-        "s8@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items8"
-        }
-      },
-      {
-        "s9@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items9"
-        }
-      },
-      {
-        "s10@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items10"
-        }
-      },
-      {
-        "s11@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items11"
-        }
-      },
-      {
-        "s12@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items12"
-        }
-      },
-      {
-        "s13@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items13"
-        }
-      },
-      {
-        "s14@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items14"
-        }
-      },
-      {
-        "s15@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items15"
-        }
-      },
-      {
-        "s16@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items16"
-        }
-      },
-      {
-        "s17@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items17"
-        }
-      },
-      {
-        "s18@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items18"
-        }
-      },
-      {
-        "s19@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items19"
-        }
-      },
-      {
-        "s20@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items20"
-        }
-      },
-      {
-        "s21@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items21"
-        }
-      },
-      {
-        "s22@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items22"
-        }
-      },
-      {
-        "s23@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items23"
-        }
-      },
-      {
-        "s24@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items24"
-        }
-      },
-      {
-        "s25@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items25"
-        }
-      },
-      {
-        "s26@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items26"
-        }
-      },
-      {
-        "s27@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items27"
-        }
-      },
-      {
-        "s28@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items28"
-        }
-      },
-      {
-        "s29@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items29"
-        }
-      },
-      {
-        "s30@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items30"
-        }
-      },
-      {
-        "s31@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items31"
-        }
-      },
-      {
-        "s32@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items32"
-        }
-      },
-      {
-        "s33@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items33"
-        }
-      },
-      {
-        "s34@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items34"
-        }
-      },
-      {
-        "s35@dolor_container_ec08b849.slot_pocket": {
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            0,
-            0
-          ],
-          "$focus_id": "combined_hotbar_and_inventory_items35"
-        }
-      },
-      {
-        "bopen@dolor_container_ec08b849.bundle_open_pocket": {}
-      }
-    ]
-  },
-  "dc_content_4": {
-    "type": "panel",
-    "size": [
-      "100%",
-      "100%"
-    ],
-    "controls": [
-      {
-        "icon@dolor_container_ec08b849.item_classic": {
-          "anchor_from": "left_middle",
-          "anchor_to": "left_middle",
-          "offset": [
-            2,
-            0
           ]
         }
       },
       {
-        "name@dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.note": {
-          "anchor_from": "left_middle",
-          "anchor_to": "left_middle",
-          "offset": [
-            22,
-            0
-          ]
-        }
-      }
-    ]
-  },
-  "dc_content_5": {
-    "type": "panel",
-    "size": [
-      "100%",
-      24
-    ],
-    "controls": [
-      {
-        "r0@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            0
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_22",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r1@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            24
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_23",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r2@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            48
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_24",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r3@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            72
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_25",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r4@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            96
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_26",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r5@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            120
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_27",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r6@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            144
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_28",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r7@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            168
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_29",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r8@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            192
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_30",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4"
-        }
-      },
-      {
-        "r9@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            216
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_31",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4",
-          "visible": false
-        }
-      },
-      {
-        "r10@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            240
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_32",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4",
-          "visible": false
-        }
-      },
-      {
-        "r11@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            264
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_33",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4",
-          "visible": false
-        }
-      },
-      {
-        "r12@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            288
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_34",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4",
-          "visible": false
-        }
-      },
-      {
-        "r13@dolor_container_ec08b849.list_row": {
-          "size": [
-            "100%",
-            24
-          ],
-          "offset": [
-            0,
-            312
-          ],
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "$pressed_button_name": "dc_press_35",
-          "$dc_row_content": "dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.dc_content_4",
-          "visible": false
-        }
+        "bopen@dolor_container_71b6e45c.bundle_open_classic": {}
       }
     ]
   }

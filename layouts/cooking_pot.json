@@ -1,18 +1,21 @@
 {
   // 厨锅（Shared/Menus/CookingPot.py 的 arris:cooking_pot）。vendor 时由 dolorContainer 的 tools/layouts.py 编译成
   // rp/ui/dolor_layout_arrisfarmersdelightscripts_arris_cooking_pot.json 与脚本根下的 dolorLayouts.py（都不手改）。
-  // 经典版：中间是厨锅（左边 3 × 2 食材格，下面是火焰，中间进度箭头，右边预览框、容器格与成品格），下面是玩家物品栏；
-  // 左边的侧栏是选中食谱的详情（食材、容器、成品、换变体、添加食材），右边的侧栏是食谱列表（带搜索框），与旧界面的位置一样。
-  // 携带版：照原版携带版的整屏界面，左半屏物品栏，右半屏两页——"烹饪"（厨锅）与"食谱"（列表与详情），页签切换。
-  // 按钮、页签上的字和搜索框的提示写的是语言文件的键（rp/texts 的 arris_fd.pot_screen.*）：按钮和页签由库在客户端按玩家的语言查，
-  // 搜索框的提示由引擎的文字控件查；字数照英文的宽度挑过（经典版的按钮只有 65 宽）。
+  // 照旧界面（rp/ui/arrisCookingPot.json）的样子：三块并排、顶对齐、都高 175，整体在屏幕正中——
+  // 左边是食谱选择（搜索框，下面是按搜索过滤的食谱图标格，放不下才滚动），中间是厨锅（3 × 2 食材格、火焰、进度箭头、预览框、
+  // 容器格与成品格）和玩家物品栏，右边是选中食谱的详情（标题、食材格、朝下的箭头、勺子与容器格、锅形预览框里的成品、火焰、
+  // "+"按钮与下面的"添加食材"，后两样选了食谱才有）。背后垫一张原版配方书的底（recipe_back_panel，比中间那块左右各多 10），
+  // 两边的侧栏各压进去 7，三块之间露出 3 宽的深色折缝；点在折缝与侧栏空白处不算点在界面外面（不会把手上的东西丢出去）。
+  // 经典版与携带版用同一个内容模板（携带版照原版压暗背后）：携带版的物品栏同样是快捷栏 + 主背包两个格子区，界面模型的去向表两种界面档一样。
+  // 字写的是语言文件的键（rp/texts 的 arris_fd.pot_screen.*）：搜索框的提示由引擎的文字控件查，"添加食材"由库在客户端按玩家的语言查；
+  // 英文的宽度照默认字体估过（tests/test_pot_screen_texts.py）。
   "namespace": "arris_cooking_pot",
   "$dc_layout": "arris:cooking_pot",
   "$dc_menu": "arris:cooking_pot",
   "$dc_screens": {"classic": "pot_classic", "pocket": "pot_pocket"},
 
-  "pot_classic@dc.screen_classic": {"$dc_content": "arris_cooking_pot.classic_content"},
-  "pot_pocket@dc.screen_pocket": {"$dc_content": "arris_cooking_pot.pocket_content"},
+  "pot_classic@dc.screen_classic": {"$dc_content": "arris_cooking_pot.content"},
+  "pot_pocket@dc.screen_pocket": {"$dc_content": "arris_cooking_pot.content", "$dc_dim": true},
 
   // ---------------------------------------------------------------- 共用的小件
 
@@ -62,295 +65,170 @@
     "anchor_from": "top_left",
     "anchor_to": "top_left"
   },
+  // 三块之间的折缝：透明的一条，吃掉点在上面的点击（深色是背后垫的那张配方书底露出来的）
+  "fold": {
+    "type": "input_panel",
+    "size": [3, 175],
+    "layer": 1,
+    "button_mappings": "$dc_panel_mappings"
+  },
 
-  // ---------------------------------------------------------------- 经典版
+  // ---------------------------------------------------------------- 内容（两种界面档共用）
 
-  "classic_content": {
+  "content": {
     "type": "panel",
     "size": ["100%", "100%"],
     "controls": [
-      {"panel@dc.panel_classic": {
-        "size": [176, 175],
+      {"back": {
+        "type": "image", "texture": "textures/ui/recipe_back_panel", "size": [196, 168], "layer": 0,
+        "anchor_from": "center", "anchor_to": "center"
+      }},
+      {"row": {
+        "type": "stack_panel",
+        "orientation": "horizontal",
+        "size": ["100%c", 175],
+        "anchor_from": "center",
+        "anchor_to": "center",
         "controls": [
-          {"bg@common.common_panel": {"$close_button_to_button_id": "#dc.close"}},
-          {"body": {
-            "type": "panel",
-            "layer": 5,
-            "size": ["100%", "100%"],
+          {"recipes@arris_cooking_pot.recipes_side": {}},
+          {"fold_left@arris_cooking_pot.fold": {}},
+          {"panel@dc.panel_classic": {
+            "size": [176, 175],
             "controls": [
-              {"title@dc.title": {"offset": [7, 6]}},
-              {"ingredients@dc.grid_classic": {
-                "$dc_name": "ingredients", "$dc_collection": "ingredients", "$dc_columns": 3, "$dc_rows": 2,
-                "$dc_focus": true, "offset": [22, 22], "layer": 2
-              }},
-              {"heat@arris_cooking_pot.heat": {"offset": [40, 62]}},
-              {"progress@arris_cooking_pot.progress": {"offset": [82, 32]}},
-              {"preview_frame@arris_cooking_pot.preview_frame": {"offset": [112, 18]}},
-              {"preview@dc.item_classic": {
-                "$dc_item": "preview", "anchor_from": "top_left", "anchor_to": "top_left", "offset": [122, 28], "layer": 2
-              }},
-              {"vessel@dc.slot_classic": {
-                "$dc_name": "vessel", "$dc_collection": "vessel", "$dc_placeholder_size": [14, 14],
-                "offset": [114, 62], "layer": 2
-              }},
-              {"output@dc.slot_large_classic": {
-                "$dc_name": "output", "$dc_collection": "output", "offset": [140, 58], "layer": 2
-              }},
-              {"inventory@dc.player_inventory_classic": {
-                "anchor_from": "bottom_left", "anchor_to": "top_left", "offset": [7, -90]
+              {"bg@common.common_panel": {"$close_button_to_button_id": "#dc.close"}},
+              {"body": {
+                "type": "panel",
+                "layer": 5,
+                "size": ["100%", "100%"],
+                "controls": [
+                  // 标题的框收到关闭按钮左边（库的缺省是面板宽的 90%，压到右上角的关闭按钮上）
+                  {"title@dc.title": {"offset": [7, 6], "size": [140, "default"]}},
+                  {"ingredients@dc.grid_classic": {
+                    "$dc_name": "ingredients", "$dc_collection": "ingredients", "$dc_columns": 3, "$dc_rows": 2,
+                    "$dc_focus": true, "offset": [22, 22], "layer": 2
+                  }},
+                  {"heat@arris_cooking_pot.heat": {"offset": [40, 62]}},
+                  {"progress@arris_cooking_pot.progress": {"offset": [82, 32]}},
+                  {"preview_frame@arris_cooking_pot.preview_frame": {"offset": [112, 18]}},
+                  {"preview@dc.item_classic": {
+                    "$dc_item": "preview", "anchor_from": "top_left", "anchor_to": "top_left", "offset": [122, 28], "layer": 2
+                  }},
+                  {"vessel@dc.slot_classic": {
+                    "$dc_name": "vessel", "$dc_collection": "vessel", "$dc_placeholder_size": [14, 14],
+                    "offset": [114, 62], "layer": 2
+                  }},
+                  {"output@dc.slot_large_classic": {
+                    "$dc_name": "output", "$dc_collection": "output", "offset": [140, 58], "layer": 2
+                  }},
+                  {"inventory@dc.player_inventory_classic": {
+                    "anchor_from": "bottom_left", "anchor_to": "top_left", "offset": [7, -90]
+                  }}
+                ]
               }}
             ]
           }},
-          // 左侧栏：选中食谱的详情；右侧栏：食谱列表。点在侧栏空白处不算点在界面外面（不会把手上的东西丢出去）
-          {"details@arris_cooking_pot.details_side": {"anchor_from": "top_left", "anchor_to": "top_right"}},
-          {"recipes@arris_cooking_pot.recipes_side": {"anchor_from": "top_right", "anchor_to": "top_left"}}
+          {"fold_right@arris_cooking_pot.fold": {}},
+          {"details@arris_cooking_pot.details_side": {}}
         ]
       }}
     ]
   },
 
-  "details_side": {
-    "type": "input_panel",
-    "size": [83, 175],
-    "layer": 1,
-    "button_mappings": "$dc_panel_mappings",
-    "controls": [
-      {"bg@common.common_panel": {"$show_close_button": false}},
-      {"title@arris_cooking_pot.note": {
-        "$dc_format": "{bookTitle}", "size": [75, "default"], "text_alignment": "center",
-        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 8]
-      }},
-      {"cells@dc.grid_classic": {
-        "$dc_name": "book_in", "$dc_collection": "book", "$dc_columns": 3, "$dc_rows": 2, "offset": [14, 24], "layer": 2
-      }},
-      {"book_vessel@dc.slot_classic": {
-        "$dc_name": "book_vessel", "$dc_collection": "book", "$dc_index": 6, "offset": [10, 68], "layer": 2
-      }},
-      {"book_arrow": {
-        "type": "image", "texture": "textures/ui/arrow", "size": [22, 15], "layer": 2,
-        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [33, 69]
-      }},
-      {"book_result@dc.slot_classic": {
-        "$dc_name": "book_result", "$dc_collection": "book", "$dc_index": 7, "offset": [56, 68], "layer": 2
-      }},
-      {"variant@arris_cooking_pot.note": {
-        "$dc_format": "{bookVariant}", "size": [75, "default"], "text_alignment": "center",
-        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 94]
-      }},
-      {"next@dc.button": {
-        "$dc_action": "nextVariant", "$dc_label": "arris_fd.pot_screen.next_variant", "$dc_visible": ["picked", "!=", -1],
-        "size": [65, 16], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 128], "layer": 2
-      }},
-      {"add@dc.button": {
-        "$dc_action": "addFood", "$dc_label": "arris_fd.pot_screen.add_food", "$dc_visible": ["picked", "!=", -1],
-        "size": [65, 16], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 150], "layer": 2
-      }}
-    ]
-  },
-
+  // 左边：食谱选择。底图照旧界面原样拉伸（浅色边框 + 深色凹槽），搜索框在凹槽顶上、右边一个放大镜；下面是食谱格：
+  // 一格一道菜的成品（库的 Choice，点一格选中，选中的那格一直是选中的底格），4 列，按行回收（下游模组追加多少道都是这些控件），
+  // 放不下才出现滚动条（在格子右边、压在侧栏的边框上），不画滚动面板的底
   "recipes_side": {
     "type": "input_panel",
     "size": [83, 175],
     "layer": 1,
     "button_mappings": "$dc_panel_mappings",
     "controls": [
-      {"bg@common.common_panel": {"$show_close_button": false}},
+      {"bg": {"type": "image", "texture": "textures/ui/tutorial_book_screen_ui", "size": ["100%", "100%"], "keep_ratio": false,
+              "layer": 0}},
       {"search@dc.text_box": {
         "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "arris_fd.pot_screen.search",
-        "size": [67, 14], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [8, 8], "layer": 2
+        "$place_holder_text_color": [0.5, 0.5, 0.5],
+        "size": [74, 20], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [4, 8], "layer": 2
       }},
-      {"recipe_list@arris_cooking_pot.recipe_list": {"offset": [4, 28]}}
-    ]
-  },
-
-  // 食谱列表：一行一个食谱（成品的图标与名字），点一行选中（经可预测的动作，选中的序号记在每位查看者的状态 picked）
-  "recipe_list": {
-    "type": "panel",
-    "size": [75, 138],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {"list@dc.list": {
-        "$dc_items": "recipes", "$dc_value": "picked", "$dc_key": "index", "$dc_action": "pick", "$dc_row_height": 18,
-        "size": [75, 138], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 2,
-        "controls": [
-          {"icon@dc.item_classic": {
-            "$dc_item": "value", "anchor_from": "left_middle", "anchor_to": "left_middle", "offset": [1, 0]
-          }},
-          {"name@arris_cooking_pot.note": {
-            "$dc_format": "{value:name}", "anchor_from": "left_middle", "anchor_to": "left_middle", "offset": [21, 0]
-          }}
-        ]
+      {"glass": {
+        "type": "image", "texture": "textures/ui/magnifyingGlass", "size": [15, 15], "layer": 4,
+        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [61, 10.5]
+      }},
+      {"grid@dc.scroll_grid_classic": {
+        "$dc_name": "recipe_grid", "$dc_collection": "recipes", "$dc_columns": 4, "$dc_pool_rows": 12, "$dc_shown_rows": 8,
+        "$dc_fixed_columns": true, "$dc_scroll_style": "container",
+        "$dc_cell_texture": "textures/ui/recipe_book_item_bg",
+        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [5, 28], "size": [77, 138], "layer": 2,
+        "$show_background": false,
+        "$scroll_bar_left_padding_size": [1, 0],
+        "$scroll_view_port_size": ["100%", "100%"],
+        "$scroll_view_port_offset": [0, 0],
+        "$scrolling_pane_size_touch": ["100%", "100%"],
+        "$scroll_view_port_size_touch": ["100%", "100%"],
+        "$scroll_view_port_offset_touch": [0, 0],
+        "$scroll_size_touch": [4, "100%"],
+        "$wider_scroll_area": false
       }}
     ]
   },
 
-  // ---------------------------------------------------------------- 携带版
-
-  "half": {
-    "type": "panel",
-    "size": ["50%", "100%-27px"],
-    "offset": [0, 27],
+  // 右边：选中食谱的详情，摆法照旧界面的 cookbook_bg。标题在上面 22 高的一条里居中（长名字折成两行，再长也压不到食材格）；
+  // 食材格每秒换一种写法（服务端按钟算好发来）；成品画在锅形预览框里（框底下的小三角裁掉）；火焰是常亮的示意
+  "details_side": {
+    "type": "input_panel",
+    "size": [83, 175],
     "layer": 1,
-    "anchor_to": "top_left"
-  },
-  "half_inner": {
-    "type": "panel",
-    "size": ["80%", "95%"],
-    "anchor_from": "center",
-    "anchor_to": "center"
-  },
-
-  "pocket_content": {
-    "type": "panel",
-    "size": ["100%", "100%"],
+    "button_mappings": "$dc_panel_mappings",
     "controls": [
-      {"bg": {"type": "image", "texture": "textures/ui/background_panel", "size": ["100%", "100%"], "layer": 0}},
-      {"header": {
-        "type": "panel",
-        "size": ["100%", "100%"],
-        "layer": 2,
+      {"bg": {"type": "image", "texture": "textures/ui/dialog_background_opaque", "size": ["100%", "100%"], "layer": 0}},
+      {"title_band": {
+        "type": "panel", "size": [75, 22], "layer": 2, "clips_children": true,
+        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 0],
         "controls": [
-          {"x@common.legacy_pocket_close_button": {"layer": 3, "$pressed_button_name": "#dc.close"}},
-          {"iheader@dc.pocket_header": {"anchor_from": "top_left", "layer": 1, "$dc_text": "inventoryTitle"}},
-          {"cheader@dc.pocket_header": {"anchor_from": "top_middle", "layer": 2, "$dc_text": "title"}}
-        ]
-      }},
-      {"inventory_half@arris_cooking_pot.half": {
-        "anchor_from": "top_left",
-        "controls": [
-          {"inner@arris_cooking_pot.half_inner": {
-            "controls": [
-              {"items@dc.scroll_slots_pocket": {
-                "$dc_name": "ipool",
-                "$dc_collection": "combined_hotbar_and_inventory_items",
-                "$dc_count": 36,
-                "$dc_columns": 10,
-                "layer": 1,
-                "$allow_scrolling_even_when_content_fits": false,
-                "$scrolling_pane_size": ["100%", "100%-2px"],
-                "$scroll_box_mouse_image_control": "common-classic.button_state_default",
-                "$scroll_size": ["8px", "100%"]
-              }}
-            ]
+          {"title@arris_cooking_pot.note": {
+            "$dc_format": "{bookTitle}", "size": [75, "default"], "text_alignment": "center",
+            "color": [0.208, 0.208, 0.208], "anchor_from": "center", "anchor_to": "center", "offset": [0, 1]
           }}
         ]
       }},
-      {"pot_half@arris_cooking_pot.half": {
-        "anchor_from": "top_middle",
+      {"cells@dc.grid_classic": {
+        "$dc_name": "book_in", "$dc_collection": "book", "$dc_columns": 3, "$dc_rows": 2,
+        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 22], "layer": 2
+      }},
+      {"arrow": {
+        "type": "image", "texture": "textures/ui/arrow_active", "size": [22, 15], "rotate_angle": -90.0, "layer": 2,
+        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 63.5]
+      }},
+      {"spoon": {
+        "type": "image", "texture": "textures/ui/spoon", "size": [14, 14], "layer": 2,
+        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9.5, 77]
+      }},
+      {"book_vessel@dc.slot_classic": {
+        "$dc_name": "book_vessel", "$dc_collection": "book", "$dc_index": 6, "offset": [7.5, 93], "layer": 2
+      }},
+      {"result_frame": {
+        "type": "image", "texture": "textures/ui/preview", "size": [38, 38], "clip_direction": "up", "clip_ratio": 0.13,
+        "layer": 1, "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 83]
+      }},
+      {"result@dc.item_classic": {
+        "$dc_item": "bookResult", "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 95], "layer": 2
+      }},
+      {"fire": {
+        "type": "image", "texture": "textures/ui/heat", "size": [18, 18], "layer": 2,
+        "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0, 117]
+      }},
+      {"add_panel": {
+        "type": "panel", "size": ["100%", "100%"], "layer": 2, "visible": false, "$dc_visible": ["picked", "!=", -1],
         "controls": [
-          {"inner@arris_cooking_pot.half_inner": {
-            "controls": [
-              {"pot_tab@dc.tab": {
-                "$dc_value": "page", "$dc_tab": "pot", "$dc_label": "arris_fd.pot_screen.tab_pot", "$dc_edge": "left",
-                "size": [44, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [0, 0], "layer": 2
-              }},
-              {"book_tab@dc.tab": {
-                "$dc_value": "page", "$dc_tab": "book", "$dc_label": "arris_fd.pot_screen.tab_book",
-                "size": [44, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [46, 0], "layer": 2
-              }},
-              {"pot_page@arris_cooking_pot.pocket_pot": {"$dc_visible": ["page", "pot"]}},
-              {"book_page@arris_cooking_pot.pocket_book": {"$dc_visible": ["page", "book"], "visible": false}}
-            ]
-          }}
-        ]
-      }}
-    ]
-  },
-
-  // 携带版"烹饪"页：格子 28 一格，成品格 32
-  "pocket_pot": {
-    "type": "panel",
-    "size": [168, 110],
-    "offset": [0, 24],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {"ingredients@dc.grid_pocket": {
-        "$dc_name": "ingredients", "$dc_collection": "ingredients", "$dc_columns": 3, "$dc_rows": 2,
-        "$dc_focus": true, "offset": [0, 0], "layer": 2
-      }},
-      {"heat@arris_cooking_pot.heat": {"offset": [33, 62]}},
-      {"progress@arris_cooking_pot.progress": {"offset": [90, 20]}},
-      {"preview_frame@arris_cooking_pot.preview_frame": {"offset": [118, 0]}},
-      {"preview@dc.item_pocket": {
-        "$dc_item": "preview", "anchor_from": "top_left", "anchor_to": "top_left", "offset": [123, 5], "layer": 2
-      }},
-      {"vessel@dc.slot_pocket": {
-        "$dc_name": "vessel", "$dc_collection": "vessel", "$dc_placeholder_size": [14, 14],
-        "offset": [90, 54], "layer": 2
-      }},
-      {"output@dc.slot_large_pocket": {
-        "$dc_name": "output", "$dc_collection": "output", "offset": [126, 48], "layer": 2
-      }}
-    ]
-  },
-
-  // 携带版"食谱"页：左边搜索框与列表，右边选中食谱的详情
-  "pocket_book": {
-    "type": "panel",
-    "size": [168, 232],
-    "offset": [0, 24],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {"search@dc.text_box": {
-        "$dc_action": "search", "$dc_value": "search", "$dc_live": true, "$dc_placeholder": "arris_fd.pot_screen.search",
-        "size": [60, 14], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [0, 0], "layer": 2
-      }},
-      {"recipe_list@arris_cooking_pot.pocket_list": {"offset": [0, 18]}},
-      {"title@arris_cooking_pot.note": {
-        "$dc_format": "{bookTitle}", "size": [100, "default"], "text_alignment": "center",
-        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 2]
-      }},
-      {"cells@dc.grid_pocket": {
-        "$dc_name": "book_in", "$dc_collection": "book", "$dc_columns": 3, "$dc_rows": 2, "offset": [66, 18], "layer": 2
-      }},
-      {"book_vessel@dc.slot_pocket": {
-        "$dc_name": "book_vessel", "$dc_collection": "book", "$dc_index": 6, "offset": [66, 80], "layer": 2
-      }},
-      {"book_arrow": {
-        "type": "image", "texture": "textures/ui/arrow", "size": [22, 15], "layer": 2,
-        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [98, 87]
-      }},
-      {"book_result@dc.slot_pocket": {
-        "$dc_name": "book_result", "$dc_collection": "book", "$dc_index": 7, "offset": [122, 80], "layer": 2
-      }},
-      {"variant@arris_cooking_pot.note": {
-        "$dc_format": "{bookVariant}", "size": [100, "default"], "text_alignment": "center",
-        "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 112]
-      }},
-      {"next@dc.button": {
-        "$dc_action": "nextVariant", "$dc_label": "arris_fd.pot_screen.next_variant", "$dc_visible": ["picked", "!=", -1],
-        "size": [86, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 126], "layer": 2
-      }},
-      {"add@dc.button": {
-        "$dc_action": "addFood", "$dc_label": "arris_fd.pot_screen.add_food", "$dc_visible": ["picked", "!=", -1],
-        "size": [86, 18], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [66, 148], "layer": 2
-      }}
-    ]
-  },
-
-  "pocket_list": {
-    "type": "panel",
-    "size": [60, 200],
-    "layer": 2,
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "controls": [
-      {"list@dc.list": {
-        "$dc_items": "recipes", "$dc_value": "picked", "$dc_key": "index", "$dc_action": "pick", "$dc_row_height": 24,
-        "$dc_scroll_style": "plain",
-        "size": [60, 200], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 2,
-        "controls": [
-          {"icon@dc.item_classic": {
-            "$dc_item": "value", "anchor_from": "left_middle", "anchor_to": "left_middle", "offset": [2, 0]
+          {"add@dc.button": {
+            "$dc_action": "addFood",
+            "$dc_button_default": "textures/ui/use_recipe_up_ui", "$dc_button_hover": "textures/ui/use_recipe_down_ui",
+            "$dc_button_pressed": "textures/ui/use_recipe_down_ui",
+            "size": [17, 17], "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0.5, 136.5], "layer": 1
           }},
-          {"name@arris_cooking_pot.note": {
-            "$dc_format": "{value:name}", "anchor_from": "left_middle", "anchor_to": "left_middle", "offset": [22, 0]
+          {"add_note@arris_cooking_pot.note": {
+            "$dc_format": "arris_fd.pot_screen.add_food", "size": [79, "default"], "text_alignment": "center",
+            "color": [0.247, 0.247, 0.247], "anchor_from": "top_middle", "anchor_to": "top_middle", "offset": [0.5, 157.5]
           }}
         ]
       }}

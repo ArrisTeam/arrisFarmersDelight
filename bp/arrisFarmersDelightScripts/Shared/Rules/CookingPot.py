@@ -23,6 +23,12 @@ _recipeOfKey = {}            # 查表键 -> 第一个有这种写法的配方序
 _servingExperience = {}      # 成品名 -> 煮出一份给多少经验（JE 的 Experience，不除以一份出几个）
 _ingredients = set()
 _vessels = set()             # 盛菜用的容器的物品名（配方的 Vessel）
+_revision = [0]              # 重建过几次索引：别处按配方表缓存的东西（经典界面食谱格的搜索结果）拿它认表改过没有
+
+
+def revision():
+    """索引重建过几次（配方表改过都要 rebuildIndex：联动接口、客户端并表）；按表缓存的东西和它一起比，变了就重算。"""
+    return _revision[0]
 
 
 def pushItemsOf(variant, declared):
@@ -43,6 +49,7 @@ def pushItemsOf(variant, declared):
 
 def rebuildIndex():
     """重建配方索引。键冲突时保留先插入的那条，与旧实现"首个匹配获胜"一致。"""
+    _revision[0] += 1
     _recipeIndex.clear()
     _cookSeconds.clear()
     _experience.clear()
