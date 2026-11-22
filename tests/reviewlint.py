@@ -14,6 +14,7 @@ pylint 装在引擎同款的 Python 2.7 里：python2 -m pip install --user -r t
 """
 from __future__ import print_function
 
+import io
 import multiprocessing
 import os
 import re
@@ -95,7 +96,7 @@ def lint(packDir, scripts, ignore=()):
 def pinned():
     """tools/requirements-pylint-py2.txt 里钉的 {包名: 版本}。"""
     found = {}
-    with open(REQUIREMENTS) as handle:
+    with io.open(REQUIREMENTS, encoding="utf-8") as handle:       # 文件里有中文注释：不写编码会按本机的编码解（Windows 上 cp1252 / GBK 都解不了）
         for line in handle:
             line = line.split("#", 1)[0].strip()
             if "==" in line:

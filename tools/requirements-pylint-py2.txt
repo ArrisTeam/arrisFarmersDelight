@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# 第一行的编码声明不能删：Python 2 的 pip 读这个文件按本机的编码解（GitHub 的 Windows 机器上是 cp1252、中文 Windows 是 GBK），
+# 头两行里有 PEP 263 的声明才按 UTF-8 解；没有它，下面的中文注释让 pip 当场报错（2026-11-22 的 v1.0.2 发版时工作流里就是这样装不上的）。
 # 本机复现网易机审的代码检查（tests/reviewlint.py）用的 pylint：和机审同一套版本，依赖也全部钉死（同 arrisCreate 的 tools/requirements-pylint-py2.txt）。
 # 装在引擎同款的 Python 2.7 里：python2 -m pip install --user -r tools/requirements-pylint-py2.txt
 # 改 pylint / astroid 的版本要连 tests/reviewlint.py 的 VERSIONS 一起改（tests/test_review_lint.py 核对两处一样）。

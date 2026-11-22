@@ -9,7 +9,7 @@ Server/Debug、Client/Debug 不进包，不查）。本机没装那一版 pylint
 """
 from __future__ import print_function
 
-import os
+import re
 
 import fdtest
 import reviewlint
@@ -20,6 +20,18 @@ def testThePinnedRequirementsAreTheReviewVersions():
     found = reviewlint.pinned()
     for name, version in reviewlint.VERSIONS.items():
         assert found.get(name) == version, "tools/requirements-pylint-py2.txt 里 %s 是 %s，reviewlint.VERSIONS 是 %s" % (name, found.get(name), version)
+
+
+def testTheRequirementsDeclareTheirEncoding():
+    """requirements 里有中文注释，头两行就得有 PEP 263 的编码声明：Python 2 的 pip 没它时按本机的编码解，GitHub 的 Windows 机器上（cp1252）当场报错。"""
+    with open(reviewlint.REQUIREMENTS, "rb") as handle:
+        data = handle.read()
+    try:
+        data.decode("ascii")
+    except UnicodeDecodeError:
+        head = data.split(b"\n")[:2]
+        assert any(line.startswith(b"#") and re.search(br"coding[:=]\s*utf-8", line) for line in head), \
+            "tools/requirements-pylint-py2.txt 有非 ASCII 的字，头两行要写 # -*- coding: utf-8 -*-"
 
 
 def testTheShippedScriptsPassTheReview():

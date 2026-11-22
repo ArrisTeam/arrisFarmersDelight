@@ -137,6 +137,8 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         shell: pwsh
+        env:
+          WRAPT_INSTALL_EXTENSIONS: "false"   # wrapt 1.15.0 没有 Python 2.7 的 Windows 轮子、要从源码装：不编它的 C 扩展（机器上没有 2.7 的编译器），用纯 Python 的
         run: |
           & $env:FD_PY2 -m ensurepip --default-pip
           & $env:FD_PY2 -m pip install --disable-pip-version-check --no-input -r tools/requirements-pylint-py2.txt
