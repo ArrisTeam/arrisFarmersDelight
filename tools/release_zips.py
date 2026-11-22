@@ -328,7 +328,7 @@ def versionProblems(cfg, version):
         for where, value in places:
             if value != triple:
                 shown = ".".join(str(part) for part in value) if isinstance(value, list) else repr(value)
-                problems.append("%s %s 是 %s，不是 --version %s（先 py -3 %s set %s 改版本号、提交，再打 tag）"
+                problems.append("%s %s 是 %s，不是 --version %s（先 py -3 %s set %s --new-uuid 改版本号、换 UUID，提交，再打 tag）"
                                 % (rel, where, shown, version, versionTool(), version))
     return problems
 

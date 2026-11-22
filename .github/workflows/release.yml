@@ -1,13 +1,16 @@
 name: 发版
 
 # 打 tag vX.Y.Z 发版：照机械动力那套发版工作流的流程走，工具是本仓库自带的 tools/version.py、tools/release_zips.py（配置 release.json）。
-# 怎么发一版（仓库根目录下）：
-#   1. py -3 tools/version.py set X.Y.Z      改 bp / rp 两个 manifest 的版本号（同一套包之间的依赖跟着改）
+# 怎么发一版（仓库根目录下）。每次发版都要换 UUID、提升版本号，工作流会核对：
+#   1. py -3 tools/version.py bump --new-uuid（或 set X.Y.Z --new-uuid）
+#                                            改 bp / rp 两个 manifest 的版本号，header / module 的 UUID 都换新的
+#                                            （同一套包之间的依赖跟着改；bp 对别的作品的依赖 3ca4eaf4-… 不动）
 #   2. 提交这两个 manifest
 #   3. git tag vX.Y.Z
 #   4. git push origin main，再 git push origin vX.Y.Z
 # 三个 job，哪一步不过都不出包：
-#   check    tag 形如 vX.Y.Z 且等于仓库的版本号、各处版本号一致、包的结构检查（tools/release_zips.py --check）
+#   check    tag 形如 vX.Y.Z 且等于仓库的版本号、各处版本号一致、和上一个发版 tag 比 header / module 的 UUID 都换了
+#            （tools/version.py check --tag）、包的结构检查（tools/release_zips.py --check）
 #   test     Windows 上跑全量离线测试（Python 2.7.18 + 3.13；这套测试只在 Windows 上跑过）
 #   release  写更新说明和来源信息、出包、建 Release
 # 产物 arrisFarmersDelight_v<版本>.zip，上架网易用：根目录只有 bp/、rp/（网易要求上传包的根目录只有包文件夹，打包错误代码 24）；

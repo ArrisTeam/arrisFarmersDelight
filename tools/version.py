@@ -4,30 +4,40 @@
 农夫乐事的是 tools/version.py（配置 release.json），沉浸式交互前置的是 tools/dg_version.py（配置 tools/dg_release.json）：
 两个仓库叠在同一个目录里，所以名字不同；两份除了 CONFIG 那一行逐字一样（tests/test_diegesis_release.py 比着）。
 
+每次发版都要换 UUID、提升版本号（仓库主人定的规矩，这两个仓库一直这么发）：发版的第一步是 bump --new-uuid（或 set X.Y.Z --new-uuid），
+工作流会核对（check --tag 和上一个发版 tag 比，header / module 的 UUID 有一个没换就报错）。
 版本号的权威来源是配置里 manifests 的第一个的 header.version。别的位置由本工具一起改，不要手改：
   - 每个 manifest 的 header.version 和 modules[].version；
   - dependencies 里指向本配置另一个 manifest（uuid 等于它的 header.uuid）的那几项的 version：同一套包之间的依赖跟着走；
-    别的依赖（别的作品、引擎的模块）不动，show 把它们列出来。
+    别的依赖（别的作品、引擎的模块，比如农夫乐事 bp 依赖的 3ca4eaf4-…）永远不动，show 把它们列出来。
+--new-uuid：每个 manifest 的 header.uuid、每个 module 的 uuid 各换一个新的 uuid4（不和这几个 manifest 里已有的任何 uuid 重），
+同一套里指着旧 header.uuid 的依赖跟着换成新的；别的依赖不动（照机械动力 tools/version.py 的 set --new-uuid）。
 改写时保留原文件的排版：缩进（2 / 4 / Tab）、键的顺序、换行符（LF / CRLF）、BOM、末尾有没有换行；
 不是这种标准排版的 manifest 不改（改了会打乱格式），报错让人先规整。
 
 用法（仓库根目录下；<工具> 是 tools/version.py 或 tools/dg_version.py）：
-    py -3 <工具> show                                第一行是版本号，下面逐处列出；不一致时报错、退出码 1
-    py -3 <工具> check [--tag vX.Y.Z]                只检查；给了 tag 再核对它形如 vX.Y.Z、等于版本号
-    py -3 <工具> set X.Y.Z                           改成 X.Y.Z
-    py -3 <工具> bump                                末位加一
+    py -3 <工具> show                                第一行是版本号，下面逐处列出版本号和 UUID；不一致时报错、退出码 1
+    py -3 <工具> check [--tag vX.Y.Z]                只检查；给了 tag 再核对它形如 vX.Y.Z、等于版本号，
+                                                     有上一个发版 tag 时每个 header / module 的 UUID 都要和那一版的不一样
+    py -3 <工具> set X.Y.Z [--new-uuid]              改成 X.Y.Z（发版时带 --new-uuid）
+    py -3 <工具> bump [--new-uuid]                   末位加一（发版时带 --new-uuid）
     py -3 <工具> notes [--tag vX.Y.Z] [--out 文件]    这一版的更新说明（发版工作流写进 Release 的正文）
+上一个发版 tag：HEAD 的历史里版本号比这一版小的 vX.Y.Z tag 里最大的那个（check --tag 和 notes 用同一个）。git 命令用跟踪着配置里
+第一个 manifest 的那个仓库：开发目录里两个仓库叠在一起（另一个的 git 目录是 .diegesis.git），工作区的 .git 不一定是本配置的。
 
-发版：set → 提交 → git tag vX.Y.Z → 推送分支和 tag；发版工作流核对 tag 等于这里的版本号才出包（见工作流文件开头的注释）。
+发版：bump --new-uuid（或 set X.Y.Z --new-uuid）→ 提交 → git tag vX.Y.Z → 推送分支和 tag；发版工作流核对 tag 等于这里的版本号、
+UUID 都换了才出包（见工作流文件开头的注释）。
 在 GitHub Actions 里（环境变量 GITHUB_ACTIONS=true）报错的第一行带 ::error::，成为运行页面上的注解。
 """
 import argparse
+import glob
 import io
 import json
 import os
 import re
 import subprocess
 import sys
+import uuid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "release.json")
@@ -140,6 +150,17 @@ def internal(dep, rel, own):
     return target if target not in (None, rel) else None
 
 
+def uuidsOf(rel, data):
+    """[(位置, uuid)]：header 的和每个 module 的。"""
+    found = [("%s header.uuid" % rel, data["header"]["uuid"])]
+    for i, module in enumerate(data.get("modules", [])):
+        value = module.get("uuid") if isinstance(module, dict) else None
+        if not isinstance(value, str) or not value:
+            raise VersionError("%s modules[%d] 没有 uuid" % (rel, i))
+        found.append(("%s modules[%d].uuid" % (rel, i), value))
+    return found
+
+
 # ---------------------------------------------------------------- 读、查、改
 
 
@@ -176,48 +197,109 @@ def check(cfg):
     return expected
 
 
-def checkTag(tag, version):
+def checkTag(cfg, tag, version):
+    """tag 形如 vX.Y.Z、等于版本号；有上一个发版 tag 时每个 header / module 的 UUID 都要和那一版的不一样。返回要打印的说明。"""
     if not TAG_RE.match(tag or ""):
         raise VersionError("tag %r 不是 vX.Y.Z 的样子：发版工作流只认 v 加三段数字的 tag" % (tag,))
     if tag != "v" + version:
         target = tag[1:]
-        raise VersionError("tag %s 和仓库里的版本号 %s 对不上：先 py -3 %s set %s 改版本号、提交，再打 tag %s" % (tag, version, tool(), target, tag))
+        raise VersionError("tag %s 和仓库里的版本号 %s 对不上：先 py -3 %s set %s --new-uuid 改版本号、换 UUID，提交，再打 tag %s"
+                           % (tag, version, tool(), target, tag))
+    base = gitBase(cfg)
+    previous = previousTag(base, version)
+    if previous is None:
+        return ["没有上一个发版 tag：不比 UUID"]
+    loaded, _own = loadAll(cfg)
+    stale, missing, compared = [], [], 0
+    for rel, _path, data, _fmt in loaded:
+        used = previousUuids(base, previous, rel)
+        if used is None:
+            missing.append(rel)
+            continue
+        current = uuidsOf(rel, data)
+        compared += len(current)
+        stale += [(where, value) for where, value in current if value in used]
+    if stale:
+        lines = ["和上一版 %s 比，有 UUID 没换（每次发版都要换 UUID、提升版本号）：" % previous]
+        lines += ["  %s 还是 %s" % item for item in stale]
+        lines.append("先 py -3 %s set %s --new-uuid 换掉 UUID、提交，再把 tag %s 打到新的提交上"
+                     "（以后发版用 py -3 %s bump --new-uuid 或 set X.Y.Z --new-uuid，版本号和 UUID 一步换好）" % (tool(), version, tag, tool()))
+        raise VersionError("\n".join(lines))
+    info = ["和上一版 %s 比，%d 个 UUID 都换了" % (previous, compared)] if compared else []
+    info += ["%s 在上一版 %s 里没有（路径改了？）：这一个不比 UUID" % (rel, previous) for rel in missing]
+    return info
 
 
-def setVersion(cfg, version):
+def setVersion(cfg, version, newUuid=False):
+    """改版本号；newUuid 时每个 header / module 换新的 uuid4，同一套里指着旧 header.uuid 的依赖跟着换。返回 (版本号, 换了几个 UUID)。"""
     m = VERSION_RE.match(version or "")
     if not m:
         raise VersionError("版本号要写成 X.Y.Z（三段数字），收到 %r" % (version,))
     triple = [int(part) for part in m.groups()]
     loaded, own = loadAll(cfg)
+    taken, renamed, replaced = set(), {}, 0
+    for rel, _path, data, _fmt in loaded:
+        taken.update(value for _where, value in uuidsOf(rel, data))
+        taken.update(dep.get("uuid") for dep in data.get("dependencies", []) if isinstance(dep, dict))
     for rel, _path, data, _fmt in loaded:
         data["header"]["version"] = list(triple)
         for module in data.get("modules", []):
             module["version"] = list(triple)
+        if newUuid:
+            old = data["header"]["uuid"]
+            data["header"]["uuid"] = renamed[old] = freshUuid(taken)
+            for module in data.get("modules", []):
+                module["uuid"] = freshUuid(taken)
+            replaced += 1 + len(data.get("modules", []))
+    for rel, _path, data, _fmt in loaded:
         for dep in data.get("dependencies", []):
             if internal(dep, rel, own) is not None:
                 dep["version"] = list(triple)
+                if newUuid:
+                    dep["uuid"] = renamed[dep["uuid"]]
     for _rel, path, data, fmt in loaded:
         writeText(path, dumps(data, fmt["indent"]) + ("\n" if fmt["finalNewline"] else ""), fmt)
-    return check(cfg)
+    return check(cfg), replaced
 
 
-def bump(cfg):
+def freshUuid(taken):
+    while True:
+        value = str(uuid.uuid4())
+        if value not in taken:
+            taken.add(value)
+            return value
+
+
+def bump(cfg, newUuid=False):
     major, minor, patch = [int(part) for part in check(cfg).split(".")]
-    return setVersion(cfg, "%d.%d.%d" % (major, minor, patch + 1))
+    return setVersion(cfg, "%d.%d.%d" % (major, minor, patch + 1), newUuid)
 
 
-# ---------------------------------------------------------------- 更新说明
+# ---------------------------------------------------------------- git：上一个发版 tag、更新说明
 
 
-def git(*args):
+def gitRun(base, args):
     try:
-        proc = subprocess.run(["git"] + list(args), cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return subprocess.run(base + list(args), cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError as error:
         raise VersionError("找不到 git：%s" % error)
+
+
+def git(base, *args):
+    proc = gitRun(base, args)
     if proc.returncode != 0:
         raise VersionError("git %s 失败：%s" % (" ".join(args), proc.stderr.decode("utf-8", "replace").strip()))
     return proc.stdout.decode("utf-8", "replace")
+
+
+def gitBase(cfg):
+    """git 命令的开头：工作区的 .git，或者叠在同一个目录里、跟踪着配置里第一个 manifest 的 .<名字>.git；都不跟踪时用工作区的 .git。"""
+    candidates = [["git"]] + [["git", "--git-dir=" + path, "--work-tree=" + ROOT]
+                              for path in sorted(glob.glob(os.path.join(ROOT, ".*.git"))) if os.path.isdir(path)]
+    for base in candidates:
+        if gitRun(base, ["ls-files", "--error-unmatch", "--", cfg["manifests"][0]]).returncode == 0:
+            return base
+    return ["git"]
 
 
 def tagVersion(tag):
@@ -225,29 +307,49 @@ def tagVersion(tag):
     return tuple(int(part) for part in m.groups()) if m else None
 
 
-def previousTag(version):
+def previousTag(base, version):
     """HEAD 的历史里（git tag --merged）版本号比 version 小的 vX.Y.Z tag 里最大的那个；没有是 None。"""
     current = tuple(int(part) for part in version.split("."))
     older = []
-    for tag in git("tag", "--list", "v*", "--merged", "HEAD").split():
+    for tag in git(base, "tag", "--list", "v*", "--merged", "HEAD").split():
         number = tagVersion(tag)
         if number is not None and number < current:
             older.append((number, tag))
     return max(older)[1] if older else None
 
 
+def previousUuids(base, tag, rel):
+    """那个 tag 上同名 manifest 里的全部 header / module uuid；那一版里没有这个文件返回 None。"""
+    spec = "%s:%s" % (tag, rel)
+    if gitRun(base, ["cat-file", "-e", spec]).returncode != 0:
+        return None
+    proc = gitRun(base, ["show", spec])
+    try:
+        data = json.loads(proc.stdout.decode("utf-8-sig"))
+    except ValueError as error:
+        raise VersionError("上一版 %s 里的 %s 不是合法的 JSON：%s" % (tag, rel, error))
+    header = data.get("header") if isinstance(data, dict) else None
+    modules = data.get("modules", []) if isinstance(data, dict) else []
+    found = set([header.get("uuid")] if isinstance(header, dict) else [])
+    found.update(module.get("uuid") for module in modules if isinstance(module, dict))
+    found.discard(None)
+    return found
+
+
 def shorten(title):
     return title if len(title) <= NOTES_TITLE else title[:NOTES_TITLE - 1] + "…"
 
 
-def notes(version, tag=None):
+def notes(cfg, version, tag=None):
     """更新说明的全文。有上一个 tag：列它以来的提交（不含合并），标题截短、条数有上限；没有：一句固定的话加版本号和 commit。"""
     tag = tag or "v" + version
-    head = git("rev-parse", "HEAD").strip()
-    previous = previousTag(version)
+    base = gitBase(cfg)
+    head = git(base, "rev-parse", "HEAD").strip()
+    previous = previousTag(base, version)
     if previous is None:
         return "%s\n\n版本 %s，commit %s\n" % (FIRST_NOTE, version, head)
-    commits = [line.split("\t", 1) for line in git("log", "--no-merges", "--format=%h%x09%s", previous + "..HEAD").splitlines() if line]
+    log = git(base, "log", "--no-merges", "--format=%h%x09%s", previous + "..HEAD")
+    commits = [line.split("\t", 1) for line in log.splitlines() if line]
     lines = ["版本 %s，commit %s" % (version, head), ""]
     if not commits:
         lines.append("自 %s 以来没有新的提交（不含合并）。" % previous)
@@ -265,16 +367,24 @@ def notes(version, tag=None):
 def parser():
     p = argparse.ArgumentParser(prog=tool(), description="发版用的版本号工具（配置 %s）" % configName())
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("show", help="打印版本号（第一行）并逐处列出")
+    sub.add_parser("show", help="打印版本号（第一行）并逐处列出版本号和 UUID")
     c = sub.add_parser("check", help="只检查各处一致")
-    c.add_argument("--tag", help="再核对这个 tag 形如 vX.Y.Z、等于版本号")
+    c.add_argument("--tag", help="再核对这个 tag 形如 vX.Y.Z、等于版本号，UUID 都和上一个发版 tag 的不一样")
     s = sub.add_parser("set", help="改成给定的版本号")
     s.add_argument("version", help="X.Y.Z")
-    sub.add_parser("bump", help="末位加一")
+    s.add_argument("--new-uuid", action="store_true", help="每个 header / module 换新的 UUID（发版时都要带）")
+    b = sub.add_parser("bump", help="末位加一")
+    b.add_argument("--new-uuid", action="store_true", help="每个 header / module 换新的 UUID（发版时都要带）")
     n = sub.add_parser("notes", help="这一版的更新说明")
     n.add_argument("--tag", help="这一版的 tag（缺省 v + 版本号）")
     n.add_argument("--out", help="写到这个文件（UTF-8），缺省打印出来")
     return p
+
+
+def changed(version, replaced):
+    if replaced:
+        return "已改成 %s，换了 %d 个新的 UUID（py -3 %s show 看）" % (version, replaced, tool())
+    return "已改成 %s；UUID 没换（发版要带 --new-uuid：每次发版都要换 UUID，工作流的 check --tag 会核对）" % version
 
 
 def main(argv=None):
@@ -284,24 +394,25 @@ def main(argv=None):
         if args.cmd == "show":
             version = check(cfg)
             found, outside = collect(cfg)
+            loaded, _own = loadAll(cfg)
             print(version)
-            for where, value in found:
+            for where, value in found + [item for rel, _path, data, _fmt in loaded for item in uuidsOf(rel, data)]:
                 print("  %-56s %s" % (where, value))
             for where, name in outside:
                 print("  %s 指向本配置以外的 %s：不跟着改" % (where, name))
         elif args.cmd == "check":
             version = check(cfg)
             if args.tag is not None:
-                checkTag(args.tag, version)
-                print("版本号一致：%s，tag %s 对得上" % (version, args.tag))
+                info = checkTag(cfg, args.tag, version)
+                print("\n".join(["版本号一致：%s，tag %s 对得上" % (version, args.tag)] + info))
             else:
                 print("版本号一致：%s" % version)
         elif args.cmd == "set":
-            print("已改成 %s" % setVersion(cfg, args.version))
+            print(changed(*setVersion(cfg, args.version, args.new_uuid)))
         elif args.cmd == "bump":
-            print("已改成 %s" % bump(cfg))
+            print(changed(*bump(cfg, args.new_uuid)))
         else:
-            text = notes(check(cfg), args.tag)
+            text = notes(cfg, check(cfg), args.tag)
             if args.out:
                 with io.open(args.out, "w", encoding="utf-8", newline="\n") as handle:
                     handle.write(text)

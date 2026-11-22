@@ -39,6 +39,8 @@ THIRD_PARTY = {"PIL": "Pillow"}         # tools/ 里 import 的第三方库 -> p
 PREREQ = re.compile(r"^(dg.*|gen_book_assets|book_textures)\.py$")      # 前置包仓库的工具（同一个目录、另一个仓库）
 NOTE_LIMIT = 125000                     # GitHub Release 正文的字符上限
 OUTSIDE = "00000000-0000-4000-8000-000000000000"
+JEI_DEPENDENCY = "3ca4eaf4-0177-4d9b-ab1f-bf863a9976fa"     # bp 对别的作品的固定依赖（arrisJei 的 bp 里也有同一条，"修复机审报错"时加的）：永远不许动
+UUID4_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 
 
 def toolEnv(**extra):
@@ -122,6 +124,21 @@ def onlyNumbersChanged(before, after):
     return all(a == b or (re.match(br"^\s*\d+,?\r?$", a) and re.match(br"^\s*\d+,?\r?$", b)) for a, b in zip(old, new))
 
 
+def layoutOnly(raw):
+    """抹掉版本号数组里的数字和 uuid 的值，剩下的就是排版（行、缩进、键序、逗号、换行符）：--new-uuid 前后要一模一样。"""
+    lines = []
+    for line in raw.split(b"\n"):
+        if re.match(br"^\s*\d+,?\r?$", line):
+            line = re.sub(br"\d+", b"0", line)
+        lines.append(re.sub(br'"uuid": "[0-9a-f-]{36}"', b'"uuid": "U"', line))
+    return lines
+
+
+def uuidsIn(data):
+    """[header.uuid, modules[0].uuid, ...]。"""
+    return [data["header"]["uuid"]] + [module["uuid"] for module in data["modules"]]
+
+
 # ---------------------------------------------------------------- version
 
 
@@ -130,6 +147,11 @@ def testShowAndCheckOnThisRepo():
     assert code == 0, out
     assert out.splitlines()[0] == currentVersion(), out
     assert "bp/manifest.json header.version" in out and "rp/manifest.json modules[0].version" in out, out
+    for rel in ("bp/manifest.json", "rp/manifest.json"):
+        data = layoutOf(io.open(os.path.join(ROOT, *rel.split("/")), "rb").read())[0]
+        for where, value in zip(("header.uuid", "modules[0].uuid"), uuidsIn(data)):
+            assert re.search(r"^  %s %s\s+%s$" % (re.escape(rel), re.escape(where), value), out, re.M), (rel, where, out)
+    assert "bp/manifest.json dependencies[0] 指向本配置以外的 %s：不跟着改" % JEI_DEPENDENCY in out, out
     code, out = run(VERSION_TOOL, "check")
     assert code == 0 and currentVersion() in out, out
 
@@ -345,6 +367,169 @@ def testNotesSincePreviousTagAreCutShortAndCapped():
         git(box, "tag", "v0.9.9", "HEAD")
         code, out = box.version("notes", env=gitEnv(box))
         assert code == 0 and "自 v0.9.9 以来没有新的提交" in out, out
+    finally:
+        box.close()
+
+
+# ---------------------------------------------------------------- UUID（每次发版都要换）
+
+
+def testNewUuidReplacesEveryUuidAndOnlyTheDependencyBetweenThePacks():
+    """set / bump --new-uuid：两个 manifest 的 header、module 一共四个 UUID 都换成新的 uuid4、互不相同；bp 依赖 rp 的那一项跟着换，
+    对别的作品的依赖（仓库里真的那条 3ca4eaf4-… 和一条造的）一字不变、位置不变；排版不动。不带 --new-uuid 时 UUID 不变。"""
+    box = Sandbox()
+    try:
+        bp, bpLayout = layoutOf(box.read("bp/manifest.json"))
+        rp, rpLayout = layoutOf(box.read("rp/manifest.json"))
+        assert JEI_DEPENDENCY in [dep["uuid"] for dep in bp.get("dependencies", [])], "仓库里 bp 的那条固定依赖"
+        bp["dependencies"].extend([{"uuid": rp["header"]["uuid"], "version": [1, 0, 0]}, {"uuid": OUTSIDE, "version": [9, 9, 9]}])
+        bpLayout.update(crlf=True, final=False)
+        rpLayout.update(crlf=False, final=True)
+        box.write("bp/manifest.json", render(bp, bpLayout))
+        box.write("rp/manifest.json", render(rp, rpLayout))
+        foreign = [(i, dep) for i, dep in enumerate(bp["dependencies"]) if dep["uuid"] != rp["header"]["uuid"]]
+        old = uuidsIn(bp) + uuidsIn(rp)
+        before = {rel: box.read(rel) for rel in box.manifests}
+        code, out = box.version("set", "2.3.4", "--new-uuid")
+        assert code == 0 and "已改成 2.3.4，换了 4 个新的 UUID" in out, out
+        newBp, newRp = (layoutOf(box.read(rel))[0] for rel in ("bp/manifest.json", "rp/manifest.json"))
+        new = uuidsIn(newBp) + uuidsIn(newRp)
+        assert len(new) == 4 and len(set(new)) == 4 and all(UUID4_RE.match(value) for value in new), new
+        assert not set(new) & (set(old) | {JEI_DEPENDENCY, OUTSIDE}), "四个都是新的"
+        assert [(i, newBp["dependencies"][i]) for i, _dep in foreign] == foreign, "对别的作品的依赖一字不变"
+        assert newBp["dependencies"][len(bp["dependencies"]) - 2] == {"uuid": newRp["header"]["uuid"], "version": [2, 3, 4]}, "bp 依赖 rp 的跟着换"
+        for rel, data, layout, fresh in (("bp/manifest.json", bp, bpLayout, newBp), ("rp/manifest.json", rp, rpLayout, newRp)):
+            want = copy.deepcopy(data)
+            want["header"].update(version=[2, 3, 4], uuid=fresh["header"]["uuid"])
+            for module, freshModule in zip(want["modules"], fresh["modules"]):
+                module.update(version=[2, 3, 4], uuid=freshModule["uuid"])
+            for dep in want.get("dependencies", []):
+                if dep["uuid"] == rp["header"]["uuid"]:
+                    dep.update(version=[2, 3, 4], uuid=newRp["header"]["uuid"])
+            after = box.read(rel)
+            assert after == render(want, layout), rel
+            assert layoutOnly(before[rel]) == layoutOnly(after), "只有版本号和 uuid 的值变了：" + rel
+        code, out = box.version("bump", "--new-uuid")
+        assert code == 0 and "已改成 2.3.5，换了 4 个新的 UUID" in out, out
+        third = [value for rel in box.manifests for value in uuidsIn(layoutOf(box.read(rel))[0])]
+        assert len(set(third)) == 4 and not set(third) & set(new), third
+        assert layoutOf(box.read("bp/manifest.json"))[0]["dependencies"][0] == foreign[0][1], "那条固定依赖还是原样"
+        code, out = box.version("bump")
+        assert code == 0 and "已改成 2.3.6；UUID 没换（发版要带 --new-uuid" in out, out
+        assert [value for rel in box.manifests for value in uuidsIn(layoutOf(box.read(rel))[0])] == third, "不带 --new-uuid 时 UUID 不变"
+        code, out = box.version("show")
+        assert code == 0 and out.splitlines()[0] == "2.3.6", out
+        for where, value in zip(("bp/manifest.json header.uuid", "bp/manifest.json modules[0].uuid",
+                                 "rp/manifest.json header.uuid", "rp/manifest.json modules[0].uuid"), third):
+            assert re.search(r"^  %s\s+%s$" % (re.escape(where), value), out, re.M), (where, out)
+        assert "指向本配置以外的 %s：不跟着改" % JEI_DEPENDENCY in out, out
+    finally:
+        box.close()
+
+
+def released(box, rels, tag="v1.0.0"):
+    """把 box 里的这几个 manifest 提交并打 tag：上一个发版。"""
+    git(box, "init", "-q")
+    git(box, "add", "--", *rels)
+    git(box, "commit", "-q", "-m", "release " + tag)
+    git(box, "tag", tag)
+
+
+def restore(box, rel, header=None, module=None):
+    """把这个 manifest 的 header / modules[0] 的 uuid 改回给定的值（模拟漏换），照原排版写回。"""
+    data, layout = layoutOf(box.read(rel))
+    if header:
+        data["header"]["uuid"] = header
+    if module:
+        data["modules"][0]["uuid"] = module
+    box.write(rel, render(data, layout))
+
+
+def testCheckTagWantsEveryUuidToDifferFromThePreviousRelease():
+    """check --tag 取上一个发版 tag 上的同名 manifest：每个 header / module 的 UUID 都要和它的不一样。没有上一个 tag 不比；
+    只升了版本号、漏换 header、漏换 module 都报，写明哪一处、该敲什么；不带 --tag 的 check 不比。"""
+    if not hasGit():
+        print("跳过：没有 git")
+        return
+    box = Sandbox()
+    try:
+        assert box.version("set", "1.0.0")[0] == 0
+        git(box, "init", "-q")
+        git(box, "add", "--", *box.manifests)
+        git(box, "commit", "-q", "-m", "1.0.0")
+        code, out = box.version("check", "--tag", "v1.0.0", env=gitEnv(box))
+        assert code == 0 and "没有上一个发版 tag：不比 UUID" in out, out
+        git(box, "tag", "v1.0.0")
+        old = dict((rel, layoutOf(box.read(rel))[0]) for rel in box.manifests)
+        assert box.version("set", "1.0.1")[0] == 0
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 1 and "和上一版 v1.0.0 比，有 UUID 没换（每次发版都要换 UUID、提升版本号）：" in out, out
+        for rel in box.manifests:
+            for where, value in zip(("header.uuid", "modules[0].uuid"), uuidsIn(old[rel])):
+                assert "  %s %s 还是 %s" % (rel, where, value) in out, (rel, where, out)
+        assert "py -3 tools/version.py set 1.0.1 --new-uuid" in out and "py -3 tools/version.py bump --new-uuid" in out, out
+        assert box.version("check", env=gitEnv(box))[0] == 0, "不带 --tag 的 check 不比 UUID"
+        assert box.version("set", "1.0.1", "--new-uuid")[0] == 0
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 0 and "和上一版 v1.0.0 比，4 个 UUID 都换了" in out, out
+        fresh = layoutOf(box.read("bp/manifest.json"))[0]["header"]["uuid"]
+        restore(box, "bp/manifest.json", header=old["bp/manifest.json"]["header"]["uuid"])
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 1 and out.count(" 还是 ") == 1, out
+        assert "  bp/manifest.json header.uuid 还是 %s" % old["bp/manifest.json"]["header"]["uuid"] in out, out
+        code, out = box.version("check", "--tag", "v1.0.1", env=dict(gitEnv(box), GITHUB_ACTIONS="true"))
+        assert code == 1 and out.startswith("::error::和上一版 v1.0.0 比，有 UUID 没换"), "在 GitHub Actions 里成为注解：" + out
+        restore(box, "bp/manifest.json", header=fresh)
+        restore(box, "rp/manifest.json", module=old["rp/manifest.json"]["modules"][0]["uuid"])
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 1 and out.count(" 还是 ") == 1, out
+        assert "  rp/manifest.json modules[0].uuid 还是 %s" % old["rp/manifest.json"]["modules"][0]["uuid"] in out, out
+    finally:
+        box.close()
+
+
+def testAManifestThePreviousReleaseDidNotHaveIsNotCompared():
+    """上一版里没有这个 manifest（路径变了）：那一个不比、提示一句；别的照比。"""
+    if not hasGit():
+        print("跳过：没有 git")
+        return
+    box = Sandbox()
+    try:
+        assert box.version("set", "1.0.0")[0] == 0
+        released(box, ["bp/manifest.json"])
+        old = layoutOf(box.read("bp/manifest.json"))[0]
+        assert box.version("set", "1.0.1", "--new-uuid")[0] == 0
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 0, out
+        assert "和上一版 v1.0.0 比，2 个 UUID 都换了" in out and "rp/manifest.json 在上一版 v1.0.0 里没有（路径改了？）：这一个不比 UUID" in out, out
+        restore(box, "bp/manifest.json", module=old["modules"][0]["uuid"])
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 1 and out.count(" 还是 ") == 1 and "  bp/manifest.json modules[0].uuid 还是 %s" % old["modules"][0]["uuid"] in out, out
+    finally:
+        box.close()
+
+
+def testTwoRepositoriesInOneFolderUseTheOneThatTracksTheManifests():
+    """开发目录里两个仓库叠在一起（另一个的 git 目录叫 .<名字>.git）：上一个发版 tag、上一版的 manifest、更新说明都从跟踪着
+    配置里第一个 manifest 的那个仓库取，不从工作区的 .git 取。"""
+    if not hasGit():
+        print("跳过：没有 git")
+        return
+    box = Sandbox()
+    try:
+        assert box.version("set", "1.0.0")[0] == 0
+        side = ["--git-dir=" + box.path(".side.git"), "--work-tree=" + box.root]
+        git(box, *(side + ["init", "-q"]))
+        git(box, *(side + ["add", "--"] + box.manifests))
+        git(box, *(side + ["commit", "-q", "-m", "side 1.0.0"]))
+        git(box, *(side + ["tag", "v1.0.0"]))
+        box.write("README.md", "another repository")
+        released(box, ["README.md"], tag="v0.9.0")
+        assert box.version("set", "1.0.1")[0] == 0
+        code, out = box.version("check", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 1 and "和上一版 v1.0.0 比，有 UUID 没换" in out, "用的是跟踪着 manifest 的 .side.git：" + out
+        code, out = box.version("notes", "--tag", "v1.0.1", env=gitEnv(box))
+        assert code == 0 and "自 v1.0.0 以来没有新的提交" in out, out
     finally:
         box.close()
 

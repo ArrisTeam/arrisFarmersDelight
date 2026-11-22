@@ -942,7 +942,8 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
   `test_fry_tints.py`（接在 `PanScene` / `StoveScene` 上的 `FryTints`，`panclient.py` 的假引擎记粒子的 `Create` / `SetPos` / `SetRot` / `SetVariable` / `Remove` 和
   `GetIconInfo`：躺稳才亮、和掉落物朝上那面严丝合缝、颠 / 翻时收着、熟了 / 拿走 / 场景没了就删、蛋 / 没颜色 / 方块物品不叠、图集和粒子系统没好时再试、
   老引擎不染、歇着不碰引擎；要前置包）。
-- 发版的工具和工作流：`test_release_tools.py`（在临时副本上跑 version 的各个命令、tag 的核对、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
+- 发版的工具和工作流：`test_release_tools.py`（在临时副本上跑 version 的各个命令（含 `--new-uuid`：四个 UUID 都换、依赖 rp 的跟着换、`3ca4eaf4-…` 不动）、
+  tag 的核对（临时 git 仓库里和上一个发版 tag 比 UUID：没有上一个 tag、换了、漏换 header / module、上一版没有这个 manifest、两个仓库叠在一起）、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
   许可文件、注释；结构检查和导入检查各种写法的报错；工作流的触发、job、权限、钉住的 action、调到的参数和 Windows 上装的第三方库，没有 PyYAML 时只做文本断言）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
 
@@ -950,13 +951,16 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
 
 ```
 release.json                    这一套的配置：版本号所在的 manifest（第一个是权威来源）、进 zip 的包文件夹、不进包的路径、额外放进包里的文件
-py -3 tools/version.py show     第一行是版本号，下面逐处列出；另有 check [--tag vX.Y.Z]、set X.Y.Z、bump、notes（Release 的正文）
+py -3 tools/version.py show     第一行是版本号，下面逐处列出版本号和 UUID；另有 check [--tag vX.Y.Z]、notes（Release 的正文）
+py -3 tools/version.py bump --new-uuid       发版的第一步：末位加一、header / module 的 UUID 都换新的（或 set X.Y.Z --new-uuid）
 py -3 tools/release_zips.py --check [--version X.Y.Z]                         出包前的检查（工作流的 check job 跑它）
 py -3 tools/release_zips.py --name arrisFarmersDelight --version X.Y.Z --out dist   本机出一个包看看（上传的只用工作流出的）
 ```
 
-发一版：`py -3 tools/version.py set X.Y.Z` → 提交两个 manifest → `git tag vX.Y.Z` → 推送分支和 tag。推上去的 tag 形如 `vX.Y.Z` 就触发
-`.github/workflows/release.yml`：`check`（ubuntu-22.04 自带的 Python 3.10：tag 等于版本号、各处一致、`release_zips.py --check`）→
+每次发版都要换 UUID、提升版本号（这个仓库一直的做法），工作流会核对。发一版：`py -3 tools/version.py bump --new-uuid`（或 `set X.Y.Z --new-uuid`；
+同一套包之间的依赖跟着换，bp 对别的作品的那条依赖 `3ca4eaf4-…` 永远不动）→ 提交两个 manifest → `git tag vX.Y.Z` → 推送分支和 tag。推上去的 tag 形如 `vX.Y.Z` 就触发
+`.github/workflows/release.yml`：`check`（ubuntu-22.04 自带的 Python 3.10：tag 等于版本号、各处一致；有上一个发版 tag 时取那一版的同名 manifest，
+每个 header / module 的 UUID 都要和它的不一样，有一个没换就报错、写明该敲的命令；`release_zips.py --check`）→
 `test`（windows-2022：python.org 的 Python 2.7.18 安装包核对 SHA256 后静默装上，加 3.13 和钉了版本的 Pillow，以 `tools/run_tests.py` 的退出码和最后一行为准）→
 `release`（更新说明、来源信息、出包、`gh release create`）；在 Actions 页面手动运行照样检查、测试、出包，只列出 zip 里有什么，不建 Release。
 zip 是 `arrisFarmersDelight_v<版本>.zip`：根目录只有 `bp/`、`rp/`（网易的要求）；源码原样（不去注释、不去 print）；不进包的是 `Server/Debug`、`Client/Debug`

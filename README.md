@@ -45,7 +45,7 @@
 
 ```
 arrisFarmersDelight/
-├── bp/                                      # 行为包 (UUID 0bbb87d8-…)
+├── bp/                                      # 行为包
 │   ├── arrisFarmersDelightScripts/          # Python 2.7 脚本根目录（结构说明见 docs/ARCHITECTURE.md）
 │   │   ├── modMain.py                       # 入口：登记服务端、客户端与联动入口
 │   │   ├── Shared/                          # 双端共用、不依赖引擎：Data/ 数据表、Rules/ 纯规则、Menus/ dolor 界面模型
@@ -63,7 +63,7 @@ arrisFarmersDelight/
 │   ├── netease_features/ netease_feature_rules/  # 世界生成（野生作物、蘑菇群落等）
 │   ├── loot_tables/ entities/ netease_effects/    # 掉落表、实体定义、自定义药水效果
 │   └── manifest.json
-├── rp/                                      # 资源包 (UUID 497a11b2-…)
+├── rp/                                      # 资源包
 │   ├── models/ textures/ animations/        # 模型、贴图、动画
 │   ├── entity/ render_controllers/ animation_controllers/  # 实体客户端定义
 │   ├── ui/                                  # 自定义 UI：引导书、JEI 视图、旧厨锅界面；dolor_*.json 是 dolorContainer 与厨锅布局的拷入 / 编译产物
