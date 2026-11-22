@@ -118,13 +118,13 @@ def reachOf(kind):
 
 def _turn(vector, angle, up):
     """二维里把 vector 转 angle 弧度，往让它的末端升高（up）或降低的那个方向转（ToolStroke.turn，340-344）。"""
-    best = None
-    for sign in (1.0, -1.0):
+    def turned(sign):
         c, s = math.cos(sign * angle), math.sin(sign * angle)
-        turned = (vector[0] * c - vector[1] * s, vector[0] * s + vector[1] * c)
-        if best is None or (turned[1] > best[1]) == up:
-            best = turned
-    return best
+        return (vector[0] * c - vector[1] * s, vector[0] * s + vector[1] * c)
+
+    # 两个方向各转一次再比（JE 是循环里留着较好的那个）：网易机审（pylint）把循环里对先是 None 的 best 取下标判成错
+    first, second = turned(1.0), turned(-1.0)
+    return second if (second[1] > first[1]) == up else first
 
 
 def pose(kind, age, target, top=0.0, snipFrom=-0.5, snipTo=0.5):

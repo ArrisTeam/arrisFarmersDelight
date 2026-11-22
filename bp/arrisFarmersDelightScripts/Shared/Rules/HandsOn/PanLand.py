@@ -195,8 +195,9 @@ def leaves(show, stack, toCook):
         node = ghost(show, stack, i, size(pieces))
         node.moveTo(at[0], 0.0, at[1], 0.0)
         node.rotateTo(0.0, yaw(i, False), 0.0, 0.0)
-        show.steps.after(i * 0.04, lambda node=node, at=at: _gone(node, at, toCook))
-        show.steps.after(i * 0.04 + AWAY_TIME, lambda node=node: node.setVisible(False))
+        # 默认参数换个名字记住这一块（不写 node=node）：网易机审的 pylint 1.9 把同名默认参数右边的 node 当成 lambda 自己的、报"未定义"
+        show.steps.after(i * 0.04, lambda one=node, spot=at: _gone(one, spot, toCook))
+        show.steps.after(i * 0.04 + AWAY_TIME, lambda one=node: one.setVisible(False))
     for i in range(PIECES):
         show.nodes["piece_%d" % i].setVisible(False)
         show.nodes["under_%d" % i].setVisible(False)

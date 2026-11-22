@@ -108,7 +108,7 @@ class PotScene(object):
     def _retarget(self, progress):
         look = self.look
         self.progress = progress
-        dish = look.meal or look.dish
+        dish = look.meal or look.dish or {}            # 都没有是 None：写成 `or {}`，网易机审（pylint）才不把取下标判成对 None 取下标
         broth = self.brothOf(dish["newItemName"]) if dish and self.brothOf else None
         self.liquid.retarget(self.water, [PotTint.colorOf(item["newItemName"]) for item in PotLookState.foodOf(look)], look.meal is not None,
                              progress, broth, self.tint.liquids(look.items, look.sunk))     # 倒出来的牛奶染水，蛋只算食物色
@@ -182,7 +182,7 @@ class PotScene(object):
 
     def _pieces(self, dt):
         """煮好的汤里浮着的碎料：份数定块数，一块块冒上来，各敲一圈涟漪、咕噜一声；一批刚煮好时等料化完再冒。"""
-        meal = self.look.meal
+        meal = self.look.meal or {}                    # 没煮好是 None（写 `or {}` 的原因同 _retarget）
         name = meal["newItemName"] if meal else None
         slots = PotPiecesLook.dishSlots(name) if name else PotPiecesLook.EMPTY
         wanted = PotPiecesKinds.piecesCount(PotLookState.servingsOf(self.look)) if any(slots) else 0

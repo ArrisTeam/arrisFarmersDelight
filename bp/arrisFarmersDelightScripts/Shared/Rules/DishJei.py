@@ -22,7 +22,8 @@ def _key(item):
 def _merged(rows):
     """一组写法（同一个成品、一样多的配料）并成尽量少的几条：挑一个位置，别的位置都一样的几行并成一条、这个位置轮着显示。
     只并一个位置，所以每条里轮到的每一种搭配都是真有的写法（几个位置各换各的话，会凑出表里没有的搭配）。返回 [每个位置的可选物品]。"""
-    best = None
+    # 条数另记在 fewest（初值比任何一个位置可能的条数都大，第一个位置一定先记上）：网易机审（pylint）把循环里对先是 None 的 best 取下标判成错
+    best, fewest = None, len(rows) + 1
     for position in range(len(rows[0])):
         clusters, order = {}, []
         for row in rows:
@@ -32,8 +33,8 @@ def _merged(rows):
                 order.append(rest)
             if row[position] not in clusters[rest]:
                 clusters[rest].append(row[position])
-        if best is None or len(order) < len(best[1]):
-            best = (position, order, clusters)
+        if len(order) < fewest:
+            best, fewest = (position, order, clusters), len(order)
     position, order, clusters = best
     found = []
     for rest in order:

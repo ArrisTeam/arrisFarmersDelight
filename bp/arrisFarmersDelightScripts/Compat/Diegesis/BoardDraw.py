@@ -71,7 +71,7 @@ class Draw(DrawEvents):
 
     def surface(self):
         """板上等着切的东西的顶面离站点地面多高。"""
-        board = self.shown["board"]
+        board = self.shown["board"] or ()             # 没东西是 None：写成 `or ()`，网易机审（pylint）才不把取下标判成对 None 取下标
         return Scene.surfaceHeight(board[1] if board else 1, bool(board and board[2] == "block"))
 
     def fromCursor(self, home, height):
@@ -119,7 +119,7 @@ class Draw(DrawEvents):
         key = (keyOf(board), board["count"], self.kindOf(board)) if keyOf(board) is not None else None
         if key == self.shown["board"]:
             return
-        old, self.shown["board"] = self.shown["board"], key
+        old, self.shown["board"] = self.shown["board"] or (), key       # 原来没东西是空元组（写 `or ()` 的原因同 surface）
         self.worn = 1.0                                  # 换了东西：缩放回到 1（put 里做的），铲的磨损从头算
         if key is None:
             self.item.hide()
@@ -141,7 +141,7 @@ class Draw(DrawEvents):
             self.pile.put(0.0, 0.0, 0.0)
         else:
             self.pile.hide()
-        if not self.quiet and not self.shown["layers"] and (old is None or (old[0] == key[0] and key[1] > old[1])):
+        if not self.quiet and not self.shown["layers"] and (not old or (old[0] == key[0] and key[1] > old[1])):
             Motion.land(self.item.mover, (0.0, lift, 0.0), self.fromCursor((0.0, lift, 0.0), Motion.DROP_HEIGHT))
 
     def _layers(self, layers):

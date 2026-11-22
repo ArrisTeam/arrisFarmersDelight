@@ -119,14 +119,15 @@ def fill(logic, playerId, key, sets):
         return True
     pool = _pool(ctx.inventory)
     want = (BATCH if sets > 1 else 1) if not held else (layers[0]["count"] if layers else min(board["count"], BATCH))
-    best = None
+    # 份数另记在 bestCount（从 0 起，所以"多过它"就含了"至少一份"）：网易机审（pylint）把循环里对先是 None 的 best 取下标判成错
+    best, bestCount = None, 0
     for dish, missing in _variants(variants, held):
         keeps = [kind for kind in missing if kind[0] in dish["keeps"]]
         counted = [kind for kind in missing if kind not in keeps]
         most = min([want] + [ctx.maxStackOf(_one(kind)) for kind in counted])
         count = Books.setsOf(counted, pool, most) if counted else (1 if missing else 0)
-        if missing and (count > 0 and all(pool.get(kind, 0) >= 1 for kind in keeps)) and (best is None or count > best[0]):
-            best = (count, dish, missing, keeps)
+        if missing and count > bestCount and all(pool.get(kind, 0) >= 1 for kind in keeps):
+            best, bestCount = (count, dish, missing, keeps), count
     if best is None:
         return False
     count, dish, missing, keeps = best

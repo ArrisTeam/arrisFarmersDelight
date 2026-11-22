@@ -220,7 +220,7 @@ class Cutter(object):
             if over is not None and self.run is None:
                 self.run = Stroke.Run(stroke, self.snap)
                 if stroke == Cutting.TOOL_SNIP and self.snap >= 0 and self.next[1] is not None and self.next[2] is not None:
-                    cut, ends = self.next[1], self.next[2]
+                    cut, ends = self.next[1], self.next[2] or ()       # 上面已查过不是 None；`or ()` 是让网易机审（pylint）不把迭代判成迭代 None
                     along = [(p[0] - cut.x) * math.cos(cut.angle) + (p[1] - cut.z) * math.sin(cut.angle) for p in ends]
                     self.snipRange = Stroke.snipRange(self.place[0], self.place[1], self.place[2], cut, along)
             return

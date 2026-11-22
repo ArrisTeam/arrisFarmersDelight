@@ -60,6 +60,12 @@ def sound(name, world, volume, pitch):
         compFactory.CreateCustomAudio(levelId).PlayCustomMusic(found, tuple(world), volume, pitch, False, None)
 
 
+def _lifeIn(span):
+    """寿命：span 是 (最短, 最长) 就在里面随便取一个；None（粒子 JSON 自己定寿命，PAN_SMOKE 现在就是）还是 None。
+    单拎出来是因为直接写 random.uniform(*PAN_SMOKE[3])，网易机审（pylint）按常量里的 None 推断，判成"迭代 None"。"""
+    return random.uniform(span[0], span[1]) if span else None
+
+
 def _style(spawn):
     """(粒子名, 颜色 0xRRGGBB 或 None, 透明度 或 None, 大小, 寿命 或 None)；没有对应粒子的返回 None。"""
     alpha = ((spawn.color >> 24) & 0xFF) / 255.0 if spawn.color else None
@@ -70,7 +76,7 @@ def _style(spawn):
         return GLINT, color, None, 1.0, None
     if spawn.kind == "smoke":
         identifier, argb, scale, life = PAN_SMOKE
-        return identifier, argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0, scale, random.uniform(*life) if life else None
+        return identifier, argb & 0xFFFFFF, ((argb >> 24) & 0xFF) / 255.0, scale, _lifeIn(life)
     if spawn.kind == "heat":
         return HEAT, HEAT_ARGB & 0xFFFFFF, ((HEAT_ARGB >> 24) & 0xFF) / 255.0, HEAT_SCALE, random.uniform(*HEAT_LIFE)
     return None

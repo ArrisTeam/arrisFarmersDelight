@@ -24,6 +24,10 @@ CLEARED_WINDOW = 1.0         # 层刚被清空这么久之内收到的 assembled
 
 class DrawEvents(object):
     assembling = 0             # 还在演（pop、done 没走完）的 assembled 有几个：两个重叠时先演完的不还原层，等最后一个演完才还原
+    # 下面三个的初值由 Draw.__init__ 给；这里写同样的类属性，是让网易机审（pylint，只看这个类）知道它们有定义（各方法里先读后赋）
+    cleared = None
+    whole = False
+    worn = 1.0
 
     def _dress(self, thing, index, layer):
         """第 index 层画成什么（dress，1963-1984）：液体层不画、蛋画成打开的蛋、别的原样（BoardHands.lookOf）；返回它躺的位置 (x, y, z)。"""
@@ -133,8 +137,9 @@ class DrawEvents(object):
         def pop():
             for index in range(count):
                 Motion.melt(self.layers[index].mover, plan.rest[index])
-            if self.late is not None:
-                self._board(self.late[0])
+            late = self.late or ()                        # 没有后来的状态是 None：写成 `or ()`，网易机审（pylint）才不把取下标判成对 None 取下标
+            if late:
+                self._board(late[0])
                 self.pile.hide()
             board = self.shown["board"]
             if board is not None:
@@ -149,13 +154,13 @@ class DrawEvents(object):
             self.melting = 0.0
             for thing in self.layers:
                 thing.reset()                                 # 缩小了、转着的层下一回再摆东西不能还是那样（JE 的 tick：scaleTo(1, 0) + setVisible(false)）
-            late, self.late = self.late, None
-            if late is not None:
+            late, self.late = self.late or (), None       # `or ()` 同 pop
+            if late:
                 self._board(late[0])
             board = self.shown["board"]
             if board is not None and board[1] > 1 and board[2] == "flat":
                 self.pile.put(0.0, 0.0, 0.0)
-            if late is not None:
+            if late:
                 self._layers(late[1])
         self.assembling += 1                                  # pop 和 done 各自排下了：和 done 里的减一对着
         if arrive + plan.seconds > 0.0:
