@@ -1,0 +1,15 @@
+# 本机复现网易机审的代码检查（tests/reviewlint.py）用的 pylint：和机审同一套版本，依赖也全部钉死（同 arrisCreate 的 tools/requirements-pylint-py2.txt）。
+# 装在引擎同款的 Python 2.7 里：python2 -m pip install --user -r tools/requirements-pylint-py2.txt
+# 改 pylint / astroid 的版本要连 tests/reviewlint.py 的 VERSIONS 一起改（tests/test_review_lint.py 核对两处一样）。
+pylint==1.9.5
+astroid==1.6.6
+isort==4.3.21
+mccabe==0.6.1
+six==1.17.0
+wrapt==1.15.0
+lazy-object-proxy==1.6.0
+backports.functools-lru-cache==1.6.6
+configparser==4.0.2
+enum34==1.1.10
+futures==3.4.0
+singledispatch==3.7.0

@@ -945,6 +945,7 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
 - 发版的工具和工作流：`test_release_tools.py`（在临时副本上跑 version 的各个命令（含 `--new-uuid`：四个 UUID 都换、依赖 rp 的跟着换、`3ca4eaf4-…` 不动）、
   tag 的核对（临时 git 仓库里和上一个发版 tag 比 UUID：没有上一个 tag、换了、漏换 header / module、上一版没有这个 manifest、两个仓库叠在一起）、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
   许可文件、注释；结构检查和导入检查各种写法的报错；工作流的触发、job、权限、钉住的 action、调到的参数和 Windows 上装的第三方库，没有 PyYAML 时只做文本断言）。
+- 网易打包机审的代码检查：`test_review_lint.py`（跑法在 `tests/reviewlint.py`）。机审就是 Python 2 的 pylint 1.9.5（astroid 1.6.6），同一套版本在本机跑出来的错和机审报的一样（2026-11-22 两个包被打回的 43 处一处不差，arrisCreate 的 `tools/check_pack_audit.py` 也这么做）；查进 zip 的整个脚本根（自检目录不查），开全部 E 类，只去掉本机没有引擎的 `mod` 包才报的（E0401 / E0611 / E1101 / E1102 / E1103）和机审不查的（python3 检查器的 E16xx、E1111）。pylint 装在引擎同款的 Python 2.7 里：`python2 -m pip install --user -r tools/requirements-pylint-py2.txt`；没装时这一项跳过（环境变量 `FD_REVIEW_LINT=required` 时算失败）。常见的错和改法：模块级字典里初值写 None、之后对它取下标 / 写下标 / `in`（初值写空字典，读没读过另记）；对先是 None 的量取下标、迭代（`x or ()` / `x or {}`，或者分开几个变量记）；混入类里先读后赋、初值在别的类的 `__init__` 里的属性（混入类上写同样的类属性）；`lambda node=node:` 这种同名默认参数（pylint 1.9 的毛病：换个名字）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
 
 ## 发版
@@ -961,7 +962,7 @@ py -3 tools/release_zips.py --name arrisFarmersDelight --version X.Y.Z --out dis
 同一套包之间的依赖跟着换，bp 对别的作品的那条依赖 `3ca4eaf4-…` 永远不动）→ 提交两个 manifest → `git tag vX.Y.Z` → 推送分支和 tag。推上去的 tag 形如 `vX.Y.Z` 就触发
 `.github/workflows/release.yml`：`check`（ubuntu-22.04 自带的 Python 3.10：tag 等于版本号、各处一致；有上一个发版 tag 时取那一版的同名 manifest，
 每个 header / module 的 UUID 都要和它的不一样，有一个没换就报错、写明该敲的命令；`release_zips.py --check`）→
-`test`（windows-2022：python.org 的 Python 2.7.18 安装包核对 SHA256 后静默装上，加 3.13 和钉了版本的 Pillow，以 `tools/run_tests.py` 的退出码和最后一行为准）→
+`test`（windows-2022：python.org 的 Python 2.7.18 安装包核对 SHA256 后静默装上，加 3.13 和钉了版本的 Pillow，再往 2.7 里装机审复现用的 pylint（装不上不挡发版，那一项测试跳过），以 `tools/run_tests.py` 的退出码和最后一行为准）→
 `release`（更新说明、来源信息、出包、`gh release create`）；在 Actions 页面手动运行照样检查、测试、出包，只列出 zip 里有什么，不建 Release。
 zip 是 `arrisFarmersDelight_v<版本>.zip`：根目录只有 `bp/`、`rp/`（网易的要求）；源码原样（不去注释、不去 print）；不进包的是 `Server/Debug`、`Client/Debug`
 （只给 MCDK 调试时手动调的游戏内自检：进包的模块一个也不导入它们，`--check` 守着）、`__pycache__` / `*.pyc`、点开头的文件、`.md` 开发文档；

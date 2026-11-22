@@ -131,6 +131,21 @@ jobs:
         shell: pwsh
         run: python -m pip install --disable-pip-version-check --no-input "Pillow==12.1.0"
 
+      # 网易机审复现（tests/test_review_lint.py：Python 2 的 pylint 1.9.5，和机审同一套）用的 pylint，装进上面的 Python 2.7。
+      # 装不上（PyPI 一时不通）不挡发版：那一项测试跳过、这一步留一条警告；开发机上打 tag 前的全量测试照样跑它
+      - name: 机审复现用的 pylint（装进 Python 2.7）
+        continue-on-error: true
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          & $env:FD_PY2 -m ensurepip --default-pip
+          & $env:FD_PY2 -m pip install --disable-pip-version-check --no-input -r tools/requirements-pylint-py2.txt
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "::warning::Python 2.7 里没装上机审复现用的 pylint：这一次的机审复现测试跳过"
+            exit 1
+          }
+          & $env:FD_PY2 -c "import pylint, astroid; print('pylint ' + pylint.__version__ + ', astroid ' + astroid.__version__)"
+
       # 以跑器的退出码和最后一行（「N 项，失败 0」，有跳过的再写「，跳过 M」）为准
       - name: 全量离线测试
         shell: bash
