@@ -12,6 +12,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -41,8 +42,9 @@ def testTheNewestVersionWinsByNumberNotByName():
 
 def testThisMachinesGameIsFoundWhenItHasOne():
     """另算一遍本机游戏目录里有哪些版本带原版资源包：有的话 newest() 就是数字最大的那个，没有（别人的机器、CI）是 None。"""
+    game = vanilla_pack.gameDir()
     versions = []
-    for path in glob.glob(vanilla_pack.GAME + "/*/data/resource_packs/vanilla"):
+    for path in glob.glob(game + "/*/data/resource_packs/vanilla"):
         name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(path))))
         if re.match(r"^[0-9]+(\.[0-9]+)*$", name):
             versions.append([int(part) for part in name.split(".")])
@@ -51,7 +53,38 @@ def testThisMachinesGameIsFoundWhenItHasOne():
         assert vanilla_pack.newest() is None
         return
     best = ".".join(str(part) for part in max(versions))
-    assert vanilla_pack.newest() == vanilla_pack.GAME + "/" + best + "/data/resource_packs/vanilla", (vanilla_pack.newest(), best)
+    assert vanilla_pack.newest() == game + "/" + best + "/data/resource_packs/vanilla", (vanilla_pack.newest(), best)
+
+
+def testTheGameDirectoryCanBeSwitchedOff():
+    """FD_GAME_DIR 换游戏目录：设成不存在的目录就是"本机没装游戏"（在装着游戏的机器上照 CI 的样子跑全量测试）；没设或是空的照旧用 GAME。
+    子进程里看：测试和生成器都是新开的进程读这个环境变量（fdtest.vanilla、生成器的缺省、gen_vanilla_overrides 找原版行为包）。"""
+    saved = os.environ.get(vanilla_pack.GAME_ENV)
+    try:
+        os.environ.pop(vanilla_pack.GAME_ENV, None)
+        assert vanilla_pack.gameDir() == vanilla_pack.GAME
+        os.environ[vanilla_pack.GAME_ENV] = ""
+        assert vanilla_pack.gameDir() == vanilla_pack.GAME, "空的当没设"
+        game = tempfile.mkdtemp()
+        try:
+            os.makedirs(os.path.join(game, "3.10.0.1", "data", "resource_packs", "vanilla"))
+            os.environ[vanilla_pack.GAME_ENV] = game
+            assert vanilla_pack.newest() == game.replace("\\", "/") + "/3.10.0.1/data/resource_packs/vanilla"
+            os.environ[vanilla_pack.GAME_ENV] = os.path.join(game, "nowhere")
+            assert vanilla_pack.newest() is None
+            probe = ("import sys; sys.path[:0] = [%r, %r]; import fdtest, gen_vanilla_overrides as gen; print('%%s %%s' %% (fdtest.vanilla(), gen.find_vanilla()))"
+                     % (os.path.join(fdtest.ROOT, "tests"), os.path.join(fdtest.ROOT, "tools")))
+            env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+            env.pop("FD_VANILLA_BP", None)
+            out = subprocess.check_output([sys.executable, "-B", "-c", probe], env=env).decode("utf-8").split()
+            assert out == ["None", "None"], out
+        finally:
+            shutil.rmtree(game)
+    finally:
+        if saved is None:
+            os.environ.pop(vanilla_pack.GAME_ENV, None)
+        else:
+            os.environ[vanilla_pack.GAME_ENV] = saved
 
 
 def testFdtestHandsOutTheSamePack():

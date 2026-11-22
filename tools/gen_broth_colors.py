@@ -259,7 +259,7 @@ def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else gen_food_colors.VANILLA_DEFAULT
     icons = Icons(vanilla)
     if icons.vanilla is None:
-        print("原版资源包不在 %s：原版物品沿用现有的值，只重算本包的物品" % (vanilla or vanilla_pack.GAME + " 下的任何版本里"))
+        print("原版资源包不在 %s：原版物品沿用现有的值，只重算本包的物品" % (vanilla or vanilla_pack.gameDir() + " 下的任何版本里"))
     previous = loadPrevious()
     tables = compute(icons, previous)
     text = render(tables)

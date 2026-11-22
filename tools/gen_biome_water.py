@@ -75,7 +75,7 @@ def render(table):
 def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else VANILLA_DEFAULT
     if not vanilla:
-        print("本机没有原版资源包（%s 下的任何版本里都没有）：不生成" % vanilla_pack.GAME)
+        print("本机没有原版资源包（%s 下的任何版本里都没有）：不生成" % vanilla_pack.gameDir())
         return 1
     text = render(waters(vanilla))
     current = io.open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""

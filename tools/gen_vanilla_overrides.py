@@ -13,7 +13,7 @@ tests/test_vanilla_overrides.py 在能找到游戏目录时比对，不一致就
 
 用法：py -3 tools/gen_vanilla_overrides.py [--vanilla 原版行为包目录]    生成 / 更新
       py -3 tools/gen_vanilla_overrides.py --check                        只比较，不一致时退出码 1
-原版行为包目录缺省：环境变量 FD_VANILLA_BP，再找 D:/MCStudioDownload/game/MinecraftPE_Netease/*/data/behavior_packs/vanilla。
+原版行为包目录缺省：环境变量 FD_VANILLA_BP，再找游戏目录（vanilla_pack.gameDir()，缺省 D:/MCStudioDownload/game/MinecraftPE_Netease）下的 */data/behavior_packs/vanilla。
 """
 import collections
 import glob
@@ -22,6 +22,8 @@ import json
 import os
 import re
 import sys
+
+import vanilla_pack
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BP = os.path.join(ROOT, "bp")
@@ -148,8 +150,7 @@ def _version_key(path):
 
 def find_vanilla(explicit=None):
     candidates = [explicit, os.environ.get("FD_VANILLA_BP")]
-    candidates += sorted(glob.glob("D:/MCStudioDownload/game/MinecraftPE_Netease/*/data/behavior_packs/vanilla"),
-                         key=_version_key, reverse=True)
+    candidates += sorted(glob.glob(vanilla_pack.gameDir() + "/*/data/behavior_packs/vanilla"), key=_version_key, reverse=True)
     for path in candidates:
         if path and os.path.isfile(os.path.join(path, "entities", "cat.json")):
             return path

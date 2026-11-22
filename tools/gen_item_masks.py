@@ -159,7 +159,7 @@ def render(masks):
 def main(argv):
     vanilla = argv[argv.index("--vanilla") + 1] if "--vanilla" in argv else VANILLA_DEFAULT
     if not vanilla or not os.path.isdir(vanilla):
-        print("原版资源包不在 %s：原版物品的图标读不到，不生成" % (vanilla or vanilla_pack.GAME + " 下的任何版本里"))
+        print("原版资源包不在 %s：原版物品的图标读不到，不生成" % (vanilla or vanilla_pack.gameDir() + " 下的任何版本里"))
         return 1
     masks = table(vanilla)
     if "--show" in argv:
