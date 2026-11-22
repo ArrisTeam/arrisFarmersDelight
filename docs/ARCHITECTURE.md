@@ -887,6 +887,7 @@ Python 只管运行时行为，物品 / 方块是否存在由 JSON 决定。
 ```
 py -3 tools/run_tests.py           跑全部（按每个文件第 2 行的 "# runner: py2|py3|both" 选解释器）
 py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
+FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装游戏（tools/vanilla_pack.py），对原版资源包的核对跳过或只比本包的
 ```
 
 `tests/` 只测不依赖引擎的部分（`Shared/`、`Api/`、`Server/EventRegistry.py`）和静态结构；
@@ -941,4 +942,24 @@ py -3 tools/run_tests.py cooking   只跑文件名含 cooking 的
   `test_fry_tints.py`（接在 `PanScene` / `StoveScene` 上的 `FryTints`，`panclient.py` 的假引擎记粒子的 `Create` / `SetPos` / `SetRot` / `SetVariable` / `Remove` 和
   `GetIconInfo`：躺稳才亮、和掉落物朝上那面严丝合缝、颠 / 翻时收着、熟了 / 拿走 / 场景没了就删、蛋 / 没颜色 / 方块物品不叠、图集和粒子系统没好时再试、
   老引擎不染、歇着不碰引擎；要前置包）。
+- 发版的工具和工作流：`test_release_tools.py`（在临时副本上跑 version 的各个命令、tag 的核对、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
+  许可文件、注释；结构检查和导入检查各种写法的报错；工作流的触发、job、权限、钉住的 action、调到的参数和 Windows 上装的第三方库，没有 PyYAML 时只做文本断言）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
+
+## 发版
+
+```
+release.json                    这一套的配置：版本号所在的 manifest（第一个是权威来源）、进 zip 的包文件夹、不进包的路径、额外放进包里的文件
+py -3 tools/version.py show     第一行是版本号，下面逐处列出；另有 check [--tag vX.Y.Z]、set X.Y.Z、bump、notes（Release 的正文）
+py -3 tools/release_zips.py --check [--version X.Y.Z]                         出包前的检查（工作流的 check job 跑它）
+py -3 tools/release_zips.py --name arrisFarmersDelight --version X.Y.Z --out dist   本机出一个包看看（上传的只用工作流出的）
+```
+
+发一版：`py -3 tools/version.py set X.Y.Z` → 提交两个 manifest → `git tag vX.Y.Z` → 推送分支和 tag。推上去的 tag 形如 `vX.Y.Z` 就触发
+`.github/workflows/release.yml`：`check`（ubuntu-22.04 自带的 Python 3.10：tag 等于版本号、各处一致、`release_zips.py --check`）→
+`test`（windows-2022：python.org 的 Python 2.7.18 安装包核对 SHA256 后静默装上，加 3.13 和钉了版本的 Pillow，以 `tools/run_tests.py` 的退出码和最后一行为准）→
+`release`（更新说明、来源信息、出包、`gh release create`）；在 Actions 页面手动运行照样检查、测试、出包，只列出 zip 里有什么，不建 Release。
+zip 是 `arrisFarmersDelight_v<版本>.zip`：根目录只有 `bp/`、`rp/`（网易的要求）；源码原样（不去注释、不去 print）；不进包的是 `Server/Debug`、`Client/Debug`
+（只给 MCDK 调试时手动调的游戏内自检：进包的模块一个也不导入它们，`--check` 守着）、`__pycache__` / `*.pyc`、点开头的文件、`.md` 开发文档；
+`bp/` 下多一份 `LICENSE` 和 `THIRD_PARTY_NOTICES.md`。来源信息（仓库、commit、版本、这次运行的地址、包名）在 zip 注释里（7-Zip 或 `unzip -z`）。
+前置包那一套叫 `tools/dg_version.py`、`tools/dg_release_zips.py`、`tools/dg_release.json`，和这里的两个工具只差配置文件那一行（`docs/diegesis/DESIGN.md` §3）。

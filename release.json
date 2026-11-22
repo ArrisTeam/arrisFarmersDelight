@@ -1,0 +1,12 @@
+{
+  "manifests": ["bp/manifest.json", "rp/manifest.json"],
+  "packs": ["bp", "rp"],
+  "exclude": [
+    "bp/arrisFarmersDelightScripts/Server/Debug",
+    "bp/arrisFarmersDelightScripts/Client/Debug"
+  ],
+  "extraFiles": [
+    {"from": "LICENSE", "to": "bp/LICENSE"},
+    {"from": "THIRD_PARTY_NOTICES.md", "to": "bp/THIRD_PARTY_NOTICES.md"}
+  ]
+}

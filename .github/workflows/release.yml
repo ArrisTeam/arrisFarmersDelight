@@ -1,0 +1,212 @@
+name: 发版
+
+# 打 tag vX.Y.Z 发版：照机械动力那套发版工作流的流程走，工具是本仓库自带的 tools/version.py、tools/release_zips.py（配置 release.json）。
+# 怎么发一版（仓库根目录下）：
+#   1. py -3 tools/version.py set X.Y.Z      改 bp / rp 两个 manifest 的版本号（同一套包之间的依赖跟着改）
+#   2. 提交这两个 manifest
+#   3. git tag vX.Y.Z
+#   4. git push origin main，再 git push origin vX.Y.Z
+# 三个 job，哪一步不过都不出包：
+#   check    tag 形如 vX.Y.Z 且等于仓库的版本号、各处版本号一致、包的结构检查（tools/release_zips.py --check）
+#   test     Windows 上跑全量离线测试（Python 2.7.18 + 3.13；这套测试只在 Windows 上跑过）
+#   release  写更新说明和来源信息、出包、建 Release
+# 产物 arrisFarmersDelight_v<版本>.zip，上架网易用：根目录只有 bp/、rp/（网易要求上传包的根目录只有包文件夹，打包错误代码 24）；
+#   源码原样（不去注释、不去 print）；不带游戏内自检（Server/Debug、Client/Debug）、开发文档、__pycache__ / *.pyc、点开头的文件；
+#   bp/ 下多一份 LICENSE 和 THIRD_PARTY_NOTICES.md（只在打包时放）。打进去什么、不打什么写在 release.json。
+# 来源信息（仓库、commit、版本、这次运行的地址、包名）在 zip 注释里：7-Zip 打开压缩包能看到，或者 unzip -z <zip>。
+#   上传网易前核对来源：只上传这里出的包。
+# 手动运行（Actions 页面的 Run workflow）：照样检查、测试、出包，打印 zip 里有什么，不建 Release；版本号取 manifest 的。
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONIOENCODING: utf-8     # Windows 运行器的控制台编码是 cp1252，打印中文要它
+
+jobs:
+  check:
+    name: 核对版本号和包的结构
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 核对 tag 和版本号
+        id: version
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            python3 tools/version.py check --tag "$GITHUB_REF_NAME"
+          else
+            python3 tools/version.py check
+          fi
+          VERSION="$(python3 tools/version.py show | sed -n 1p)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: 包的结构检查
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python3 tools/release_zips.py --check --version "$VERSION"
+
+  test:
+    name: 全量离线测试（Windows）
+    needs: check
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PY27_URL: https://www.python.org/ftp/python/2.7.18/python-2.7.18.amd64.msi
+      # 2026-11-22 从 python.org 下载算出来的；MD5 和 python.org 2.7.18 发行页上写的 a425c758d38f8e28b56f4724b499239a 对得上
+      PY27_MSI_SHA256: b74a3afa1e0bf2a6fc566a7b70d15c9bfabba3756fb077797d16fffa27800c05
+      PY27_DIR: C:\Python27
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: 恢复 Python 2.7.18 的安装包
+        id: py27-msi
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/python27-msi
+          key: python-2.7.18-amd64-msi-${{ env.PY27_MSI_SHA256 }}
+
+      # 引擎是 Python 2.7：装 python.org 的官方安装包（核对 SHA256），静默装到 PY27_DIR，不改 PATH（python 仍是上面的 3.13）
+      - name: 装 Python 2.7.18
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = Join-Path $HOME '.cache\python27-msi'
+          $msi = Join-Path $dir 'python-2.7.18.amd64.msi'
+          if (-not (Test-Path -LiteralPath $msi)) {
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            Invoke-WebRequest -Uri $env:PY27_URL -OutFile $msi -MaximumRetryCount 3 -RetryIntervalSec 10
+          }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $msi).Hash.ToLowerInvariant()
+          if ($hash -ne $env:PY27_MSI_SHA256) {
+            Remove-Item -Force -LiteralPath $msi
+            throw "python-2.7.18.amd64.msi 的 SHA256 是 $hash，不是工作流里写的 $env:PY27_MSI_SHA256"
+          }
+          $log = Join-Path $env:RUNNER_TEMP 'python27-msi.log'
+          $msiArgs = @('/i', "`"$msi`"", '/qn', '/norestart', 'ALLUSERS=1', "TARGETDIR=$env:PY27_DIR", '/L*v', "`"$log`"")
+          $proc = Start-Process -FilePath 'msiexec.exe' -ArgumentList $msiArgs -Wait -PassThru
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 80 }
+            throw "msiexec 的退出码是 $($proc.ExitCode)"
+          }
+          $py = Join-Path $env:PY27_DIR 'python.exe'
+          & $py -c "import sys; print(sys.version)"
+          if ($LASTEXITCODE -ne 0) { throw '装好的 Python 2.7 跑不起来' }
+          "FD_PY2=$py" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: 存 Python 2.7.18 的安装包
+        if: steps.py27-msi.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/python27-msi
+          key: ${{ steps.py27-msi.outputs.cache-primary-key }}
+
+      # 测试经 --check 调到的生成器 import 的第三方库（tests/test_release_tools.py 对着 tools/ 的 import 查这张单子）
+      - name: 测试要的第三方库
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "Pillow==12.1.0"
+
+      # 以跑器的退出码和最后一行（「N 项，失败 0」，有跳过的再写「，跳过 M」）为准
+      - name: 全量离线测试
+        shell: bash
+        run: |
+          python --version
+          set +e
+          python tools/run_tests.py > test-output.txt 2>&1
+          code=$?
+          set -e
+          cat test-output.txt
+          summary="$(tail -n 1 test-output.txt | tr -d '\r')"
+          echo "::notice::离线测试：$summary"
+          if [ "$code" -ne 0 ] || ! printf '%s\n' "$summary" | grep -Eq '^[0-9]+ 项，失败 0(，跳过 [0-9]+)?$'; then
+            echo "::error::离线测试没过（退出码 $code）：$summary"
+            exit 1
+          fi
+
+  release:
+    name: 出包并发布
+    needs: [check, test]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # 上一个 vX.Y.Z tag 以来的提交（不含合并，标题截到 120 个字符，最多 200 条）；没有上一个 tag 时只写一句话加版本号和 commit
+      - name: 更新说明
+        shell: bash
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            python3 tools/version.py notes --tag "$GITHUB_REF_NAME" --out changelog.txt
+          else
+            python3 tools/version.py notes --out changelog.txt
+          fi
+          cat changelog.txt
+
+      - name: 来源信息
+        shell: bash
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          info = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit": os.environ["GITHUB_SHA"],
+              "version": os.environ["VERSION"],
+              "workflowRun": "%s/%s/actions/runs/%s" % (
+                  os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]),
+          }
+          with open("build_info.json", "w", encoding="utf-8") as f:
+              json.dump(info, f, indent=2)
+              f.write("\n")
+          EOF
+          cat build_info.json
+
+      - name: 出包
+        shell: bash
+        run: python3 tools/release_zips.py --name "${GITHUB_REPOSITORY#*/}" --version "$VERSION" --comment build_info.json --out dist
+
+      # unzip -l 先打印 zip 注释（来源信息），再列出每个文件
+      - name: 列出 zip 里有什么
+        shell: bash
+        run: |
+          for zip in dist/*.zip; do
+            echo "== $zip（$(stat -c %s "$zip") 字节）"
+            unzip -l "$zip"
+          done
+
+      - name: 建 Release
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --verify-tag --title "$GITHUB_REF_NAME" --notes-file changelog.txt
