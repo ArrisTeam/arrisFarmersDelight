@@ -2,21 +2,21 @@
   "modules": [
     {
       "type": "resources",
-      "uuid": "360ffe94-ac8b-42c9-83e1-99b991ddee81",
+      "uuid": "45612c76-2d1f-4ea0-9c13-1616360d6f33",
       "version": [
         1,
         0,
-        1
+        2
       ],
       "description": "棱花Arris-农夫乐事"
     }
   ],
   "header": {
-    "uuid": "1085f60b-cae5-4426-8680-6a40521e94ed",
+    "uuid": "0f5b98ee-b2b7-46c8-9074-8f79707a7f21",
     "version": [
       1,
       0,
-      1
+      2
     ],
     "description": "棱花Arris-农夫乐事",
     "name": "棱花Arris-农夫乐事",
