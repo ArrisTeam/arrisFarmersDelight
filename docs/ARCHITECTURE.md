@@ -244,8 +244,8 @@ def OnServerSkilletBlockUse(args):
 ## 联动（沉浸式交互前置）
 
 亲手做菜的站点（Hands-On Delight 的移植）要装单独的作品「沉浸式交互前置」才有；本包不依赖它：没装时就是原样的农夫乐事，Hands-On Delight 的东西一样也不跑。
-本文里写的 `docs/diegesis/DESIGN.md`（前置包内核和四个站点照 JE 怎么做的、实机量到的事实）是**前置包仓库里的文档**，不在本仓库、不随本仓库上传（2026-11-18 起）；
-两个仓库叠在同一个目录的开发机上它就在那个路径上，只有本仓库时没有这份文档。
+本文里写的 `docs/diegesis/DESIGN.md`（前置包内核和四个站点照 JE 怎么做的、实机量到的事实）是**前置包工程里的文档**，不在本仓库、不随本仓库上传（2026-11-18 起）：
+前置包是独立工程 arrisDiegesis（`ArrisTeam/netease-diegesis`，2026-11-25 从本目录搬出去），开发机上在旁边的 `../arrisDiegesis/docs/diegesis/DESIGN.md`。
 联动的做法照机械动力系列的附属包（无中生有等）：运行模式每端判定一次、记在一个地方，注册写成步骤表，业务模块在自己的步骤里才导入，一步出错不拦别的步骤。
 不一样的只有怎么发现前置包：不用联动 SDK 的 ready 事件，照旧 `ImportModule("arrisDiegesisScripts.Api.Server" / ".Api.Client")` 取接口模块、读 `API_VERSION`，可选功能读接口上的功能旗。
 
@@ -909,9 +909,11 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
   （客户端可调的服务端端点只用注入的玩家 ID；随库装入）、`test_cooking_pot_book.py` / `test_cooking_pot_menu.py`（厨锅经典界面的食谱规则与
   界面模型，用库的纯逻辑部分在内存里跑，py2 与 py3 都跑：食谱格按搜索过滤与选中的底格、写法按注入的钟轮换、添加食材挑写法的先后与三种拒绝、
   两种界面档的 Shift 点击与双击收集、两种界面档编译出的是同一个界面）。
-- 沉浸式交互前置包不在这个仓库里（它是单独的作品）。亲手做菜的站点要拿它的源码一起测：开发机上把它的两个包放在仓库根下的
-  `diegesisBp/`、`diegesisRp/`，它自己的测试和测试小工具（`tests/test_diegesis_*.py`、`tests/dg*.py`）也放在 `tests/` 里，都不入库
-  （`.git/info/exclude` 里忽略）。用到它的用例先 `import prereq`（`tests/prereq.py`）：旁边没有前置包时以 77 退出，跑器记成跳过。
+- 沉浸式交互前置不在这个仓库里：它是单独的作品、单独的工程 arrisDiegesis（`ArrisTeam/netease-diegesis`，2026-11-25 从本目录搬出去，有自己的全套测试）。
+  亲手做菜的站点要拿它的源码和测试小工具（它的 `tests/dg*.py`：`dgtest`、`dgstation`、`dgkit`……）一起测：在哪由 `tests/prereqdir.py` 找——环境变量 `FD_PREREQ_DIR`
+  给了就只认它（指向不存在的目录 = 当作没有，在装着前置包的机器上照"只 clone 了本仓库"的样子跑），没给就找旁边的 `../arrisDiegesis`。
+  用到它的用例先 `import prereq`（`tests/prereq.py`）：找到了把那边的 `tests/` 放进 `sys.path`，前置包里的路径用它的 `BP` / `RP` / `SCRIPTS` / `TESTS` / `DOCS`；
+  找不到时以 77 退出，跑器记成跳过。"有它就多查一点"的用例（`test_flat_faces.py`、`test_pan_smoke_particle.py`）直接看 `prereqdir` 的路径，没有就只查本包的。
   只有本仓库时 `py -3 tools/run_tests.py` 的最后一行是「N 项，失败 0，跳过 M」；`test_architecture.py` 只守本包，
   「没装前置包时什么都不联动」由 `test_presence_*.py`、`test_handson_mode.py`、`test_handson_options_gate.py` 守着，它们不需要前置包。
 - 合成：`test_recipe_rules.py`（配方 JSON 的静态检查、生成的 `CraftReturns` 表是否最新）、`test_recipe_parity.py`（对照 JE 的做法 / 摆法 / 剩余物）、
@@ -943,7 +945,7 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
   `GetIconInfo`：躺稳才亮、和掉落物朝上那面严丝合缝、颠 / 翻时收着、熟了 / 拿走 / 场景没了就删、蛋 / 没颜色 / 方块物品不叠、图集和粒子系统没好时再试、
   老引擎不染、歇着不碰引擎；要前置包）。
 - 发版的工具和工作流：`test_release_tools.py`（在临时副本上跑 version 的各个命令（含 `--new-uuid`：四个 UUID 都换、依赖 rp 的跟着换、`3ca4eaf4-…` 不动）、
-  tag 的核对（临时 git 仓库里和上一个发版 tag 比 UUID：没有上一个 tag、换了、漏换 header / module、上一版没有这个 manifest、两个仓库叠在一起）、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
+  tag 的核对（临时 git 仓库里和上一个发版 tag 比 UUID：没有上一个 tag、换了、漏换 header / module、上一版没有这个 manifest、两个仓库叠在一个目录里的老样子）、更新说明的截短和条数上限；真打一个 zip 查根目录、排除项、
   许可文件、注释；结构检查和导入检查各种写法的报错；工作流的触发、job、权限、钉住的 action、调到的参数和 Windows 上装的第三方库，没有 PyYAML 时只做文本断言）。
 - 网易打包机审的代码检查：`test_review_lint.py`（跑法在 `tests/reviewlint.py`）。机审就是 Python 2 的 pylint 1.9.5（astroid 1.6.6），同一套版本在本机跑出来的错和机审报的一样（2026-11-22 两个包被打回的 43 处一处不差，arrisCreate 的 `tools/check_pack_audit.py` 也这么做）；查进 zip 的整个脚本根（自检目录不查），开全部 E 类，只去掉本机没有引擎的 `mod` 包才报的（E0401 / E0611 / E1101 / E1102 / E1103）和机审不查的（python3 检查器的 E16xx、E1111）。pylint 装在引擎同款的 Python 2.7 里：`python2 -m pip install --user -r tools/requirements-pylint-py2.txt`；没装时这一项跳过（环境变量 `FD_REVIEW_LINT=required` 时算失败）。常见的错和改法：模块级字典里初值写 None、之后对它取下标 / 写下标 / `in`（初值写空字典，读没读过另记）；对先是 None 的量取下标、迭代（`x or ()` / `x or {}`，或者分开几个变量记）；混入类里先读后赋、初值在别的类的 `__init__` 里的属性（混入类上写同样的类属性）；`lambda node=node:` 这种同名默认参数（pylint 1.9 的毛病：换个名字）。
 - 直接用 `python` 跑单个测试文件会在包目录里留下 `.pyc`；用 `tools/run_tests.py`（它设了 `PYTHONDONTWRITEBYTECODE`）。
@@ -967,4 +969,5 @@ py -3 tools/release_zips.py --name arrisFarmersDelight --version X.Y.Z --out dis
 zip 是 `arrisFarmersDelight_v<版本>.zip`：根目录只有 `bp/`、`rp/`（网易的要求）；源码原样（不去注释、不去 print）；不进包的是 `Server/Debug`、`Client/Debug`
 （只给 MCDK 调试时手动调的游戏内自检：进包的模块一个也不导入它们，`--check` 守着）、`__pycache__` / `*.pyc`、点开头的文件、`.md` 开发文档；
 `bp/` 下多一份 `LICENSE` 和 `THIRD_PARTY_NOTICES.md`。来源信息（仓库、commit、版本、这次运行的地址、包名）在 zip 注释里（7-Zip 或 `unzip -z`）。
-前置包那一套叫 `tools/dg_version.py`、`tools/dg_release_zips.py`、`tools/dg_release.json`，和这里的两个工具只差配置文件那一行（`docs/diegesis/DESIGN.md` §3）。
+前置包工程（arrisDiegesis）有它自己的一套：`tools/dg_version.py`、`tools/dg_release_zips.py`、`tools/dg_release.json`，当初照这里的两个工具写的、只差配置文件那一行；
+搬成独立工程以后两边各管各的（它的 `docs/diegesis/DESIGN.md` §3）。
