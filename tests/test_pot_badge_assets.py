@@ -12,15 +12,15 @@ import re
 import subprocess
 import sys
 
-import prereq  # noqa: F401 - 徽章要对着前置包的界面和牌子的源码：它不在这个仓库里，旁边没有就跳过
+import prereq  # 徽章要对着前置包的界面和牌子的源码：它不在这个仓库里，找不到就跳过
 import fdtest
 
 Glyphs = fdtest.load("Shared.Rules.HandsOn.PotBadgeGlyphs")
 TOOL = os.path.join(fdtest.ROOT, "tools", "gen_pot_badge.py")
 RP = os.path.join(fdtest.ROOT, "rp")
-FOCUS = os.path.join(fdtest.ROOT, "diegesisRp", "ui", "arris_diegesis_focus.json")
-WIDGET = os.path.join(fdtest.ROOT, "diegesisBp", "arrisDiegesisScripts", "Client", "Ui", "PlateWidget.py")
-LAYOUT = os.path.join(fdtest.ROOT, "diegesisBp", "arrisDiegesisScripts", "Shared", "PlateLayout.py")
+FOCUS = os.path.join(prereq.RP, "ui", "arris_diegesis_focus.json")
+WIDGET = os.path.join(prereq.SCRIPTS, "Client", "Ui", "PlateWidget.py")
+LAYOUT = os.path.join(prereq.SCRIPTS, "Shared", "PlateLayout.py")
 
 
 def focus():

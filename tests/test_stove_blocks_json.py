@@ -5,7 +5,7 @@
 朝向、监听移除；不要烫脚（netease:on_stand_on 只有点着的）；拆了掉的是点着的炉灶物品，不是它自己这个隐藏的方块物品。
 火口的火星 / 烟 / 噼啪声（FD 的 StoveBlock.animateTick）和灶上东西的烟（StoveBlockEntity.particleTick）都只在 LIT 时：只有点着的方块写
 netease:block_animate_random_tick 和客户端 tick（Client/StoveFlame.py 收这两个事件）。
-这些 JSON / 战利品表的改动都要完整重启游戏才生效，离线只能核对写法（实机见前置包仓库的 docs/diegesis/DESIGN.md 第 11 节的清单）。"""
+这些 JSON / 战利品表的改动都要完整重启游戏才生效，离线只能核对写法（实机见前置包工程 arrisDiegesis 的 docs/diegesis/DESIGN.md 第 11 节的清单）。"""
 from __future__ import print_function
 
 import io

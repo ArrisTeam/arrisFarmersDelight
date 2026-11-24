@@ -19,6 +19,7 @@ import re
 import fdtest
 import molangkit
 import pngkit
+import prereqdir
 
 RP = os.path.join(fdtest.ROOT, "rp")
 PIXEL = 1.0 / 16.0                     # 一像素 = 1/16 格
@@ -71,11 +72,11 @@ def testTheStyleIsAnOwnParticleWithTheTwelveSteamFramesStretchedOverItsLife():
 
 
 def testTheSheetIsTheLibrarysWhiteSteamFramesWhichTheStyleUses():
-    """HoD 的 PAN_SMOKE 用的是 Diegesis 的 steam_0 ~ 11（原版烟的帧染成白的）：本机有前置包的资源（旁边的 diegesisRp）时逐像素对一遍。"""
+    """HoD 的 PAN_SMOKE 用的是 Diegesis 的 steam_0 ~ 11（原版烟的帧染成白的）：找得到前置包工程（它的 diegesisRp）时逐像素对一遍。"""
     ours = pngkit.read(os.path.join(RP, "textures", "handson", "particle", "pan_smoke.png"))
-    theirs = os.path.join(fdtest.ROOT, "diegesisRp", "textures", "diegesis", "particle", "steam.png")
-    if not os.path.isfile(theirs):
-        print("跳过：旁边没有前置包的资源（diegesisRp）")
+    theirs = os.path.join(prereqdir.RP, "textures", "diegesis", "particle", "steam.png") if prereqdir.RP else None
+    if theirs is None or not os.path.isfile(theirs):
+        print("跳过：找不到前置包工程的资源（diegesisRp）")
         return
     assert ours[2] == pngkit.read(theirs)[2]
 

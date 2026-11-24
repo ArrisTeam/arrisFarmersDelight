@@ -21,8 +21,6 @@ import fdtest
 sys.path.insert(0, os.path.join(fdtest.ROOT, "tools"))
 import vanilla_pack  # noqa: E402
 
-# 前置包仓库的文件（它们在同一个目录里，归另一个仓库管：CLAUDE.md 的两仓库一节）
-PREREQ = re.compile(r"^(test_diegesis_.*|dg.*|gen_book_assets|book_textures)\.py$")
 PINNED = re.compile(r"MinecraftPE_Netease[/\\]+[0-9]")
 
 
@@ -95,12 +93,11 @@ def testFdtestHandsOutTheSamePack():
 
 
 def testNoTestOrToolPinsAGameVersionInAPath():
-    """本仓库的测试和工具里没有写死版本号的游戏路径（注释里举例的不算）：要原版资源包的一律经 vanilla_pack / fdtest.vanilla。"""
+    """本仓库的测试和工具里没有写死版本号的游戏路径（注释里举例的不算）：要原版资源包的一律经 vanilla_pack / fdtest.vanilla。
+    （前置包搬成独立工程 arrisDiegesis 之前，它的文件也放在这两个目录里，那时要挑掉；它自己的那份核对在它的 test_diegesis_vanilla.py。）"""
     pinned = []
     for folder in ("tests", "tools"):
         for path in sorted(glob.glob(os.path.join(fdtest.ROOT, folder, "*.py"))):
-            if PREREQ.match(os.path.basename(path)):
-                continue
             with io.open(path, encoding="utf-8") as handle:
                 for number, line in enumerate(handle, 1):
                     if PINNED.search(line) and not line.strip().startswith("#"):

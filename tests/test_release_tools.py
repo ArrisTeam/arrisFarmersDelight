@@ -6,7 +6,7 @@
 排版不动、不一致时报错）、tag 的核对、更新说明（没有上一个 tag / 有上一个 tag、标题按字符截短、条数上限、不含合并）；
 真打一个本仓库的 zip 看根目录、排除项、许可文件、注释、版本核对，结构检查和导入检查各种写法的报错；进包的模块不导入
 不进包的游戏内自检；工作流的触发条件、job 之间的依赖、权限、钉住的 action、它调到的脚本和参数、Windows 上装的第三方库。
-没有 PyYAML 时工作流只做文本断言（CI 上没装它）。前置包那一份（tools/dg_*.py）的测试在前置包的仓库里（tests/test_diegesis_release.py）。
+没有 PyYAML 时工作流只做文本断言（CI 上没装它）。前置包有它自己的一套（独立工程 arrisDiegesis 的 tools/dg_*.py，测试是它的 tests/test_diegesis_release.py）。
 """
 from __future__ import print_function
 
@@ -36,7 +36,6 @@ WORKFLOW = os.path.join(ROOT, ".github", "workflows", "release.yml")
 DEBUG = ("bp/arrisFarmersDelightScripts/Server/Debug", "bp/arrisFarmersDelightScripts/Client/Debug")
 EXTRAS = {"bp/LICENSE": "LICENSE", "bp/THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"}
 THIRD_PARTY = {"PIL": "Pillow"}         # tools/ 里 import 的第三方库 -> pip 的包名：工作流的 Windows job 要装它，版本钉住
-PREREQ = re.compile(r"^(dg.*|gen_book_assets|book_textures)\.py$")      # 前置包仓库的工具（同一个目录、另一个仓库）
 NOTE_LIMIT = 125000                     # GitHub Release 正文的字符上限
 OUTSIDE = "00000000-0000-4000-8000-000000000000"
 JEI_DEPENDENCY = "3ca4eaf4-0177-4d9b-ab1f-bf863a9976fa"     # bp 对别的作品的固定依赖（arrisJei 的 bp 里也有同一条，"修复机审报错"时加的）：永远不许动
@@ -510,8 +509,8 @@ def testAManifestThePreviousReleaseDidNotHaveIsNotCompared():
 
 
 def testTwoRepositoriesInOneFolderUseTheOneThatTracksTheManifests():
-    """开发目录里两个仓库叠在一起（另一个的 git 目录叫 .<名字>.git）：上一个发版 tag、上一版的 manifest、更新说明都从跟踪着
-    配置里第一个 manifest 的那个仓库取，不从工作区的 .git 取。"""
+    """工具认"两个仓库叠在一个目录"的开发目录（另一个的 git 目录叫 .<名字>.git；前置包 2026-11-25 搬成独立工程之前就是这样）：上一个发版 tag、
+    上一版的 manifest、更新说明都从跟踪着配置里第一个 manifest 的那个仓库取，不从工作区的 .git 取。"""
     if not hasGit():
         print("跳过：没有 git")
         return
@@ -799,10 +798,10 @@ def testTheInlinePythonWritesTheBuildInfo():
 
 
 def testTheWindowsJobInstallsWhatTheToolsImport():
-    """测试经 --check 调到的生成器 import 的第三方库，Windows 的 job 都 pip install 了，版本钉住（前置包的工具不算）。"""
+    """测试经 --check 调到的生成器 import 的第三方库，Windows 的 job 都 pip install 了，版本钉住。"""
     needed = set()
     for name in sorted(os.listdir(TOOLS)):
-        if not name.endswith(".py") or PREREQ.match(name):
+        if not name.endswith(".py"):
             continue
         with io.open(os.path.join(TOOLS, name), "rb") as handle:
             tree = ast.parse(handle.read())

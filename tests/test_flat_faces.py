@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # runner: py3
-"""没有厚度的面片不能两面都贴图：两个包的实体几何（rp/models/entity、diegesisRp/models/entity）里，哪个方向的尺寸是 0 的方块，
+"""没有厚度的面片不能两面都贴图：本包和沉浸式交互前置的实体几何（rp/models/entity；找得到前置包工程时再加它的 diegesisRp/models/entity）里，
+哪个方向的尺寸是 0 的方块，
 垂直于那个方向的两个面最多只有一个有贴图。方块实体和纸娃娃用的材质（entity_alphatest、本包的几种）都不剔除背面，两面都贴的话两张画在
 同一个深度上，来回闪（厨锅的吊把手刚加上时就是这样，用户在游戏里看出来的）。两面画一样的只贴一面（从两边都看得到）；两面画不一样的
 （食谱书翻动的那张纸）给一点厚度把它们分开。"""
@@ -12,9 +13,10 @@ import json
 import os
 
 import fdtest
+import prereqdir
 
 PAIRS = {0: ("east", "west"), 1: ("up", "down"), 2: ("north", "south")}
-ROOTS = (os.path.join(fdtest.ROOT, "rp", "models", "entity"), os.path.join(fdtest.ROOT, "diegesisRp", "models", "entity"))
+ROOTS = (os.path.join(fdtest.ROOT, "rp", "models", "entity"),) + ((os.path.join(prereqdir.RP, "models", "entity"),) if prereqdir.RP else ())
 
 
 def _drawn(face):

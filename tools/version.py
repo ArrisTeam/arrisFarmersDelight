@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """发版用的版本号工具（py -3 运行，只用标准库；发版工作流在 ubuntu-22.04 自带的 Python 3.10 上跑它）
 
-农夫乐事的是 tools/version.py（配置 release.json），沉浸式交互前置的是 tools/dg_version.py（配置 tools/dg_release.json）：
-两个仓库叠在同一个目录里，所以名字不同；两份除了 CONFIG 那一行逐字一样（tests/test_diegesis_release.py 比着）。
+农夫乐事的是 tools/version.py（配置 release.json）；沉浸式交互前置（独立工程 arrisDiegesis）有一份照它写的 tools/dg_version.py（配置 tools/dg_release.json）：
+当初两个仓库叠在同一个目录里，所以名字不同、两份只差 CONFIG 那一行；2026-11-25 前置包搬成独立工程以后两边各管各的，不再逐行比。
 
 每次发版都要换 UUID、提升版本号（仓库主人定的规矩，这两个仓库一直这么发）：发版的第一步是 bump --new-uuid（或 set X.Y.Z --new-uuid），
 工作流会核对（check --tag 和上一个发版 tag 比，header / module 的 UUID 有一个没换就报错）。
@@ -23,7 +23,7 @@
     py -3 <工具> bump [--new-uuid]                   末位加一（发版时带 --new-uuid）
     py -3 <工具> notes [--tag vX.Y.Z] [--out 文件]    这一版的更新说明（发版工作流写进 Release 的正文）
 上一个发版 tag：HEAD 的历史里版本号比这一版小的 vX.Y.Z tag 里最大的那个（check --tag 和 notes 用同一个）。git 命令用跟踪着配置里
-第一个 manifest 的那个仓库：开发目录里两个仓库叠在一起（另一个的 git 目录是 .diegesis.git），工作区的 .git 不一定是本配置的。
+第一个 manifest 的那个仓库：一般就是工作区的 .git；也认两个仓库叠在一起的开发目录（另一个的 git 目录是 .<名字>.git，前置包搬出去之前是 .diegesis.git）。
 
 发版：bump --new-uuid（或 set X.Y.Z --new-uuid）→ 提交 → git tag vX.Y.Z → 推送分支和 tag；发版工作流核对 tag 等于这里的版本号、
 UUID 都换了才出包（见工作流文件开头的注释）。
@@ -54,7 +54,7 @@ class VersionError(Exception):
 
 
 def tool():
-    """本工具在仓库里的名字：两个仓库的名字不同，提示里要写对。"""
+    """本工具在仓库里的名字（前置包那份叫 dg_version.py）：提示里要写对。"""
     return "tools/" + os.path.basename(__file__)
 
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """把包文件夹打成上架网易用的 zip（py -3 运行，只用标准库；发版工作流在 ubuntu-22.04 自带的 Python 3.10 上跑它）
 
-农夫乐事的是 tools/release_zips.py（配置 release.json），沉浸式交互前置的是 tools/dg_release_zips.py（配置 tools/dg_release.json）：
-两个仓库叠在同一个目录里，所以名字不同；两份除了 CONFIG 那一行逐字一样（tests/test_diegesis_release.py 比着）。
+农夫乐事的是 tools/release_zips.py（配置 release.json）；沉浸式交互前置（独立工程 arrisDiegesis）有一份照它写的 tools/dg_release_zips.py（配置 tools/dg_release.json）：
+当初两个仓库叠在同一个目录里，所以名字不同、两份只差 CONFIG 那一行；2026-11-25 前置包搬成独立工程以后两边各管各的，不再逐行比。
 
 源码原样进包，不去注释、docstring 和 print：两个仓库都开源，发出去的就是测试过的那份代码。配置（路径都相对仓库根）：
     manifests   版本号所在的 manifest（第一个是权威来源，见 version 工具）：出包前核对它们的 header.version、modules[].version 都等于 --version
@@ -48,7 +48,7 @@ class ReleaseError(Exception):
 
 
 def tool():
-    """本工具在仓库里的名字：两个仓库的名字不同，提示里要写对。"""
+    """本工具在仓库里的名字（前置包那份叫 dg_release_zips.py）：提示里要写对。"""
     return "tools/" + os.path.basename(__file__)
 
 

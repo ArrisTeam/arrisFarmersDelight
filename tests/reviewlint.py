@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""reviewlint - 本机复现网易打包机审的代码检查（不是测试本身，跑器只收 test_*.py；用它的是 test_review_lint.py 和前置包的 test_diegesis_review_lint.py）
+"""reviewlint - 本机复现网易打包机审的代码检查（不是测试本身，跑器只收 test_*.py；用它的是 test_review_lint.py。前置包工程 arrisDiegesis 带一份一样的：
+它的 tests/dglint.py，改法、版本两边一起改）
 
 机审的代码检查就是 Python 2 的 pylint 1.9.5（astroid 1.6.6），同一套版本在本机跑出来的错和机审报的一样（2026-11-22 两个包被打回的 43 处，
 本机一处不差地复现出来，文件、行号、错误码都对得上；arrisCreate 的 tools/check_pack_audit.py 也是这么做的）。

@@ -2,8 +2,8 @@
 # runner: py3
 """架构守卫：分层与导入方向、机审禁用写法、相对导入可解析、RPC 端点身份注入、文件与函数长度。
 
-查的是农夫乐事行为包（bp/arrisFarmersDelightScripts）。沉浸式交互前置包不在这个仓库里：它的规则表和它自己多出来的两条在它那边
-（tests/dgarch.py、tests/test_diegesis_architecture.py），那份测试把这里的 PACKS 换成它的规则表，同一套检查再跑一遍。
+查的是农夫乐事行为包（bp/arrisFarmersDelightScripts）。沉浸式交互前置是独立工程 arrisDiegesis：它带一份同样的检查（tests/dgguard.py，从这里拷过去的）、
+它的规则表（tests/dgarch.py）和它自己多出来的几条（tests/test_diegesis_architecture.py）；这里加了通用的检查，那边也照加。
 规则（违反即失败；确需例外写进 PACKS 里的 allowLong 并注明理由）：
 1. Shared/ 不导入引擎（mod.*）、QuModLibs、Server、Client、Compat、Api；Server/ 与 Client/ 互不导入，也不导入 Compat/。
    Api/ 只导入 Shared/
@@ -36,8 +36,8 @@ SHADOW_NAMES = {"random", "time", "math", "copy", "json", "string", "types", "tr
                 "collections", "re", "os", "uuid", "weakref", "functools", "itertools"}
 # 规则 8：引擎（网易 3.10）的 Python 标准库是删减过的。2026-11-21 在游戏里两端逐个 import 过，下面这些有（导入得了；机审许不许用另说，见规则 2），
 # ENGINE_MISSING 那些没有——离线的 CPython 都有，测试照样过，进游戏整条导入链就断（前置包的 TouchKeep 写过 import numbers：内核的客户端一个模块都没起来、站点一个都开不了）。
-# 要用这里没有的模块，先在游戏里两端 import 一下（d:/tmp/mcdk-multi/checks/s_stdlib_probe.py 那样）再加进来。前置包的规则表（tests/dgarch.py）里有一样的一份，
-# 两份要一样（tests/test_prereq_constants.py，前置包在旁边才跑）：加一个模块两份都加。
+# 要用这里没有的模块，先在游戏里两端 import 一下（d:/tmp/mcdk-multi/checks/s_stdlib_probe.py 那样）再加进来。前置包工程的规则表（它的 tests/dgarch.py）里有一样的一份，
+# 两份要一样（tests/test_prereq_constants.py，找得到前置包工程才跑）：加一个模块两份都加。
 ENGINE_STDLIB = {"__future__", "abc", "array", "ast", "base64", "binascii", "bisect", "calendar", "codecs", "collections", "colorsys", "contextlib",
                  "copy", "cPickle", "cStringIO", "datetime", "functools", "glob", "hashlib", "heapq", "inspect", "io", "itertools", "json", "keyword",
                  "marshal", "math", "operator", "os", "pickle", "random", "re", "string", "StringIO", "struct", "textwrap", "threading", "time",
@@ -376,8 +376,8 @@ def _shipped(pack):
 
 
 def testImportsOnlyModulesTheEnginesPythonHas():
-    """规则 8：绝对导入只许引擎（mod.*）、本包自己和在游戏里导入过的标准库模块（ENGINE_STDLIB）。前置包跑这一套检查时用的是它自己同名的那一条
-    （tests/test_diegesis_architecture.py，表在 tests/dgarch.py，和这里的一样）。"""
+    """规则 8：绝对导入只许引擎（mod.*）、本包自己和在游戏里导入过的标准库模块（ENGINE_STDLIB）。前置包工程有它自己同名的那一条
+    （它的 tests/test_diegesis_architecture.py，表在它的 tests/dgarch.py，和这里的一样）。"""
     assert not ENGINE_STDLIB & ENGINE_MISSING
     problems = []
     for pack in sorted(PACKS):
