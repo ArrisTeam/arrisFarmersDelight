@@ -188,7 +188,7 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `stoves` | 服务端 | `ext.registerStove`（§6） |
 | `compostables` | 服务端 | `ext.registerCompostable`（§6） |
 | `item_tags` | 两端 | `ext.tags`（§7） |
-| `recipe_json_files` | 服务端（还没登记） | 行为包里的 `farmersdelight_recipes/`（[RECIPE-JSON.md](RECIPE-JSON.md)）。已经实现、照常会读，但跨包读文件的那条路还没在游戏里核过，核过才登记这个名字 |
+| `recipe_json_files` | 服务端 | 行为包里的 `farmersdelight_recipes/`（[RECIPE-JSON.md](RECIPE-JSON.md)；跨行为包读文件 2026-11-26 在游戏里核过） |
 
 ---
 

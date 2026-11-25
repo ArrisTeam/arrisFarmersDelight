@@ -5,8 +5,8 @@
 list_server_directory(目录) 跨全部已加载的行为包列出文件，load_server_file(路径) 读出字节；它的 create_recipes/ 和它的十来个附属包都靠这一条。
 这里照它，经 traceback.sys.modules 取（脚本里不许 import sys；QuModLibs 的 ImportModule 也是这么取模块的），只在本模块里碰它：
 模块或那两个函数不在、列目录抛了异常时 files() 返回 None，调用的人当这项能力没有（打一行日志）。读出来的文本剥掉 // 和 /* */ 注释（照机械动力），解码 UTF-8。
-农夫乐事自己的包里没有这个目录：目录在哪个包里都没有时列出来是什么（空的还是抛异常）、别的包的文件读不读得到，都还没在游戏里核过
-（核过之前不登记能力名，见 Api/ExtensionApi/Events.RECIPE_JSON_FILES_VERIFIED）。
+2026-11-26 在游戏里核过：另一个行为包里的 farmersdelight_recipes/ 文件读得到（Api/ExtensionApi/Events.RECIPE_JSON_FILES_VERIFIED）。
+没单独看过的：给的路径带不带目录那一层（RecipeFiles 两种都认）、目录在哪个包里都没有时列出来是什么（空的还是抛异常：抛了照样当这条路不通）。
 """
 import re
 import traceback
@@ -52,7 +52,7 @@ def _listed(resource, baseDir):
     """baseDir 下的 .json 路径，去重、排好序；列不出来是 None。"""
     try:
         listed = resource.list_server_directory(baseDir) or ()
-    except Exception as error:  # noqa: BLE001 - 引擎内部模块，行为没核过：抛了就当这条路不通
+    except Exception as error:  # noqa: BLE001 - 引擎内部模块，没有文档：抛了就当这条路不通
         print("[arrisFarmersDelight] 列行为包里的 %s/ 出错（%r），不读" % (baseDir, error))
         return None
     return sorted(set(path for path in listed if isinstance(path, _TEXT) and path.endswith(SUFFIX)))

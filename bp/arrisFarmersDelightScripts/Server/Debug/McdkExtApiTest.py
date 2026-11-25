@@ -5,7 +5,7 @@
 1. mcdk_test_ext_api_status()：门面在不在（ready 播了没有、主动导入拿到的是不是同一个）、两端的能力名、版本号、标签的口准备好没有、
    开服时读行为包 farmersdelight_recipes/ 的结果（ExtensionReady.scanReport：state 是 "unavailable" 说明 server_resource 这条路不通）。
    装了草稿目录里的探针包（fdprobe）时还看它的两条配方：ready 里用 Builder 登记的 fdprobe:cooking/builder_stew、
-   它的 farmersdelight_recipes/ 里的 fdprobe:cooking/json_stew（读到了就说明跨包读文件通了，可以登记能力名 recipe_json_files）。
+   它的 farmersdelight_recipes/ 里的 fdprobe:cooking/json_stew（读到了就说明跨包读文件是通的；2026-11-26 实机读到了，能力名 recipe_json_files 因此登记）。
 2. mcdk_test_ext_api_register()：用 ext.recipes 登记一条带标签原料的厨锅配方（fdselftest:cooking/tag_mash：#common:tomato + 泥土 -> 绿宝石），
    拿农夫乐事的番茄、探针包的番茄（只靠它的 netease_tags 进 common:tomato）各配一次，再现在就同步给在线的玩家（syncToClients）。
 3. 客户端：Client/Debug/McdkExtApiTest.mcdk_test_ext_api_client()（表同步过去之后客户端查到的、配出来的）。

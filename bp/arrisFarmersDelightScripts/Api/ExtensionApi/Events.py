@@ -30,9 +30,9 @@ CLIENT_EXTENSION_API_READY_EVENT_ID = "arrisFarmersDelight:ExtensionApi:ClientEx
 SIDES = ("server", "client")
 READY_EVENTS = {"server": SERVER_EXTENSION_API_READY_EVENT, "client": CLIENT_EXTENSION_API_READY_EVENT}
 
-# 行为包里的 farmersdelight_recipes/（Api/ExtensionApi/RecipeFiles.py）：服务端照常读，但跨包读文件用的是引擎内部的 server_resource
-# （Server/Helpers/PackJson.py），游戏里还没核过；核过之前不登记它的能力名 recipe_json_files，核过把这里改成 True。
-RECIPE_JSON_FILES_VERIFIED = False
+# 行为包里的 farmersdelight_recipes/（Api/ExtensionApi/RecipeFiles.py）：跨包读文件用的是引擎内部的 server_resource（Server/Helpers/PackJson.py）。
+# 2026-11-26 在游戏里核过（另一个行为包里不写 id 的配方 JSON 开服时读到了、按路径派生了 ID），能力名 recipe_json_files 登记上。
+RECIPE_JSON_FILES_VERIFIED = True
 
 # 两端各自的能力名（ext.hasCapability 查的就是这两张）：一项接口实现了、有测试、写进对外文档了才登记，按端分（只在一端有用的只登记那一端）。
 # 门面的标识（side、apiVersion、hostVersion、capabilities、hasCapability）是 apiVersion 1 起就有的，不单列能力名。

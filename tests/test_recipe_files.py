@@ -9,7 +9,7 @@
 - PackJson：经 traceback.sys.modules 拿引擎内部的 server_resource（没有、缺函数、列目录抛异常都是 None）；只要 .json、去重、排好序、剥注释、
   解码 UTF-8，读不了的那个跳过；
 - 接线：ready 广播之后读（ready 里登记的同 ID 配方被文件覆盖），读完调一次 onRecipesChanged 的处理函数（types、recipeIds 都是 None），
-  每端只读一次；能力名 recipe_json_files 等游戏里核过才登记（Events.RECIPE_JSON_FILES_VERIFIED）。
+  每端只读一次；能力名 recipe_json_files（2026-11-26 游戏里核过才登记的：Events.RECIPE_JSON_FILES_VERIFIED）只在服务端。
 """
 from __future__ import print_function
 
@@ -250,10 +250,11 @@ def testTheFilesAreReadAfterTheReadyBroadcastAndThenTheHandlersAreToldOnce():
             Ready.reset()
 
 
-def testTheCapabilityWaitsForTheGame():
-    assert Events.RECIPE_JSON_FILES_VERIFIED is False, "server_resource 这条路游戏里核过之后才改成 True"
-    assert "recipe_json_files" not in Events.SERVER_CAPABILITIES and "recipe_json_files" not in Events.CLIENT_CAPABILITIES
-    assert not SERVER.hasCapability("recipe_json_files")
+def testTheCapabilityIsRegisteredOnTheServerOnly():
+    """2026-11-26 游戏里核过（另一个行为包里的文件读到了），能力名登记上；只在服务端（文件只有服务端读）。"""
+    assert Events.RECIPE_JSON_FILES_VERIFIED is True
+    assert "recipe_json_files" in Events.SERVER_CAPABILITIES and "recipe_json_files" not in Events.CLIENT_CAPABILITIES
+    assert SERVER.hasCapability("recipe_json_files") and not Facade.getExtensionApi("client").hasCapability("recipe_json_files")
 
 
 if __name__ == "__main__":

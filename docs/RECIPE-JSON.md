@@ -4,9 +4,8 @@
 写法就是 JE 农夫乐事的配方 JSON，物品名换成网易版的、标签写农夫乐事词表里的 `common:` 名（JE 的标签名也认，见 §3）：
 把 JE 的配方文件改改物品名就能用。代码里登记用的是同一种写法（`ext.recipes.registerFromJson`、Builder 的 `toJson()`，见 [EXTENSION-API.md](EXTENSION-API.md) §5）。
 
-> **状态：没在游戏里核过。** 农夫乐事每次开服都会读这个目录，但跨行为包读文件用的是引擎内部的 `server_resource`
-> （和机械动力的 `create_recipes/` 同一条路），农夫乐事这边还没在游戏里核过，所以能力名 `recipe_json_files` 还没登记。
-> 核过之前要稳的话，在代码里用 `registerFromJson` 登记同一份 JSON：两条路登记同一个 ID 只是覆盖，不会多出一条。
+> 能力名 `recipe_json_files`（服务端）。跨行为包读文件用的是引擎内部的 `server_resource`（和机械动力的 `create_recipes/` 同一条路），
+> 2026-11-26 在游戏里核过：另一个行为包里不写 `id`、带注释的配方 JSON 开服时读到了，按路径派生了 ID，登记上了。
 
 ---
 
