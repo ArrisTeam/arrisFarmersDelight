@@ -292,7 +292,7 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |
-| `text(名字)` | 厨锅 | 经典厨锅界面食谱格里的名字。不写时界面显示成品物品的显示名（界面所在那一端的语言；物品没有名字时显示物品 ID），搜索也按它搜；覆盖已有配方时不写则沿用原来的名字。`getRecipeById` 给的样子里只有写了的 `text` |
+| `text(名字)` | 厨锅 | 经典厨锅界面食谱格里的名字，搜索框按它搜。不写时：标题显示成品物品的显示名（界面所在那一端的语言；要不到时显示物品 ID），搜索框只能按物品 ID 搜到——想让玩家按名字搜到就写上 `text`。覆盖已有配方时不写：成品没变才沿用原来的名字，换了成品就当没写。`getRecipeById` 给的样子里只有写了的 `text` |
 | `toJson()` | | 写成 JE 配方 JSON 的样子（带 `"id"`），可以存成 `farmersdelight_recipes/` 下的文件 |
 | `register()` | | 查格式、登记，返回 §4 的字典 |
 

@@ -23,7 +23,7 @@ SEARCH_LIMIT = 16
 # 选中的食谱有几种写法时，详情的食材格每这么多秒换成下一种（照旧界面：刚选中先完整显示第一种一个周期）
 VARIANT_SECONDS = 1.0
 # 还没选食谱时详情上方的标题：dolorContainer 的可本地化文字（Data.Lang 的写法 {"t": 语言文件的键}），服务端只给键，
-# 客户端按玩家的语言查（rp/texts 的 zh_CN.lang / en_US.lang）；选了食谱时标题是食谱表里那道菜的 text，原样显示
+# 客户端按玩家的语言查（rp/texts 的 zh_CN.lang / en_US.lang）；选了食谱时标题是食谱表里那道菜的 text，原样显示（没写 text 的是成品的显示名，titleOf）
 UNPICKED_TITLE = {"t": "arris_fd.pot_screen.pick_recipe"}
 _MEMO_LIMIT = 32   # 最多记几个搜索词的结果（边打边搜，每改一个字一个）
 _memo = {}         # 搜索词（小写） -> [表的签名, 过滤后的下标, 食谱格的内容（用到时才建）]
@@ -68,24 +68,24 @@ def _stack(item, count=1):
     return {"newItemName": item[0], "newAuxValue": item[1], "count": count}
 
 
-def _signature():
-    """表的签名：长度、索引重建的次数、已经要到了几个显示名（后来才要到的名字要让早先的搜索重算）。"""
-    return (len(CookingPotRecipeList), PotRules.revision(), ItemNames.remembered())
+def matchesSearch(recipe, search):
+    """搜索框：这道菜比不比得上搜索词。按行里的 text 比、不分大小写——两端同步过来的同一份数据，哪种联机下两端过滤出来的都一样，
+    选中的格号对得上；没写 text 的行 text 记的是成品的物品 ID，按物品 ID 搜得到。显示名只用在标题上（titleOf：各端自己问引擎，
+    联机时两端可能不一样），不参与搜索。搜索词为空时都比得上。旧的原生界面（Client/Ui/CookingPotProxy）也用它。"""
+    word = _chars(search).lower()
+    return not word or word in _chars(recipe.get("text")).lower()
 
 
 def _found(search):
-    """搜索词过滤的结果（记着）：[表的签名, 下标们, 食谱格的内容或 None]。按 titleOf 的标题搜（没写 text 的按成品的显示名）。"""
+    """搜索词过滤的结果（记着）：[表的签名, 下标们, 食谱格的内容或 None]。表的签名是长度加索引重建的次数。"""
     word = _chars(search).lower()
+    signature = (len(CookingPotRecipeList), PotRules.revision())
     entry = _memo.get(word)
-    if entry is None or entry[0] != _signature():
+    if entry is None or entry[0] != signature:
         if len(_memo) >= _MEMO_LIMIT:
             _memo.clear()
-        misses = ItemNames.misses()
-        indices = [index for index, recipe in enumerate(CookingPotRecipeList)
-                   if _wellFormed(recipe) and (not word or word in _chars(titleOf(recipe)).lower())]
-        entry = [_signature(), indices, None]      # 签名在循环之后取：循环里要到的名字也算进去
-        if ItemNames.misses() == misses:
-            _memo[word] = entry                    # 有名字没要到：不记，下次重算（隔一阵会再问引擎）
+        indices = [index for index, recipe in enumerate(CookingPotRecipeList) if _wellFormed(recipe) and matchesSearch(recipe, word)]
+        entry = _memo[word] = [signature, indices, None]
     return entry
 
 
@@ -129,9 +129,9 @@ def setNamePort(port):
 
 
 def titleOf(recipe):
-    """选中食谱时详情上方的标题、搜索按的名字：食谱表里那道菜的 text，原样显示。没写 text（新接口登记时没写，表里记的是成品的物品 ID）
-    的显示成品的显示名（界面所在那一端问引擎，ItemNames），要不到用物品 ID。下游写的 text 不一定是字：和原来的文字字段一样 str() 一下，
-    界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
+    """选中食谱时详情上方的标题：食谱表里那道菜的 text，原样显示。没写 text（新接口登记时没写，表里记的是成品的物品 ID）的显示成品的
+    显示名（界面所在那一端问引擎，ItemNames），要不到用物品 ID。只管显示，搜索按 text（matchesSearch）。下游写的 text 不一定是字：
+    和原来的文字字段一样 str() 一下，界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
     text = recipe.get("text")
     result = recipe.get("CookResult")
     if _pair(result) and result[0] and (text is None or text == result[0]):
