@@ -11,6 +11,7 @@ DishCrafts（拦砧板菜）、Server/CraftReturns（补还无序配方的容器
 九格是前置包给的配方朝向的物品字典（或 None），这两条规则只看有哪些原料，朝向不要紧。
 前置包太旧、没装它的内容包（ImportModule 拿不到这个模块）：两样都不登，那张工作台本来也不存在。
 """
+from . import BoardSwitch
 from ...QuModLibs.Server import serverApi
 from ...Shared.Data import Tips
 from ...Shared.Data.CraftReturns import CraftReturns
@@ -37,7 +38,9 @@ def gridOf(cells):
 
 
 def dishVeto(playerId, product, cells):
-    """改在砧板上摆的菜：这张工作台不做，告诉玩家去砧板。"""
+    """改在砧板上摆的菜：这张工作台不做，告诉玩家去砧板。这个玩家在设置里关了砧板（报上来的，BoardSwitch）就照做：他开不了砧板站点。"""
+    if not BoardSwitch.boardOn(playerId):
+        return None
     if not DishStation.isDishCraft(_name(product), Crafting.namesOf(gridOf(cells))):
         return None
     return Tips.DISH_ON_BOARD

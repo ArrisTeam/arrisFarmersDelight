@@ -232,6 +232,11 @@ def _onClientLoadAddonsFinish(args):
     dispatch("ClientLoadAddonsFinishServerEvent", args)
 
 
+@Listen("DelServerPlayerEvent")
+def _onDelServerPlayer(args):
+    dispatch("DelServerPlayerEvent", args)
+
+
 # ---- 加载 ----
 
 @Listen("LoadServerAddonScriptsAfter")

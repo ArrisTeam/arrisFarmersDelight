@@ -6,8 +6,10 @@
 HoD 的配置（Shared/Data/HandsOnConfig.py，和服务端是同一份）里关了的站点，它的 View.register 返回 None（和服务端的 Logic.register 同一个条件），
 这一步记成 skipped：不登记它、也不开它的场景和旁观的声音，方块照农夫乐事原样用，右键开经典界面或放料取料。
 炉灶要前置包接口的朝向钩子（FACING_HOOK）：和服务端的 grill 步骤同一个条件。
-最后一步 table（前置包的原版工作台站点上的登记）：给它配方书的客户端登记口登砧板菜不进书，条件和服务端登否决一样——这一端 board 那一步登上了、
+table 一步（前置包的原版工作台站点上的登记）：给它配方书的客户端登记口登砧板菜不进书，条件和服务端登否决一样——这一端 board 那一步登上了、
 remove_crafting_recipes 开着（TableClientLink；登记口不在记成 skipped，和服务端 table 一步一样）。
+最后一步 settings 只有客户端有：四个站点的玩家开关登进前置包的设置界面（SettingsClientLink），要接口的设置能力（SETTINGS，老的前置包没有就 skipped）；
+砧板那一项由它报给服务端，服务端那一半跟着砧板的否决在 board 那一步（Compat/Diegesis/BoardSwitch）。
 """
 STEPS = [
     ("board", "Compat.Diegesis.BoardClientLink:link", None),
@@ -15,4 +17,5 @@ STEPS = [
     ("pan", "Compat.Diegesis.PanClientLink:link", None),
     ("grill", "Compat.Diegesis.GrillClientLink:link", "FACING_HOOK"),
     ("table", "Compat.Diegesis.TableClientLink:link", None),
+    ("settings", "Compat.Diegesis.SettingsClientLink:link", "SETTINGS"),
 ]
