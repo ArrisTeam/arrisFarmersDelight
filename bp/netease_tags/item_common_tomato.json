@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:tomato",
+  "items": [
+    "arris:tomato"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:water_bucket",
+  "items": [
+    "minecraft:water_bucket"
+  ]
+}

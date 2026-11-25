@@ -1,0 +1,11 @@
+{
+  "type": "item",
+  "identifier": "common:knife",
+  "items": [
+    "arris:flint_knife",
+    "arris:golden_knife",
+    "arris:iron_knife",
+    "arris:diamond_knife",
+    "arris:netherite_knife"
+  ]
+}

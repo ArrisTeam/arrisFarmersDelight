@@ -1,0 +1,8 @@
+{
+  "type": "block",
+  "identifier": "common:heat_source_lit",
+  "items": [
+    "minecraft:campfire",
+    "minecraft:soul_campfire"
+  ]
+}

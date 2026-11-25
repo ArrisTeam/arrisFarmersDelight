@@ -1,0 +1,11 @@
+{
+  "type": "item",
+  "identifier": "common:crops",
+  "items": [
+    "arris:cabbage",
+    "arris:cabbage_leaf",
+    "arris:onion",
+    "arris:rice",
+    "arris:tomato"
+  ]
+}

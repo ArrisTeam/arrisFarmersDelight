@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:milk",
+  "items": [
+    "minecraft:milk_bucket",
+    "arris:milk_bottle"
+  ]
+}

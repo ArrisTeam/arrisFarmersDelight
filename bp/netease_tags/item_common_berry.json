@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:berry",
+  "items": [
+    "minecraft:sweet_berries",
+    "minecraft:glow_berries"
+  ]
+}

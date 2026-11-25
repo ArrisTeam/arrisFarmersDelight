@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_rice",
+  "items": [
+    "arris:cooked_rice"
+  ]
+}

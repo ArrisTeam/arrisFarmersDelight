@@ -1,0 +1,12 @@
+{
+  "type": "block",
+  "identifier": "common:heat_source",
+  "items": [
+    "minecraft:fire",
+    "minecraft:soul_fire",
+    "minecraft:lava",
+    "minecraft:flowing_lava",
+    "minecraft:magma",
+    "arris:stove"
+  ]
+}
