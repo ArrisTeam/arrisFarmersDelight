@@ -5,8 +5,10 @@
 - 厨锅（cooking）：CookingPotRecipeList 的一行，带 Id、Slots；Recipe 是按登记那一刻标签的成员展开的写法快照（最多 64 种，只给只认物品的
   旧读者看，配方以 Slots 为准）。同 ID 再登记就地换掉那一行（下标、行对象都不变）；删 = 打墓碑（Disabled）：下标是身份，不摘。
 - 砧板（cutting）：原料是物品的进 CuttingBoardDict，是标签的进 CuttingTagDict（键是标签名）；一种原料只有一条，被别的 ID 占着时拒绝
-  （input_taken：要改它就用它的 ID 覆盖）；删 = 真删（表同步会把删除发给客户端）。登记用的 ID 记在本模块，表里的值形状不变。
-- 营火（campfire_cooking）：CanCookedFoodDict[原料] = 成品（值照旧是物品名）；规矩同砧板。
+  （input_taken：要改它就用它的 ID 覆盖）；删 = 真删（表同步会把删除发给客户端）。登记用的 ID 写进条目（多一个可选键 "id"，旧读者不看它），
+  随表同步到客户端，两端按 ID 查到的一样。
+- 营火（campfire_cooking）：CanCookedFoodDict[原料] = 成品（值照旧是物品名，放不下 ID）；规矩同砧板。登记用的 ID 记在本模块，只有服务端知道：
+  客户端查新接口登记的营火配方，给的是派生的 ID。
 改完表让依赖它的缓存作废（CookingPot.rebuildIndex、BoardStation.invalidate）。登记 / 删除返回 {"ok", "error", "id"}。
 """
 from . import RecipeIds
@@ -14,6 +16,11 @@ from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Data.Cutting import CuttingBoardDict, CuttingTagDict, axeList, hoeList, knifeList, pickaxeList, shearsList, shovelList
 from ...Shared.Rules import BoardStation, CookingPot, ItemTags, PotSlots
+
+try:
+    _TEXT = (str, unicode)  # noqa: F821 - py2
+except NameError:
+    _TEXT = (str,)
 
 SNAPSHOT_WAYS = 64
 TOOLS = {"knife": (knifeList, None, "knife_dig"), "axe": (axeList, "axe", "axe_dig"), "pickaxe": (pickaxeList, "pickaxe", "pickaxe_dig"),
@@ -39,16 +46,21 @@ def _keysOf(kind):
 
 
 def idOfKey(kind, key):
-    """砧板 / 营火表里这个键的 ID：登记过的用登记的，没登记过的派生（RecipeIds）。"""
+    """砧板 / 营火表里这个键的 ID。砧板：新接口登记的把 ID 写在条目里（"id"，随表同步到客户端，两端查到的一样），没写的派生；
+    营火：表里的值是物品名、放不下 ID，登记过的记在本模块（只有服务端知道：客户端查到的是派生的 ID），没登记过的派生（RecipeIds）。"""
+    if kind == "cutting":
+        entry = _table(kind, key).get(key)
+        written = entry.get("id") if isinstance(entry, dict) else None
+        return written if isinstance(written, _TEXT) and written else RecipeIds.cuttingIdOf(key)
     found = _keys[kind].get(key)
     if found is not None:
         return found
-    return RecipeIds.campfireIdOf(key) if kind == "campfire_cooking" else RecipeIds.cuttingIdOf(key)
+    return RecipeIds.campfireIdOf(key)
 
 
 def _keyOf(kind, recipeId):
     key = _ids[kind].get(recipeId)
-    if key is not None and key in _table(kind, key):
+    if key is not None and key in _table(kind, key) and idOfKey(kind, key) == recipeId:
         return key
     for key in _keysOf(kind):
         if idOfKey(kind, key) == recipeId:
@@ -116,7 +128,7 @@ def register(spec, recipeId):
         return answer(False, "input_taken", recipeId, by=idOfKey(kind, key))
     if current is not None and current[1] != key:
         _forget(kind, current[1])
-    _table(kind, key)[key] = _cuttingEntry(spec) if kind == "cutting" else spec["result"]
+    _table(kind, key)[key] = _cuttingEntry(spec, recipeId) if kind == "cutting" else spec["result"]
     _remember(kind, recipeId, key)
     BoardStation.invalidate()
     return answer(True, None, recipeId)
@@ -144,11 +156,11 @@ def _cooking(spec, recipeId, index):
     return answer(True, None, recipeId)
 
 
-def _cuttingEntry(spec):
+def _cuttingEntry(spec, recipeId):
     tool, itemType = spec["tool"], None
     if not isinstance(tool, list):
         tool, itemType = TOOLS[tool][0], TOOLS[tool][1]
-    entry = {"itemList": [dict(result) for result in spec["results"]], "tool": tool}
+    entry = {"itemList": [dict(result) for result in spec["results"]], "tool": tool, "id": recipeId}
     if itemType:
         entry["item_type"] = itemType
     return entry

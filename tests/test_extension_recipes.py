@@ -172,6 +172,23 @@ def testCuttingAndCampfireRecipes():
         assert SERVER.getRecipeById("farmersdelight:campfire_cooking/minecraft/beef")["result"] == Cooking.CanCookedFoodDict["minecraft:beef"]
 
 
+def testTheClientSeesTheSameCuttingIdsWhileCampfireOnesAreDerived():
+    """砧板登记用的 ID 写在条目里（随表同步）：客户端没有服务端那份登记记录，也按同一个 ID 查到；营火的值是物品名、放不下 ID，客户端查到的是派生的。"""
+    with Sandbox():
+        assert SERVER.createBuilder("mymod:cutting/tofu", "cutting").ingredient("mymod:tofu").output("mymod:tofu_cube", 4).tool("knife").register()["ok"]
+        assert SERVER.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking").ingredient("mymod:tofu").output("mymod:fried_tofu").register()["ok"]
+        assert Cutting.CuttingBoardDict[("mymod:tofu", 0)]["id"] == "mymod:cutting/tofu"
+        for store in (Tables._ids["cutting"], Tables._ids["campfire_cooking"], Tables._keys["cutting"], Tables._keys["campfire_cooking"]):
+            store.clear()                       # 客户端：只有表同步过来的表，没有服务端的登记记录
+        assert CLIENT.getRecipeById("mymod:cutting/tofu")["result"] == [{"item": "mymod:tofu_cube", "count": 4}]
+        assert "mymod:cutting/tofu" in [recipe["id"] for recipe in CLIENT.getRecipesOfType("cutting")]
+        assert CLIENT.getRecipeById("mymod:campfire_cooking/tofu") is None
+        assert CLIENT.getRecipeById("legacy:campfire_cooking/mymod/tofu")["result"] == "mymod:fried_tofu"
+        Cutting.CuttingBoardDict[("mymod:tofu", 0)] = {"itemList": [{"itemName": "x:y", "count": 1}], "tool": Cutting.knifeList}
+        assert SERVER.getRecipeById("mymod:cutting/tofu") is None and SERVER.getRecipeById("legacy:cutting/mymod/tofu"), \
+            "旧接口把条目整个换掉了：那就是一条旧接口的配方"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
