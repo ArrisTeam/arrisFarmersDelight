@@ -312,6 +312,20 @@ def testListingATypeIsTheSameAsLookingEachOneUp():
         assert listed and listed == [SERVER.getRecipeById(view["id"]) for view in listed], kind
 
 
+def testOverridingWithAnotherResultDoesNotKeepTheOldName():
+    """T 复核 3.1：覆盖时换了成品又没给 text，以前沿用旧行的名字（番茄酱覆盖成 mymod:ketchup 还叫番茄酱，getRecipeById 还多出谁都没给过的
+    text）。现在只在成品没变、旧名字也不是旧成品的物品 ID 时才沿用。"""
+    with Sandbox():
+        assert SERVER.createBuilder("mymod:cooking/x", "cooking").ingredient("minecraft:cookie").output("mymod:x").register()["ok"]
+        assert SERVER.createBuilder("mymod:cooking/x", "cooking").ingredient("minecraft:cookie").output("mymod:y").register()["ok"]
+        row = Pot.CookingPotRecipeList[-1]
+        assert row["text"] == "mymod:y" and "text" not in SERVER.getRecipeById("mymod:cooking/x")
+        sauce = SERVER.getRecipeById("farmersdelight:cooking/tomato_sauce")
+        del sauce["text"]
+        assert SERVER.registerFromJson(dict(sauce, result={"item": "mymod:ketchup"}))["ok"]
+        assert next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")["text"] == "mymod:ketchup"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
