@@ -261,6 +261,7 @@ def testTheEnginePortIsReadyOnlyWhenTheProbeMemberHasArrived():
     assert port.ready() and items.lookups == 2
     items.members.clear()
     assert port.ready() and items.lookups == 2, "算好之后一直算好、不再探"
+    assert (port.probes, port.firstProbeAt, port.readyAt) == (2, 100.0, clock.now), "给游戏内自检看的记录"
 
 
 def testBeforeTenThePortIsReadyWhenVanillaItemsAnswer():

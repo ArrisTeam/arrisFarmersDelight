@@ -12,6 +12,7 @@ import time
 from .Engine import compFactory, levelId
 from ..Shared.Rules import Grilling, ItemTags, TagPort
 
+LOADED_AT = time.time()            # 这个模块导入的时刻：游戏内自检（Client/Debug/McdkTagsTest）拿它和 PORT.readyAt 比，标签晚多久才全
 PORT = TagPort.EnginePort(lambda: compFactory.CreateItem(levelId), lambda: compFactory.CreateBlock(levelId), None, time.time,
                           recipes=lambda: compFactory.CreateRecipe(levelId))
 ItemTags.setPort("client", PORT)

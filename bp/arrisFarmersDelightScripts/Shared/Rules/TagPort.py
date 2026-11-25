@@ -57,6 +57,9 @@ class EnginePort(object):
         self._every = every
         self._ready = False
         self._nextProbe = None
+        self.probes = 0                 # 给游戏内自检看的：探过几次、第一次探和探到准备好是什么时候（时钟的读数，没给时钟是 None）
+        self.firstProbeAt = None
+        self.readyAt = None
 
     @staticmethod
     def _method(getter, name):
@@ -107,7 +110,12 @@ class EnginePort(object):
             return False
         if now is not None:
             self._nextProbe = now + self._every
+        self.probes += 1
+        if self.probes == 1:
+            self.firstProbeAt = now
         self._ready = self._probe()
+        if self._ready:
+            self.readyAt = now
         return self._ready
 
     def _probe(self):
