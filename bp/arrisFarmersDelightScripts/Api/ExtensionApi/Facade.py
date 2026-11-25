@@ -11,9 +11,13 @@
 以后门面上加的接口各自登记能力名（Events 的两张表），别的模组先 hasCapability 再调。
 接口：
     ext.recipes              配方：厨锅、砧板、营火烹饪的登记 / 查询 / 删除（Recipes.py）
+    ext.registerKnife(物品名) / registerHeatSource(方块名) / registerStove(方块名) / registerCompostable(物品名, 概率, aux=0)
+                             配方以外的登记口（Registries.py；刀、热源优先用标签）
+    ext.tags                 标签的只读查询和词表的名字（Registries.TagView）
 """
 from . import Events
 from .Recipes import Recipes
+from .Registries import Registries, TagView
 from .Version import HOST_VERSION
 
 try:
@@ -30,6 +34,8 @@ class ExtensionApiFacade(object):
             raise ValueError("side 只能是 'server' 或 'client'，收到 %r" % (side,))
         self._side = side
         self._recipes = Recipes(side)
+        self._registries = Registries(side)
+        self._tags = TagView()
 
     @property
     def side(self):
@@ -50,6 +56,22 @@ class ExtensionApiFacade(object):
     @property
     def recipes(self):
         return self._recipes
+
+    @property
+    def tags(self):
+        return self._tags
+
+    def registerKnife(self, itemName):
+        return self._registries.registerKnife(itemName)
+
+    def registerHeatSource(self, blockName):
+        return self._registries.registerHeatSource(blockName)
+
+    def registerStove(self, blockName):
+        return self._registries.registerStove(blockName)
+
+    def registerCompostable(self, itemName, chance, aux=0):
+        return self._registries.registerCompostable(itemName, chance, aux)
 
     def hasCapability(self, name):
         """这一端有没有这项能力。名字不是字符串（None、列表……）就是没有，不抛。"""
