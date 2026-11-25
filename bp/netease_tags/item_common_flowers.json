@@ -1,0 +1,13 @@
+{
+  "type": "item",
+  "identifier": "common:flowers",
+  "items": [
+    "arris:wild_carrots",
+    "arris:wild_potatoes",
+    "arris:wild_beetroots",
+    "arris:wild_cabbages",
+    "arris:wild_tomatoes",
+    "arris:wild_onions",
+    "arris:wild_rice"
+  ]
+}

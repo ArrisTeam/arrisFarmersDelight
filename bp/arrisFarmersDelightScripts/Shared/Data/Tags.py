@@ -6,8 +6,8 @@ Shared/Rules/ItemTags 在没有引擎口（离线测试、Strata 沙箱、3.10 �
 docs/TAGS.md 写的也是这里。
 
 命名：common: + 小写下划线的单数名词，对应 JE 的 forge: / c: 标签；物品本名就是复数的照物品名（tomato_seeds、mutton_chops）。
-团队里已经在用的名字照用、不另起：common:crops、common:seeds（arrisCreateAdditions 用 netease_tags 登记了原版的作物、种子，它的生物质、
-种子油配方吃这两个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
+团队里已经在用的名字照用、不另起（有的是复数，照旧）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags
+登记了原版的作物、种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
 
 成员的规矩（网易 3.10 实机量过的，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：
 - 只写农夫乐事自己的和原版的物品 / 方块：写别的模组的名字，对方没装时引擎一直刷 ERROR 日志；
@@ -63,9 +63,12 @@ RAW_BACON = "common:raw_bacon"
 COOKED_BACON = "common:cooked_bacon"
 CABBAGE_SEEDS = "common:cabbage_seeds"
 WATER_BUCKET = "common:water_bucket"
-# 团队里已有的名字（arrisCreateAdditions）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去
+# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去；
+# common:flowers 在它那里是"所有的花"（照 JE 的 minecraft:flowers：小花、高花、开花的杜鹃……），JE 把七种野生作物放在
+# minecraft:small_flowers / tall_flowers 里，所以野生作物登记进 common:flowers
 CROPS = "common:crops"
 SEEDS = "common:seeds"
+FLOWERS = "common:flowers"
 # 农夫乐事自己的老标签：linkage.md 让下游给自己的刀挂它（Server/Helpers/Items.IsKnife 认），农夫乐事的五把刀以前没挂
 LEGACY_KNIFE = "arris:knife"
 
@@ -141,6 +144,8 @@ ITEM_TAGS = {
     WATER_BUCKET: ("minecraft:water_bucket",),
     CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato"),
     SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds"),     # JE 的 forge:seeds/rice 就是米
+    FLOWERS: ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
+              "arris:wild_onions", "arris:wild_rice"),                       # JE：前六种在 minecraft:small_flowers，野生稻在 tall_flowers
 }
 
 # 方块标签 → 农夫乐事登记的成员
@@ -199,6 +204,7 @@ JE_NAMES = {
     WATER_BUCKET: ("forge:buckets/water",),
     CROPS: ("forge:crops",),
     SEEDS: ("forge:seeds",),
+    FLOWERS: ("minecraft:flowers",),
     EGG: ("forge:eggs",),
     HEAT_SOURCE: ("farmersdelight:heat_sources",),
     HEAT_SOURCE_LIT: ("minecraft:campfires",),
