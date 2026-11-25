@@ -185,6 +185,12 @@ def _onPlayerAttackEntity(args):
     dispatch("PlayerAttackEntityEvent", args)
 
 
+@Listen("ProjectileDoHitEffectEvent")
+def _onProjectileDoHitEffect(args):
+    # 抛射物砸中东西；处理函数自己看 args["id"] 是什么抛射物
+    dispatch("ProjectileDoHitEffectEvent", args)
+
+
 @Listen("PlayerInteractServerEvent")
 def _onPlayerInteract(args):
     # 玩家右键实体（读回 cancel 可取消）；匹配键是手里的物品名

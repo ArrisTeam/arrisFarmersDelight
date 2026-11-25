@@ -3,7 +3,9 @@
 
 刀的额外掉落和洋葱掉落照 JE 的战利品修饰器，概率与掉落表在 Shared/Data/MobLoot.py，结算在 Shared/Rules/MobLoot.py。
 煎锅打人的音效照 JE 的 playSkilletAttackSound（重击 / 轻击，挑法在 Shared/Rules/SkilletRules.AttackClock）。
+烂番茄扔出去、砸中东西的声音照 JE 的 RottenTomatoItem / RottenTomatoEntity（Shared/Rules/RottenTomato.py）。
 """
+import random
 import time
 
 from .EventRegistry import registerHandler
@@ -12,7 +14,7 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import IsKnife
 from .Helpers.Player import SetNotCreateItem
 from ..Shared.Data.MobLoot import KNIFE_HAM, PROJECTILES
-from ..Shared.Rules import MobLoot
+from ..Shared.Rules import MobLoot, RottenTomato
 from ..Shared.Rules.SkilletRules import SKILLET_ITEM, AttackClock
 
 PLAYER = "minecraft:player"
@@ -64,8 +66,22 @@ def OnSkilletAttack(args):
         ToAllPlayerPlaySound(dimensionId, compFactory.CreatePos(playerId).GetFootPos(), _swings.sound(playerId, time.time()))
 
 
-@registerHandler("ItemUseAfterServerEvent", match="arris:rotten_tomato")
+@registerHandler("ItemUseAfterServerEvent", match=RottenTomato.ITEM)
 def OnThrowRottenTomato(args):
     playerId = args["entityId"]
     SetNotCreateItem(playerId, args["itemDict"])
-    compFactory.CreateProjectile(levelId).CreateProjectileEntity(playerId, "arris:rotten_tomato")
+    dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
+    ToAllPlayerPlaySound(dimensionId, compFactory.CreatePos(playerId).GetFootPos(), RottenTomato.THROW_SOUND,
+                         RottenTomato.THROW_VOLUME, RottenTomato.throwPitch(random.random()))
+    compFactory.CreateProjectile(levelId).CreateProjectileEntity(playerId, RottenTomato.ITEM)
+
+
+@registerHandler("ProjectileDoHitEffectEvent")
+def OnRottenTomatoHit(args):
+    projectileId = args["id"]
+    if GetEngineTypeStr(projectileId) != RottenTomato.ITEM:
+        return
+    dimensionId = compFactory.CreateDimension(projectileId).GetEntityDimensionId()
+    for _ in range(RottenTomato.hitSounds(args["hitTargetType"])):
+        ToAllPlayerPlaySound(dimensionId, (args["x"], args["y"], args["z"]), RottenTomato.HIT_SOUND, RottenTomato.HIT_VOLUME,
+                             RottenTomato.hitPitch(random.random(), random.random()))
