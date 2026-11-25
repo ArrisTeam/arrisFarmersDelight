@@ -81,6 +81,7 @@ HEAT_SOURCE_LIT = "common:heat_source_lit"
 # 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
 HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
+COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -160,6 +161,11 @@ BLOCK_TAGS = {
     # JE：熔岩、#minecraft:campfires、#minecraft:fire（基岩版熔岩是两个方块名）
     TRAY_HEAT_SOURCES: ("minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:fire",
                         "minecraft:soul_fire"),
+    # JE：两种蘑菇、灰化土、菌丝、有机肥（基岩版按阶段是四个方块）、沃土、沃土耕地（干、湿两个方块）、#mushroom_colonies
+    COMPOST_ACTIVATORS: ("minecraft:brown_mushroom", "minecraft:red_mushroom", "minecraft:podzol", "minecraft:mycelium",
+                         "arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2",
+                         "arris:organic_compost_stage3", "arris:rich_soil", "arris:rich_soil_farmland", "arris:rich_soil_farmland_moist",
+                         "arris:brown_mushroom_colony", "arris:red_mushroom_colony"),
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -218,6 +224,7 @@ JE_NAMES = {
     HEAT_SOURCE_LIT: ("minecraft:campfires",),
     HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
+    COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

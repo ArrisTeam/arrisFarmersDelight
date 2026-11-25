@@ -1,0 +1,19 @@
+{
+  "type": "block",
+  "identifier": "farmersdelight:compost_activators",
+  "items": [
+    "minecraft:brown_mushroom",
+    "minecraft:red_mushroom",
+    "minecraft:podzol",
+    "minecraft:mycelium",
+    "arris:organic_compost_stage0",
+    "arris:organic_compost_stage1",
+    "arris:organic_compost_stage2",
+    "arris:organic_compost_stage3",
+    "arris:rich_soil",
+    "arris:rich_soil_farmland",
+    "arris:rich_soil_farmland_moist",
+    "arris:brown_mushroom_colony",
+    "arris:red_mushroom_colony"
+  ]
+}

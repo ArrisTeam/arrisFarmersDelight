@@ -115,7 +115,8 @@ def testVanillaMembersAreRealNames():
     assert len(itemNames) > 1000 and "minecraft:beef" in itemNames and "minecraft:campfire" in blockNames
     missing = []
     for kind, table in (("item", Tags.ITEM_TAGS), ("item", Tags.VANILLA_TAGS), ("block", Tags.BLOCK_TAGS)):
-        known = itemNames if kind == "item" else blockNames
+        # 方块：资源包 blocks.json 的键有几个还是老名字（草方块是 grass），创造目录里的方块物品也算（minecraft:grass_block）
+        known = itemNames if kind == "item" else blockNames | itemNames
         missing += ["%s %s" % (tag, member) for tag, members in table.items() for member in members
                     if member.startswith("minecraft:") and member not in known]
     assert not missing, missing
@@ -219,6 +220,7 @@ def _serverHeat():
 LISTED = {
     Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
     Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
+    Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
 }
 
 

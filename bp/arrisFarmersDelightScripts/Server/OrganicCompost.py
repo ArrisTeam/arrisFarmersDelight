@@ -4,13 +4,15 @@
 概率与阶段换算在 Shared/Rules/CompostRules.py（OrganicCompostBlock.randomTick）。
 JE 取 3×3×3 里每格上方的天空光，最大值 > 12 算露天；这里没有直接读天空光的接口，
 改成看这 9 列里有没有一列最高的非空气方块不高过有机肥上方一格（上面只有一棵植物也算露天）。
+催化剂是名单 COMPOST_ACTIVATORS ∪ 方块标签 farmersdelight:compost_activators（名单原样留着，不在名单里的再看标签）。
 """
 import random
 
 from .EventRegistry import registerHandler
 from .FarmWorld import FarmWorld
+from ..Shared.Data import Tags
 from ..Shared.Data.Farming import COMPOST_ACTIVATORS
-from ..Shared.Rules import CompostRules, FarmEdits
+from ..Shared.Rules import CompostRules, FarmEdits, ItemTags
 
 
 def _skyOpen(world, x, y, z):
@@ -33,7 +35,7 @@ def OnOrganicCompostRandomTick(args):
         for dy in (-1, 0, 1):
             for dz in (-1, 0, 1):
                 cell = (x + dx, y + dy, z + dz)
-                if world.nameAt(cell) in COMPOST_ACTIVATORS:
+                if ItemTags.blockListed(world.nameAt(cell), COMPOST_ACTIVATORS, Tags.COMPOST_ACTIVATORS):
                     activators += 1
                 if not hasWater and world.hasWaterAt(cell):
                     hasWater = True

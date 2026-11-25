@@ -42,12 +42,14 @@ MEANINGS = {
     "minecraft:egg": "蛋（原版自带的标签）", "common:chili": "辣椒", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
     "farmersdelight:heat_conductors": "把热传给上面一格的方块",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅放在上面要画托盘的方块",
+    "farmersdelight:compost_activators": "有机肥周围的催化剂",
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
     "common:heat_source": "热源（Shared/Rules/HeatSources）", "common:heat_source_lit": "热源（Shared/Rules/HeatSources，锅底下要点着）",
     "farmersdelight:heat_conductors": "锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts）",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat）",
+    "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
 }
 
 
