@@ -6,10 +6,11 @@
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
   脚注是全部产物（产物不止一种才有，含主产物，BoardBook.java:55）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
-- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（SkilletBook 31 行 / StoveBook 36 行：2 * sideTicks，不看 one_sided——只煎一面的
+- 煎锅、炉灶：能煎 / 烤的一件一页（成品相同的几种蛋并成一页，cookGroups），注明两面一共几秒（SkilletBook 31 行 / StoveBook 36 行：2 * sideTicks，不看 one_sided——只煎一面的
   从下往上煎透，用的也是两面的时间）；只看。
 三种时间都带着配置里的倍率（cooking_pot_time / skillet_time / stove_time，站点关了算 1.0），书上写的就是服务端此刻的时间（两端同一份配置表）。
 """
+from ..Data import Tags
 from ..Data.Cooking import CanCookedFoodDict
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from ..Data.Cutting import CuttingBoardDict, CuttingTagDict
@@ -198,10 +199,25 @@ def boardCurrent(layers, item):
 
 # ---------------------------------------------------------------- 煎锅、炉灶
 
+def cookGroups():
+    """营火配方（CanCookedFoodDict）怎么分页（站点的书、JEI 的煎锅 / 炉灶页共用）：成品相同、原料都在原版 minecraft:egg 标签里的并成一页
+    （基岩版的三种蛋都煎成煎蛋：一页，原料那一格轮换），别的一件一页。[(原料名列表, 成品名)]：组里按标签成员的先后，组按第一件原料的名字排。"""
+    eggs = list(ItemTags.itemsOf(Tags.EGG))
+    groups = {}
+    for raw in sorted(CanCookedFoodDict):
+        result = CanCookedFoodDict[raw]
+        groups.setdefault((result,) if raw in eggs else (result, raw), []).append(raw)
+    found = []
+    for key, raws in groups.items():
+        raws.sort(key=lambda name: (eggs.index(name) if name in eggs else len(eggs), name))
+        found.append((raws, key[0]))
+    return sorted(found)
+
+
 def _cookPages(sideSeconds):
-    """能煎 / 烤的一件一页，每道都写两面一共几秒（2 * sideTicks）：不看 one_sided（只煎一面的从下往上煎透，用的也是两面的时间）。"""
-    return [{"key": raw, "item": stack(CanCookedFoodDict[raw]), "ways": [[[(raw, 0)]]], "foot": [stack(CLOCK)],
-             "note": _seconds(2 * sideSeconds), "kind": None} for raw in sorted(CanCookedFoodDict)]
+    """一组原料一页（cookGroups），键是组里的第一件；每道都写两面一共几秒（2 * sideTicks）：不看 one_sided（只煎一面的从下往上煎透，用的也是两面的时间）。"""
+    return [{"key": raws[0], "item": stack(result), "ways": [[[(raw, 0) for raw in raws]]], "foot": [stack(CLOCK)],
+             "note": _seconds(2 * sideSeconds), "kind": None} for raws, result in cookGroups()]
 
 
 def panPages():
@@ -215,9 +231,9 @@ def grillPages():
 
 
 def cookCurrent(items):
-    """煎锅 / 炉灶上第一件还生着的东西的键；没有返回 None。"""
+    """煎锅 / 炉灶上第一件还生着的东西在哪一页（页的键：并成一页的几种蛋都翻到那一页）；没有返回 None。"""
     for item in items or ():
         name = item.get("newItemName") if item else None
         if name in CanCookedFoodDict:
-            return name
+            return next((raws[0] for raws, _result in cookGroups() if name in raws), name)
     return None
