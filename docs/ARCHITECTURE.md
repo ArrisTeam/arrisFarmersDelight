@@ -586,8 +586,13 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 - 喂食（马饲料、狗粮）：`Livestock.py` 在 `PlayerInteractServerEvent` 里直接处理并取消（JE 同样用右键事件）。官方文档说这个事件在玩家"可以与实体交互"时才来，
   也就是目标对手里的物品有交互时；所以马和狼身上加了 `minecraft:bribeable` 记号（原版只有海豚用，没有自带行为，见 `Shared/Data/Mobs.py` 开头），
   否则马饲料触发不了事件、能吃的狗粮会被玩家吃掉。野生的目标也由这里接管取消，什么都不发生。
-- 覆盖原版文件（猫、农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
+- 覆盖原版文件（猫、鸡、猪、兔子、鹦鹉、狼，农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
   由 `tools/gen_vanilla_overrides.py` 生成；`tests/test_vanilla_overrides.py` 找得到本机原版行为包时逐字比对，游戏升级后原版变了就失败，重新生成即可。
+  动物认农夫乐事的东西（JE `CommonSetup` / `RabbitsEatCabbageMixin` / 狼吃 isMeat）：鸡（两种种子、稻米）、猪（卷心菜、番茄）的吸引 / 繁殖 / 喂小崽，
+  兔子（卷心菜、卷心菜叶）的繁殖 / 喂小崽，鹦鹉（三种种子）的驯服，狼（十种肉）的繁殖 / 喂小崽 / 治疗（治疗量照原版狼 = 饱食度 × 2）。
+  繁殖、喂小崽、驯服在成年 / 幼年 / 野生组件组里，用 `AddActorComponent` 加会被组的切换盖掉，所以走覆盖文件；兔子的吸引、狼的讨食
+  （基础组件）仍由 `Shared/Data/Mobs.py` 在实体出现时加。村民没做：拾取（`shareables`）是数据，但要整份覆盖很大的 `villager_v2.json`，
+  JE 的 `FOOD_POINTS`（作物算几点繁殖食物）在基岩没找到对应的数据。
 - 战利品箱：JE 的 `add_loot_table` 在基岩版没有对应物，同路径文件又是整份替换，所以 `ChestLoot.py` 在 `OnContainerFillLoottableServerEvent` 里追加；
   表名是基岩版原版文件名（`shipwrecksupply` 不是 `shipwreck_supply`）。JE 里菜刀和煎锅的 `set_damage` 没搬（掉出来是满耐久）。
 - 离线测试服务端模块：`tests/fakeengine.py` 把 `Server/Helpers/Engine.py` 换成假的，真正的 Helpers 和玩法模块跑在它上面。
@@ -652,7 +657,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 
 - 物品 JSON（`netease_items_beh/arris_skillet_item.json`）：`custom_item_type: weapon` 才会读 `netease:weapon`（以前没写，攻击 / 附魔能力 / 修复都没生效），
   `max_damage` 250（基岩版"损伤 > 最大耐久才坏"，与小刀、原版基岩工具同一个约定，不再减一）、`enchantment` 14、`level` 2（网易文档：铁砧用铁锭修）、
-  `attack_damage` 7（取 JE 的修饰符，按"加在玩家基础 1 上"理解，实际 8，待实机核）、提示改成 JE 的"潜行可放置"
+  `attack_damage` 7（`netease:weapon.attack_damage` 加在玩家基础 1 点之上，实际 8 = JE；2026-11-26 实机：铁刀写 4 时打猪掉 5 点、空手掉 1 点，
+  五把刀因此各减 1：燧石 2、铁 3、金 1、钻石 4、下界合金 5，总伤害是 JE 2.5 / 3.5 / 1.5 / 4.5 / 5.5 向上取整，`tests/test_knife_values.py` 钉着）、提示改成 JE 的"潜行可放置"
   （`netease:customtips` 是整段悬停文字的格式串，所以后面补了 `%enchanting%%attack_damage%`，不然附魔和攻击伤害两行可能被盖掉）。
 - 放置：`SkilletItem.OnUseSkilletItem`（`ServerItemUseOnEvent`，优先级 98.5）只有潜行才放，不潜行直接拦下（不让 ItemToBlock 当普通方块物品放，也不取消引擎的 `ret`，
   右键箱子照样开箱）。放置本身仍调 `ItemToBlock.OnPlaceItemAsBlock`；放好后把那件煎锅（`SkilletRules.storeItem`：名字、附加值、耐久、附魔、提示、额外 ID、用户数据，
@@ -789,7 +795,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 拿绳子点绳子（`RopeAndNet.OnPlaceRopeOnRope`，`Shared/Rules/RopeExtend.py`，ServerItemUseOnEvent 优先级 98），照 RopeItem.updatePlacementContext：
   点到的格子（点到绳子就是它；点到实心方块是外侧那一格，草、水这些能顶替的就是它自己、和绳子无关）是绳子时，不潜行一律顺着绳子往下，
   第一格能顶替的（空气、水、草）放下，碰到岩浆或实心方块不放；潜行照点到的面放一格（朝下的面也顺着往下走，别的方向碰到绳子不放）。
-  引擎自己那一格（点到的面外侧）一律取消；点到的方块自己会处理右键（`TatamiMat.usesTheClick`：砧板、厨锅、炉灶……）时不潜行让给它；放下响 `dig.cloth`。
+  "点到实心方块、外侧那一格是绳子"只在潜行时认：JE 不潜行时先调点到的方块的 `use`（箱子、门、按钮……），这边没有"哪些方块自己会处理右键"的表，
+  不潜行就照引擎原样；潜行时 JE 本来就不调方块的 `use`。认了的时候引擎自己那一格（点到的面外侧）一律取消；放下响 `dig.cloth`。
 - 绳上的番茄藤（`Crops.OnCropNeighborChanged` / `OnVineRemoved`，`Shared/Rules/TomatoVine.py`），照 HangingTomatoBlock：下面是地上那株第 3 级起或另一节藤才撑得住；
   藤没了在原地放回绳子——四个藤方块带 `netease:listen_block_remove`，`BlockRemoveServerEvent` 来了下一刻看那一格，空气 / 水才放（长一级、摘果子是换成另一节藤，不放）。
   JE 的亮度条件（亮度 ≥ 8 或看得见天）没做。
@@ -952,7 +959,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
 - 原版汤 / 南瓜派的提示（滋养时长、"可放置"）：附加包改不了原版物品的提示；六种盛宴的物品是方块物品，没有物品 JSON 可写 `netease:customtips`。
-- 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
+- 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int，加在玩家基础 1 点之上：总伤害取 JE 的向上取整）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
 
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
@@ -960,9 +967,10 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 进度（同上）。
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
 
-还要进游戏量的（写好了、离线测过，实机没看）：拿绳子点绳子、番茄藤放回绳子、熟番茄拿骨粉右键、烂番茄的声音和飞行、方块音效、舒适回血、
-沃土土豆的掉落；还有刀的磨损 / 伤害、铁砧修刀、锻造台升级下界合金刀、堆肥桶的头一件和满了以后、原版作物的掉落分布、刀挖掘的速度、
-橱柜 / 篮子 / 厨锅拆下来留不留名字。
+2026-11-26 实机量过、照着改了的：刀打一下掉 1 点耐久（和 JE 一样）、拆方块掉 2 点（改回 1 点）、`attack_damage` 加在基础 1 点之上（五把刀各减 1）；
+原版堆肥桶空桶第一件必成、7 层不收不扣（脚本堆肥照做）；原版成熟作物的掉落分布（沃土上的原版作物照它改）；番茄藤放回绳子、舒适回血也核过。
+还要进游戏看的（写好了、离线测过）：真的右键拿绳子点绳子、熟番茄拿骨粉右键、烂番茄的声音和飞行、方块音效、提示、效果颜色、动物认农夫乐事的东西、
+滋养清消耗度和吃下的滋养不冒粒子、土豆加农炮的弹药、时运多掉的；还有铁砧修刀、锻造台升级下界合金刀、刀挖掘的速度、橱柜 / 篮子 / 厨锅拆下来留不留名字。
 
 ## 引擎坑（踩过的）
 

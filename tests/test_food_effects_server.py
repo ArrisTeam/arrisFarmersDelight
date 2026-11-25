@@ -66,10 +66,31 @@ class FakeAttr(object):
 class FakeGame(object):
     def __init__(self):
         self.timers = []
+        self.once = []
+        self.rules = {}
 
     def AddRepeatedTimer(self, seconds, func, *params):
         self.timers.append((seconds, func))
         return len(self.timers)
+
+    def AddTimer(self, seconds, func, *params):
+        self.once.append((seconds, func, params))
+
+    def GetGameRulesInfoServer(self):
+        return {"option_info": dict(self.rules)}
+
+
+class FakePlayer(object):
+    def __init__(self):
+        self.regen = True
+        self.exhaustion = 3.5
+
+    def IsPlayerNaturalRegen(self):
+        return self.regen
+
+    def SetPlayerCurrentExhaustionValue(self, value):
+        self.exhaustion = value
+        return True
 
 
 class FakeFactory(object):
@@ -77,9 +98,13 @@ class FakeFactory(object):
         self.effects = {}
         self.attrs = {}
         self.game = FakeGame()
+        self.players = {}
 
     def CreateGame(self, levelId):
         return self.game
+
+    def CreatePlayer(self, playerId):
+        return self.players.setdefault(playerId, FakePlayer())
 
     def CreateEffect(self, entityId):
         return self.effects.setdefault(entityId, FakeEffects())
@@ -246,7 +271,41 @@ def testComfortHealsOnePointWhenNothingElseWould():
 def testTheComfortTimerStartsOnceEveryFourSeconds():
     Registry.dispatch("ClientLoadAddonsFinishServerEvent", {"playerId": PLAYER})
     Registry.dispatch("ClientLoadAddonsFinishServerEvent", {"playerId": PLAYER})
-    assert [seconds for seconds, _func in FACTORY.game.timers] == [4.0]
+    assert [seconds for seconds, _func in FACTORY.game.timers] == [4.0, 0.25]          # 舒适每 4 秒、滋养每 0.25 秒
+
+
+def _nourishCase(effects, health=15.0, saturation=2.0, regen=True, gamerule=None):
+    _player(*effects)
+    attr = FACTORY.CreateAttr(PLAYER)
+    attr.health, attr.saturation, attr.top = health, saturation, 20.0
+    player = FACTORY.CreatePlayer(PLAYER)
+    player.regen, player.exhaustion = regen, 3.5
+    FACTORY.game.rules = {} if gamerule is None else {"natural_regeneration": gamerule}
+    FoodEffects.nourishmentTick()
+    return player.exhaustion
+
+
+def testNourishmentClearsExhaustionUnlessHealingWithSaturation():
+    # JE NourishmentEffect：开着自然回血、受了伤、还有饱和度时回血照常花饱和度（不清），别的时候消耗度清零
+    assert _nourishCase(["arris:nourishment"]) == 3.5
+    assert _nourishCase(["arris:nourishment"], health=20.0) == 0.0
+    assert _nourishCase(["arris:nourishment"], saturation=0.0) == 0.0
+    assert _nourishCase(["arris:nourishment"], regen=False) == 0.0
+    assert _nourishCase(["arris:nourishment"], gamerule=False) == 0.0
+    assert _nourishCase([], health=20.0) == 3.5                              # 没有滋养不管
+
+
+def testNourishmentFromFoodIsSwappedForOneWithoutParticles():
+    comp = _player("arris:nourishment")
+    FACTORY.game.once[:] = []
+    args = {"playerId": PLAYER, "itemDict": {"newItemName": "arris:fried_rice", "newAuxValue": 0, "count": 1}}
+    Registry.dispatch("PlayerEatFoodServerEvent", args, "arris:fried_rice")
+    assert [(seconds, params) for seconds, _func, params in FACTORY.game.once] == [(0.0, (PLAYER,))]
+    FACTORY.game.once[0][1](PLAYER)
+    assert comp.log == [("remove", "arris:nourishment"), ("add", "arris:nourishment", 100, 0, False)]
+    FACTORY.game.once[:] = []
+    Registry.dispatch("PlayerEatFoodServerEvent", {"playerId": PLAYER, "itemDict": {"newItemName": "arris:tomato"}}, "arris:tomato")
+    assert FACTORY.game.once == []                                           # 不给滋养的食物不管
 
 
 def testDeathClearsBothEffects():

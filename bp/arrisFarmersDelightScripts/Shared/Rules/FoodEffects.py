@@ -98,3 +98,13 @@ COMFORT_HEAL = 1.0
 def comfortHeals(hasRegeneration, saturation, health, maxHealth):
     """舒适这一下回不回血。"""
     return not hasRegeneration and saturation <= 0.0 and health < maxHealth
+
+
+# 滋养（JE 1.3.4 NourishmentEffect.applyEffectTick，每刻一次）：除了"开着自然回血、受了伤、还有饱和度"（这时回血照常花饱和度），
+# 都把消耗度清零——疾跑、跳跃、挨打既不掉饱和度也不掉饥饿值。这边 0.25 秒清一次：消耗度攒到 4 才扣一次，0.25 秒里攒不到
+NOURISHMENT_SECONDS = 0.25
+
+
+def nourishmentClears(naturalRegen, health, maxHealth, saturation):
+    """滋养这一下要不要把消耗度清零。"""
+    return not (naturalRegen and health < maxHealth and saturation > 0.0)

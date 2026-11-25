@@ -115,6 +115,30 @@ def testEffectColorsAreJavas():
     assert _effectColor("comfort") == [0xA6, 0xEB, 0xFF] and 10939391 == 0xA6EBFF
 
 
+def testNourishmentClearsExhaustionLikeJava():
+    # JE 1.3.4 NourishmentEffect.applyEffectTick：isPlayerHealingWithSaturation（自然回血开着、受了伤、饱和度 > 0）时不清，别的都清
+    assert not Rules.nourishmentClears(True, 10.0, 20.0, 1.0)
+    assert Rules.nourishmentClears(True, 20.0, 20.0, 1.0)
+    assert Rules.nourishmentClears(True, 10.0, 20.0, 0.0)
+    assert Rules.nourishmentClears(False, 10.0, 20.0, 1.0)
+    assert 0 < Rules.NOURISHMENT_SECONDS * 20 <= 5                         # 0.25 秒（5 刻）里消耗度攒不到 4
+
+
+def testNourishingFoodsAreTheItemsWhoseFoodGivesNourishment():
+    import glob
+    import io
+    import json
+    import os
+    found = set()
+    for path in glob.glob(os.path.join(fdtest.BP, "netease_items_beh", "*.json")):
+        with io.open(path, encoding="utf-8") as handle:
+            item = json.load(handle)["minecraft:item"]
+        food = item["components"].get("minecraft:food") or {}
+        if any(effect.get("name") == Effects.NOURISHMENT for effect in food.get("effects", [])):
+            found.add(item["description"]["identifier"])
+    assert Effects.NOURISHING_FOODS == found, sorted(Effects.NOURISHING_FOODS ^ found)
+
+
 def testComfortHealsLikeJava():
     # JE 1.3.4 ComfortEffect.applyEffectTick：有生命恢复不管；玩家还有饱和度不管；没满血回 1；每 80 刻一次
     assert Rules.COMFORT_SECONDS == 80 / 20.0 and Rules.COMFORT_HEAL == 1.0

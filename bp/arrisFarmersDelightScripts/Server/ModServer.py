@@ -34,6 +34,7 @@ from . import Crops  # noqa: F401
 from . import BoneMeal  # noqa: F401
 from . import RichSoil  # noqa: F401
 from . import WildCrops  # noqa: F401
+from . import FortuneDrops  # noqa: F401
 from . import FoodBlocks  # noqa: F401
 from . import Storage  # noqa: F401
 from . import RopeAndNet  # noqa: F401

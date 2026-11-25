@@ -2,7 +2,9 @@
 """Mobs - 狗粮 / 马饲料的喂食规则，给原版狼、马类、兔子追加的实体组件（JSON 串）（双端，纯数据）
 
 喂食（右键驯服的生物）照 JE 的 DogFoodItem / HorseFeedItem；吸引（tempt / beg）照 JE 的 CommonEvents.onAnimalsJoinWorld：
-马、驴、骡被马饲料吸引，兔子被卷心菜和卷心菜叶吸引，狼向狗粮讨食。
+马、驴、骡被马饲料吸引，兔子被卷心菜和卷心菜叶吸引，狼向狗粮和农夫乐事的十种肉讨食（JE 的狼对所有 isMeat 的食物讨食）。
+繁殖、喂小崽、治疗、驯服在成年 / 幼年 / 野生这些组件组里，加组件会被组的切换盖掉，所以那些改在覆盖原版实体文件里
+（tools/gen_vanilla_overrides.py 生成 bp/entities/chicken、pig、rabbit、parrot、wolf.json）。
 追加的 tempt / beg 会整个盖掉原版同名组件，所以 JSON 都是原版（3.10）的同名组件加上本模组的物品，原版没动的字段原样抄来。
 
 喂食要靠 bribeable 这个"记号"组件：官方文档说"玩家右键实体"事件（PlayerInteractServerEvent）在玩家"可以与实体交互"时才来，
@@ -43,7 +45,7 @@ horseComponentsDict = {
 }
 
 wolfComponentsDict = {
-    "minecraft:behavior.beg": '{"priority": 9, "look_distance": 8, "look_time": [2, 4], "items": ["arris:dog_food", "bone", "porkchop", "cooked_porkchop", "chicken", "cooked_chicken", "beef", "cooked_beef", "rotten_flesh", "muttonraw", "muttoncooked", "rabbit", "cooked_rabbit"]}',
+    "minecraft:behavior.beg": '{"priority": 9, "look_distance": 8, "look_time": [2, 4], "items": ["arris:dog_food", "bone", "porkchop", "cooked_porkchop", "chicken", "cooked_chicken", "beef", "cooked_beef", "rotten_flesh", "muttonraw", "muttoncooked", "rabbit", "cooked_rabbit", "arris:minced_beef", "arris:beef_patty", "arris:chicken_cuts", "arris:cooked_chicken_cuts", "arris:bacon", "arris:cooked_bacon", "arris:mutton_chops", "arris:cooked_mutton_chops", "arris:ham", "arris:smoked_ham"]}',
     "minecraft:bribeable": _feedMarker(DOG_FOOD),
 }
 

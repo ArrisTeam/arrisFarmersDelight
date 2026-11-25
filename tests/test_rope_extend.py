@@ -101,12 +101,14 @@ def testTheStartIsTheClickedRopeOrTheRopeOutsideTheClickedFace():
     blocks = _column(70, 2)                                    # 70 69
     blocks[(5, 71, 5)] = STONE                                 # 绳子挂在石头下面
     nameAt = _nameAt(blocks)
-    assert RopeExtend.startRope((5, 69, 5), NORTH, nameAt) == (5, 69, 5)
-    assert RopeExtend.startRope((5, 71, 5), DOWN, nameAt) == (5, 70, 5)                  # 点石头朝下的面：外侧那格是绳子
-    assert RopeExtend.startRope((5, 71, 5), NORTH, nameAt) is None                       # 外侧是空气：照常放
+    for sneaking in (False, True):
+        assert RopeExtend.startRope((5, 69, 5), NORTH, sneaking, nameAt) == (5, 69, 5)   # 点到的就是绳子：潜行不潜行都算
+    assert RopeExtend.startRope((5, 71, 5), DOWN, True, nameAt) == (5, 70, 5)            # 潜行点石头朝下的面：外侧那格是绳子
+    assert RopeExtend.startRope((5, 71, 5), DOWN, False, nameAt) is None                 # 不潜行：石头（可能是箱子、门）先轮到，不抢
+    assert RopeExtend.startRope((5, 71, 5), NORTH, True, nameAt) is None                 # 外侧是空气：照常放
     blocks[(4, 70, 5)] = "minecraft:tall_grass"
     blocks[(3, 70, 5)] = ROPE
-    assert RopeExtend.startRope((4, 70, 5), WEST, _nameAt(blocks)) is None               # 点到的是草：JE 放在草那一格，不看旁边
+    assert RopeExtend.startRope((4, 70, 5), WEST, True, _nameAt(blocks)) is None         # 点到的是草：JE 放在草那一格，不看旁边
 
 
 # ---- 服务端 ----
@@ -205,24 +207,26 @@ def testOtherBlocksAreLeftToTheEngine():
     assert _click((5, 70, 5))["ret"] is False and _ropes() == [68, 69, 70]               # 手里不是绳子
 
 
-def testClickingTheFaceARopeHangsFromExtendsIt():
-    _setUp()
+def testSneakingOnTheFaceARopeHangsFromExtendsIt():
+    _setUp(sneaking=True)
     world.setBlock(5, 71, 5, STONE)
     _hang(70, 2)
-    _click((5, 71, 5), DOWN)
+    _click((5, 71, 5), DOWN)                                   # 潜行点石头朝下的面：从挂着的那节往下接
     assert _ropes() == [68, 69, 70]
 
 
-def testBlocksThatUseTheClickKeepItUnlessSneaking():
-    _setUp()
-    world.setBlock(5, 70, 5, "arris:cutting_board")
-    _hang(70, 2, x=4)                                          # 砧板西边挂着绳子
-    args = _click((5, 70, 5), WEST)
-    assert args["ret"] is False and _ropes(x=4) == [69, 70] and world.timers == []
+def testNotSneakingNextToARopeLeavesTheClickToTheBlock():
+    # 不潜行时 JE 先调点到的方块的 use（箱子、门、按钮、砧板……）；这边不认外侧那格的绳子，引擎照原样
+    for block in (STONE, "minecraft:chest", "arris:cutting_board"):
+        _setUp()
+        world.setBlock(5, 70, 5, block)
+        _hang(70, 2, x=4)                                      # 方块西边挂着绳子
+        args = _click((5, 70, 5), WEST)
+        assert args["ret"] is False and _ropes(x=4) == [69, 70] and world.timers == [] and world.modAttr == {}, block
     _setUp(sneaking=True)
-    world.setBlock(5, 70, 5, "arris:cutting_board")
+    world.setBlock(5, 70, 5, "minecraft:chest")
     _hang(70, 2, x=4)
-    _click((5, 70, 5), WEST)                                   # 潜行：方块不用这一下，照 JE 从那节绳子再往西一格
+    _click((5, 70, 5), WEST)                                   # 潜行：JE 不调方块的 use，从那节绳子再往西一格
     assert _ropes(x=4) == [69, 70] and world.blockName(3, 70, 5) == ROPE
 
 

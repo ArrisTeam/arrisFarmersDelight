@@ -5,6 +5,10 @@
 所以想在原版基础上加一点东西，只能把原版文件抄过来再改。本工具读本机游戏目录里的原版行为包，只做下面写明的加法：
 
     entities/cat.json                                    猫被鳕鱼片 / 鲑鱼片吸引、驯服、繁殖、长大、治疗（JE：Cat.TEMPT_INGREDIENT）
+    entities/chicken.json、pig.json                      鸡认两种种子和稻米、猪认卷心菜和番茄：吸引、繁殖、喂小崽（JE：Chicken / Pig.FOOD_ITEMS）
+    entities/rabbit.json                                 兔子拿卷心菜、卷心菜叶繁殖、喂小崽（JE：RabbitsEatCabbageMixin；吸引在 Shared/Data/Mobs.py）
+    entities/parrot.json                                 鹦鹉拿两种种子和稻米驯服（JE：Parrot.TAME_FOOD）
+    entities/wolf.json                                   狼吃十种肉：繁殖、喂小崽、治疗（JE：狼吃 isMeat 的食物；讨食在 Shared/Data/Mobs.py）
     trading/economy_trades/farmer_trades.json            农民收洋葱、番茄、卷心菜、稻米（JE：VillagerEvents.onVillagerTrades）
     trading/economy_trades/wandering_trader_trades.json  流浪商人卖卷心菜种子、番茄种子、稻米、洋葱（JE：onWandererTrades）
 
@@ -95,6 +99,60 @@ def build_cat(vanilla):
     return vanilla
 
 
+# 鸡 / 猪 / 兔子 / 鹦鹉 / 狼认农夫乐事的作物和肉（JE：CommonSetup 改 Chicken.FOOD_ITEMS、Pig.FOOD_ITEMS、Parrot.TAME_FOOD，
+# RabbitsEatCabbageMixin 让卷心菜（标签 crops/cabbage：卷心菜、卷心菜叶）算兔子的食物，狼吃所有 isMeat 的食物）。
+# JE 的 isFood 同时管繁殖和喂小崽长大：基岩的繁殖在成年组的 breedable、喂小崽在幼年组的 ageable，两处都加；吸引（tempt）在基础组件里。
+# 兔子的吸引由 Shared/Data/Mobs.py 在实体出现时加（那张表早就有），这里只加繁殖和喂小崽。
+CHICKEN_FOOD = ("arris:cabbage_seeds", "arris:tomato_seeds", "arris:rice")
+PIG_FOOD = ("arris:cabbage", "arris:tomato")
+RABBIT_FOOD = ("arris:cabbage", "arris:cabbage_leaf")
+PARROT_FOOD = CHICKEN_FOOD
+# 狼：JE FoodValues 里带 meat() 的 11 种去掉狗粮（狗粮对驯服的狼的右键由 Server/Livestock 接管，JE 的 DogFoodItem 也先于狼自己的喂食）。
+# 值是 JE 的饱食度；治疗量照基岩原版狼的写法 = 饱食度 × 2（原版生猪排饱食度 3、治疗 6，熟猪排 8、16）
+WOLF_MEATS = collections.OrderedDict([
+    ("arris:minced_beef", 2), ("arris:beef_patty", 4), ("arris:chicken_cuts", 1), ("arris:cooked_chicken_cuts", 3), ("arris:bacon", 2),
+    ("arris:cooked_bacon", 4), ("arris:mutton_chops", 1), ("arris:cooked_mutton_chops", 3), ("arris:ham", 5), ("arris:smoked_ham", 10)])
+
+
+def _breedAndGrow(entity, adult, baby, food, anchor):
+    groups = entity["component_groups"]
+    _append(groups[adult]["minecraft:breedable"], "breed_items", list(food), (anchor,))
+    _append(groups[baby]["minecraft:ageable"], "feed_items", list(food), (anchor,))
+
+
+def build_chicken(vanilla):
+    entity = vanilla["minecraft:entity"]
+    _breedAndGrow(entity, "minecraft:chicken_adult", "minecraft:chicken_baby", CHICKEN_FOOD, "wheat_seeds")
+    _append(entity["components"]["minecraft:behavior.tempt"], "items", list(CHICKEN_FOOD), ("wheat_seeds",))
+    return vanilla
+
+
+def build_pig(vanilla):
+    entity = vanilla["minecraft:entity"]
+    _breedAndGrow(entity, "minecraft:pig_adult", "minecraft:pig_baby", PIG_FOOD, "carrot")
+    _append(entity["components"]["minecraft:behavior.tempt"], "items", list(PIG_FOOD), ("carrot",))
+    return vanilla
+
+
+def build_rabbit(vanilla):
+    _breedAndGrow(vanilla["minecraft:entity"], "adult", "baby", RABBIT_FOOD, "carrot")
+    return vanilla
+
+
+def build_parrot(vanilla):
+    groups = vanilla["minecraft:entity"]["component_groups"]
+    _append(groups["minecraft:parrot_wild"]["minecraft:tameable"], "tame_items", list(PARROT_FOOD), ("wheat_seeds",))
+    return vanilla
+
+
+def build_wolf(vanilla):
+    entity = vanilla["minecraft:entity"]
+    _breedAndGrow(entity, "minecraft:wolf_adult", "minecraft:wolf_baby", list(WOLF_MEATS), "beef")
+    heal = [collections.OrderedDict([("item", name), ("heal_amount", food * 2)]) for name, food in WOLF_MEATS.items()]
+    _append(entity["components"]["minecraft:healable"], "items", heal, ("beef",))
+    return vanilla
+
+
 def _buy(item, quantity, maxUses, traderExp):
     # 农民收货：quantity 个 item 换 1 个绿宝石（JE：emeraldForItemsTrade(item, quantity, maxTrades, xp)，价格倍率 0.05）
     return collections.OrderedDict([
@@ -136,6 +194,11 @@ def build_wanderer(vanilla):
 # 输出文件（相对 bp/）-> (原版里的相对路径, 构建函数)
 OUTPUTS = collections.OrderedDict([
     ("entities/cat.json", ("entities/cat.json", build_cat)),
+    ("entities/chicken.json", ("entities/chicken.json", build_chicken)),
+    ("entities/pig.json", ("entities/pig.json", build_pig)),
+    ("entities/rabbit.json", ("entities/rabbit.json", build_rabbit)),
+    ("entities/parrot.json", ("entities/parrot.json", build_parrot)),
+    ("entities/wolf.json", ("entities/wolf.json", build_wolf)),
     ("trading/economy_trades/farmer_trades.json", ("trading/economy_trades/farmer_trades.json", build_farmer)),
     ("trading/economy_trades/wandering_trader_trades.json", ("trading/economy_trades/wandering_trader_trades.json", build_wanderer)),
 ])

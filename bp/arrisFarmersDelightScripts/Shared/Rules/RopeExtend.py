@@ -2,7 +2,8 @@
 """RopeExtend - 拿着绳子点绳子：新的一节放在哪（双端，纯规则）
 
 照 JE 的 RopeItem.updatePlacementContext（FD 1.3.4）。拿着绳子点方块时，"点到的格子"是：点到的方块能被顶替就是它自己
-（绳子对手里的绳子算能被顶替：RopeBlock.canBeReplaced），否则是点到的面外侧那一格。这一格不是绳子：和这里无关，照常放。
+（绳子对手里的绳子算能被顶替：RopeBlock.canBeReplaced），否则是点到的面外侧那一格（这一种只在潜行时认，见 startRope）。
+这一格不是绳子：和这里无关，照常放。
 是绳子：不潜行一律往下、潜行照点到的面，从它那个方向的下一格走起——
 - 碰到不是绳子的一格：是水以外的液体（岩浆）不放；能被顶替（空气、水、草……）就放在这一格；别的（实心方块、没加载的格子）不放；
 - 还是绳子：往下就接着走，往别的方向不放；
@@ -18,13 +19,16 @@ LAVA = ("minecraft:lava", "minecraft:flowing_lava")
 BOTTOM = -64
 
 
-def startRope(clicked, face, nameAt):
-    """拿着绳子点了 clicked 的 face 面：从哪一节绳子算起；点到的格子不是绳子（照常放）返回 None。
-    nameAt(坐标) 查那一格的方块名（没加载的格子 None）。"""
+def startRope(clicked, face, sneaking, nameAt):
+    """拿着绳子点了 clicked 的 face 面：从哪一节绳子算起；和绳子无关（照常放）返回 None。
+    nameAt(坐标) 查那一格的方块名（没加载的格子 None）。
+
+    点到的就是绳子：潜行不潜行都算。点到的不是绳子、外侧那一格才是：只在潜行时算——JE 不潜行时先调点到的方块的 use
+    （箱子、门、按钮……自己有右键），这边没有"哪些方块自己会处理右键"的表，不潜行就不抢；潜行时 JE 本来就不调方块的 use。"""
     clickedName = nameAt(clicked)
     if clickedName == ROPE:
         return tuple(clicked)
-    if isReplaceable(clickedName):
+    if not sneaking or isReplaceable(clickedName):
         return None                        # 点到的是草、水这些：JE 就放在它那一格，不看旁边
     beside = placePositions(*clicked)[face]
     return beside if nameAt(beside) == ROPE else None
