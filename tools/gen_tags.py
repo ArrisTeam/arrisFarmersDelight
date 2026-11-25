@@ -45,6 +45,7 @@ MEANINGS = {
     "farmersdelight:compost_activators": "有机肥周围的催化剂",
     "farmersdelight:unaffected_by_rich_soil": "沃土不催熟的植物",
     "farmersdelight:mushroom_colony_growable_on": "蘑菇菌落在它上面才长",
+    "farmersdelight:drops_cake_slice": "拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕）",
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
@@ -54,6 +55,7 @@ READS = {
     "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
     "farmersdelight:unaffected_by_rich_soil": "沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant）",
     "farmersdelight:mushroom_colony_growable_on": "蘑菇菌落长不长（Server/MushroomColony）",
+    "farmersdelight:drops_cake_slice": "拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake）",
 }
 
 

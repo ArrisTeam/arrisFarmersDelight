@@ -84,6 +84,7 @@ TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在�
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
 UNAFFECTED_BY_RICH_SOIL = "farmersdelight:unaffected_by_rich_soil"     # 沃土不催熟的植物：Farming.UNAFFECTED_BY_RICH_SOIL
 MUSHROOM_COLONY_GROWABLE_ON = "farmersdelight:mushroom_colony_growable_on"     # 蘑菇菌落在上面才长：ColonyRules.GROWABLE_ON
+DROPS_CAKE_SLICE = "farmersdelight:drops_cake_slice"       # 拿刀右键切下一片蛋糕（JE 的 KnifeItem.onCakeInteraction）：Slicing.CANDLE_CAKES
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -178,6 +179,9 @@ BLOCK_TAGS = {
                               "arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages",
                               "arris:wild_tomatoes", "arris:wild_onions", "arris:wild_rice"),
     MUSHROOM_COLONY_GROWABLE_ON: ("arris:rich_soil",),
+    DROPS_CAKE_SLICE: tuple("minecraft:%scandle_cake" % color for color in (
+        "", "white_", "orange_", "magenta_", "light_blue_", "yellow_", "lime_", "pink_", "gray_", "light_gray_", "cyan_", "purple_",
+        "blue_", "brown_", "green_", "red_", "black_")),                   # 插了蜡烛的蛋糕：无色加 16 种颜色
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -239,6 +243,7 @@ JE_NAMES = {
     COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),
     UNAFFECTED_BY_RICH_SOIL: (UNAFFECTED_BY_RICH_SOIL,),
     MUSHROOM_COLONY_GROWABLE_ON: (MUSHROOM_COLONY_GROWABLE_ON,),
+    DROPS_CAKE_SLICE: (DROPS_CAKE_SLICE,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

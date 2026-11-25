@@ -223,6 +223,7 @@ LISTED = {
     Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
     Tags.UNAFFECTED_BY_RICH_SOIL: lambda: fdtest.load("Shared.Data.Farming").UNAFFECTED_BY_RICH_SOIL,
     Tags.MUSHROOM_COLONY_GROWABLE_ON: lambda: fdtest.load("Shared.Rules.ColonyRules").GROWABLE_ON,
+    Tags.DROPS_CAKE_SLICE: lambda: fdtest.load("Shared.Data.Slicing").CANDLE_CAKES,
 }
 
 
