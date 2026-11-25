@@ -5,11 +5,11 @@ import traceback
 
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, serverApi
-from ..Shared.Data.Effects import COMFORT, NOURISHMENT
+from ..Shared.Data.Effects import COMFORT, NOURISHMENT, NOURISHING_FOODS
 from ..Shared.Rules import FoodEffects as Rules
 
 REGENERATION = "regeneration"
-_timer = []
+_timers = {}
 
 
 def _heal(playerId, amount):
@@ -40,9 +40,42 @@ def OnPlayerEatFood(args):
 
 @registerHandler("PlayerHungerChangeServerEvent")
 def OnPlayerHungerChange(args):
-    # 滋养：饥饿值不下降
+    # 滋养：饥饿值不下降（主要靠下面清消耗度；这里兜住消耗度以外的扣法）
     if args["hunger"] - args["hungerBefore"] <= 0 and compFactory.CreateEffect(args["playerId"]).HasEffect(NOURISHMENT) is True:
         args["cancel"] = True
+
+
+def _naturalRegen(playerComp):
+    rules = (compFactory.CreateGame(levelId).GetGameRulesInfoServer() or {}).get("option_info") or {}
+    return rules.get("natural_regeneration", True) is not False and playerComp.IsPlayerNaturalRegen() is not False
+
+
+def nourishmentTick():
+    # 滋养（JE 1.3.4 NourishmentEffect）：不是"开着自然回血、受了伤、还有饱和度"就把消耗度清零，饱和度、饥饿值都不掉
+    attrType = serverApi.GetMinecraftEnum().AttrType
+    for playerId in serverApi.GetPlayerList() or ():
+        if compFactory.CreateEffect(playerId).HasEffect(NOURISHMENT) is not True:
+            continue
+        playerComp = compFactory.CreatePlayer(playerId)
+        attrComp = compFactory.CreateAttr(playerId)
+        if Rules.nourishmentClears(_naturalRegen(playerComp), attrComp.GetAttrValue(attrType.HEALTH),
+                                   attrComp.GetAttrMaxValue(attrType.HEALTH), attrComp.GetAttrValue(attrType.SATURATION)):
+            playerComp.SetPlayerCurrentExhaustionValue(0.0)
+
+
+def quietNourishment(playerId):
+    # JE 的食物给的滋养不冒粒子：吃下后（下一刻，食物 JSON 的效果已经加上）把滋养按原来的时长、等级换成不冒粒子的
+    effectComp = compFactory.CreateEffect(playerId)
+    for effect in effectComp.GetAllEffects() or ():
+        if effect["effectName"] == NOURISHMENT:
+            effectComp.RemoveEffectFromEntity(NOURISHMENT)
+            effectComp.AddEffectToEntity(NOURISHMENT, effect["duration"], effect["amplifier"], False)
+            return
+
+
+@registerHandler("PlayerEatFoodServerEvent", match=NOURISHING_FOODS)
+def OnEatNourishingFood(args):
+    compFactory.CreateGame(levelId).AddTimer(0.0, quietNourishment, args["playerId"])
 
 
 def comfortTick():
@@ -58,18 +91,24 @@ def comfortTick():
             _heal(playerId, Rules.COMFORT_HEAL)
 
 
-def _comfortTick():
-    try:
-        comfortTick()
-    except Exception:  # noqa: BLE001 - 定时器边界：出错只打印，下一轮接着来
-        print("[arrisFarmersDelight] 舒适回血出错")
-        traceback.print_exc()
+def _guarded(tick, what):
+    def run():
+        try:
+            tick()
+        except Exception:  # noqa: BLE001 - 定时器边界：出错只打印，下一轮接着来
+            print("[arrisFarmersDelight] %s出错" % what)
+            traceback.print_exc()
+    return run
 
 
 @registerHandler("ClientLoadAddonsFinishServerEvent")
-def OnComfortPlayerJoin(args):
-    if not _timer:
-        _timer.append(compFactory.CreateGame(levelId).AddRepeatedTimer(Rules.COMFORT_SECONDS, _comfortTick))
+def OnEffectsPlayerJoin(args):
+    # 舒适、滋养的定时器在第一个玩家进服时开（和篮子一样）
+    game = compFactory.CreateGame(levelId)
+    if "comfort" not in _timers:
+        _timers["comfort"] = game.AddRepeatedTimer(Rules.COMFORT_SECONDS, _guarded(comfortTick, "舒适回血"))
+    if "nourishment" not in _timers:
+        _timers["nourishment"] = game.AddRepeatedTimer(Rules.NOURISHMENT_SECONDS, _guarded(nourishmentTick, "滋养清消耗度"))
 
 
 @registerHandler("PlayerDieEvent")
