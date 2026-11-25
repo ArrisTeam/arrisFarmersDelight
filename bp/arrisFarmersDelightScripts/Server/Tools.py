@@ -15,7 +15,7 @@ from .Helpers.Items import IsKnife
 from .Helpers.Player import SetNotCreateItem
 from ..Shared.Data.MobLoot import KNIFE_HAM, PROJECTILES
 from ..Shared.Rules import MobLoot, RottenTomato
-from ..Shared.Rules.SkilletRules import SKILLET_ITEM, AttackClock
+from ..Shared.Rules.SkilletRules import SKILLET_ITEM, AttackClock, wearAfter
 
 PLAYER = "minecraft:player"
 _swings = AttackClock()
@@ -64,6 +64,14 @@ def OnSkilletAttack(args):
     if itemDict and itemDict["newItemName"] == SKILLET_ITEM:
         dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
         ToAllPlayerPlaySound(dimensionId, compFactory.CreatePos(playerId).GetFootPos(), _swings.sound(playerId, time.time()))
+
+
+@registerHandler("ItemDurabilityChangedServerEvent", match=IsKnife)
+def OnKnifeDurability(args):
+    # 实机（2026-11-26）：刀拆一块羊毛掉 2 点耐久，JE 的刀（DiggerItem.mineBlock）拆方块掉 1 点；打一下本来就是 1 点、割草本来不掉。
+    # 多出来的退回去，和煎锅同一条规则（修复变大的不动；引擎说不能改时只能算了）
+    if args.get("canChange") is not False:
+        args["durability"] = wearAfter(args["durabilityBefore"], args["durability"])
 
 
 @registerHandler("ItemUseAfterServerEvent", match=RottenTomato.ITEM)
