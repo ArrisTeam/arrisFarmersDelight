@@ -79,7 +79,7 @@ Api/
                         RecipeIds（配方 ID 的规矩、旧接口追加的配方的 legacy: 派生 ID）+ RecipeFiles（行为包里 farmersdelight_recipes/ 的文件定 ID、登记）；
                         Registries（registerKnife / HeatSource / Stove / Compostable 和 ext.tags）
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；36 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ModServer.py          导入全部玩法模块；37 个引擎事件各只挂一次 @Listen，转给 EventRegistry
   ExtensionReady        LoadServerAddonScriptsAfter：发新联动接口的服务端 ready 事件（ExtensionSystem 是广播用的系统，要广播时才注册），
                         再读全部行为包里的 farmersdelight_recipes/（Helpers/PackJson 跨包读文件），最后调一次 onRecipesChanged 的处理函数
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
@@ -786,6 +786,13 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   从被点的绳子往下数、一路都是 `arris:rope`，拆**最下面**那一节（`destroyBlock(pos, false)`：不掉落，所以用 `SetBlockNew(…, 0)` 而不是 1），给玩家背包放一根绳子；
   创造模式不给；没有建造权限（`GetPlayerAbilities()["build"]`，对应 mayBuild）或背包放不下什么都不做，也不会转去敲钟。
   不潜行（或配置关了）时才敲钟，一路连着往上最多 24 格的钟；敲钟也要空手（原来拿着东西也敲）。
+- 拿绳子点绳子（`RopeAndNet.OnPlaceRopeOnRope`，`Shared/Rules/RopeExtend.py`，ServerItemUseOnEvent 优先级 98），照 RopeItem.updatePlacementContext：
+  点到的格子（点到绳子就是它；点到实心方块是外侧那一格，草、水这些能顶替的就是它自己、和绳子无关）是绳子时，不潜行一律顺着绳子往下，
+  第一格能顶替的（空气、水、草）放下，碰到岩浆或实心方块不放；潜行照点到的面放一格（朝下的面也顺着往下走，别的方向碰到绳子不放）。
+  引擎自己那一格（点到的面外侧）一律取消；点到的方块自己会处理右键（`TatamiMat.usesTheClick`：砧板、厨锅、炉灶……）时不潜行让给它；放下响 `dig.cloth`。
+- 绳上的番茄藤（`Crops.OnCropNeighborChanged` / `OnVineRemoved`，`Shared/Rules/TomatoVine.py`），照 HangingTomatoBlock：下面是地上那株第 3 级起或另一节藤才撑得住；
+  藤没了在原地放回绳子——四个藤方块带 `netease:listen_block_remove`，`BlockRemoveServerEvent` 来了下一刻看那一格，空气 / 水才放（长一级、摘果子是换成另一节藤，不放）。
+  JE 的亮度条件（亮度 ≥ 8 或看得见天）没做。
 - 安全网（`RopeAndNet.OnFallOnSafetyNet`，`Shared/Rules/NetBounce.py`），照 SafetyNetBlock：不潜行时 `causeFallDamage(fallDistance, 0.0F)`，没有任何摔落伤害；
   竖直速度反过来：生物（LivingEntity，`IsLiving` 看 `EntityType.Mob`）乘 0.6，其它实体（掉落物、船、矿车……）乘 0.8；潜行（`isSuppressingBounce`）照常摔、不弹。
   引擎事件只给摔落距离，撞上去的速度用自由落体推回来（每刻先按当前速度走一步，再 v = (v + 0.08) × 0.98，末速度 3.92 格/刻；10 格落差约 1.14 格/刻），
@@ -930,6 +937,32 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   和 JE 不一样的：两半并不真的挪开，缝里是压暗的食物而不是板和切面；只有开着站点的人看得到。`tests/test_board_seams.py`。没进过游戏（新粒子要完整重启）。
 - **借来的工具跟着环境光变暗**：砧板站点上借来的那把刀 / 工具（半透明粒子 `arris:board_tool`）加了 `minecraft:particle_appearance_lighting`——JE 是照物品画的（`SceneRenderer.java:848` 的 `renderStatic` 带着站点的光照），
   原来暗处也是满亮度。实机只核过粒子建得出来。
+
+## 和 JE 的出入（2026-11-26 审计）
+
+对照 FD 1.3.4 逐类核过一遍（方块属性、掉落、食物、效果、声音、提示、绳子、番茄、烂番茄……）。改掉的在各自的"对照 JE"一节或提交说明里；
+剩下的分两种，一条一行。
+
+做不到（引擎 / 附加包的限制，或者没找到接口）：
+- 滋养期间"总能吃"（JE `NourishmentAlwaysEatMixin`）：`can_always_eat` 只能写死在物品 JSON 里，没找到按身上的效果临时放开的接口。
+- 原版汤（蘑菇煲、甜菜汤、兔肉煲）叠到 16（JE `SoupItemMixin`）：附加包覆盖不了原版物品的定义（网易有没有改原版堆叠的接口没核实）。
+- 村庄里的堆肥堆、村庄农田种上农夫乐事的作物（JE `VillageStructures`）：附加包加不进原版村庄的拼图池（网易有没有替代接口没核实）。
+- 进度（JE 21 条 advancements）：附加包加不了原版进度（网易的自定义成就能不能用没核实）。
+- 拿刀打人击退少 0.1（JE `KnifeItem`）：`DamageEvent` 只能开关击退，改不了大小（煎锅同一个问题，见"煎锅"一节）。
+- 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
+- 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
+- 原版汤 / 南瓜派的提示（滋养时长、"可放置"）：附加包改不了原版物品的提示；六种盛宴的物品是方块物品，没有物品 JSON 可写 `netease:customtips`。
+- 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
+
+有意不做：
+- 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
+- 村庄结构（同上一节的限制以外，JE 的五种村庄房子也没搬）。
+- 进度（同上）。
+- 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
+
+还要进游戏量的（写好了、离线测过，实机没看）：拿绳子点绳子、番茄藤放回绳子、熟番茄拿骨粉右键、烂番茄的声音和飞行、方块音效、舒适回血、
+沃土土豆的掉落；还有刀的磨损 / 伤害、铁砧修刀、锻造台升级下界合金刀、堆肥桶的头一件和满了以后、原版作物的掉落分布、刀挖掘的速度、
+橱柜 / 篮子 / 厨锅拆下来留不留名字。
 
 ## 引擎坑（踩过的）
 

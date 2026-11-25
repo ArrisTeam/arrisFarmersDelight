@@ -28,7 +28,15 @@
                         "on_other_hit": true
                     }
                 },
-                "power": 1.7
+                "anchor": 1,
+                "power": 1.5,
+                "gravity": 0.03,
+                "angle_offset": 0.0,
+                "offset": [
+                    0,
+                    -0.1,
+                    0
+                ]
             }
         }
     }

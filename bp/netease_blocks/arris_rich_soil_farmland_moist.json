@@ -9,10 +9,10 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 0.5
+                "value": 0.6
             },
             "minecraft:explosion_resistance": {
-                "value": 0.5
+                "value": 0.6
             },
             "minecraft:loot": {
                 "table": "loot_tables/rich_soil.json"

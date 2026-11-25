@@ -3,7 +3,6 @@
     "minecraft:item": {
         "components": {
             "minecraft:max_stack_size": 64,
-            "netease:compostable": 50,
             "minecraft:seed": {
                 "crop_result": "arris:budding_tomatoes_stage0",
                 "plant_at": [

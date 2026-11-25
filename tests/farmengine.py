@@ -35,6 +35,8 @@ class Level(object):
         self.destroyed = []
         self.setCalls = []
         self.tips = []
+        self.timers = []            # AddTimer 排上的 (秒, 函数, 参数)，runTimers 跑
+        self.sneaking = set()
 
     # ---- 摆世界 ----
     def put(self, pos, name, dim=0, **states):
@@ -59,6 +61,11 @@ class Level(object):
 
     def statesAt(self, pos, dim=0):
         return self.states.get((dim,) + tuple(pos))
+
+    def runTimers(self):
+        timers, self.timers = self.timers, []
+        for _seconds, func, params in timers:
+            func(*params)
 
     # ---- 引擎接口 ----
     def top(self, x, z, dim):
@@ -113,6 +120,17 @@ class _Game(object):
     def GetPlayerGameType(self, playerId):
         return 1 if playerId in self.level.creative else 0
 
+    def AddTimer(self, seconds, func, *params):
+        self.level.timers.append((seconds, func, params))
+
+
+class _Player(object):
+    def __init__(self, level, playerId):
+        self.level, self.playerId = level, playerId
+
+    def isSneaking(self):
+        return self.playerId in self.level.sneaking
+
 
 class _CompFactory(object):
     def __init__(self, level):
@@ -129,6 +147,9 @@ class _CompFactory(object):
 
     def CreateGame(self, levelId):
         return _Game(self.level)
+
+    def CreatePlayer(self, playerId):
+        return _Player(self.level, playerId)
 
 
 def install(level):

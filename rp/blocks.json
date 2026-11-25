@@ -21,7 +21,7 @@
         "textures": "arris:apple_pie"
     },
     "arris:bamboo_cabinet": {
-        "sound": "bamboo",
+        "sound": "bamboo_wood",
         "textures": {
             "down": "arris:bamboo_cabinet_top",
             "east": "arris:bamboo_cabinet_side",
@@ -33,7 +33,7 @@
     },
     "arris:basket": {
         "netease_model": "arris:basket",
-        "sound": "scaffolding",
+        "sound": "bamboo_wood",
         "textures": "arris:basket"
     },
     "arris:wooden_basket": {
@@ -205,7 +205,7 @@
         }
     },
     "arris:cherry_cabinet": {
-        "sound": "wood",
+        "sound": "cherry_wood",
         "textures": {
             "down": "arris:cherry_cabinet_top",
             "east": "arris:cherry_cabinet_side",
@@ -242,10 +242,10 @@
             "hand_model_use_client_entity": true,
             "identifier": "arris:cooking_pot"
         },
-        "sound": "metal"
+        "sound": "lantern"
     },
     "arris:crimson_cabinet": {
-        "sound": "wood",
+        "sound": "nether_wood",
         "textures": {
             "down": "arris:crimson_cabinet_top",
             "east": "arris:crimson_cabinet_side",
@@ -298,23 +298,23 @@
     },
     "arris:honey_glazed_ham_block_leftover": {
         "netease_model": "arris:honey_glazed_ham_block_leftover",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:honey_glazed_ham_block_stage0": {
         "netease_model": "arris:honey_glazed_ham_block_stage0",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:honey_glazed_ham_block_stage1": {
         "netease_model": "arris:honey_glazed_ham_block_stage1",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:honey_glazed_ham_block_stage2": {
         "netease_model": "arris:honey_glazed_ham_block_stage2",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:honey_glazed_ham_block_stage3": {
         "netease_model": "arris:honey_glazed_ham_block_stage3",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:jungle_cabinet": {
         "sound": "wood",
@@ -390,19 +390,19 @@
         "sound": "grass"
     },
     "arris:organic_compost_stage0": {
-        "sound": "gravel",
+        "sound": "grass",
         "textures": "arris:organic_compost_stage0"
     },
     "arris:organic_compost_stage1": {
-        "sound": "gravel",
+        "sound": "grass",
         "textures": "arris:organic_compost_stage1"
     },
     "arris:organic_compost_stage2": {
-        "sound": "gravel",
+        "sound": "grass",
         "textures": "arris:organic_compost_stage2"
     },
     "arris:organic_compost_stage3": {
-        "sound": "gravel",
+        "sound": "grass",
         "textures": "arris:organic_compost_stage3"
     },
     "arris:potato_crate": {
@@ -437,39 +437,39 @@
     },
     "arris:rice_roll_medley_block_leftover": {
         "netease_model": "arris:rice_roll_medley_block_leftover",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage0": {
         "netease_model": "arris:rice_roll_medley_block_stage0",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage1": {
         "netease_model": "arris:rice_roll_medley_block_stage1",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage2": {
         "netease_model": "arris:rice_roll_medley_block_stage2",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage3": {
         "netease_model": "arris:rice_roll_medley_block_stage3",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage4": {
         "netease_model": "arris:rice_roll_medley_block_stage4",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage5": {
         "netease_model": "arris:rice_roll_medley_block_stage5",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage6": {
         "netease_model": "arris:rice_roll_medley_block_stage6",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_roll_medley_block_stage7": {
         "netease_model": "arris:rice_roll_medley_block_stage7",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rice_stage0": {
         "model_item_texture": "arris:rice_stage0",
@@ -743,23 +743,23 @@
     },
     "arris:roast_chicken_block_leftover": {
         "netease_model": "arris:roast_chicken_block_leftover",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:roast_chicken_block_stage0": {
         "netease_model": "arris:roast_chicken_block_stage0",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:roast_chicken_block_stage1": {
         "netease_model": "arris:roast_chicken_block_stage1",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:roast_chicken_block_stage2": {
         "netease_model": "arris:roast_chicken_block_stage2",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:roast_chicken_block_stage3": {
         "netease_model": "arris:roast_chicken_block_stage3",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:rope": {
         "netease_model": "arris:rope",
@@ -788,23 +788,23 @@
     },
     "arris:shepherds_pie_block_leftover": {
         "netease_model": "arris:shepherds_pie_block_leftover",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:shepherds_pie_block_stage0": {
         "netease_model": "arris:shepherds_pie_block_stage0",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:shepherds_pie_block_stage1": {
         "netease_model": "arris:shepherds_pie_block_stage1",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:shepherds_pie_block_stage2": {
         "netease_model": "arris:shepherds_pie_block_stage2",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:shepherds_pie_block_stage3": {
         "netease_model": "arris:shepherds_pie_block_stage3",
-        "sound": "cloth"
+        "sound": "wood"
     },
     "arris:skillet": {
         "client_entity": {
@@ -813,7 +813,7 @@
             "hand_model_use_client_entity": true,
             "identifier": "arris:skillet"
         },
-        "sound": "metal",
+        "sound": "lantern",
         "textures": "arris:skillet_icon"
     },
     "arris:spruce_cabinet": {
@@ -937,7 +937,7 @@
         "sound": "grass"
     },
     "arris:warped_cabinet": {
-        "sound": "wood",
+        "sound": "nether_wood",
         "textures": {
             "down": "arris:warped_cabinet_top",
             "east": "arris:warped_cabinet_side",

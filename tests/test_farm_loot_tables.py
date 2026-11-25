@@ -208,5 +208,15 @@ def testEveryReferencedLootTableExists():
                 assert os.path.isfile(os.path.join(fdtest.BP, table)), (name, table)
 
 
+def testRichSoilPotatoesAlwaysDropPotatoesAndThePoisonousOneIsAnExtraTwoPercent():
+    # 沃土上的原版土豆（arris:rich_soil_potatoes3）：原版土豆的毒土豆是另外一池的 2%（不顶掉土豆）。土豆的个数这一波不动（等实机量基岩原版的分布）
+    drops = _drops("crops/potato_riped.json")
+    _near(L.prob(drops["minecraft:potato"], 0), 0.0)
+    for count in (2, 3, 4):
+        _near(L.prob(drops["minecraft:potato"], count), 1.0 / 3)
+    _near(L.prob(drops["minecraft:poisonous_potato"], 1), 0.02)
+    assert sorted(drops) == ["minecraft:poisonous_potato", "minecraft:potato"]
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

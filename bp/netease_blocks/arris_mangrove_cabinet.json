@@ -12,10 +12,10 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 2.0
+                "value": 2.5
             },
             "minecraft:explosion_resistance": {
-                "value": 3.0
+                "value": 2.5
             },
             "netease:block_chest": {
                 "chest_capacity": 3,

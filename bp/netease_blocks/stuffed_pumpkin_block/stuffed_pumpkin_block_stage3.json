@@ -9,10 +9,10 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 0.8
+                "value": 0.5
             },
             "minecraft:explosion_resistance": {
-                "value": 0.8
+                "value": 0.5
             },
             "minecraft:loot": {
                 "table": "loot_tables/air_loot.json"
