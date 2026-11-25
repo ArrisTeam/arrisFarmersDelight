@@ -16,6 +16,7 @@ from .BoneMeal import ApplyBoneMeal
 from .MushroomColony import PlaceColony
 from ..Shared.Data import Tips
 from ..Shared.Data.Farming import cropsDict
+from ..Shared.Rules import TomatoVine
 from ..Shared.Rules.ColonyRules import COLONY_BLOCKS
 from ..Shared.Rules.Ticks import probability
 
@@ -50,11 +51,29 @@ def _setBlock(pos, name, dimensionId, handling=0):
 
 @registerHandler("BlockNeighborChangedServerEvent", match=cropsDict)
 def OnCropNeighborChanged(args):
-    # 下方不再是耕地 / 草方块（稻米：泥土类 / 耕地，水下的草方块会退化成泥土）时作物掉落
-    neighborPos = (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"])
-    ground = _RICE_GROUND if args["blockName"] in _RICE_STAGES else _CROP_GROUND
-    if neighborPos == _below(args) and args["toBlockName"] not in ground:
+    # 下方不再是耕地 / 草方块（稻米：泥土类 / 耕地，水下的草方块会退化成泥土；绳上的番茄藤：番茄或者另一节藤）时作物掉落
+    if _below(args) != (args["neighborPosX"], args["neighborPosY"], args["neighborPosZ"]):
+        return
+    name, below = args["blockName"], args["toBlockName"]
+    if name in TomatoVine.VINES:
+        holds = TomatoVine.holds(below)
+    else:
+        holds = below in (_RICE_GROUND if name in _RICE_STAGES else _CROP_GROUND)
+    if not holds:
         _setBlock((args["posX"], args["posY"], args["posZ"]), "minecraft:air", args["dimensionId"], handling=1)
+
+
+def _ropeBack(pos, dimensionId):
+    if TomatoVine.ropeBack(GetBlockName(pos, dimensionId)):
+        _setBlock(pos, TomatoVine.ROPE, dimensionId)
+
+
+@registerHandler("BlockRemoveServerEvent", match=TomatoVine.VINES)
+def OnVineRemoved(args):
+    # JE HangingTomatoBlock：藤没了在原地放回绳子。长一级、摘果子是换成另一节藤，挖掉、炸掉、下面没了是空气——
+    # 下一刻看那一格是什么再定（这个事件和方块真正换掉谁先谁后不一定）
+    pos = (args["x"], args["y"], args["z"])
+    compFactory.CreateGame(levelId).AddTimer(0.0, _ropeBack, pos, args["dimension"])
 
 
 @registerHandler("BlockNeighborChangedServerEvent", match="arris:rice_supporting")
