@@ -8,12 +8,14 @@
 不在名单里的方块再看方块标签（Shared/Rules/HeatSources）：common:heat_source 就算，common:heat_source_lit 要方块状态算点着（lit 为真 / extinguished 为假）。
 支架（托盘）只认正下方那一格：CookingPotBlock.getTrayState / SkilletBlock 只看 pos.below() 是不是 tray_heat_sources（熔岩、营火、火），
 所以漏斗再下面有火也不画托盘，和 JE 一样；传热的那一格变了没有邻居事件，由 Server/HeatConduct.py 隔一会儿去看。
+托盘看的是 ShelfBlockSet ∪ 方块标签 farmersdelight:tray_heat_sources（名单原样留着，不在名单里的再看标签）。
 厨锅还有第三种支架：吊把手（HANDLE，Server/PotSupport.py），挂着时不论下面是什么都不画托盘；热不热和它无关（isHeated 不看支架）。
 """
 from .Engine import compFactory, levelId, GetBlockEntityData, GetBlockName
 from .Fx import ToAllPlayerBlockMolang
+from ...Shared.Data import Tags
 from ...Shared.Data.Cooking import CanProvideHeatBlockList
-from ...Shared.Rules import HeatSources, PotSupport
+from ...Shared.Rules import HeatSources, ItemTags, PotSupport
 
 # 厨锅 / 煎锅放在这些方块上时显示支架模型
 ShelfBlockSet = frozenset(["minecraft:fire", "minecraft:campfire", "minecraft:soul_fire", "minecraft:soul_campfire",
@@ -71,7 +73,8 @@ def RefreshHeat(blockEntityData, blockPos, belowPos, dimensionId, belowName, del
     （刚放下就潜行切了吊把手）的话，发的得是现在的值；原来发的是排队时的值，会把刚切好的吊把手冲掉。
     """
     handle = blockEntityData["handleEnable"]
-    blockEntityData["shelfEnable"] = 1.0 if belowName in ShelfBlockSet and handle != 1.0 else 0.0
+    onTray = ItemTags.blockListed(belowName, ShelfBlockSet, Tags.TRAY_HEAT_SOURCES)
+    blockEntityData["shelfEnable"] = 1.0 if onTray and handle != 1.0 else 0.0
     heat = IsHeated(belowPos, dimensionId, belowName)
     blockEntityData["heatEnable"] = heat
     blockEntityData["heatParticleEnable"] = 1.0 if heat else 0.0

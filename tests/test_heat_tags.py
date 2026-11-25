@@ -8,6 +8,7 @@
      带 common:heat_source_lit 要点着（别的模组的营火式、lit 状态式炉灶）；什么标签都不带的不热
   3. 手持煎锅身边的热源：名单 ∪ 两个标签，不看点没点着（JE 的 isPlayerNearHeatSource；名单里的营火熄了也算，标签里的一样）
   4. 传热方块（farmersdelight:heat_conductors）：漏斗（名单）照旧，带这个标签的也把再下面一格的热传上来
+  5. 托盘（farmersdelight:tray_heat_sources）：名单 ShelfBlockSet 照旧，带这个标签的方块上面的锅也画托盘
 引擎是 fakeengine.py 里的假的，标签由假口答。
 """
 from __future__ import print_function
@@ -106,6 +107,24 @@ def testATaggedConductorPassesTheHeatUpLikeAHopper():
     ItemTags.setPort("server", BlockTagPort(members={Tags.HEAT_CONDUCTORS: ["create:chute"]}))
     assert heated("create:chute") and HeatSources.conducts("create:chute"), "机械动力把溜槽登记进 farmersdelight:heat_conductors 就传热"
     assert not heated("minecraft:stone")
+    _reset()
+
+
+def testATaggedBlockBelowGetsTheTray():
+    _reset()
+    pot = (BELOW[0], BELOW[1] + 1, BELOW[2])
+
+    def shelf(name):
+        world.reset()
+        data = skilletkit.EngineData()
+        world.setBlock(BELOW[0], BELOW[1], BELOW[2], name)
+        Heat.RefreshHeat(data, pot, BELOW, 0, name)
+        return data["shelfEnable"]
+
+    assert shelf("minecraft:soul_fire") == 1.0 and shelf("mymod:brazier") == 0.0 and shelf("minecraft:magma") == 0.0
+    ItemTags.setPort("server", BlockTagPort(members={Tags.TRAY_HEAT_SOURCES: ["mymod:brazier"]}))
+    assert shelf("mymod:brazier") == 1.0, "别的模组的火盆登记进 farmersdelight:tray_heat_sources：上面的锅画托盘"
+    assert shelf("minecraft:magma") == 0.0
     _reset()
 
 

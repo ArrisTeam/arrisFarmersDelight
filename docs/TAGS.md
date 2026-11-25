@@ -116,6 +116,7 @@
 | `common:heat_source` | 方块 | 热源：方块名就说明在发热 | `farmersdelight:heat_sources` | `minecraft:fire`、`minecraft:soul_fire`、`minecraft:lava`、`minecraft:flowing_lava`、`minecraft:magma`、`arris:stove` | 热源（Shared/Rules/HeatSources） |
 | `common:heat_source_lit` | 方块 | 热源：要看方块状态点没点着 | `minecraft:campfires` | `minecraft:campfire`、`minecraft:soul_campfire` | 热源（Shared/Rules/HeatSources，锅底下要点着） |
 | `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
+| `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
 | `minecraft:egg` | 物品（原版自带，不生成文件） | 蛋（原版自带的标签） | `forge:eggs` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg` | — |
 | `common:chili` | 物品（农夫乐事没有成员，不生成文件） | 辣椒 | — | — | — |
 | `common:fruit` | 物品（农夫乐事没有成员，不生成文件） | 水果 | — | — | — |

@@ -208,9 +208,17 @@ def testTheVocabulary():
     assert Tags.ITEM_TAGS[Tags.KNIFE] == Tags.ITEM_TAGS[Tags.LEGACY_KNIFE]
 
 
+def _serverHeat():
+    """Server/Helpers/Heat（托盘的名单 ShelfBlockSet 在它里面）：换上假引擎再导入。"""
+    import fakeengine
+    fakeengine.install()
+    return fdtest.load("Server.Helpers.Heat")
+
+
 # 农夫乐事自己的方块标签（farmersdelight:）读的地方是"名单 ∪ 标签"：标签的成员就是那张名单（离线时和原来一样）
 LISTED = {
     Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
+    Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
 }
 
 
