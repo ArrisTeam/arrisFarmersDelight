@@ -6,7 +6,8 @@
 这些表（托盘里哪些亮、借哪把刀、点板是切还是敲、食谱书的页、哪些方块开炉灶站点……）。所以服务端把"现在的表 - 导入时的表"发过去（TableDiff），
 客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张（OneSidedList 例外：客户端眼下不读，
 照旧发，见它那一行），别的在 NOT_SYNCED 里写明为什么不发。
-三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，两端必须一一对上）。
+三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组；删掉的键也同步）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，
+两端必须一一对上；删配方是打墓碑）。
 """
 from ..Data import Cooking, CookingPotRecipes, Cutting, Dishes, Food
 from . import BoardStation, CookingPot, DishStation

@@ -228,7 +228,7 @@ def OnServerSkilletBlockUse(args):
 **怎么同步**（纯规则在 `Shared/Rules/`，服务端和客户端各一个薄模块）：
 - **基线与差异**（`TableDiff.Syncer`，服务端）：`Server/TableSync.py` 导入时建一个，记下各表那一刻的编码——下游在 `LoadServerAddonScriptsAfter` 里才追加，晚于任何模块的导入，
   客户端导入后的表也是这个样子。发的是**累计**的"现在 - 基线"，只含新增和改动：名字列表是基线里没有的名字；字典是键不在基线里、或值不一样的条目；
-  厨锅配方按下标，新增的行和被 `AddCookingPotRecipe` 加了写法的行（带基线的行数 `base`）。**不同步删除**（契约只有追加）。
+  厨锅配方按下标，新增的行和被 `AddCookingPotRecipe` 加了写法的行（带基线的行数 `base`）。字典表（砧板、按标签的砧板、能煎烤的东西……）**删掉的键也同步**（2026-11-26）：基线里有的、或者曾经发出去过的键现在没有了，发 `{"k": 键, "gone": true}`，客户端照删；删了又加回来的再发一次（哪怕和基线一样）。名字列表照旧只加不删；厨锅配方删配方是打墓碑（`Disabled`，一行变了）。
 - **编码**（`TableWire.Codec`）：Call 载荷的规矩是键 `str`、列表元素类型一致、没有 `unicode`、元组到对端变列表（前置包 `Shared/Wire.py` 记着同一组，两个包互不导入，
   测试用它的 `wireProblem` 核对每条消息），所以数据表里的值要换写法：`(物品名, aux)` 压成 `{"$pair": "名字|aux"}`，别的元组 `{"$tuple": …}`，类型混着的列表 `{"$mixed": {"0": …}}`；
   **就是** `knifeList` / `axeList` 等登记过的那个列表对象的，写成 `{"$ref": "knifeList"}`，客户端换回它自己的那一个——砧板配方的 `tool` 和服务端一样是引用，之后追加的刀对所有配方一起生效。
@@ -246,7 +246,7 @@ def OnServerSkilletBlockUse(args):
   也不会再有进服事件，调试时用 `TableSync.step(everyone=True)`（游戏内自检的追加函数里就是它）。
 - 客户端端点 `OnTableSync`（`Client/TableSync.py`；`status()` 给调试看收了几条、改了几张、跳过几个）。
 
-**限制**：只同步新增和改动，下游从表里删东西客户端留着（多认一个不会坏事）；只靠 `arris:knife` 物品标签认的刀（不在 `knifeList` 里），客户端只在读得到 `GetItemTags` 时才认（`Client/BlockItems.isKnife`，
+**限制**：名字列表（刀、炉灶……）只同步新增，下游从列表里删的名字客户端留着（多认一个不会坏事）；只靠 `arris:knife` 物品标签认的刀（不在 `knifeList` 里），客户端只在读得到 `GetItemTags` 时才认（`Client/BlockItems.isKnife`，
 没实机核对客户端有没有这个接口）；JEI 联动（`Compat/Jei`，界面就绪时一次性登记）读的是登记那一刻的客户端表，晚到的下游内容不在 JEI 里；站点开着时表又变了，托盘亮不亮等下次开站才按新表算
 （`BoardView._usable` 每次开站建一份）；已经加载好的下游炉灶方块，场景要等下次加载 / 广播才建。
 

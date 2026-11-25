@@ -155,7 +155,7 @@ def FarmersDelight(self, args):
 - 追加的值请只用 `str`、数字、`bool`、`None`、`list`、`tuple`、`dict`（嵌套字典的键用 `str`）；`(物品名, aux)` 元组当键、当配方里的食材都可以。
   放了别的东西（自定义对象、集合……）的那一条不会同步：服务端照常认，客户端的站点不认，日志里有一行 `[arrisFarmersDelight] 表同步：……`。
 - 砧板配方的 `tool` 请照上面的写法用 `obtain("knifeList")` 拿到的列表本身（不要拷一份）：客户端会换成它自己的那一个，之后追加的刀对所有配方一起生效。
-- 只同步新增和改动，从表里删东西不会同步。
+- 字典表（`CuttingBoardDict`、`CanCookedFoodDict` 这些）删掉的键也会同步给客户端；名字列表（`knifeList`、`StoveList` 这些）只同步新增，从列表里删名字不会同步。
 
 ## 联动配置
 
