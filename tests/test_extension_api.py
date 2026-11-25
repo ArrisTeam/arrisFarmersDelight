@@ -228,6 +228,7 @@ def testTheServerBroadcastsWhenEveryAddonScriptHasLoaded():
     system = _FakeSystem()
     Ready.reset()
     ready._system = lambda: system
+    ready._files = lambda directory: []      # 行为包里的配方 JSON：test_recipe_files 管
     registry.dispatch("LoadServerAddonScriptsAfter", {})
     registry.dispatch("LoadServerAddonScriptsAfter", {})
     assert [(event, payload["side"]) for event, payload in system.calls] == [("ServerExtensionApiReady", "server")]
