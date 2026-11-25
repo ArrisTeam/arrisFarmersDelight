@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_cod",
+  "items": [
+    "minecraft:cooked_cod",
+    "arris:cooked_cod_slice"
+  ]
+}

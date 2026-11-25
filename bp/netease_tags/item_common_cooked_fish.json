@@ -1,0 +1,10 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_fish",
+  "items": [
+    "minecraft:cooked_cod",
+    "arris:cooked_cod_slice",
+    "minecraft:cooked_salmon",
+    "arris:cooked_salmon_slice"
+  ]
+}

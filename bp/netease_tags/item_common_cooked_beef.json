@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_beef",
+  "items": [
+    "minecraft:cooked_beef",
+    "arris:beef_patty"
+  ]
+}

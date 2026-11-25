@@ -1,0 +1,15 @@
+{
+  "type": "item",
+  "identifier": "common:raw_meat",
+  "items": [
+    "minecraft:rabbit",
+    "minecraft:beef",
+    "arris:minced_beef",
+    "minecraft:chicken",
+    "arris:chicken_cuts",
+    "minecraft:porkchop",
+    "arris:bacon",
+    "minecraft:mutton",
+    "arris:mutton_chops"
+  ]
+}

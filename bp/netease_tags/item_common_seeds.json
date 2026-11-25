@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "identifier": "common:seeds",
+  "items": [
+    "arris:cabbage_seeds",
+    "arris:rice",
+    "arris:tomato_seeds"
+  ]
+}

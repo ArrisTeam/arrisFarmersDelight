@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:raw_salmon",
+  "items": [
+    "minecraft:salmon",
+    "arris:salmon_slice"
+  ]
+}

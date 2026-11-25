@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:carrot",
+  "items": [
+    "minecraft:carrot"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "type": "item",
+  "identifier": "common:raw_fish",
+  "items": [
+    "minecraft:cod",
+    "arris:cod_slice",
+    "minecraft:salmon",
+    "arris:salmon_slice",
+    "minecraft:tropical_fish"
+  ]
+}

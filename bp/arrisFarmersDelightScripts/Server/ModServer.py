@@ -15,6 +15,7 @@ from ..QuModLibs.Server import Listen
 from .EventRegistry import dispatch
 
 # 导入即登记（顺序不影响执行顺序，执行顺序只看 priority）
+from .Helpers import Tags  # noqa: F401  标签的引擎口最先装上（Shared/Rules/ItemTags）：后面的模块导入时按标签建东西也问得到引擎
 from . import LegacyApi  # noqa: F401
 from . import ExtensionReady  # noqa: F401
 from . import PlayerSession  # noqa: F401
