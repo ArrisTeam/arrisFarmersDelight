@@ -7,8 +7,16 @@ JE 的煎锅、炉灶、手持煎锅读的是原版的营火烹饪配方（Recip
 - 表里没有的再问引擎的营火配方：CreateRecipe(levelId).GetRecipesByInput(名字, "campfire", aux, 1)（两端都有，3.10 实机两端都能用；
   官方备注"需要遍历较多数据，不建议频繁调用"：按 (名字, aux) 缓存，没有配方也记着）。别的模组给自己的生肉写了营火配方（配方 JSON 的
   tags 带 campfire），放到煎锅 / 炉灶上就能煎，煎成它配方里的东西。
-引擎口两端各装一个（setPort，和 ItemTags 一样；口就是 TagPort.EnginePort，两个都在用服务端的）：port.campfireRecipes(名字, aux) -> 配方列表或 None。
-没有口（离线、沙箱）或者口还没准备好（客户端进世界之前：配方随进世界才到，和标签同一个时候）时只认表，和以前一样；准备好的那一刻缓存清空。
+引擎口两端各装一个（setPort，和 ItemTags 一样；口就是 TagPort.EnginePort）：port.campfireRecipes(名字, aux) -> 配方列表或 None。
+单机（和开房的那台机器）两端共用这一份模块、两个口都在，而 GetRecipesByInput 只在自己那一端的线程里答得出（2026-11-26 实机，探针包的番茄
+fdprobe:tomato 只靠营火配方能烤：客户端线程里服务端的口给 None、客户端的口给 [{'input': 'fdprobe:tomato', 'output': 'minecraft:iron_nugget'}]；
+服务端线程里服务端的口给列表；没有营火配方的泥土在自己线程里给 []，服务端的口在客户端线程里给 None，客户端的口在服务端线程里照常答）。
+以前只问排在前面的服务端的口：客户端线程先问（站点的托盘先亮、客户端预测）时把 None 记进缓存，服务端读到的也是它，这一局都烤不了。
+所以问的时候按 SIDES 的先后挨个问，第一个不是 None 的答案算数（None：这个口在这个线程里答不了；[]：没有配方，是有效答案）；
+都答 None 时当没有配方、也不记（换个线程问也许答得出）。标签那几个接口（LookupItemsByItemTag / GetItemTags / LookupBlocksByBlockTag /
+GetBlockTags）跨线程照常答，ItemTags 照旧用排在前面的口。
+"准备好没有"照旧看排在前面的那个口（单机是服务端的：它探的是标签反查，跨线程也答得对）：没有口（离线、沙箱）或者没准备好（客户端
+进世界之前：配方随进世界才到，和标签同一个时候）时只认表，和以前一样；准备好的那一刻缓存清空。
 返回值的形状（3.10 实机，2026-11-26，两端一样）：一个列表，每条是带 input / output 两个字符串键的 dict，output 是产物名——
 GetRecipesByInput("minecraft:beef", "campfire", 0, 1) → [{'input': 'minecraft:beef', 'output': 'minecraft:cooked_beef'}]；牛肉末 → arris:beef_patty，
 三种蛋 → arris:fried_egg。解析照旧写得宽容，留给别的版本（官方文档说熔炉配方输出数量大于 1 时 output 是 dict）：output / result；
@@ -18,13 +26,13 @@ GetRecipesByInput("minecraft:beef", "campfire", 0, 1) → [{'input': 'minecraft:
 """
 from ..Data.Cooking import CanCookedFoodDict
 
-SIDES = ("server", "client")          # 两个口都在时用前面那个
+SIDES = ("server", "client")          # 问的先后；"准备好没有"看排在前面的那个
 RECIPE_TAG = "campfire"
 _TEXT = (type(""), type(u""))
 _NAME_KEYS = ("item", "itemName", "newItemName", "fullItemName", "name")
 _ports = {}                           # 端 -> 口
 _state = {"ready": False}
-_cache = {}                           # (名字, aux) -> 产物名或 None：只在口准备好时写
+_cache = {}                           # (名字, aux) -> 产物名或 None：只在口准备好、有口答得出时写
 
 
 def setPort(side, port):
@@ -51,7 +59,8 @@ def _ask(port, name, *args):
         return None
 
 
-def _readyPort():
+def _ready():
+    """准备好没有：看排在前面的那个口；从没准备好变成准备好（或者反过来）时缓存清空。"""
     port = None
     for side in SIDES:
         port = _ports.get(side)
@@ -61,7 +70,17 @@ def _readyPort():
     if ok != _state["ready"]:
         _state["ready"] = ok
         _cache.clear()
-    return port if ok else None
+    return ok
+
+
+def _recipesOf(itemName, aux):
+    """按 SIDES 的先后挨个问装着的口，第一个不是 None 的答案算数（None：这个口在这个线程里答不了；[]：没有配方）；都答 None 是 None。"""
+    for side in SIDES:
+        port = _ports.get(side)
+        found = _ask(port, "campfireRecipes", itemName, aux) if port is not None else None
+        if found is not None:
+            return found
+    return None
 
 
 def resultOf(itemName, aux=0):
@@ -71,12 +90,14 @@ def resultOf(itemName, aux=0):
     found = CanCookedFoodDict.get(itemName)
     if found:
         return found
-    port = _readyPort()
-    if port is None:
+    if not _ready():
         return None
     key = (itemName, aux or 0)
     if key not in _cache:
-        _cache[key] = cookedOf(_ask(port, "campfireRecipes", itemName, aux or 0), itemName)
+        recipes = _recipesOf(itemName, aux or 0)
+        if recipes is None:
+            return None                   # 哪个口在这个线程里都答不了：不记（记下的 None 会挡住答得出的那一端）
+        _cache[key] = cookedOf(recipes, itemName)
     return _cache[key]
 
 

@@ -127,10 +127,12 @@ def register(spec, recipeId):
         return answer(False, problem, recipeId)
     if current is not None and current[0] != kind:
         return answer(False, "type_mismatch", recipeId, current=current[0])
+    bound = RecipeIds.builtInKeyOf(recipeId)
+    if bound is not None and bound[0] != kind:
+        return answer(False, "type_mismatch", recipeId, current=bound[0])   # 自带的砧板 / 营火 ID 删掉以后也只能登记回原来那一类
     if kind == "cooking":
         return _cooking(spec, recipeId, located)
     key = (spec["input"][1:] if not isinstance(spec["input"], tuple) else spec["input"]) if kind == "cutting" else spec["input"]
-    bound = RecipeIds.builtInKeyOf(recipeId)
     if bound is not None and bound != (kind, key):
         return answer(False, "input_mismatch", recipeId)       # 自带的砧板 / 营火 ID 和原料绑死
     if key in _table(kind, key) and idOfKey(kind, key) != recipeId:

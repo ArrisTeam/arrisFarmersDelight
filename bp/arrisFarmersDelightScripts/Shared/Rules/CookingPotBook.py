@@ -123,7 +123,8 @@ def pickedRecipe(search, picked):
 
 
 def setNamePort(port):
-    """装上显示名的口：port(物品名, aux) -> 显示名或 None（Shared/Rules/ItemNames；两端的经典界面那一侧各装一个）。"""
+    """再装一个显示名的口：port(物品名, aux) -> 显示名或 None（Shared/Rules/ItemNames.setPort；两端的经典界面那一侧各装一个。单机时
+    两个口都在这一份模块里、各自只在自己那一端的线程里答得出，真去问时挨个问，第一个给出名字的算数）。None 是卸下全部（测试用）。"""
     ItemNames.setPort(port)
 
 
