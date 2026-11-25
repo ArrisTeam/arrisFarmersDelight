@@ -122,5 +122,22 @@ def testJeiListsTheTagRecipeUnderEveryMember():
     assert records[(OUR_DOUGH,)] is Cutting.CuttingBoardDict[OUR_DOUGH]
 
 
+def testTheLegacyEntryStillWorksOnAnEmptiedTagTable():
+    """T 复核时指出的：CuttingTagDict 被新接口删空以后，旧接口的"容器为空返回 False"让它再也加不进去。新名字没有旧语义要守：空了照常收、照常给；
+    原来的 24 个名字照旧。"""
+    Legacy = fdtest.load("Api.LegacyModAttr")
+    Cutting = fdtest.load("Shared.Data.Cutting")
+    saved = dict(Cutting.CuttingTagDict)
+    try:
+        Cutting.CuttingTagDict.clear()
+        assert Legacy.ArrisFarmersDelightObtain("CuttingTagDict") is Cutting.CuttingTagDict
+        entry = {"itemList": [{"itemName": "test:noodle", "count": 1}], "tool": Cutting.knifeList}
+        assert Legacy.ArrisFarmersDelightInterface("CuttingTagDict", {"common:test_dough": entry}) is Cutting.CuttingTagDict
+        assert Cutting.CuttingTagDict == {"common:test_dough": entry}
+    finally:
+        Cutting.CuttingTagDict.clear()
+        Cutting.CuttingTagDict.update(saved)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

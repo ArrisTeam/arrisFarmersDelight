@@ -69,6 +69,11 @@ def _dishRowBad(row):
     return any(not isinstance(entry, (list, tuple)) or len(entry) != 2 for entry in ingredients)
 
 
+# 空了也照常收、照常给的名字：2026-11 新加的，没有旧语义要守（原来的 24 个照旧"容器为空返回 False"）。
+# CuttingTagDict 可以被新接口删空（只有一条 tag_dough），删空以后旧接口要还能往里加。
+_EMPTY_OK = frozenset(["CuttingTagDict"])
+
+
 def ArrisFarmersDelightInterface(target, element=None):
     """
     向配置字典或列表内添加元素
@@ -79,7 +84,7 @@ def ArrisFarmersDelightInterface(target, element=None):
     if not target:
         return False
     container = _TARGETS[target]
-    if not container:
+    if not container and target not in _EMPTY_OK:
         return False
     if target == "CookingPotRecipeList":
         # 旧实现只接受单条配方字典（传列表会在这里报错）；现在逐条校验，任一条超过 6 格整体拒绝
@@ -115,7 +120,7 @@ def ArrisFarmersDelightObtain(target):
     if not target:
         return False
     container = _TARGETS[target]
-    if not container:
+    if not container and target not in _EMPTY_OK:
         return False
     return container
 
