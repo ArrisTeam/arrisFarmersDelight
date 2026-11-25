@@ -145,6 +145,33 @@ def testEachFileIsOneRecipeAndTheProblemsAreNamed():
         assert SERVER.recipes.getRecipeById("probe:cooking/tomato_mash")["result"] == {"item": "probe:tomato_mash", "count": 3}
 
 
+def testBrokenJsonNeverRaisesAndOneBadFileDoesNotStopTheRest():
+    """T 复核时复现的：type / tool 的 action、tag 写成列表或字典，数写 NaN / Infinity，Builder 的 tool 给字典——都答"格式不对"，不抛；
+    读文件时一个文件出什么错都只记下它，后面的照读。"""
+    cut = {"type": "farmersdelight:cutting", "ingredients": [{"item": "a:b"}], "result": [{"item": "a:c"}]}
+    broken = [dict(MASH, type=["farmersdelight:cooking"]), dict(MASH, type={"x": 1}), dict(MASH, cookingtime=float("nan")),
+              dict(MASH, cookingtime=float("inf")), dict(MASH, experience=float("nan")), dict(MASH, result={"item": "a:b", "count": float("inf")}),
+              dict(cut, tool={"type": "farmersdelight:tool_action", "action": ["knife_dig"]}), dict(cut, tool={"tag": {"x": 1}}),
+              dict(cut, tool={"type": "farmersdelight:tool_action", "action": "knife_dig"}, result=[{"item": "a:c", "chance": float("nan")}])]
+    for data in broken:
+        answer = SERVER.recipes.registerFromJson(data, "probe:cooking/broken")
+        assert answer["error"] == "invalid_recipe" and answer["message"], (data, answer)
+    assert SERVER.recipes.createBuilder("probe:cutting/odd", "cutting").ingredient("a:b").output("a:c").tool({"x": 1}).register()["error"] \
+        == "invalid_recipe", "Builder 的 tool 给字典也不抛"
+    with Sandbox():
+        files = [("farmersdelight_recipes/probe/a.json", json.dumps(dict(MASH, cookingtime=float("nan")))),
+                 ("farmersdelight_recipes/probe/b.json", json.dumps(dict(MASH, type=[1]))),
+                 ("farmersdelight_recipes/probe/cooking/tomato_mash.json", json.dumps(MASH))]
+        loaded, problems = Files.load(files, SERVER.recipes.registerFromJson)
+        assert loaded == ["probe:cooking/tomato_mash"] and [path for path, _reason in problems] == [path for path, _text in files[:2]], problems
+
+        def raising(data, recipeId):
+            raise RuntimeError("their bug")
+
+        loaded, problems = Files.load(files[2:], raising)
+        assert loaded == [] and problems[0][1].startswith("invalid_recipe"), problems
+
+
 class _Resource(object):
     """server_resource 的替身：列目录给的路径、读文件给的字节；raises 里的路径读的时候抛异常。"""
 

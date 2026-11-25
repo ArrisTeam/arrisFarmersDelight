@@ -16,6 +16,8 @@ parse(数据, aliases) -> (规整的配方, None) 或 (None, 一句说哪里不�
     {"type": "cutting", "input": (名, aux) 或 "#标签", "tool": 工具种类（"knife"……）或 [物品名], "results": [{"itemName", "count", ("auxValue"), ("chance")}]}
     {"type": "campfire_cooking", "input": 名, "result": 名}
 """
+import math
+
 from ..Data.Remainders import CRAFT
 from ..Data.Tags import JE_NAMES
 from .TableWire import INT_TYPES
@@ -50,10 +52,21 @@ def text(value):
     return value
 
 
+def _finite(value):
+    """是有限的数（NaN、正负无穷不算；json 读得出这几个字面量）。"""
+    return isinstance(value, _NUMBER) and not isinstance(value, bool) and not (math.isnan(value) or math.isinf(value))
+
+
+def _key(value):
+    """拿来查表的文字：不是文字（列表、字典……）是 None，查表时不抛。"""
+    value = text(value)
+    return value if isinstance(value, str) else None
+
+
 def _int(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, _NUMBER) or int(value) != value or value < 0:
+    if not _finite(value) or int(value) != value or value < 0:
         raise _Bad("%s 要是不小于 0 的整数，给的是 %r" % (what, value))
     return int(value)
 
@@ -61,7 +74,7 @@ def _int(value, default, what):
 def _number(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, _NUMBER) or value < 0:
+    if not _finite(value) or value < 0:
         raise _Bad("%s 要是不小于 0 的数，给的是 %r" % (what, value))
     return float(value)
 
@@ -126,10 +139,10 @@ def _remainderOf(name):
 
 def _tool(value):
     for entry in (value if isinstance(value, list) else [value]):
-        if isinstance(entry, dict) and text(entry.get("type")) == "farmersdelight:tool_action" and text(entry.get("action")) in TOOL_ACTIONS:
-            return TOOL_ACTIONS[text(entry["action"])]
-        if isinstance(entry, dict) and text(entry.get("tag")) in TOOL_TAGS:
-            return TOOL_TAGS[text(entry["tag"])]
+        if isinstance(entry, dict) and _key(entry.get("type")) == "farmersdelight:tool_action" and _key(entry.get("action")) in TOOL_ACTIONS:
+            return TOOL_ACTIONS[_key(entry["action"])]
+        if isinstance(entry, dict) and _key(entry.get("tag")) in TOOL_TAGS:
+            return TOOL_TAGS[_key(entry["tag"])]
     items = [_name(entry["item"], "tool 的 item") for entry in (value if isinstance(value, list) else [value])
              if isinstance(entry, dict) and "item" in entry]
     if not items:
@@ -185,10 +198,12 @@ def parse(data, aliases=None):
     """一份配方 JSON（读出来的字典）-> (规整的配方, None)；读不成是 (None, 哪里不对)。aliases 缺省是 ALIASES。"""
     if not isinstance(data, dict):
         return None, "配方要是 JSON 对象"
-    kind = TYPES.get(text(data.get("type")))
+    kind = TYPES.get(_key(data.get("type")))
     if kind is None:
         return None, "type %r 不认识：要 farmersdelight:cooking、farmersdelight:cutting 或 minecraft:campfire_cooking" % (data.get("type"),)
     try:
         return {"cooking": _cooking, "cutting": _cutting, "campfire_cooking": _campfire}[kind](data, ALIASES if aliases is None else aliases), None
     except _Bad as error:
         return None, str(error)
+    except Exception as error:  # noqa: BLE001 - 别的模组写坏的 JSON 不能让农夫乐事抛出去：照"格式不对"答
+        return None, "读不懂：%r" % (error,)

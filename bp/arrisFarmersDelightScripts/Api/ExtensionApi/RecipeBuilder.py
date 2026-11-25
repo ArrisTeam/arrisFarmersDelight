@@ -38,7 +38,7 @@ def tool(value):
     """工具：刀 / 斧 / 镐 / 锹 / 锄 / 剪刀（"knife"……）、"#标签"、"ns:name"，或它们的列表 -> JE 写法。"""
     if isinstance(value, (list, tuple)):
         return [tool(entry) for entry in value]
-    if value in ACTIONS:
+    if isinstance(value, _TEXT) and value in ACTIONS:
         return {"type": "farmersdelight:tool_action", "action": ACTIONS[value]}
     return option(value)
 
