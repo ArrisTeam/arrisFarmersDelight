@@ -6,7 +6,7 @@ ModServer 把 LoadServerAddonScriptsAfter 转给这里（EventRegistry）。每�
 别的模组在 ready 里往农夫乐事的表里登记的东西，玩家进服时由表同步发给他的客户端（Server/TableSync.py 的基线是模块导入时的表，早于 ready）。
 """
 from .EventRegistry import registerHandler
-from ..Api.ExtensionApi import Ready
+from ..Api.ExtensionApi import Ready, Recipes
 
 
 def _system():
@@ -14,6 +14,13 @@ def _system():
     return getSystem()
 
 
+def _syncNow():
+    """ext.recipes.syncToClients：现在就把表的改动发给在线的玩家（表同步本来每 5 秒看一次，见 TableSync.py）。"""
+    from . import TableSync
+    TableSync.step()
+
+
 @registerHandler("LoadServerAddonScriptsAfter")
 def OnServerExtensionApiReady(args=None):
+    Recipes.provide(syncNow=_syncNow)
     Ready.publish("server", _system)

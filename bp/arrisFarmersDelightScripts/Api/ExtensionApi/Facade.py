@@ -9,8 +9,11 @@
     ext.capabilities         这一端的全部能力名（frozenset）
     ext.hasCapability(name)  这一端有没有这项能力
 以后门面上加的接口各自登记能力名（Events 的两张表），别的模组先 hasCapability 再调。
+接口：
+    ext.recipes              配方：厨锅、砧板、营火烹饪的登记 / 查询 / 删除（Recipes.py）
 """
 from . import Events
+from .Recipes import Recipes
 from .Version import HOST_VERSION
 
 try:
@@ -26,6 +29,7 @@ class ExtensionApiFacade(object):
         if side not in Events.SIDES:
             raise ValueError("side 只能是 'server' 或 'client'，收到 %r" % (side,))
         self._side = side
+        self._recipes = Recipes(side)
 
     @property
     def side(self):
@@ -42,6 +46,10 @@ class ExtensionApiFacade(object):
     @property
     def capabilities(self):
         return Events.SERVER_CAPABILITIES if self._side == "server" else Events.CLIENT_CAPABILITIES
+
+    @property
+    def recipes(self):
+        return self._recipes
 
     def hasCapability(self, name):
         """这一端有没有这项能力。名字不是字符串（None、列表……）就是没有，不抛。"""

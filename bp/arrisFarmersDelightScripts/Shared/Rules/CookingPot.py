@@ -22,6 +22,8 @@ DEFAULT_COOK_SECONDS = Table.DEFAULT_COOK_SECONDS     # JE 的厨锅配方缺省
 DEFAULT_EXPERIENCE = Table.DEFAULT_EXPERIENCE         # 旧格式没写 Experience 时给的经验（新接口登记的把经验明写进行里，JE 的缺省是 0）
 WAYS_CAP = 64                                         # 按手头的料具体化出来的写法最多几种
 isLive = Table.isLive                                 # 这一行是不是一条配方（不是墓碑、不是坏行）
+slotsOf = Table.slotsOf                               # 这一行写对了的 Slots（没有是 None）
+waysOf = Table.waysOf                                 # 这一行写对了的旧写法
 
 
 def revision():
