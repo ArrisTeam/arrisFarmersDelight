@@ -163,6 +163,17 @@ def testWhatTheStationIsMakingNow():
     assert Books.cookCurrent([None, _item("minecraft:cooked_beef"), _item("arris:bacon")]) == "arris:bacon"
 
 
+def testThePotsCurrentPageIsNeverATombstone():
+    """T 复核 3.4：锅里那道已经删掉的菜（墓碑）没有书页，potCurrent 以前返回墓碑的下标，前置包的书拿到找不到页的键会丢掉玩家上次选的页。"""
+    soup = next(recipe for recipe in Recipes.CookingPotRecipeList if recipe["CookResult"][0] == "arris:chicken_soup")
+    soup["Disabled"] = True
+    try:
+        assert Books.potCurrent([], _item("arris:chicken_soup", 4)) is None
+    finally:
+        del soup["Disabled"]
+    assert Books.potCurrent([], _item("arris:chicken_soup", 4)) is not None
+
+
 def testFillingPicksTheWayThePlayerCanMakeMostOf():
     stew = next(recipe for recipe in Recipes.CookingPotRecipeList if recipe["CookResult"][0] == "arris:cookbeef_stew")
     pool = {("arris:minced_beef", 0): 5, ("minecraft:beef", 0): 1, ("minecraft:carrot", 0): 9, ("minecraft:potato", 0): 9}
