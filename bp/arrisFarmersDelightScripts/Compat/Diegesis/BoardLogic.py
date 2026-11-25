@@ -26,7 +26,6 @@ from ...Server.Helpers.BlockItems import DropLegacyDisplays
 from ...Server.Helpers.Engine import GetBlockEntityData
 from ...Server.Helpers.Player import GiveOrDropItem
 from ...Server.Helpers import BoardDish as Store
-from ...Shared.Data.Cutting import CuttingBoardDict
 from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules import CuttingStation
 from ...Shared.Rules import DishStation as Dishes
