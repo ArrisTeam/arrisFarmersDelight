@@ -57,7 +57,7 @@ arrisFarmersDelight/
 │   │   ├── Server/                          # 服务端：ModServer 入口 + EventRegistry + 各玩法模块 + Helpers/
 │   │   ├── Client/                          # 客户端：ModClient 入口、客户端端点、CookingPotUi、Ui/（指南书、旧厨锅界面）
 │   │   ├── Compat/                          # 联动：Jei/、Create/、Diegesis/（亲手做菜的站点）；对方未安装时不做任何事
-│   │   ├── dolorContainer/                  # 容器界面库（tools/vendor.py 拷入，请勿修改），dolorLayouts.py 是布局编译产物
+│   │   ├── dolorContainer/                  # 容器界面库（dolorContainer 工程的 tools/vendor.py 拷入，请勿修改），dolorLayouts.py 是布局编译产物
 │   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 146 个自定义方块 JSON
 │   ├── netease_items_beh/                   # 106 个物品行为 JSON
