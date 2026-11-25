@@ -71,12 +71,32 @@ SEEDS = "common:seeds"
 FLOWERS = "common:flowers"
 # 农夫乐事自己的老标签：linkage.md 让下游给自己的刀挂它（Server/Helpers/Items.IsKnife 认），农夫乐事的五把刀以前没挂
 LEGACY_KNIFE = "arris:knife"
+# JE 农夫乐事自己的分类物品标签，名字照 JE 的 farmersdelight:<路径>：给别的模组认"哪些是饭菜、小吃、甜食……"，农夫乐事自己不读。
+# 成员照 JE 的标签文件（# 展开），换成这边的物品名，原版物品照收
+MEALS = "farmersdelight:meals"
+SNACKS = "farmersdelight:snacks"
+SWEETS = "farmersdelight:sweets"
+DRINKS = "farmersdelight:drinks"
+FEASTS = "farmersdelight:feasts"
+PIES = "farmersdelight:pies"
+WILD_CROPS = "farmersdelight:wild_crops"
+MUSHROOM_COLONIES = "farmersdelight:mushroom_colonies"
+CABINETS = "farmersdelight:cabinets"
+SERVING_CONTAINERS = "farmersdelight:serving_containers"
 
 # ---- 方块标签 ----
 # 热源分两个，因为方块标签不带方块状态：HEAT_SOURCE 是方块名本身就说明在发热的（农夫乐事点着和熄着的炉灶是两个方块名，登记点着的那个）；
 # HEAT_SOURCE_LIT 是要看点燃状态的（营火的 extinguished；别的模组一个方块 + lit 状态的炉灶）
 HEAT_SOURCE = "common:heat_source"
 HEAT_SOURCE_LIT = "common:heat_source_lit"
+# 农夫乐事自己的方块标签，名字照 JE 的 farmersdelight:<路径>。读的地方是"名单 ∪ 标签"：原来的名单原样留着，不在名单里的再看标签；
+# 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
+HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
+TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
+COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
+UNAFFECTED_BY_RICH_SOIL = "farmersdelight:unaffected_by_rich_soil"     # 沃土不催熟的植物：Farming.UNAFFECTED_BY_RICH_SOIL
+MUSHROOM_COLONY_GROWABLE_ON = "farmersdelight:mushroom_colony_growable_on"     # 蘑菇菌落在上面才长：ColonyRules.GROWABLE_ON
+DROPS_CAKE_SLICE = "farmersdelight:drops_cake_slice"       # 拿刀右键切下一片蛋糕（JE 的 KnifeItem.onCakeInteraction）：Slicing.CANDLE_CAKES
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -96,6 +116,8 @@ _RAW_COD = ("minecraft:cod", "arris:cod_slice")
 _RAW_SALMON = ("minecraft:salmon", "arris:salmon_slice")
 _COOKED_COD = ("minecraft:cooked_cod", "arris:cooked_cod_slice")
 _COOKED_SALMON = ("minecraft:cooked_salmon", "arris:cooked_salmon_slice")
+_WILD_CROPS = ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
+               "arris:wild_onions", "arris:wild_rice")
 
 # 物品标签 → 农夫乐事登记的成员（照 JE 1.3.4 的 forge / farmersdelight 标签文件，换成这边的物品名）
 ITEM_TAGS = {
@@ -144,14 +166,60 @@ ITEM_TAGS = {
     WATER_BUCKET: ("minecraft:water_bucket",),
     CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato"),
     SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds"),     # JE 的 forge:seeds/rice 就是米
-    FLOWERS: ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
-              "arris:wild_onions", "arris:wild_rice"),                       # JE：前六种在 minecraft:small_flowers，野生稻在 tall_flowers
+    FLOWERS: _WILD_CROPS,                       # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
+    # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
+    # 大餐的物品是第 0 阶段的方块（*_block_stage0）
+    MEALS: ("minecraft:mushroom_stew", "minecraft:beetroot_soup", "minecraft:rabbit_stew", "arris:mixed_salad", "arris:cooked_rice",
+            "arris:bone_broth", "arris:cookbeef_stew", "arris:vegetable_soup", "arris:fish_stew", "arris:chicken_soup", "arris:fried_rice",
+            "arris:pumpkin_soup", "arris:baked_cod_stew", "arris:noodle_soup", "arris:onion_soup", "arris:bacon_and_eggs",
+            "arris:ratatouille", "arris:steak_and_potatoes", "arris:pasta_with_meatballs", "arris:pasta_with_mutton_chop",
+            "arris:mushroom_rice", "arris:roasted_mutton_chops", "arris:vegetable_noodles", "arris:squid_ink_pasta",
+            "arris:grilled_salmon", "arris:roast_chicken", "arris:stuffed_pumpkin", "arris:honey_glazed_ham", "arris:shepherds_pie",
+            "arris:gleaming_salad"),
+    SNACKS: ("arris:barbecue_stick", "arris:egg_sandwich", "arris:chicken_sandwich", "arris:hamburger", "arris:bacon_sandwich",
+             "arris:mutton_wrap", "arris:dumplings", "arris:stuffed_potato", "arris:cabbage_rolls", "arris:salmon_roll", "arris:cod_roll",
+             "arris:kelp_roll", "arris:kelp_roll_slice"),
+    SWEETS: ("minecraft:cake", "minecraft:cookie", "arris:cake_slice", "arris:apple_pie_slice", "arris:sweet_berry_cheesecake_slice",
+             "arris:chocolate_pie_slice", "arris:pumpkin_pie_slice", "arris:sweet_berry_cookie", "arris:honey_cookie",
+             "arris:melon_popsicle", "arris:glow_berry_custard", "arris:fruit_salad"),
+    DRINKS: ("arris:milk_bottle", "arris:apple_cider", "arris:melon_juice", "arris:hot_cocoa"),
+    FEASTS: tuple("arris:%s_block_stage0" % feast for feast in (
+        "roast_chicken", "stuffed_pumpkin", "shepherds_pie", "honey_glazed_ham", "gleaming_salad", "rice_roll_medley")),
+    PIES: ("minecraft:pumpkin_pie", "arris:apple_pie_item", "arris:sweet_berry_cheesecake_item", "arris:chocolate_pie_item"),
+    WILD_CROPS: _WILD_CROPS,
+    MUSHROOM_COLONIES: ("arris:brown_mushroom_colony", "arris:red_mushroom_colony"),
+    # JE：#farmersdelight:cabinets/wooden（展开）
+    CABINETS: tuple("arris:%s_cabinet" % wood for wood in (
+        "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped")),
+    SERVING_CONTAINERS: ("minecraft:bowl", "minecraft:glass_bottle", "minecraft:bucket"),
 }
 
 # 方块标签 → 农夫乐事登记的成员
 BLOCK_TAGS = {
     HEAT_SOURCE: ("minecraft:fire", "minecraft:soul_fire", "minecraft:lava", "minecraft:flowing_lava", "minecraft:magma", "arris:stove"),
     HEAT_SOURCE_LIT: ("minecraft:campfire", "minecraft:soul_campfire"),
+    HEAT_CONDUCTORS: ("minecraft:hopper",),               # JE 还有可选的 create:chute：别的模组的名字不写，机械动力那边登记
+    # JE：熔岩、#minecraft:campfires、#minecraft:fire（基岩版熔岩是两个方块名）
+    TRAY_HEAT_SOURCES: ("minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:fire",
+                        "minecraft:soul_fire"),
+    # JE：两种蘑菇、灰化土、菌丝、有机肥（基岩版按阶段是四个方块）、沃土、沃土耕地（干、湿两个方块）、#mushroom_colonies
+    COMPOST_ACTIVATORS: ("minecraft:brown_mushroom", "minecraft:red_mushroom", "minecraft:podzol", "minecraft:mycelium",
+                         "arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2",
+                         "arris:organic_compost_stage3", "arris:rich_soil", "arris:rich_soil_farmland", "arris:rich_soil_farmland_moist",
+                         "arris:brown_mushroom_colony", "arris:red_mushroom_colony"),
+    # JE：草方块、苔藓块、两种菌岩、草（基岩版 short_grass）、蕨、缠怨藤、大垂滴叶、粉红花簇、沙地灌木、两种菌落、#wild_crops、
+    # #minecraft:tall_flowers（展开）；这边的名单另外多了高草丛、大型蕨
+    UNAFFECTED_BY_RICH_SOIL: ("minecraft:grass_block", "minecraft:moss_block", "minecraft:crimson_nylium", "minecraft:warped_nylium",
+                              "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern",
+                              "minecraft:twisting_vines", "minecraft:big_dripleaf", "minecraft:pink_petals",
+                              "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:pitcher_plant",
+                              "arris:sandy_shrub", "arris:brown_mushroom_colony", "arris:red_mushroom_colony",
+                              "arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages",
+                              "arris:wild_tomatoes", "arris:wild_onions", "arris:wild_rice"),
+    MUSHROOM_COLONY_GROWABLE_ON: ("arris:rich_soil",),
+    DROPS_CAKE_SLICE: tuple("minecraft:%scandle_cake" % color for color in (
+        "", "white_", "orange_", "magenta_", "light_blue_", "yellow_", "lime_", "pink_", "gray_", "light_gray_", "cyan_", "purple_",
+        "blue_", "brown_", "green_", "red_", "black_")),                   # 插了蜡烛的蛋糕：无色加 16 种颜色
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -205,9 +273,25 @@ JE_NAMES = {
     CROPS: ("forge:crops",),
     SEEDS: ("forge:seeds",),
     FLOWERS: ("minecraft:flowers",),
+    MEALS: (MEALS,),
+    SNACKS: (SNACKS,),
+    SWEETS: (SWEETS,),
+    DRINKS: (DRINKS,),
+    FEASTS: (FEASTS,),
+    PIES: (PIES,),
+    WILD_CROPS: (WILD_CROPS,),
+    MUSHROOM_COLONIES: (MUSHROOM_COLONIES,),
+    CABINETS: (CABINETS,),
+    SERVING_CONTAINERS: (SERVING_CONTAINERS,),
     EGG: ("forge:eggs",),
     HEAT_SOURCE: ("farmersdelight:heat_sources",),
     HEAT_SOURCE_LIT: ("minecraft:campfires",),
+    HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
+    TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
+    COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),
+    UNAFFECTED_BY_RICH_SOIL: (UNAFFECTED_BY_RICH_SOIL,),
+    MUSHROOM_COLONY_GROWABLE_ON: (MUSHROOM_COLONY_GROWABLE_ON,),
+    DROPS_CAKE_SLICE: (DROPS_CAKE_SLICE,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

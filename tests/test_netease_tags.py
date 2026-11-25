@@ -115,23 +115,56 @@ def testVanillaMembersAreRealNames():
     assert len(itemNames) > 1000 and "minecraft:beef" in itemNames and "minecraft:campfire" in blockNames
     missing = []
     for kind, table in (("item", Tags.ITEM_TAGS), ("item", Tags.VANILLA_TAGS), ("block", Tags.BLOCK_TAGS)):
-        known = itemNames if kind == "item" else blockNames
+        # 方块：资源包 blocks.json 的键有几个还是老名字（草方块是 grass），创造目录里的方块物品也算（minecraft:grass_block）
+        known = itemNames if kind == "item" else blockNames | itemNames
         missing += ["%s %s" % (tag, member) for tag, members in table.items() for member in members
                     if member.startswith("minecraft:") and member not in known]
     assert not missing, missing
 
 
-def _jeTag(name, seen=()):
-    """JE 物品标签展开成这边的名字（farmersdelight: → arris:）；.refs 里没有这个标签文件（Forge / 原版自己定义的）返回 None。"""
+# JE 的名字 → 这边的名字：不是把 farmersdelight: 换成 arris: 就行的（R1 §B.1 末尾的例外），和基岩版原版改了名、拆成几个方块的
+JE_ITEMS = {
+    "farmersdelight:beef_stew": ("arris:cookbeef_stew",), "farmersdelight:apple_pie": ("arris:apple_pie_item",),
+    "farmersdelight:sweet_berry_cheesecake": ("arris:sweet_berry_cheesecake_item",), "farmersdelight:chocolate_pie": ("arris:chocolate_pie_item",),
+}
+JE_ITEMS.update(("farmersdelight:%s_block" % feast, ("arris:%s_block_stage0" % feast,))
+                for feast in ("roast_chicken", "stuffed_pumpkin", "shepherds_pie", "honey_glazed_ham", "gleaming_salad", "rice_roll_medley"))
+JE_BLOCKS = {
+    "minecraft:lava": ("minecraft:lava", "minecraft:flowing_lava"), "minecraft:grass": ("minecraft:short_grass",),
+    "minecraft:twisting_vines_plant": ("minecraft:twisting_vines",), "minecraft:big_dripleaf_stem": ("minecraft:big_dripleaf",),
+    "farmersdelight:organic_compost": tuple("arris:organic_compost_stage%d" % stage for stage in range(4)),
+    "farmersdelight:rich_soil_farmland": ("arris:rich_soil_farmland", "arris:rich_soil_farmland_moist"),
+}
+# JE 原版自己的方块标签：.refs 里只有农夫乐事往里加的那几个，原版的成员照 1.20.1 换成基岩版的名字抄在这里
+JE_VANILLA = {
+    ("blocks", "minecraft:campfires"): ("minecraft:campfire", "minecraft:soul_campfire"),
+    ("blocks", "minecraft:fire"): ("minecraft:fire", "minecraft:soul_fire"),
+    ("blocks", "minecraft:tall_flowers"): ("minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:pitcher_plant"),
+}
+
+
+def _jeTag(name, kind="items", seen=(), optional=None):
+    """JE 的物品 / 方块标签展开成这边的名字（farmersdelight: → arris:，例外见 JE_ITEMS / JE_BLOCKS）；.refs 里没有这个标签文件、
+    也不是 JE_VANILLA 里抄了成员的原版标签，返回 None。别的模组的可选成员（{"id": ..., "required": false}）不展开，收进 optional。"""
     space, path = name.split(":", 1)
-    file = os.path.join(JE_DATA, space, "tags", "items", *path.split("/")) + ".json"
-    if not os.path.isfile(file) or name in seen:
+    file = os.path.join(JE_DATA, space, "tags", kind, *path.split("/")) + ".json"
+    vanilla = JE_VANILLA.get((kind, name))
+    if (not os.path.isfile(file) and vanilla is None) or name in seen:
         return None
-    found = []
-    for value in _json(file)["values"]:
-        value = value["id"] if isinstance(value, dict) else value
-        members = _jeTag(value[1:], seen + (name,)) if value.startswith("#") else [value.replace("farmersdelight:", "arris:")]
-        assert members is not None, "%s 引用的 %s 不在 .refs 里" % (name, value)
+    found = list(vanilla or ())
+    renames = JE_ITEMS if kind == "items" else JE_BLOCKS
+    for value in _json(file)["values"] if os.path.isfile(file) else ():
+        if isinstance(value, dict):
+            if not value.get("required", True):
+                if optional is not None:
+                    optional.append(value["id"])
+                continue
+            value = value["id"]
+        if value.startswith("#"):
+            members = _jeTag(value[1:], kind, seen + (name,), optional)
+            assert members is not None, "%s 引用的 %s 不在 .refs 里" % (name, value)
+        else:
+            members = renames.get(value) or (value.replace("farmersdelight:", "arris:"),)
         found += [member for member in members if member not in found]
     return found
 
@@ -158,7 +191,7 @@ def testMembersMatchTheJavaTags():
 def testTheVocabulary():
     itemTags, blockTags = set(Tags.ITEM_TAGS), set(Tags.BLOCK_TAGS)
     assert not itemTags & blockTags and not (itemTags | blockTags) & set(Tags.VANILLA_TAGS)
-    assert all(tag.startswith("common:") for tag in itemTags - {Tags.LEGACY_KNIFE} | blockTags)
+    assert all(tag.split(":")[0] in ("common", "farmersdelight") for tag in itemTags - {Tags.LEGACY_KNIFE} | blockTags)
     assert not set(Tags.WITHOUT_MEMBERS) & (itemTags | blockTags) and "common:flour" not in itemTags, "机械动力的小麦粉是 common:wheat_flour"
     for table in (Tags.ITEM_TAGS, Tags.BLOCK_TAGS, Tags.VANILLA_TAGS):
         for tag, members in table.items():
@@ -174,6 +207,64 @@ def testTheVocabulary():
     probeTag, probeItem = Tags.READY_PROBE
     assert probeItem in Tags.ITEM_TAGS[probeTag] and probeItem.startswith("minecraft:"), "探针要是本包登记进去的原版物品"
     assert Tags.ITEM_TAGS[Tags.KNIFE] == Tags.ITEM_TAGS[Tags.LEGACY_KNIFE]
+
+
+def _serverHeat():
+    """Server/Helpers/Heat（托盘的名单 ShelfBlockSet 在它里面）：换上假引擎再导入。"""
+    import fakeengine
+    fakeengine.install()
+    return fdtest.load("Server.Helpers.Heat")
+
+
+# 农夫乐事自己的方块标签（farmersdelight:）读的地方是"名单 ∪ 标签"：标签的成员就是那张名单（离线时和原来一样）
+LISTED = {
+    Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
+    Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
+    Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
+    Tags.UNAFFECTED_BY_RICH_SOIL: lambda: fdtest.load("Shared.Data.Farming").UNAFFECTED_BY_RICH_SOIL,
+    Tags.MUSHROOM_COLONY_GROWABLE_ON: lambda: fdtest.load("Shared.Rules.ColonyRules").GROWABLE_ON,
+    Tags.DROPS_CAKE_SLICE: lambda: fdtest.load("Shared.Data.Slicing").CANDLE_CAKES,
+}
+
+
+def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
+    """farmersdelight: 的方块标签：成员就是读的地方原来的那张名单；JE 标签文件里的成员（展开 #、换成基岩版的名字）都在里面，
+    别的模组的可选成员（create:chute）不写。名单改了：这里跟上，再跑 py -3 tools/gen_tags.py。"""
+    own = sorted(tag for tag in Tags.BLOCK_TAGS if tag.startswith("farmersdelight:"))
+    assert own == sorted(LISTED), "每个 farmersdelight: 方块标签都对着一张名单"
+    for tag in own:
+        assert sorted(Tags.BLOCK_TAGS[tag]) == sorted(LISTED[tag]()), "%s 和它的名单不一样" % tag
+        assert Tags.JE_NAMES[tag] == (tag,), "照 JE 的名字"
+    if not os.path.isdir(JE_DATA):
+        print("跳过：没有 JE 源码（.refs/FarmersDelight）")
+        return
+    optional = []
+    for tag in own:
+        expanded = _jeTag(tag, "blocks", optional=optional)
+        assert expanded is not None, tag
+        missing = sorted(set(expanded) - set(Tags.BLOCK_TAGS[tag]))
+        assert not missing, "%s：JE 有、这边没有 %s" % (tag, missing)
+    assert optional == ["create:chute"], optional
+
+
+CATEGORIES = ("meals", "snacks", "sweets", "drinks", "feasts", "pies", "wild_crops", "mushroom_colonies", "cabinets", "serving_containers")
+
+
+def testFarmersDelightsCategoryItemTagsAreJavasFiles():
+    """JE 农夫乐事自己的分类物品标签（farmersdelight:meals 等十个，农夫乐事自己不读）：照 JE 的名字，成员就是 JE 标签文件展开、换成这边的名字
+    （炖牛肉 cookbeef_stew、派的物品 *_item、大餐的物品 *_block_stage0；原版物品照收）。上面 testMembersMatchTheJavaTags 逐个比，这里锁住十个都在、都比过。"""
+    own = sorted(tag for tag in Tags.ITEM_TAGS if tag.startswith("farmersdelight:"))
+    assert own == sorted("farmersdelight:" + name for name in CATEGORIES), own
+    for tag in own:
+        assert Tags.JE_NAMES[tag] == (tag,), tag
+    assert Tags.ITEM_TAGS[Tags.WILD_CROPS] == Tags.ITEM_TAGS[Tags.FLOWERS], "野生作物也是花（JE 放在 minecraft:small_flowers / tall_flowers）"
+    if not os.path.isdir(JE_DATA):
+        print("跳过：没有 JE 源码（.refs/FarmersDelight）")
+        return
+    for tag in own:
+        expanded = _jeTag(tag)
+        assert expanded is not None and sorted(expanded) == sorted(Tags.ITEM_TAGS[tag]), (tag, expanded)
+    assert len(Tags.ITEM_TAGS[Tags.CABINETS]) == 11 and "minecraft:pumpkin_pie" in Tags.ITEM_TAGS[Tags.PIES]
 
 
 def testTheHeatTagsAreTodaysHeatSources():

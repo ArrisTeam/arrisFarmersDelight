@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:mushroom_colonies",
+  "items": [
+    "arris:brown_mushroom_colony",
+    "arris:red_mushroom_colony"
+  ]
+}

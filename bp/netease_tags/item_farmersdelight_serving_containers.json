@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:serving_containers",
+  "items": [
+    "minecraft:bowl",
+    "minecraft:glass_bottle",
+    "minecraft:bucket"
+  ]
+}

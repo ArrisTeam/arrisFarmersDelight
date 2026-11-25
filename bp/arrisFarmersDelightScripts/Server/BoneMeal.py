@@ -9,8 +9,9 @@ import random
 from .FarmWorld import FarmWorld
 from .Helpers.Fx import ToAllPlayerPlaySound, ToAllPlayerGrowthParticle
 from .Helpers.Player import SetNotCreateItem
+from ..Shared.Data import Tags
 from ..Shared.Data.Farming import UNAFFECTED_BY_RICH_SOIL
-from ..Shared.Rules import BoneMealRules
+from ..Shared.Rules import BoneMealRules, ItemTags
 
 
 def _boneMealEffect(dimensionId, pos):
@@ -32,9 +33,10 @@ def ApplyBoneMeal(playerId, itemDict, blockName, blockPos, dimensionId):
 
 
 def BoostPlant(world, plantPos):
-    """沃土 / 沃土耕地催熟 plantPos 的植物（RichSoilBlock.boostPlant）：不受影响的、不是合法目标的不动；返回是否催熟了。"""
+    """沃土 / 沃土耕地催熟 plantPos 的植物（RichSoilBlock.boostPlant）：不受影响的（名单 UNAFFECTED_BY_RICH_SOIL ∪ 方块标签
+    farmersdelight:unaffected_by_rich_soil）、不是合法目标的不动；返回是否催熟了。"""
     name = world.nameAt(plantPos)
-    if name in UNAFFECTED_BY_RICH_SOIL:
+    if ItemTags.blockListed(name, UNAFFECTED_BY_RICH_SOIL, Tags.UNAFFECTED_BY_RICH_SOIL):
         return False
     valid, edits = BoneMealRules.boneMeal(world, name, plantPos, random)
     if not valid:

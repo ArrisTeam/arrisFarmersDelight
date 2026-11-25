@@ -62,6 +62,13 @@ class FullPort(object):
         return [{"output": "minecraft:cooked_beef:0"}] if itemName == "minecraft:beef" else []
 
 
+class NoBlockTagsPort(FullPort):
+    """按方块问（GetBlockTags）什么都答不出：反查照常。"""
+
+    def blockTagsOf(self, blockName):
+        return None
+
+
 def _reset():
     for side in ItemTags.SIDES:
         ItemTags.setPort(side, None)
@@ -79,6 +86,15 @@ def testTheServerSelfTestsPassOnAFullEngine():
         assert campfire["ok"] and campfire["recipes"]["minecraft:beef"]["parsed"] == "minecraft:cooked_beef"
         assert campfire["recipes"]["arris:minced_beef"]["result"] == "arris:beef_patty", "表里有的照表"
         assert ServerTest.mcdk_test_tags_heat()["ok"]
+        assert members["items"][Tags.MEALS]["missing"] == [] and members["items"][Tags.MEALS]["engine"] == len(Tags.ITEM_TAGS[Tags.MEALS])
+        blocks = ServerTest.mcdk_test_tags_blocks()
+        own = sorted(tag for tag in Tags.BLOCK_TAGS if tag.startswith("farmersdelight:"))
+        assert blocks["ok"] and sorted(blocks["tags"]) == own and len(own) == 6, sorted(blocks["tags"])
+        assert all(row["notTagged"] == [] and row["missing"] == [] for row in blocks["tags"].values())
+        ServerPort.PORT = NoBlockTagsPort()
+        blocks = ServerTest.mcdk_test_tags_blocks()
+        assert blocks["ok"], "按方块问不认只报，反查认得就算过"
+        assert blocks["tags"][Tags.DROPS_CAKE_SLICE]["notTagged"] == sorted(Tags.BLOCK_TAGS[Tags.DROPS_CAKE_SLICE])
         ServerPort.PORT = FullPort(drop=(Tags.RAW_BEEF, "minecraft:beef"))
         members = ServerTest.mcdk_test_tags_members()
         assert not members["ok"] and members["missing"] == [Tags.RAW_BEEF], members["missing"]

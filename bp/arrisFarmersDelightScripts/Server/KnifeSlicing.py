@@ -2,7 +2,8 @@
 """KnifeSlicing - 刀切蛋糕、用刀拆派和蛋糕掉切片、用刀拆南瓜掉南瓜片（服务端）
 
 照 JE：
-- 手里拿刀右键蛋糕（含插蜡烛的）切下一片，不吃、不耗刀（KnifeItem.onCakeInteraction）；
+- 手里拿刀右键蛋糕（含插蜡烛的）切下一片，不吃、不耗刀（KnifeItem.onCakeInteraction）；插蜡烛的那一支看的是方块标签
+  farmersdelight:drops_cake_slice：名单（Slicing.CANDLE_CAKES）∪ 这个标签，别的模组登记进来的方块也照插蜡烛的蛋糕切；
 - 用刀破坏派 / 蛋糕，掉剩下口数的切片（PastrySlicingModifier：slicing_*.json），插蜡烛的蛋糕额外掉 7 片；
 - 用刀破坏南瓜（没有精准采集）掉 4 片南瓜片，不掉南瓜（scavenging_pumpkin.json）。
 手里拿刀右键派切下一片在 FoodBlocks.py。创造模式破坏方块本来就不掉东西，这里也不补。
@@ -15,12 +16,19 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data import Slicing as Data
+from ..Shared.Data import Tags
+from ..Shared.Rules import ItemTags
 from ..Shared.Rules import Slicing as Rules
 from ..Shared.Rules.MobLoot import SILK_TOUCH, enchantLevel
 
 CAKES = (Data.CAKE,) + Data.CANDLE_CAKES
 SLICEABLE = frozenset(CAKES + tuple(Data.pieSliceItems))
 AIR = {"name": "minecraft:air"}
+
+
+def cutsLikeACake(blockName):
+    """拿刀右键能切下一片蛋糕的方块：蛋糕、插蜡烛的蛋糕（名单），或带 farmersdelight:drops_cake_slice 的（JE 的 onCakeInteraction 看这个标签）。"""
+    return ItemTags.blockListed(blockName, CAKES, Tags.DROPS_CAKE_SLICE)
 
 # 原版蛋糕要登记后才会触发 ServerBlockUseEvent（用刀右键要抢在"吃蛋糕"之前取消）
 for _cake in CAKES:
@@ -49,7 +57,7 @@ def _cakeBites(blockPos, dimensionId, aux):
     return aux or 0
 
 
-@registerHandler("ServerBlockUseEvent", match=CAKES)
+@registerHandler("ServerBlockUseEvent", match=cutsLikeACake)
 def OnKnifeOnCake(args):
     playerId = args["playerId"]
     if _knifeInHand(playerId) is None:
@@ -68,10 +76,13 @@ def OnKnifeOnCake(args):
         else:
             compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, {"bite_counter": nextBites}, dimensionId)
     else:
-        # 插蜡烛的蛋糕：变成只少了一片的蛋糕，蜡烛掉出来（JE：换成 BITES = 1 的蛋糕再 dropResources）
+        # 插蜡烛的蛋糕（或带 drops_cake_slice 标签的方块）：变成只少了一片的蛋糕，蜡烛掉出来（JE：换成 BITES = 1 的蛋糕再 dropResources）。
+        # 别的模组的方块没有对应的蜡烛：JE 会掉它战利品表里的东西，这边不掉
         blockInfo.SetBlockNew(blockPos, {"name": Data.CAKE}, 0, dimensionId)
         compFactory.CreateBlockState(levelId).SetBlockStates(blockPos, {"bite_counter": 1}, dimensionId)
-        _spawn(dimensionId, blockPos, Rules.candleOf(blockName), 1)
+        candle = Rules.candleOf(blockName)
+        if candle:
+            _spawn(dimensionId, blockPos, candle, 1)
     _spawn(dimensionId, blockPos, Data.CAKE_SLICE, 1)
     ToAllPlayerPlaySound(dimensionId, blockPos, Data.SLICE_SOUND)
 

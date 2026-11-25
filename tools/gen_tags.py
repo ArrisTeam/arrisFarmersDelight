@@ -40,10 +40,27 @@ MEANINGS = {
     "common:crops": "作物（团队已有的名字）", "common:seeds": "种子（团队已有的名字）", "common:flowers": "花（团队已有的名字）",
     "common:heat_source": "热源：方块名就说明在发热", "common:heat_source_lit": "热源：要看方块状态点没点着",
     "minecraft:egg": "蛋（原版自带的标签）", "common:chili": "辣椒", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
+    "farmersdelight:heat_conductors": "把热传给上面一格的方块",
+    "farmersdelight:tray_heat_sources": "锅 / 煎锅放在上面要画托盘的方块",
+    "farmersdelight:compost_activators": "有机肥周围的催化剂",
+    "farmersdelight:unaffected_by_rich_soil": "沃土不催熟的植物",
+    "farmersdelight:mushroom_colony_growable_on": "蘑菇菌落在它上面才长",
+    "farmersdelight:drops_cake_slice": "拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕）",
+    "farmersdelight:meals": "饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算）", "farmersdelight:snacks": "小吃（三明治、汉堡、卷、饺子……）",
+    "farmersdelight:sweets": "甜食（蛋糕、曲奇、派的切片、冰棍……）", "farmersdelight:drinks": "饮料（瓶装的）",
+    "farmersdelight:feasts": "大餐（放在地上、一份一份盛出来的那几样）", "farmersdelight:pies": "派（原版的南瓜派也算）",
+    "farmersdelight:wild_crops": "野生作物", "farmersdelight:mushroom_colonies": "蘑菇菌落", "farmersdelight:cabinets": "橱柜",
+    "farmersdelight:serving_containers": "盛饭菜的容器（碗、玻璃瓶、桶）",
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
     "common:heat_source": "热源（Shared/Rules/HeatSources）", "common:heat_source_lit": "热源（Shared/Rules/HeatSources，锅底下要点着）",
+    "farmersdelight:heat_conductors": "锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts）",
+    "farmersdelight:tray_heat_sources": "锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat）",
+    "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
+    "farmersdelight:unaffected_by_rich_soil": "沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant）",
+    "farmersdelight:mushroom_colony_growable_on": "蘑菇菌落长不长（Server/MushroomColony）",
+    "farmersdelight:drops_cake_slice": "拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake）",
 }
 
 

@@ -1,6 +1,7 @@
 # 农夫乐事的标签（netease_tags）
 
-农夫乐事（arrisFarmersDelight）用网易 3.10 的 `netease_tags` 把自己的物品、方块和用到的原版物品、方块登记进一套 `common:` 标签。
+农夫乐事（arrisFarmersDelight）用网易 3.10 的 `netease_tags` 把自己的物品、方块和用到的原版物品、方块登记进一套 `common:` 标签，
+JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 标签。
 别的模组往同名的标签里放自己的东西，引擎会把成员合并，农夫乐事和其他模组就能认出对方的番茄、米、刀、热源。
 
 词表以代码为准：`bp/arrisFarmersDelightScripts/Shared/Data/Tags.py`。`bp/netease_tags/` 下的文件和本文的词表都由 `py -3 tools/gen_tags.py` 从它生成，
@@ -54,6 +55,31 @@
 基岩版的三种蛋（鸡蛋、蓝色鸡蛋、棕色鸡蛋，原版标签 `minecraft:egg` 的成员）一视同仁：都能在煎锅上煎成煎蛋，只煎一面，炉灶站点的烤架不收，
 熔炉、烟熏炉、营火也收（JE 只有一种蛋）。工作台配方里的蛋还只认鸡蛋。
 
+## JE 农夫乐事自己的标签（farmersdelight:）
+
+JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字，`#` 引用展开写全；
+只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
+
+方块标签有六个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
+这六张名单不在 `linkage.md` 的接口里，别的模组要加进来就用标签。
+
+| 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
+| --- | --- | --- |
+| `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
+| `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
+| `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
+| `farmersdelight:unaffected_by_rich_soil` | 长在沃土、沃土耕地上也不被催熟 | 草方块、草、蕨、高花、野生作物、蘑菇菌落等 |
+| `farmersdelight:mushroom_colony_growable_on` | 蘑菇菌落在它上面才会长 | 沃土 |
+| `farmersdelight:drops_cake_slice` | 拿刀右键：变成少一片的蛋糕，掉一片蛋糕 | 插蜡烛的蛋糕（17 种） |
+
+`drops_cake_slice` 里别的模组的方块被切时不掉蜡烛，也不掉它自己战利品表里的东西（JE 会掉）。
+
+物品标签有十个，农夫乐事自己不读，给别的模组认农夫乐事的东西：`farmersdelight:meals`（饭菜）、`snacks`（小吃）、`sweets`（甜食）、
+`drinks`（饮料）、`feasts`（大餐）、`pies`（派）、`wild_crops`（野生作物）、`mushroom_colonies`（蘑菇菌落）、`cabinets`（橱柜）、
+`serving_containers`（盛饭菜的容器）。成员见下面的词表，原版的蘑菇煲、蛋糕、南瓜派、碗这些也在里面。
+JE 里 `feasts`、`pies`、`wild_crops`、`mushroom_colonies`、`cabinets` 还各有一个同名的方块标签，这边没有登记。
+JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，不另登记。
+
 ## 词表
 
 标签名是 `common:` 加小写、下划线连接的单数名词，对应 JE 的 `forge:` / `c:` 标签；物品名本身就是复数的照物品名（`tomato_seeds`、`mutton_chops`）。
@@ -62,6 +88,7 @@
 - `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
 - 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。
+- `farmersdelight:` 开头的是 JE 农夫乐事自己定义的标签，名字照 JE（见上一节），不按上面的单数规矩改。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 
 <!-- gen_tags: 词表开始（tools/gen_tags.py 从 Shared/Data/Tags.py 生成，别手改） -->
@@ -113,8 +140,24 @@
 | `common:crops` | 物品 | 作物（团队已有的名字） | `forge:crops` | `arris:cabbage`、`arris:cabbage_leaf`、`arris:onion`、`arris:rice`、`arris:tomato` | — |
 | `common:seeds` | 物品 | 种子（团队已有的名字） | `forge:seeds` | `arris:cabbage_seeds`、`arris:rice`、`arris:tomato_seeds` | — |
 | `common:flowers` | 物品 | 花（团队已有的名字） | `minecraft:flowers` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
+| `farmersdelight:meals` | 物品 | 饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算） | `farmersdelight:meals` | `minecraft:mushroom_stew`、`minecraft:beetroot_soup`、`minecraft:rabbit_stew`、`arris:mixed_salad`、`arris:cooked_rice`、`arris:bone_broth`、`arris:cookbeef_stew`、`arris:vegetable_soup`、`arris:fish_stew`、`arris:chicken_soup`、`arris:fried_rice`、`arris:pumpkin_soup`、`arris:baked_cod_stew`、`arris:noodle_soup`、`arris:onion_soup`、`arris:bacon_and_eggs`、`arris:ratatouille`、`arris:steak_and_potatoes`、`arris:pasta_with_meatballs`、`arris:pasta_with_mutton_chop`、`arris:mushroom_rice`、`arris:roasted_mutton_chops`、`arris:vegetable_noodles`、`arris:squid_ink_pasta`、`arris:grilled_salmon`、`arris:roast_chicken`、`arris:stuffed_pumpkin`、`arris:honey_glazed_ham`、`arris:shepherds_pie`、`arris:gleaming_salad` | — |
+| `farmersdelight:snacks` | 物品 | 小吃（三明治、汉堡、卷、饺子……） | `farmersdelight:snacks` | `arris:barbecue_stick`、`arris:egg_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:bacon_sandwich`、`arris:mutton_wrap`、`arris:dumplings`、`arris:stuffed_potato`、`arris:cabbage_rolls`、`arris:salmon_roll`、`arris:cod_roll`、`arris:kelp_roll`、`arris:kelp_roll_slice` | — |
+| `farmersdelight:sweets` | 物品 | 甜食（蛋糕、曲奇、派的切片、冰棍……） | `farmersdelight:sweets` | `minecraft:cake`、`minecraft:cookie`、`arris:cake_slice`、`arris:apple_pie_slice`、`arris:sweet_berry_cheesecake_slice`、`arris:chocolate_pie_slice`、`arris:pumpkin_pie_slice`、`arris:sweet_berry_cookie`、`arris:honey_cookie`、`arris:melon_popsicle`、`arris:glow_berry_custard`、`arris:fruit_salad` | — |
+| `farmersdelight:drinks` | 物品 | 饮料（瓶装的） | `farmersdelight:drinks` | `arris:milk_bottle`、`arris:apple_cider`、`arris:melon_juice`、`arris:hot_cocoa` | — |
+| `farmersdelight:feasts` | 物品 | 大餐（放在地上、一份一份盛出来的那几样） | `farmersdelight:feasts` | `arris:roast_chicken_block_stage0`、`arris:stuffed_pumpkin_block_stage0`、`arris:shepherds_pie_block_stage0`、`arris:honey_glazed_ham_block_stage0`、`arris:gleaming_salad_block_stage0`、`arris:rice_roll_medley_block_stage0` | — |
+| `farmersdelight:pies` | 物品 | 派（原版的南瓜派也算） | `farmersdelight:pies` | `minecraft:pumpkin_pie`、`arris:apple_pie_item`、`arris:sweet_berry_cheesecake_item`、`arris:chocolate_pie_item` | — |
+| `farmersdelight:wild_crops` | 物品 | 野生作物 | `farmersdelight:wild_crops` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
+| `farmersdelight:mushroom_colonies` | 物品 | 蘑菇菌落 | `farmersdelight:mushroom_colonies` | `arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | — |
+| `farmersdelight:cabinets` | 物品 | 橱柜 | `farmersdelight:cabinets` | `arris:oak_cabinet`、`arris:spruce_cabinet`、`arris:birch_cabinet`、`arris:jungle_cabinet`、`arris:acacia_cabinet`、`arris:dark_oak_cabinet`、`arris:mangrove_cabinet`、`arris:cherry_cabinet`、`arris:bamboo_cabinet`、`arris:crimson_cabinet`、`arris:warped_cabinet` | — |
+| `farmersdelight:serving_containers` | 物品 | 盛饭菜的容器（碗、玻璃瓶、桶） | `farmersdelight:serving_containers` | `minecraft:bowl`、`minecraft:glass_bottle`、`minecraft:bucket` | — |
 | `common:heat_source` | 方块 | 热源：方块名就说明在发热 | `farmersdelight:heat_sources` | `minecraft:fire`、`minecraft:soul_fire`、`minecraft:lava`、`minecraft:flowing_lava`、`minecraft:magma`、`arris:stove` | 热源（Shared/Rules/HeatSources） |
 | `common:heat_source_lit` | 方块 | 热源：要看方块状态点没点着 | `minecraft:campfires` | `minecraft:campfire`、`minecraft:soul_campfire` | 热源（Shared/Rules/HeatSources，锅底下要点着） |
+| `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
+| `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
+| `farmersdelight:compost_activators` | 方块 | 有机肥周围的催化剂 | `farmersdelight:compost_activators` | `minecraft:brown_mushroom`、`minecraft:red_mushroom`、`minecraft:podzol`、`minecraft:mycelium`、`arris:organic_compost_stage0`、`arris:organic_compost_stage1`、`arris:organic_compost_stage2`、`arris:organic_compost_stage3`、`arris:rich_soil`、`arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | 有机肥堆沤的概率（Server/OrganicCompost） |
+| `farmersdelight:unaffected_by_rich_soil` | 方块 | 沃土不催熟的植物 | `farmersdelight:unaffected_by_rich_soil` | `minecraft:grass_block`、`minecraft:moss_block`、`minecraft:crimson_nylium`、`minecraft:warped_nylium`、`minecraft:short_grass`、`minecraft:tall_grass`、`minecraft:fern`、`minecraft:large_fern`、`minecraft:twisting_vines`、`minecraft:big_dripleaf`、`minecraft:pink_petals`、`minecraft:sunflower`、`minecraft:lilac`、`minecraft:rose_bush`、`minecraft:peony`、`minecraft:pitcher_plant`、`arris:sandy_shrub`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony`、`arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | 沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant） |
+| `farmersdelight:mushroom_colony_growable_on` | 方块 | 蘑菇菌落在它上面才长 | `farmersdelight:mushroom_colony_growable_on` | `arris:rich_soil` | 蘑菇菌落长不长（Server/MushroomColony） |
+| `farmersdelight:drops_cake_slice` | 方块 | 拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕） | `farmersdelight:drops_cake_slice` | `minecraft:candle_cake`、`minecraft:white_candle_cake`、`minecraft:orange_candle_cake`、`minecraft:magenta_candle_cake`、`minecraft:light_blue_candle_cake`、`minecraft:yellow_candle_cake`、`minecraft:lime_candle_cake`、`minecraft:pink_candle_cake`、`minecraft:gray_candle_cake`、`minecraft:light_gray_candle_cake`、`minecraft:cyan_candle_cake`、`minecraft:purple_candle_cake`、`minecraft:blue_candle_cake`、`minecraft:brown_candle_cake`、`minecraft:green_candle_cake`、`minecraft:red_candle_cake`、`minecraft:black_candle_cake` | 拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake） |
 | `minecraft:egg` | 物品（原版自带，不生成文件） | 蛋（原版自带的标签） | `forge:eggs` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg` | — |
 | `common:chili` | 物品（农夫乐事没有成员，不生成文件） | 辣椒 | — | — | — |
 | `common:fruit` | 物品（农夫乐事没有成员，不生成文件） | 水果 | — | — | — |
@@ -131,3 +174,5 @@
   名字真写错了的，这条日志会一直出现。
 - 营火配方的返回值没有在游戏里核对过形状，农夫乐事解析得比较宽松；认不出来的就当没有这条配方。
 - 方块的状态只有服务端读得到：客户端判断热源时不看点没点着。
+- 原版方块要先登记右键事件，拿刀右键时才切得到。农夫乐事只登记了蛋糕和插蜡烛的蛋糕，所以 `farmersdelight:drops_cake_slice`
+  里再加原版方块不起作用；别的模组的自定义方块不用登记。

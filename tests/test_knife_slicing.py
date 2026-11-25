@@ -3,7 +3,7 @@
 """用刀切蛋糕、拆派和蛋糕、拆南瓜（Server/KnifeSlicing.py），用假引擎驱动（tests/fakeengine.py）。
 
 JE：右键蛋糕用刀切下一片（不吃）；用刀破坏派 / 蛋糕掉剩下口数的切片，插蜡烛的蛋糕额外 7 片；用刀破坏南瓜
-（没有精准采集）掉 4 片南瓜片、不掉南瓜。
+（没有精准采集）掉 4 片南瓜片、不掉南瓜。右键切的那一支认方块标签 farmersdelight:drops_cake_slice（名单 ∪ 标签）。
 """
 from __future__ import print_function
 
@@ -13,16 +13,36 @@ import fdtest
 world = fakeengine.install()
 Registry = fdtest.load("Server.EventRegistry")
 KnifeSlicing = fdtest.load("Server.KnifeSlicing")
+ItemTags = fdtest.load("Shared.Rules.ItemTags")
+Tags = fdtest.load("Shared.Data.Tags")
 
 KNIFE = {"newItemName": "arris:iron_knife", "newAuxValue": 0, "count": 1}
 POS = (3, 64, 3)
 CAKE_SLICE = "arris:cake_slice"
 
 
+class BlockTagPort(object):
+    """只答方块标签的反查：members = {标签: [方块名]}。"""
+
+    def __init__(self, members):
+        self.members = members
+
+    def ready(self):
+        return True
+
+    def blocksOf(self, tag):
+        return self.members.get(tag)
+
+    def blockTagsOf(self, blockName):
+        return None
+
+
 def _setUp(hand=KNIFE, creative=False):
     Registry.clearAll()
+    for side in ItemTags.SIDES:
+        ItemTags.setPort(side, None)
     for event, match, handler in (
-            ("ServerBlockUseEvent", KnifeSlicing.CAKES, KnifeSlicing.OnKnifeOnCake),
+            ("ServerBlockUseEvent", KnifeSlicing.cutsLikeACake, KnifeSlicing.OnKnifeOnCake),
             ("ServerPlayerTryDestroyBlockEvent", KnifeSlicing.SLICEABLE, KnifeSlicing.OnTryBreakSliceable),
             ("DestroyBlockEvent", KnifeSlicing.SLICEABLE, KnifeSlicing.OnBrokeSliceable),
             ("DestroyBlockEvent", "minecraft:pumpkin", KnifeSlicing.OnBrokePumpkin)):
@@ -96,6 +116,27 @@ def testKnifeOnCandleCakeLeavesACakeWithOneBiteAndDropsTheCandle():
     assert world.blockName(*POS) == "minecraft:cake"
     assert world.blocks[(0,) + POS]["states"] == {"bite_counter": 1}
     assert sorted(world.spawnedNames()) == sorted([("minecraft:red_candle", 1), (CAKE_SLICE, 1)])
+
+
+def testATaggedBlockIsCutLikeACandleCake():
+    """JE（KnifeItem.onCakeInteraction）：拿刀右键 farmersdelight:drops_cake_slice 里的方块，换成少一片的蛋糕、掉一片蛋糕。
+    别的模组的方块登记进这个标签也照切（这边没有它的蜡烛可掉）；没登记的不管，右键事件也不取消。"""
+    modded = "mymod:berry_candle_cake"
+    for tagged in (False, True):
+        _setUp()
+        if tagged:
+            ItemTags.setPort("server", BlockTagPort({Tags.DROPS_CAKE_SLICE: [modded]}))
+        world.setBlock(POS[0], POS[1], POS[2], modded, states={"mymod:lit": False})
+        args = _use(modded)
+        assert args["cancel"] is tagged, tagged
+        if tagged:
+            assert world.blockName(*POS) == "minecraft:cake" and world.blocks[(0,) + POS]["states"] == {"bite_counter": 1}
+            assert world.spawnedNames() == [(CAKE_SLICE, 1)]
+        else:
+            assert world.blockName(*POS) == modded and world.spawned == []
+    assert KnifeSlicing.cutsLikeACake("minecraft:cake") and KnifeSlicing.cutsLikeACake("minecraft:lime_candle_cake")
+    assert not KnifeSlicing.cutsLikeACake(None) and not KnifeSlicing.cutsLikeACake("minecraft:stone")
+    ItemTags.setPort("server", None)
 
 
 def testHoldingTheClickDoesNotCutTwiceWithinTheCooldown():

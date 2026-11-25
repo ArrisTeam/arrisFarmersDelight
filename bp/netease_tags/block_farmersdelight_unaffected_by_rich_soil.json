@@ -1,0 +1,32 @@
+{
+  "type": "block",
+  "identifier": "farmersdelight:unaffected_by_rich_soil",
+  "items": [
+    "minecraft:grass_block",
+    "minecraft:moss_block",
+    "minecraft:crimson_nylium",
+    "minecraft:warped_nylium",
+    "minecraft:short_grass",
+    "minecraft:tall_grass",
+    "minecraft:fern",
+    "minecraft:large_fern",
+    "minecraft:twisting_vines",
+    "minecraft:big_dripleaf",
+    "minecraft:pink_petals",
+    "minecraft:sunflower",
+    "minecraft:lilac",
+    "minecraft:rose_bush",
+    "minecraft:peony",
+    "minecraft:pitcher_plant",
+    "arris:sandy_shrub",
+    "arris:brown_mushroom_colony",
+    "arris:red_mushroom_colony",
+    "arris:wild_carrots",
+    "arris:wild_potatoes",
+    "arris:wild_beetroots",
+    "arris:wild_cabbages",
+    "arris:wild_tomatoes",
+    "arris:wild_onions",
+    "arris:wild_rice"
+  ]
+}

@@ -11,7 +11,7 @@ import time
 from .EventRegistry import dispatch, registerHandler
 from .Helpers.Engine import GetBlockEntityData, GetBlockName
 from .Helpers.Heat import IsHeated
-from ..Shared.Data.Cooking import HeatConductorList
+from ..Shared.Rules import HeatSources
 from ..Shared.Rules.Ticks import Pacer
 
 HEATED_BLOCKS = ("arris:cooking_pot", "arris:skillet")
@@ -27,7 +27,7 @@ def OnHeatedBlockTick(args):
         return
     belowPos = (blockPos[0], blockPos[1] - 1, blockPos[2])
     belowName = GetBlockName(belowPos, dimensionId)
-    if belowName not in HeatConductorList:
+    if not HeatSources.conducts(belowName):           # 漏斗，或带 farmersdelight:heat_conductors 的方块
         return
     blockEntityData = GetBlockEntityData(dimensionId, blockPos)
     if not blockEntityData or IsHeated(belowPos, dimensionId, belowName) == (blockEntityData["heatEnable"] is True):
