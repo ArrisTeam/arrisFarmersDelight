@@ -9,6 +9,7 @@
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from . import CookingPot as PotRules
+from . import ItemNames
 from .TableWire import isInt
 
 INPUT_SLOTS = 6
@@ -67,17 +68,24 @@ def _stack(item, count=1):
     return {"newItemName": item[0], "newAuxValue": item[1], "count": count}
 
 
+def _signature():
+    """表的签名：长度、索引重建的次数、已经要到了几个显示名（后来才要到的名字要让早先的搜索重算）。"""
+    return (len(CookingPotRecipeList), PotRules.revision(), ItemNames.remembered())
+
+
 def _found(search):
-    """搜索词过滤的结果（记着）：[表的签名, 下标们, 食谱格的内容或 None]。表的签名是长度加索引重建的次数。"""
+    """搜索词过滤的结果（记着）：[表的签名, 下标们, 食谱格的内容或 None]。按 titleOf 的标题搜（没写 text 的按成品的显示名）。"""
     word = _chars(search).lower()
-    signature = (len(CookingPotRecipeList), PotRules.revision())
     entry = _memo.get(word)
-    if entry is None or entry[0] != signature:
+    if entry is None or entry[0] != _signature():
         if len(_memo) >= _MEMO_LIMIT:
             _memo.clear()
+        misses = ItemNames.misses()
         indices = [index for index, recipe in enumerate(CookingPotRecipeList)
-                   if _wellFormed(recipe) and (not word or word in _chars(recipe.get("text")).lower())]
-        entry = _memo[word] = [signature, indices, None]
+                   if _wellFormed(recipe) and (not word or word in _chars(titleOf(recipe)).lower())]
+        entry = [_signature(), indices, None]      # 签名在循环之后取：循环里要到的名字也算进去
+        if ItemNames.misses() == misses:
+            _memo[word] = entry                    # 有名字没要到：不记，下次重算（隔一阵会再问引擎）
     return entry
 
 
@@ -114,10 +122,20 @@ def pickedRecipe(search, picked):
     return recipeAt(shown[picked]) if 0 <= picked < len(shown) else None
 
 
+def setNamePort(port):
+    """装上显示名的口：port(物品名, aux) -> 显示名或 None（Shared/Rules/ItemNames；两端的经典界面那一侧各装一个）。"""
+    ItemNames.setPort(port)
+
+
 def titleOf(recipe):
-    """选中食谱时详情上方的标题：食谱表里那道菜的 text，原样显示。下游写的 text 不一定是字：和原来的文字字段一样 str() 一下，
+    """选中食谱时详情上方的标题、搜索按的名字：食谱表里那道菜的 text，原样显示。没写 text（新接口登记时没写，表里记的是成品的物品 ID）
+    的显示成品的显示名（界面所在那一端问引擎，ItemNames），要不到用物品 ID。下游写的 text 不一定是字：和原来的文字字段一样 str() 一下，
     界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
     text = recipe.get("text")
+    result = recipe.get("CookResult")
+    if _pair(result) and result[0] and (text is None or text == result[0]):
+        named = ItemNames.nameOf(result[0], result[1])
+        return named if named is not None else result[0]
     if isinstance(text, (bytes, _TEXT)):
         return text
     return "" if text is None else str(text)
