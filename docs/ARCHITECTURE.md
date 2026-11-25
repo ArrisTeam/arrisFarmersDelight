@@ -137,7 +137,7 @@ Compat/
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
                         FryTints（客户端，两个场景共用：朝上那面半熟的件上叠一颗熟色粒子，见「煎锅 / 炉灶上东西朝上那面的熟色」）；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
-                        TableHooksLink（服务端，前置包的原版工作台站点上登本包的补还剩余物和砧板菜否决，table / board 两步调它）+ TableServerLink / TableClientLink（table 步骤）；
+                        TableHooksLink（服务端，前置包的原版工作台站点上登本包的补还剩余物和砧板菜否决，table / board 两步调它）+ TableServerLink / TableClientLink（table 步骤；客户端那一步给前置包配方书的登记口登砧板菜不进书）；
                         TouchFeel（客户端，四个站点共用：触屏的轻震、双击间隔、点选的东西飞上站点，问前置包的 view.buzz / view.doubleSeconds / view.flyIn，老版本没有就算了，
                         docs/diegesis/DESIGN.md §9；砧板、煎锅、炉灶在发 place 的地方调 flyIn，只在照客户端的状态放得上去时调，厨锅走内核自己的点击）；
                         FlatSprites（客户端，纯逻辑，四个站点的表现类共用：答前置包的可选钩子 flatSprite，手上拿着的方块物品里哪些引擎画成一张平面图——查 Shared/Data/FlatBlockItems；
@@ -461,11 +461,16 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 前置包的原版工作台站点（它的内容包 `Vanilla/`：桌上摆料、脚本合成）不发引擎的合成事件，上面两条（补还剩余物、拦砧板菜）挂不上去，所以登到它的接口上
 （`Compat/Diegesis/TableHooksLink.py`，`serverApi.ImportModule("arrisDiegesisScripts.Vanilla.Server.TableHooks")`，接口说明在前置包的那个模块里，`API_VERSION` 1）：
 - `table` 步骤（`TableServerLink`）登 `addRemainder(returns)`：成品对上 `Shared/Data/CraftReturns.py` 的无序配方就按 `Crafting.entryFor / returnsOf` 每份每格还一件、放回原格
-  （前置包那边放不回进背包、再掉脚下），下游包在 `Food.shapedRecipeContainerDict` 登记的成品每份还一个（进背包）；客户端的 `table` 步骤没有东西要做（`TableClientLink` 只为两张表对上）。
+  （前置包那边放不回进背包、再掉脚下），下游包在 `Food.shapedRecipeContainerDict` 登记的成品每份还一个（进背包）。
 - `board` 步骤在登 `DishCrafts` 的同一个条件下（砧板站点登上了、`remove_crafting_recipes` 开着）登 `addVeto(dishVeto)`：九格是砧板菜的某条配方就拒，
-  给玩家看的话是 `Tips.DISH_ON_BOARD`（语言键 + 中文，前置包的客户端按玩家的语言查本包语言文件里的键）。
-- 接口不在（前置包太旧、没装它的内容包）或版本不够：两样都不登，`table` 记成 `skipped`。九格是前置包给的配方朝向的物品字典或 `None`，这两条规则只看有哪些原料。
-  测试：`tests/test_table_hooks_link.py`（规则）、`tests/test_presence_boots.py`（哪一步登什么）。
+  给玩家看的话是 `Tips.DISH_ON_BOARD`（语言键 + 中文，前置包的客户端按玩家的语言查本包语言文件里的键；`rp/texts` 的中、英两份都有这个键）。
+- 那张工作台的配方书在客户端，不知道服务端拦了什么（前置包第 6 轮实机：砧板菜照样列出来，点了做才被拒）：客户端的 `table` 步骤（`TableClientLink`）
+  用同一个条件——这一端 `board` 那一步登上了（步骤执行器的 `ctx.done`）、`remove_crafting_recipes` 开着——给它客户端的登记口
+  （`clientApi.ImportModule("arrisDiegesisScripts.Vanilla.Client.TableBookHooks")`，`API_VERSION` 1）登 `addHidden(hidden)`：书给每条配方的成品 + 每格能放的几种，
+  `DishStation.isDishRecipe` 判是不是砧板菜的某条配方（料一件对一格、只看名字，和 `isDishCraft` 同一张表；拦配方不拦成品，切片拼回整个派照列）。
+- 接口不在（前置包太旧、没装它的内容包）或版本不够：都不登，那一端的 `table` 记成 `skipped`；接口在、条件不满足：什么都不登，记 `ok`。
+  九格是前置包给的配方朝向的物品字典或 `None`，这两条规则只看有哪些原料。
+  测试：`tests/test_table_hooks_link.py`、`tests/test_table_client_link.py`（规则）、`tests/test_presence_boots.py`（哪一步登什么）。
 
 实机核对过的引擎事实（3.10，`Server/Debug/McdkCraftTest.py`）：
 - `CraftItemOutputChangeServerEvent` 一次合成请求只发一次，这时 `GetPlayerUIItem` 读到的还是合成前的格子；下一刻每格已经扣掉。
