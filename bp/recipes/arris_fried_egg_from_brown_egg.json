@@ -1,0 +1,20 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_furnace": {
+        "description": {
+            "identifier": "arris:fried_egg_from_brown_egg"
+        },
+        "input": {
+            "item": "minecraft:brown_egg"
+        },
+        "output": {
+            "item": "arris:fried_egg"
+        },
+        "tags": [
+            "campfire",
+            "furnace",
+            "smoker",
+            "soul_campfire"
+        ]
+    }
+}

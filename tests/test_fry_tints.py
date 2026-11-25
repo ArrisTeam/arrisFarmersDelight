@@ -241,7 +241,7 @@ def testAOneSidedFoodThatIsNotAnEggIsTintedOnThePanAndOnTheStove():
         assert len(lit()) == 1 and allPaired("minecraft:potato")
     finally:
         Cooking.OneSidedList.remove("minecraft:potato")
-    assert Cooking.OneSidedList == [EGG]
+    assert Cooking.OneSidedList == [EGG, "minecraft:blue_egg", "minecraft:brown_egg"]
     scene = stoveSetup({1: piece(EGG, 0.0, 0.5)})
     run(scene, 0.3)
     assert tints() == [] and [d["item"]["newItemName"] for d in world.drops.values()] == ["arris:egg_look_1"], "蛋照旧"

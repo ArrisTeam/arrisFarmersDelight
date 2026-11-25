@@ -122,7 +122,7 @@ def testAOneSidedFoodIsWrittenWithTheTimeOfBothSidesInEitherBook():
         assert next(page for page in Books.panPages() if page["key"] == "minecraft:egg")["note"] == beef[0], "蛋照旧"
     finally:
         Cooking.OneSidedList.remove("minecraft:potato")
-    assert Cooking.OneSidedList == ["minecraft:egg"]
+    assert Cooking.OneSidedList == ["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"]
 
 
 def testWhatTheStationIsMakingNow():

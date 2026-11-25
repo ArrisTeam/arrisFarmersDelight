@@ -38,14 +38,36 @@ JE_CAMPFIRE_RECIPES = {
     "arris:bacon": "arris:cooked_bacon",
     "arris:mutton_chops": "arris:cooked_mutton_chops",
 }
+# 基岩版另外两种蛋（蓝色、棕色鸡蛋，原版标签 minecraft:egg 的成员；JE 1.20 只有一种蛋）：厨锅收三种，煎也一视同仁，都煎成煎蛋
+BEDROCK_EGGS = {
+    "minecraft:blue_egg": "arris:fried_egg",
+    "minecraft:brown_egg": "arris:fried_egg",
+}
 
 
-def testCookableFoodIsExactlyTheJeCampfireRecipes():
+def testCookableFoodIsExactlyTheJeCampfireRecipesAndBedrocksOtherEggs():
     table = dict(Cooking.CanCookedFoodDict)
-    missing = sorted(set(JE_CAMPFIRE_RECIPES) - set(table))
-    extra = sorted(set(table) - set(JE_CAMPFIRE_RECIPES))
+    want = dict(JE_CAMPFIRE_RECIPES)
+    want.update(BEDROCK_EGGS)
+    missing = sorted(set(want) - set(table))
+    extra = sorted(set(table) - set(want))
     assert not missing and not extra, "缺 %s，多 %s" % (missing, extra)
-    assert table == JE_CAMPFIRE_RECIPES
+    assert table == want
+    for name in ("minecraft:egg",) + tuple(BEDROCK_EGGS):
+        recipe = _furnaceRecipeFor(name)
+        assert recipe is not None and recipe["output"] == {"item": "arris:fried_egg"}, "%s 在熔炉、烟熏炉、营火上也煎成煎蛋" % name
+        assert {"campfire", "soul_campfire", "furnace", "smoker"} <= set(recipe["tags"]), name
+
+
+def _furnaceRecipeFor(name):
+    """bp/recipes 里输入是这件东西的熔炉类配方（没有返回 None）。"""
+    folder = os.path.join(fdtest.BP, "recipes")
+    for fileName in sorted(os.listdir(folder)):
+        with io.open(os.path.join(folder, fileName), encoding="utf-8-sig") as handle:
+            body = json.load(handle).get("minecraft:recipe_furnace")
+        if body and body["input"] == {"item": name}:
+            return body
+    return None
 
 
 def testSkilletItemIsDeclaredAsAnIronTierWeapon():
