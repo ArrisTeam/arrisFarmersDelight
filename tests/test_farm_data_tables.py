@@ -59,6 +59,18 @@ def testComposterChancesAreWholePercents():
         assert isinstance(percent, int) and 0 < percent <= 100
 
 
+def testNoItemDefinitionCarriesItsOwnCompostChance():
+    # 堆肥只走脚本这一张表（Server/Storage 读 ComposterItemDict，照 JE 的 CommonSetup）：物品 JSON 再写 netease:compostable
+    # 就成了两份概率（番茄种子写过 50，JE 是 30）；引擎那份和脚本那份谁先算、会不会各算一遍没在游戏里量过
+    folder = os.path.join(fdtest.BP, "netease_items_beh")
+    for root, _, files in os.walk(folder):
+        for name in files:
+            if name.endswith(".json"):
+                with io.open(os.path.join(root, name), encoding="utf-8") as handle:
+                    components = json.load(handle)["minecraft:item"].get("components", {})
+                assert "netease:compostable" not in components, name
+
+
 # JE 1.20.1：BlockTags.DIRT = dirt、grass_block、podzol、coarse_dirt、mycelium、rooted_dirt、moss_block、mud、muddy_mangrove_roots，
 # FD 再把 rich_soil 加进去；BlockTags.SAND = sand、red_sand
 JE_WILD_GROUND = ["minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mycelium",

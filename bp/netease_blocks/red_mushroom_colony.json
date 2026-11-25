@@ -6,10 +6,6 @@
             "minecraft:destructible_by_mining": {
                 "seconds_to_destroy": 0.0
             },
-            "minecraft:flammable": {
-                "catch_chance_modifier": 30,
-                "destroy_chance_modifier": 30
-            },
             "minecraft:geometry": "geometry.wild_crop",
             "minecraft:light_dampening": 0,
             "netease:neighborchanged_sendto_script": {
@@ -24,8 +20,9 @@
             }
         },
         "description": {
-            "category": "none",
+            "category": "arris_farmers_delight",
             "identifier": "arris:red_mushroom_colony",
+            "register_to_creative_menu": true,
             "properties": {
                 "arris:growth": [
                     0,

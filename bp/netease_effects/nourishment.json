@@ -5,7 +5,7 @@
       "identifier": "arris:nourishment"
     },
     "components": {
-      "minecraft:particle_color": [255, 255, 51],
+      "minecraft:particle_color": [243, 179, 0],
       "minecraft:icon": "nourishment"
     }
   }

@@ -50,6 +50,9 @@
             "netease:neighborchanged_sendto_script": {
                 "value": true
             },
+            "netease:listen_block_remove": {
+                "value": true
+            },
             "netease:on_entity_inside": {
                 "send_python_event": true
             },
