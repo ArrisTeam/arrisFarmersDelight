@@ -20,3 +20,8 @@ def accepts(level):
 def nextLevel(level, lucky):
     """放进一件后的层数；lucky 是按物品概率掷的结果（0 层不看它）。"""
     return level + 1 if level == 0 or lucky else level
+
+
+def fillSound(rose):
+    """放进一件响哪一声（JE ComposterBlock.handleFill：只响一声）：涨了一层 fill_success，没涨 fill。"""
+    return "block.composter.fill_success" if rose else "block.composter.fill"

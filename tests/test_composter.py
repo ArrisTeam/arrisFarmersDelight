@@ -145,6 +145,18 @@ def testSneakingOrAFullComposterLeavesTheClickAlone():
     assert claimed is False and placed == ["arris:apple_pie_item"] and _use(True)["cancel"] is False
 
 
+def testEachItemMakesOneSound():
+    # JE / 原版：涨了一层只响 fill_success，没涨只响 fill（以前每次 fill + 骨粉声，涨了再加一声）
+    assert Composter.fillSound(True) == "block.composter.fill_success" and Composter.fillSound(False) == "block.composter.fill"
+    _setUp(3)
+    _use(False)
+    assert [name for name, _pos in world.sounds] == ["block.composter.fill"]
+    world.runTimers()
+    world.sounds[:] = []
+    _use(True)
+    assert [name for name, _pos in world.sounds] == ["block.composter.fill_success"]
+
+
 def testOtherItemsAreIgnored():
     _setUp(2, hand={"newItemName": "minecraft:stone", "newAuxValue": 0, "count": 1})
     _use(True)

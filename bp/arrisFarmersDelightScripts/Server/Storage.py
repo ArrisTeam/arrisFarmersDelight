@@ -45,16 +45,14 @@ def _compost(playerId, itemDict, pos, dimensionId, blockStates):
     if not Composter.accepts(level) or SetPlayerUsedCD(playerId) is True:
         return                                         # 按住右键每刻重发：一下只放一件（JE 的右键间隔 4 刻）；同一下的另一个事件也在这里挡住
     x, y, z = pos
-    center = (x + 0.5, y, z + 0.5)
-    ToAllPlayerPlaySound(dimensionId, center, "block.composter.fill")
-    ToAllPlayerPlaySound(dimensionId, center, "item.bone_meal.use")
     ToAllPlayerGrowthParticle((x + 0.5, y + 0.8, z + 0.5))
     SetNotCreateItem(playerId, itemDict)
     item = (itemDict["newItemName"], itemDict["newAuxValue"])
     after = Composter.nextLevel(level, level > 0 and probability(ComposterItemDict[item]))
+    # JE handleFill（原版一样）：每放一件只响一声，涨了一层 fill_success，没涨 fill
+    ToAllPlayerPlaySound(dimensionId, (x + 0.5, y, z + 0.5), Composter.fillSound(after > level))
     if after > level:
         blockStates[FILL] = after
-        ToAllPlayerPlaySound(dimensionId, center, "block.composter.fill_success")
         compFactory.CreateBlockState(levelId).SetBlockStates(pos, blockStates, dimensionId)
         if after == Composter.READY:
             compFactory.CreateGame(levelId).AddTimer(Composter.READY_SECONDS, _ripen, pos, dimensionId)
