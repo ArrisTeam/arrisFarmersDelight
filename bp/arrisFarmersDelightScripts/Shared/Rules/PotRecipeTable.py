@@ -7,6 +7,7 @@ Shared/Rules/CookingPot.py 的公共函数都从这里取，别处不直接用�
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from . import ItemTags, PotSlots
+from .TableWire import isInt
 
 DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
 DEFAULT_EXPERIENCE = 1.0     # 旧格式没写 Experience 时给的经验（新接口登记的配方把经验明写进行里，JE 的缺省是 0）
@@ -39,7 +40,7 @@ def isPair(value):
     """(物品名, aux)：名字是文字，aux 是整数（过了线的元组是列表，也算）。"""
     if not (isinstance(value, (tuple, list)) and len(value) == 2):
         return False
-    return isinstance(value[0], _TEXT) and isinstance(value[1], int) and not isinstance(value[1], bool)
+    return isinstance(value[0], _TEXT) and isInt(value[1])          # py2 的 long 也算（引擎给的 aux 可能是 long）
 
 
 def isLive(recipe):

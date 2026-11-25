@@ -17,6 +17,9 @@ parse(数据, aliases) -> (规整的配方, None) 或 (None, 一句说哪里不�
     {"type": "campfire_cooking", "input": 名, "result": 名}
 """
 from ..Data.Tags import JE_NAMES
+from .TableWire import INT_TYPES
+
+_NUMBER = INT_TYPES + (float,)      # py2 的 long 也算
 
 TYPES = {"cooking": "cooking", "farmersdelight:cooking": "cooking", "cutting": "cutting", "farmersdelight:cutting": "cutting",
          "campfire_cooking": "campfire_cooking", "minecraft:campfire_cooking": "campfire_cooking"}
@@ -49,7 +52,7 @@ def text(value):
 def _int(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or int(value) != value or value < 0:
+    if isinstance(value, bool) or not isinstance(value, _NUMBER) or int(value) != value or value < 0:
         raise _Bad("%s 要是不小于 0 的整数，给的是 %r" % (what, value))
     return int(value)
 
@@ -57,7 +60,7 @@ def _int(value, default, what):
 def _number(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+    if isinstance(value, bool) or not isinstance(value, _NUMBER) or value < 0:
         raise _Bad("%s 要是不小于 0 的数，给的是 %r" % (what, value))
     return float(value)
 

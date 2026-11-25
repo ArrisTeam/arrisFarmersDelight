@@ -9,6 +9,7 @@
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from . import CookingPot as PotRules
+from .TableWire import isInt
 
 INPUT_SLOTS = 6
 VESSEL_SLOT = 6
@@ -42,7 +43,7 @@ def _chars(value):
 def _pair(value):
     """(物品名, aux)：名字是文字，aux 是整数。"""
     return (isinstance(value, (tuple, list)) and len(value) == 2 and isinstance(value[0], (str, _TEXT))
-            and isinstance(value[1], int))
+            and isInt(value[1]))
 
 
 def _wellFormed(recipe):

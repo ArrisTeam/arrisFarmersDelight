@@ -17,6 +17,7 @@ from ..Data.Cutting import CuttingBoardDict, CuttingTagDict
 from . import CookingPot, CuttingStation, DishStation, GrillStation, ItemTags, PanStation
 from .HandsOn import PotCooking
 from .HandsOn.Mth import roundInt
+from .TableWire import isInt
 
 CLOCK = "minecraft:clock"
 DISH_PREFIX = "d:"
@@ -116,7 +117,7 @@ def potPages():
 
 def potRecipe(key):
     """键 -> 配方字典；不认识、或那一行已经被移除（墓碑）返回 None。"""
-    if isinstance(key, int) and not isinstance(key, bool) and 0 <= key < len(CookingPotRecipeList):
+    if isInt(key) and 0 <= key < len(CookingPotRecipeList):
         recipe = CookingPotRecipeList[key]
         return recipe if CookingPot.isLive(recipe) else None
     return None
