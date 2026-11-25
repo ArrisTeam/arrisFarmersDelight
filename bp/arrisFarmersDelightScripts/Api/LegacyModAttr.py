@@ -132,7 +132,8 @@ def AddCookingPotRecipe(name, recipe):
     if len(recipe) > MAX_RECIPE_INGREDIENTS:
         return False
     for recipeDict in CookingPotRecipes.CookingPotRecipeList:
-        if recipeDict["CookResult"][0] == name:
+        # 只往活配方上加：被新接口删掉的（墓碑）加了也永远不生效，跳过它找下一条（没有活的照旧返回 False）
+        if CookingPotRules.isLive(recipeDict) and recipeDict["CookResult"][0] == name:
             recipeDict["Recipe"].append(recipe)
             CookingPotRules.rebuildIndex()
             return recipeDict["Recipe"]

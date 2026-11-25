@@ -212,6 +212,21 @@ def testTheClientSeesTheSameCuttingIdsWhileCampfireOnesAreDerived():
             "旧接口把条目整个换掉了：那就是一条旧接口的配方"
 
 
+def testTheLegacyAddSkipsRemovedDishes():
+    """T 复核时复现的：旧接口的 AddCookingPotRecipe 往被删的菜（墓碑）里加写法，返回成功却永远不生效。现在跳过不是活配方的行，
+    同成品后面有活的就加到它上面，没有活的返回 False（和原来"没有这道菜"一样）。"""
+    with Sandbox():
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        ways = list(stew["Recipe"])
+        assert SERVER.removeRecipe("farmersdelight:cooking/beef_stew")["ok"]
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)]) is False and stew["Recipe"] == ways
+        assert SERVER.createBuilder("mymod:cooking/beef_again", "cooking").ingredient("minecraft:cookie").output("arris:cookbeef_stew").register()["ok"]
+        again = Pot.CookingPotRecipeList[-1]
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)]) is again["Recipe"] and again["Recipe"][-1] == [("minecraft:dirt", 0)]
+        assert stew["Recipe"] == ways and CookingPot.matchRecipe([{"newItemName": "minecraft:dirt", "newAuxValue": 0, "count": 1}])[0]["newItemName"] \
+            == "arris:cookbeef_stew"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
