@@ -8,10 +8,16 @@
 - 五把刀按 Shared/Rules/Knives 认不认（客户端 BlockItems.isKnife 就是它）；原版牛肉的营火配方原样返回值和解析结果。
     from arrisFarmersDelightScripts.Client.Debug import McdkTagsTest as T
     return T.mcdk_test_tags_client()
+mcdk_test_tags_probe_grill()：探针包的番茄（fdprobe:tomato，表里没有，只靠探针包的营火配方烤成铁粒）在客户端线程里 Grilling.resultOf 给什么、
+两个口（Grilling 装着的，单机时两个都在）各自的原始答案、缓存里调之前 / 之后记着什么；没装探针包时跳过。先在客户端线程调这个，再在服务端线程调
+Server/Debug/McdkTagsTest 的同名函数：两边都该是 minecraft:iron_nugget（GetRecipesByInput 只在自己那一端的线程里答得出，2026-11-26 实机）。
 """
 from .. import Tags as EngineTags
+from ..Engine import compFactory, levelId
 from ...Shared.Data import Tags
 from ...Shared.Rules import Grilling, Knives
+
+PROBE_GRILL = ("fdprobe:tomato", "minecraft:iron_nugget")    # 探针包的番茄、它的营火配方的产物（同服务端那份，两端互不导入，各写一份）
 
 
 def _diff(static, engine):
@@ -38,3 +44,15 @@ def mcdk_test_tags_client():
     return {"case": "tags_client", "ok": bool(ready) and not missing and all(knives.values()), "ready": ready, "timing": timing,
             "missing": missing, "items": items, "blocks": blocks, "knives": knives,
             "beefCampfire": {"raw": repr(raw)[:600], "parsed": Grilling.cookedOf(raw, "minecraft:beef")}}
+
+
+def mcdk_test_tags_probe_grill():
+    """测试函数：探针包的番茄在这个线程（客户端）里 Grilling.resultOf 给什么、两个口各自的原始答案、调之前 / 之后缓存里记着什么。"""
+    name, expected = PROBE_GRILL
+    if compFactory.CreateItem(levelId).GetItemBasicInfo(name, 0) is None:
+        return {"case": "tags_probe_grill", "ok": True, "skipped": "没装探针包（%s）" % name}
+    before = repr(Grilling._cache.get((name, 0), "<没记>"))
+    raw = dict((side, repr(port.campfireRecipes(name, 0))[:300]) for side, port in Grilling._ports.items())
+    result = Grilling.resultOf(name, 0)
+    return {"case": "tags_probe_grill", "thread": "client", "ok": result == expected, "result": result, "expected": expected,
+            "raw": raw, "cachedBefore": before, "cachedAfter": repr(Grilling._cache.get((name, 0), "<没记>"))}

@@ -117,5 +117,58 @@ def testTheClientSelfTestReportsItsTimeline():
         _reset()
 
 
+class ItemFactory(object):
+    """compFactory 的替身：CreateItem(levelId).GetItemBasicInfo(名字, aux) 认得 items 里的（给 {"itemName": 名字}），别的 None。"""
+
+    def __init__(self, items):
+        self.items = items
+
+    def CreateItem(self, _levelId):
+        return self
+
+    def GetItemBasicInfo(self, name, aux=0):
+        return {"itemName": name} if name in self.items else None
+
+
+class ThreadPort(object):
+    """Grilling 的口，answers=False 是在这个线程里答不了（单机时另一端的口：什么都给 None）。"""
+
+    def __init__(self, answers):
+        self.answers = answers
+
+    def ready(self):
+        return True
+
+    def campfireRecipes(self, itemName, aux=0):
+        name, product = ServerTest.PROBE_GRILL
+        if not self.answers:
+            return None
+        return [{"input": itemName, "output": product}] if itemName == name else []
+
+
+def testTheProbeGrillSelfTestOnBothThreads():
+    """mcdk_test_tags_probe_grill（两端各一份）：探针包的番茄只靠营火配方能烤；客户端线程里服务端的口答不了（None），先在客户端线程、
+    再在服务端线程调，两边都该拿到产物（以前客户端线程先问时把 None 记进缓存，服务端跟着不认）。没装探针包时跳过。"""
+    name, product = ServerTest.PROBE_GRILL
+    assert ClientTest.PROBE_GRILL == ServerTest.PROBE_GRILL
+    saved = ServerTest.compFactory, ClientTest.compFactory
+    server, client = ThreadPort(False), ThreadPort(True)                   # 客户端线程：服务端的口答不了
+    _reset()
+    Grilling.setPort("server", server)
+    Grilling.setPort("client", client)
+    try:
+        ServerTest.compFactory = ClientTest.compFactory = ItemFactory(())
+        assert ClientTest.mcdk_test_tags_probe_grill()["skipped"] and ServerTest.mcdk_test_tags_probe_grill()["skipped"], "没装探针包"
+        ServerTest.compFactory = ClientTest.compFactory = ItemFactory((name,))
+        first = ClientTest.mcdk_test_tags_probe_grill()
+        assert first["ok"] and first["raw"]["server"] == "None" and first["cachedAfter"] == repr(product), first
+        server.answers, client.answers = True, False                        # 服务端线程：服务端的口答得出
+        second = ServerTest.mcdk_test_tags_probe_grill()
+        assert second["ok"] and second["result"] == product and second["cachedBefore"] == repr(product), second
+    finally:
+        ServerTest.compFactory, ClientTest.compFactory = saved
+        _reset()
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

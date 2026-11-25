@@ -12,16 +12,22 @@
 5. mcdk_test_tags_blocks()：农夫乐事自己的方块标签（farmersdelight:，读的地方是"名单 ∪ 标签"）引擎反查的差，和每个成员按方块问
    （GetBlockTags）带不带这个标签：原版方块经 netease_tags 挂上的标签按方块问认不认，离线定不了，不认的列在 notTagged（只报，不算失败，
    反查认得就够用）。分类的物品标签（farmersdelight:meals 等，没有读的地方）在第 1 条里。
+6. mcdk_test_tags_probe_grill()：探针包的番茄（fdprobe:tomato，表里没有，只靠探针包的营火配方烤成铁粒）在服务端线程里 Grilling.resultOf 给什么、
+   两个口（Grilling 装着的，单机时两个都在）各自的原始答案、缓存里调之前 / 之后记着什么；没装探针包时跳过。先在客户端线程调
+   Client/Debug/McdkTagsTest 的同名函数，再调这个：两边都该是 minecraft:iron_nugget（GetRecipesByInput 只在自己那一端的线程里答得出，
+   2026-11-26 实机：以前客户端线程先问时把 None 记进了缓存，服务端读到的也是它）。
     from arrisFarmersDelightScripts.Server.Debug import McdkTagsTest as T
     return T.mcdk_test_tags_members()
 """
 from ..Helpers import Tags as EngineTags
+from ..Helpers.Engine import compFactory, levelId
 from ..Helpers.Items import IsKnife
 from ...Shared.Data import Tags
 from ...Shared.Data.Cutting import knifeList
 from ...Shared.Rules import Grilling
 
 RECIPE_PROBES = ("minecraft:beef", "arris:minced_beef", "minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg")
+PROBE_GRILL = ("fdprobe:tomato", "minecraft:iron_nugget")    # 探针包的番茄、它的营火配方的产物（同客户端那份，两端互不导入，各写一份）
 BLOCK_PROBES = ("arris:stove", "arris:stove_extinguish", "minecraft:magma", "minecraft:campfire", "minecraft:fire", "minecraft:lava")
 
 
@@ -93,3 +99,15 @@ def mcdk_test_tags_blocks():
         row["notTagged"] = sorted(name for name in members if tag not in (port.blockTagsOf(name) or ()))
         rows[tag] = row
     return {"case": "tags_blocks", "ok": not any(row["missing"] for row in rows.values()), "tags": rows}
+
+
+def mcdk_test_tags_probe_grill():
+    """测试函数：探针包的番茄在这个线程（服务端）里 Grilling.resultOf 给什么、两个口各自的原始答案、调之前 / 之后缓存里记着什么。"""
+    name, expected = PROBE_GRILL
+    if compFactory.CreateItem(levelId).GetItemBasicInfo(name, 0) is None:
+        return {"case": "tags_probe_grill", "ok": True, "skipped": "没装探针包（%s）" % name}
+    before = repr(Grilling._cache.get((name, 0), "<没记>"))
+    raw = dict((side, repr(port.campfireRecipes(name, 0))[:300]) for side, port in Grilling._ports.items())
+    result = Grilling.resultOf(name, 0)
+    return {"case": "tags_probe_grill", "thread": "server", "ok": result == expected, "result": result, "expected": expected,
+            "raw": raw, "cachedBefore": before, "cachedAfter": repr(Grilling._cache.get((name, 0), "<没记>"))}

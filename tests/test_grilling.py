@@ -4,8 +4,9 @@
 
 锁的事：
   1. 表照旧是第一来源，下游追加的马上生效；没有引擎口时只认表（和以前一样）
-  2. 口准备好了：表里没有的问营火配方（GetRecipesByInput(名字, "campfire", aux, 1)），按 (名字, aux) 缓存，没有配方的也记着；
-     口没准备好（客户端进世界之前）只认表、不问；两个口用服务端的；口出错当没有
+  2. 口准备好了：表里没有的问营火配方（GetRecipesByInput(名字, "campfire", aux, 1)），按 (名字, aux) 缓存，没有配方的（[]）也记着；
+     口没准备好（客户端进世界之前）只认表、不问；两个口按 SIDES 的先后挨个问，第一个不是 None 的答案算数（单机时引擎只在自己那一端的
+     线程里答得出，另一端的口给 None，2026-11-26 实机）；口出错当答不了；都答不了当没有配方、不记
   3. 配方的形状：3.10 实机两端是 [{"input": 原料名, "output": 产物名}]（2026-11-26 量的）；别的写法也认（留给别的版本）：
      output / result、字符串 "名字" / "名字:aux"、dict 的名字键、列表、整份配方 JSON；认不出来当没有配方，不抛
   4. 煎锅 / 炉灶站点（PanStation / GrillStation）、EnginePort.campfireRecipes 都走这里
@@ -24,12 +25,14 @@ RAW, STEAK = "kaleidoscope_cookery:raw_cow_offal", "kaleidoscope_cookery:cooked_
 
 
 class RecipePort(object):
-    """Grilling 的口：recipes = {物品名: GetRecipesByInput 的返回}；calls 记问了几次。"""
+    """Grilling 的口：recipes = {物品名: GetRecipesByInput 的返回}，表里没有的是 []（没有配方，引擎在自己那一端的线程里就这么答）；
+    answers=False 是在这个线程里答不了（单机时另一端的口：什么都给 None）；calls 记问了几次。"""
 
-    def __init__(self, recipes, ready=True, error=None):
+    def __init__(self, recipes, ready=True, error=None, answers=True):
         self.recipes = recipes
         self.isReady = ready
         self.error = error
+        self.answers = answers
         self.calls = 0
 
     def ready(self):
@@ -39,7 +42,7 @@ class RecipePort(object):
         self.calls += 1
         if self.error is not None:
             raise self.error
-        return self.recipes.get(itemName)
+        return self.recipes.get(itemName, []) if self.answers else None
 
 
 def _reset():
@@ -94,19 +97,44 @@ def testANotReadyPortIsNotAsked():
     _reset()
 
 
-def testTheServerPortWinsAndABrokenPortIsNoRecipe():
+def testTheServerPortComesFirstAndABrokenPortPassesToTheNext():
     _reset()
     Grilling.setPort("client", RecipePort({RAW: [{"output": "client:steak"}]}))
     Grilling.setPort("server", RecipePort({RAW: [{"output": "server:steak"}]}))
     assert Grilling.resultOf(RAW) == "server:steak"
     Grilling.setPort("server", RecipePort({}, error=RuntimeError("engine")))
-    assert Grilling.resultOf(RAW) is None and Grilling.resultOf("minecraft:beef") == "minecraft:cooked_beef"
+    assert Grilling.resultOf(RAW) == "client:steak", "口出错当答不了，问下一个"
+    Grilling.setPort("client", RecipePort({}, error=RuntimeError("engine")))
+    assert Grilling.resultOf(RAW) is None and Grilling.resultOf("minecraft:beef") == "minecraft:cooked_beef", "都出错：只认表"
     try:
         Grilling.setPort("both", None)
     except ValueError:
         pass
     else:
         raise AssertionError("端只有 server / client")
+    _reset()
+
+
+def testEachThreadGetsItsOwnSidesAnswer():
+    """2026-11-26 实机（单机，探针包的番茄只靠营火配方能烤）：GetRecipesByInput 只在自己那一端的线程里答得出——客户端线程里服务端的口给 None、
+    客户端的口给配方列表。以前只问排在前面的服务端的口，客户端线程先问时把 None 记进缓存，服务端跟着不认，这一局都烤不了。
+    现在挨个问，第一个不是 None 的答案算数：服务端的口给 None、客户端的给列表 -> 产物，缓存的也是产物；服务端的口给 []（没有配方）-> None；
+    两个都给 None -> None，而且不记（换个线程问还答得出）。"""
+    _reset()
+    server = RecipePort({}, answers=False)                 # 客户端线程里的服务端口
+    client = RecipePort({RAW: [{"input": RAW, "output": STEAK}]})
+    Grilling.setPort("server", server)
+    Grilling.setPort("client", client)
+    assert Grilling.resultOf(RAW) == STEAK and Grilling._cache[(RAW, 0)] == STEAK
+    server.answers = True                                  # 服务端线程：服务端的口答得出，读到的是记着的产物
+    assert Grilling.resultOf(RAW) == STEAK and server.calls == 1 and client.calls == 1
+    assert Grilling.resultOf("minecraft:dirt") is None and server.calls == 2, "服务端的口给 []：没有配方"
+    assert Grilling._cache[("minecraft:dirt", 0)] is None
+    server.answers = client.answers = False
+    assert Grilling.resultOf("minecraft:stick") is None and ("minecraft:stick", 0) not in Grilling._cache, "都答不了：不记"
+    client.answers = True
+    client.recipes["minecraft:stick"] = [{"output": "mymod:charcoal_stick"}]
+    assert Grilling.resultOf("minecraft:stick") == "mymod:charcoal_stick", "换个线程问，答得出的那个口就算数"
     _reset()
 
 
