@@ -134,7 +134,7 @@ def titleOf(recipe):
     和原来的文字字段一样 str() 一下，界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
     text = recipe.get("text")
     result = recipe.get("CookResult")
-    if _pair(result) and result[0] and (text is None or text == result[0]):
+    if _pair(result) and result[0] and (text is None or _chars(text) == _chars(result[0])):     # py2：字节串 / unicode 换成同一种再比
         named = ItemNames.nameOf(result[0], result[1])
         return named if named is not None else result[0]
     if isinstance(text, (bytes, _TEXT)):

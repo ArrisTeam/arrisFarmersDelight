@@ -14,6 +14,8 @@ JE 的配方 JSON 没有 text：别的模组照 RECIPE-JSON.md 搬来的配方�
 """
 from __future__ import print_function
 
+import warnings
+
 import fdtest
 
 Book = fdtest.load("Shared.Rules.CookingPotBook")
@@ -137,6 +139,20 @@ def testSeveralPortsAreAskedInTurn():
         Names.removePort(second)
         Names.forget()
         assert Book.titleOf(ROW) == "minecraft:iron_ingot", "卸下一个口"
+
+
+def testMixedStringKindsDoNotWarnUnderPython2():
+    """主会话定的 B4（T 复核时 py2 复现的）：text 是非 ASCII 的字节串、成品名是 unicode（旧接口追加的行可能这样写）时，"text 是不是
+    成品的物品 ID"那一比在 py2 里出 UnicodeWarning（答案是对的）；现在先换成同一种再比。py2 下把警告当错误跑，py3 下照样过。"""
+    soup = ("mymod:soup", 0)
+    rows = [{"CookResult": (u"mymod:soup", 0), "text": "浓汤"}, {"CookResult": ("mymod:soup", 0), "text": u"浓汤"},
+            {"CookResult": (u"mymod:soup", 0), "text": "mymod:soup"}, {"CookResult": ["mymod:soup", 0], "text": u"mymod:soup"}]
+    getattr(Book, "__warningregistry__", {}).clear()     # py2：同一处警告过一次之后 registry 会挡住后面的，"error" 也不抛
+    with Rows(Port({soup: "汤"})):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            titles = [Book.titleOf(row) for row in rows]
+    assert titles[0] == "浓汤" and titles[1] == u"浓汤" and titles[2] == "汤" and titles[3] == "汤", titles
 
 
 def testTheBuiltInRowsKeepTheirTitlesAndDoNotAsk():

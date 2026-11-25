@@ -8,6 +8,7 @@ from .RecipeTables import TOOLS, _table, find
 from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Rules import CookingPot, PotSlots
+from ...Shared.Rules.TableWire import toStr
 
 
 def _item(kind, count=None):
@@ -62,6 +63,6 @@ def viewAt(found, recipeId):
             "experience": _number(row.get("Experience"), CookingPot.DEFAULT_EXPERIENCE)}
     if row.get("Vessel"):
         data["container"] = _item(row["Vessel"])
-    if row.get("text") and row["text"] != row["CookResult"][0]:
+    if row.get("text") and toStr(row["text"]) != toStr(row["CookResult"][0]):     # py2：字节串 / unicode 换成同一种再比
         data["text"] = row["text"]
     return data

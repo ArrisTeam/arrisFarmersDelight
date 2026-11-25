@@ -15,6 +15,7 @@ import io
 import json
 import os
 import sys
+import warnings
 
 import fdtest
 
@@ -338,6 +339,24 @@ def testOverridingWithAnotherResultDoesNotKeepTheOldName():
         del sauce["text"]
         assert SERVER.registerFromJson(dict(sauce, result={"item": "mymod:ketchup"}))["ok"]
         assert next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")["text"] == "mymod:ketchup"
+
+
+def testComparingTextWithTheResultDoesNotWarnUnderPython2():
+    """主会话定的 B4（T 复核时 py2 复现的）：覆盖时"旧名字是不是旧成品的物品 ID"（RecipeTables._text）、给样子时"text 是不是成品的
+    物品 ID"（RecipeViews.viewAt），text 是非 ASCII 的字节串、成品名是 unicode（旧接口追加的行可能这样写）时在 py2 里出
+    UnicodeWarning；现在先换成同一种再比。py2 下把警告当错误跑，py3 下照样过。"""
+    Views = fdtest.load("Api.ExtensionApi.RecipeViews")
+    old = {"text": "浓汤", "CookResult": (u"mymod:soup", 0)}
+    for module in (Tables, Views):
+        getattr(module, "__warningregistry__", {}).clear()     # py2：同一处警告过一次之后 registry 会挡住后面的
+    with Sandbox():
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert Tables._text({"result": ("mymod:soup", 0), "text": None}, old) == "浓汤", "成品没变：沿用"
+            assert Tables._text({"result": ("mymod:other", 0), "text": None}, old) == "mymod:other", "换了成品：不沿用"
+            assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", {"Recipe": [[("minecraft:apple", 0)]], "CookResult": (u"mymod:soup", 0),
+                                                                                "PushItem": [], "text": "浓汤"})
+            assert SERVER.getRecipeById("legacy:cooking/mymod/soup")["text"] == "浓汤"
 
 
 def testAHostCuttingOrCampfireIdStaysWithItsIngredient():

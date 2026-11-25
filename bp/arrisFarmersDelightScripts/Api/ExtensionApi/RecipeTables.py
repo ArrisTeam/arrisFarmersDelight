@@ -16,6 +16,7 @@ from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Data.Cutting import CuttingBoardDict, CuttingTagDict, axeList, hoeList, knifeList, pickaxeList, shearsList, shovelList
 from ...Shared.Rules import BoardStation, CookingPot, ItemTags, PotSlots
+from ...Shared.Rules.TableWire import toStr
 
 try:
     _TEXT = (str, unicode)  # noqa: F821 - py2
@@ -178,7 +179,7 @@ def _text(spec, old):
     kept = old.get("text") if old is not None else None
     before = old.get("CookResult") if old is not None else None
     same = isinstance(before, (tuple, list)) and len(before) == 2 and tuple(before) == tuple(spec["result"])
-    return kept if same and isinstance(kept, _TEXT) and kept and kept != before[0] else spec["result"][0]
+    return kept if same and isinstance(kept, _TEXT) and kept and toStr(kept) != toStr(before[0]) else spec["result"][0]   # py2 换成同一种再比
 
 
 def _ways(slots, old, result):
