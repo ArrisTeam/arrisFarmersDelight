@@ -349,6 +349,27 @@ def testAHostCuttingOrCampfireIdStaysWithItsIngredient():
             "第三方自己的 ID 照旧能挪原料"
 
 
+def testCookingIdsNeverCollide():
+    """T 复核 3.5：明写的 legacy: ID 会和别的行派生的撞；派生规则自己也会撞（成品 pie、pie、pie_2 三行，后两行都是 pie_2）。
+    现在明写的 legacy: 和写法不对的当没写，派生的名字被占了就接着加 _n。"""
+    Ids = fdtest.load("Api.ExtensionApi.RecipeIds")
+
+    def row(result, recipeId=None):
+        found = {"Recipe": [[("a:b", 0)]], "CookResult": (result, 0), "PushItem": [], "text": "x"}
+        if recipeId is not None:
+            found["Id"] = recipeId
+        return found
+
+    table = [row("mymod:pie", "legacy:cooking/mymod/pie"), row("mymod:pie")]
+    assert Ids.cookingIds(table) == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/pie_2"]
+    table = [row("mymod:pie"), row("mymod:pie"), row("mymod:pie_2")]
+    assert Ids.cookingIds(table) == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/pie_2", "legacy:cooking/mymod/pie_2_2"]
+    table = [row("mymod:a", "mymod:cooking/a"), row("mymod:a", "mymod:cooking/a"), row("mymod:b", "bad id"), "not a row"]
+    assert Ids.cookingIds(table) == ["mymod:cooking/a", "legacy:cooking/mymod/a", "legacy:cooking/mymod/b", None]
+    ids = [recipeId for recipeId in Ids.cookingIds(Pot.CookingPotRecipeList) if recipeId]
+    assert len(ids) == len(set(ids))
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

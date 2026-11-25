@@ -75,21 +75,29 @@ def _itemPath(name, aux=0):
 
 
 def cookingIds(table):
-    """厨锅配方表每一行的 ID（写着 Id 的用它；没写的派生 legacy:cooking/...，同一成品按先后加 _2、_3；不是配方的行是 None）。
-    同一个 Id 写在好几行上（旧接口追加的行带着从别的行拷来的 "Id"）：第一行用它，后面的当没写、给派生的 ID。"""
-    found, seen, taken = [], {}, set()
-    for row in table:
+    """厨锅配方表每一行的 ID（不是配方的行是 None），按表的先后、结果是确定的：
+    先收明写的 Id（写法对、不是 legacy: 开头；同一个只认第一行——旧接口追加的行可能带着从别的行拷来的 "Id"）；
+    再给没有 ID 的行（含明写 legacy: 或写法不对的）派生 legacy:cooking/<成品的命名空间>/<成品名>，被占了（明写的或先派生的）
+    就接着加 _2、_3……直到没人用（成品 pie、pie、pie_2 三行是 pie、pie_2、pie_2_2）。"""
+    ids, taken = [None] * len(table), set()
+    for index, row in enumerate(table):
+        given = row.get("Id") if isinstance(row, dict) else None
+        parts = split(given) if isinstance(given, _TEXT) else None
+        if parts is not None and parts[0] != LEGACY and given not in taken:
+            taken.add(given)
+            ids[index] = given
+    for index, row in enumerate(table):
         result = row.get("CookResult") if isinstance(row, dict) else None
-        if isinstance(row, dict) and isinstance(row.get("Id"), _TEXT) and row["Id"] not in taken:
-            taken.add(row["Id"])
-            found.append(row["Id"])
-        elif isinstance(result, (tuple, list)) and len(result) == 2 and isinstance(result[0], _TEXT) and result[0]:
-            base = "%s:cooking/%s" % (LEGACY, _itemPath(result[0]))
-            seen[base] = seen.get(base, 0) + 1
-            found.append(base if seen[base] == 1 else "%s_%d" % (base, seen[base]))
-        else:
-            found.append(None)
-    return found
+        if ids[index] is not None or not (isinstance(result, (tuple, list)) and len(result) == 2 and isinstance(result[0], _TEXT) and result[0]):
+            continue
+        base = candidate = "%s:cooking/%s" % (LEGACY, _itemPath(result[0]))
+        count = 1
+        while candidate in taken:
+            count += 1
+            candidate = "%s_%d" % (base, count)
+        taken.add(candidate)
+        ids[index] = candidate
+    return ids
 
 
 def cuttingIdOf(key):
