@@ -290,6 +290,21 @@ def testOverridingWithoutTextKeepsTheOldName():
         assert Pot.CookingPotRecipeList[-1]["text"] == "mymod:plain"
 
 
+def testARemovedHostCuttingOrCampfireRecipeCanComeBackUnderItsId():
+    """T 复核时指出的：删掉的自带砧板 / 营火配方（键真删了）不能再用原来的 farmersdelight: ID 加回来（报 reserved_namespace），
+    和厨锅的墓碑能复活不对称。现在记着自带的那些 ID，允许加回来；新编的 farmersdelight: ID 照旧不收。"""
+    with Sandbox():
+        assert SERVER.removeRecipe("farmersdelight:cutting/arris/cabbage")["ok"] and ("arris:cabbage", 0) not in Cutting.CuttingBoardDict
+        back = SERVER.createBuilder("farmersdelight:cutting/arris/cabbage", "cutting").ingredient("arris:cabbage").output("arris:cabbage_leaf", 2) \
+            .tool("knife").register()
+        assert back["ok"] and SERVER.getRecipeById("farmersdelight:cutting/arris/cabbage")["result"] == [{"item": "arris:cabbage_leaf", "count": 2}]
+        assert SERVER.removeRecipe("farmersdelight:campfire_cooking/minecraft/beef")["ok"]
+        assert SERVER.createBuilder("farmersdelight:campfire_cooking/minecraft/beef", "campfire_cooking").ingredient("minecraft:beef") \
+            .output("minecraft:cooked_beef").register()["ok"]
+        assert SERVER.createBuilder("farmersdelight:cutting/made_up", "cutting").ingredient("minecraft:dirt").output("minecraft:sand") \
+            .tool("knife").register()["error"] == "reserved_namespace"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

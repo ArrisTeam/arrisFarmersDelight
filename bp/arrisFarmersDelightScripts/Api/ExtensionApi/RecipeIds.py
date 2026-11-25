@@ -18,6 +18,7 @@ HOST = "farmersdelight"
 LEGACY = "legacy"
 TYPES = {"cooking": "cooking", "farmersdelight:cooking": "cooking", "cutting": "cutting", "farmersdelight:cutting": "cutting",
          "campfire_cooking": "campfire_cooking", "minecraft:campfire_cooking": "campfire_cooking"}
+_IDS = set()                 # _builtInIds 第一次用到时填
 _BUILT_IN = {"cutting": frozenset(CuttingBoardDict), "tags": frozenset(CuttingTagDict), "campfire_cooking": frozenset(CanCookedFoodDict)}
 
 try:
@@ -44,9 +45,18 @@ def problemOf(recipeId, exists):
     parts = split(recipeId)
     if parts is None:
         return "invalid_id"
-    if parts[0] == LEGACY or (parts[0] == HOST and not exists):
+    if parts[0] == LEGACY or (parts[0] == HOST and not exists and recipeId not in _builtInIds()):
         return "reserved_namespace"
     return None
+
+
+def _builtInIds():
+    """农夫乐事自带的砧板、营火配方的 ID（模块导入时表里的那些；删掉之后还能用原来的 ID 加回来，和厨锅的墓碑能复活对称）。"""
+    if not _IDS:
+        _IDS.update(cuttingIdOf(key) for key in _BUILT_IN["cutting"])
+        _IDS.update(cuttingIdOf(tag) for tag in _BUILT_IN["tags"])
+        _IDS.update(campfireIdOf(name) for name in _BUILT_IN["campfire_cooking"])
+    return _IDS
 
 
 def _itemPath(name, aux=0):
