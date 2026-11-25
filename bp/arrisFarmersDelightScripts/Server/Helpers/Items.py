@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """Items - 物品类型、刀具判断、叠不叠得起来（服务端）"""
 from .Engine import compFactory, levelId
-from ...Shared.Data.Cutting import knifeList
 from ...Shared.Data.Food import platePackagedFoodDict
+from ...Shared.Rules import Knives
 from ...Shared.Rules.HandsOn import ItemData
-
-KNIFE_TAG = "arris:knife"
 
 
 def GetItemType(itemDict):
@@ -31,8 +29,5 @@ def CanStack(a, b):
 
 
 def IsKnife(itemName):
-    """配置里显式登记的刀（knifeList，下游可追加），或带 arris:knife 物品标签的物品。"""
-    if itemName in knifeList:
-        return True
-    itemTags = compFactory.CreateItem(levelId).GetItemTags(itemName)
-    return KNIFE_TAG in (itemTags or [])
+    """是不是刀：knifeList 里的（下游可追加），或带 arris:knife / common:knife 物品标签的（Shared/Rules/Knives，客户端、炉灶站点同一条规则）。"""
+    return Knives.isKnife(itemName)

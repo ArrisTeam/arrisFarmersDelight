@@ -9,9 +9,9 @@
 世界里的展示用同一份换成方块内的比例（BlockDisplay.STOVE_SLOTS）。
 """
 from ..Data.Cooking import NotOnGrillList
-from ..Data.Cutting import knifeList
 from .BlockDisplay import STOVE_SLOTS
 from . import HandsOnOptions as Options
+from . import Knives
 from .GrillBlocks import GRILL_BLOCKS
 from .HandsOn import Grill
 from .PanStation import canFry as hasRecipe, friedOf as grilledOf, isCracked, isOneSided  # noqa: F401 - 炉灶与煎锅同一张表
@@ -24,7 +24,7 @@ GROUP_GRILL = "grill"             # 站点的槽组：六个烤位 = 方块实�
 NOT_ON_GRILL = NotOnGrillList     # 从烤架的缝里漏下去的（HoD 的 KitchenTags.NOT_ON_GRILL，默认是蛋）：数据表里的那个列表本身，下游经联动契约追加的也算
 STOVE_USES = ("minecraft:flint_and_steel", "minecraft:fire_charge")     # 炉灶自己用得上的：点火（铲子、桶按物品类型认）
 KITCHEN_THINGS = ("minecraft:bowl", "minecraft:glass_bottle", "minecraft:shears")
-CUTTING_TYPES = ("axe", "pickaxe", "hoe")                                # 砧板上用的工具（刀另查 knifeList）
+CUTTING_TYPES = ("axe", "pickaxe", "hoe")                                # 砧板上用的工具（刀另查 Knives.isKnife）
 
 
 def sideSeconds():
@@ -67,6 +67,7 @@ def opens(held, itemType, covered):
 
     上面盖着东西：烤架是它们的（锅、煎锅有自己的站点），不开。空手、有营火配方的（蛋也算，开了站点再把它弹回）、食物、刀和砧板上用的工具、碗、玻璃瓶：开。
     炉灶自己用得上的（打火石、火焰弹点火，铲子、桶灭火，不是食物的方块——往上摆锅）和别的东西：不开，照原来的用法。
+    刀和别处同一条规则（Knives.isKnife：knifeList，或带 arris:knife / common:knife 标签；原来这里只看 knifeList，只挂了标签的刀开不了站点）。
     """
     if covered:
         return False
@@ -74,4 +75,4 @@ def opens(held, itemType, covered):
         return True
     if itemType in ("block", "shovel", "bucket") or held in STOVE_USES:
         return False
-    return held in knifeList or itemType in CUTTING_TYPES or held in KITCHEN_THINGS
+    return Knives.isKnife(held) or itemType in CUTTING_TYPES or held in KITCHEN_THINGS
