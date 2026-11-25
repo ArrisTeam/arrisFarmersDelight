@@ -77,7 +77,8 @@ def testTheClientDoesNotEvenAskForTheApiBeforeTheEvent():
     assert set(env.asked["server"][1:]) <= {L.TABLE_HOOKS}, "之后只有 table 那一步（和 board 那一步的否决）找前置包的原版工作台接口"
     assert Mode.mode("server") == Mode.LINKED and len(calls["server"]) == 4, "服务端导入时前置包的接口就在：马上联动"
     env.fire("client")
-    assert env.asked["client"] == ["arrisDiegesisScripts.Api.Client"] and Mode.mode("client") == Mode.LINKED
+    assert env.asked["client"][0] == "arrisDiegesisScripts.Api.Client" and Mode.mode("client") == Mode.LINKED
+    assert set(env.asked["client"][1:]) <= {L.BOOK_HOOKS}, "之后只有 table 那一步找前置包配方书的客户端登记口"
     assert [station for station, _ in calls["client"]] == ["board", "pot", "pan", "grill"]
 
 

@@ -28,6 +28,7 @@ def testTheShippedDefaultsRegisterEverythingInTheOrderTheBootsAlwaysDid():
     assert server.mode == client.mode == B.Mode.LINKED
     assert server.steps == client.steps == dict({"board": "ok", "pot": "ok", "pan": "ok", "grill": "ok"}, **EXTRA_STEPS)
     assert server.tableHooks == {"vetoes": 1, "remainders": 1}, "前置包真的原版工作台接口收下了砧板菜的否决和补还剩余物"
+    assert client.tableHooks == {"hidden": 1}, "前置包配方书真的客户端登记口收下了砧板菜不进书"
     assert server.looks == {"pot": True, "pan": True, "stove": True, "board": True}
     assert client.looks == {"pot": True, "pan": True, "stove": True, "board": True}
     assert server.dishCrafts is True, "工作台拦截登记了"
@@ -45,6 +46,7 @@ def testEachSwitchTurnsOffOnlyItsOwnStationAndWhatHangsOnIt():
         skipped = dict(dict((step, "skipped" if STEP_OF[key] == step else "ok") for step in STEP_OF.values()), **EXTRA_STEPS)
         assert server.steps == client.steps == skipped, (key, server.steps, client.steps)
         assert server.tableHooks == {"vetoes": int(key != "cutting_board"), "remainders": 1}, "否决跟着砧板站点走，补还剩余物一直登"
+        assert client.tableHooks == {"hidden": int(key != "cutting_board")}, "书里不列砧板菜也跟着砧板站点走"
         for name in ("pot", "pan", "stove", "board"):
             assert server.looks[name] == client.looks[name] == (name != LOOK_OF[key]), (key, name, server.looks, client.looks)
         assert server.dishCrafts is (key != "cutting_board"), "工作台拦截跟着砧板站点走：没有砧板站点就没有地方做这些菜"
@@ -89,6 +91,7 @@ def testServerAndClientAgreeOnEveryCombinationOfTheSwitches():
         assert server.looks == client.looks == dict((LOOK_OF[key], values[key]) for key in KEYS), values
         assert server.dishCrafts is bool(values["cutting_board"] and values["remove_crafting_recipes"]), values
         assert server.tableHooks["vetoes"] == int(server.dishCrafts), "前置包原版工作台上的否决和原版合成格的拦截同一个条件"
+        assert client.tableHooks["hidden"] == server.tableHooks["vetoes"], ("配方书不列砧板菜和服务端的否决同一个条件", values)
         for stationId, block in BLOCK_OF.items():
             assert (B.ServerRegistry.stationTypeOf(block) is not None) is (B.ClientRegistry.behaviorOf(block) is not None) \
                 is (stationId in on), (values, block)

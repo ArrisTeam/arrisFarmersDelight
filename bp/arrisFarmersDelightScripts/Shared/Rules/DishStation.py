@@ -81,6 +81,34 @@ def isDishCraft(itemName, names):
     return False
 
 
+def isDishRecipe(itemName, slots):
+    """配方书用（前置包原版工作台站点的书，客户端）：成品 itemName、每格能放的几种 slots（[[(物品名, aux 或 None), ...], ...]）的这条配方
+    是不是它在砧板上的某条配方——料一件对一格、名字对得上（和 isDishCraft 一样不看 aux）。和 isDishCraft 同一张表、同一个判法：拦配方不拦成品，
+    同一成品的别的配方（切片拼回整个派）不算。"""
+    slots = [set(name for name, _aux in options) for options in slots]
+    for dish in _dishes:
+        if dish["result"][0] == itemName and len(dish["ingredients"]) == len(slots) and _paired(dish["ingredients"], slots):
+            return True
+    return False
+
+
+def _paired(ingredients, slots):
+    """砧板配方的每件料各配一格（那一格能放它），一对一（二分匹配）。"""
+    owner = {}
+
+    def take(index, seen):
+        for slot, names in enumerate(slots):
+            if slot in seen or ingredients[index][0] not in names:
+                continue
+            seen.add(slot)
+            if slot not in owner or take(owner[slot], seen):
+                owner[slot] = index
+                return True
+        return False
+
+    return all(take(index, set()) for index in range(len(ingredients)))
+
+
 def isBase(kind):
     """(物品名, aux) 能不能放在空砧板上打底。"""
     return Assembly.isBase(_dishes, kind, _accepts)

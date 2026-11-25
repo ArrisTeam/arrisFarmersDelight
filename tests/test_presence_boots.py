@@ -40,6 +40,18 @@ class Hooks(object):
         self.remainders.append(fn)
 
 
+class BookHooks(object):
+    """前置包配方书的客户端登记口（Vanilla/Client/TableBookHooks）的替身：记下登了什么。"""
+
+    API_VERSION = 1
+
+    def __init__(self):
+        self.hidden = []
+
+    def addHidden(self, fn):
+        self.hidden.append(fn)
+
+
 def apiOf(version=3, **flags):
     return type("Api", (object,), dict(flags, API_VERSION=version, Geometry="Geometry"))       # 砧板的客户端步骤要接口上的 Geometry
 
@@ -76,10 +88,12 @@ def bootServer(api=apiOf(FACING_HOOK=True), off=(), fresh=True, hooks=True, **co
         DISH_CRAFTS in EventRegistry.handlerNames("CraftItemOutputChangeServerEvent")
 
 
-def bootClient(api=apiOf(FACING_HOOK=True), off=(), fresh=True, **config):
+def bootClient(api=apiOf(FACING_HOOK=True), off=(), fresh=True, hooks=True, **config):
     """客户端启动一次：返回 (登记的站点按顺序, 每一步的状态, 场景 / 旁观的声音开了哪些, 灶上东西的烟让出去了没有)。fresh 为假时不清另一端的状态。"""
     if fresh:
         env.reset()
+    if hooks:
+        env.tableHooks["client"] = BookHooks() if hooks is True else hooks
     StoveFlame = fdtest.load("Client.StoveFlame")
     StoveFlame._state["muted"] = False
     calls = []
@@ -181,7 +195,20 @@ def testTheTableStepRegistersTheReturnsAndTheBoardStepTheDishVeto():
     assert hooks.remainders and hooks.vetoes == [], "砧板站点没登上：不拦"
     calls, steps, looks, dishCrafts = bootServer(hooks=False)
     assert steps["table"] == "skipped" and dishCrafts is True, "接口不在：table 跳过；原版合成格的拦截照旧"
-    assert bootClient()[1]["table"] == "ok", "客户端这一步没有东西要做"
+
+
+def testTheClientTableStepHidesTheBoardDishesFromTheBookUnderTheVetosCondition():
+    """前置包配方书的客户端登记口（Vanilla/Client/TableBookHooks）：和服务端登否决同一个条件（这一端 board 那一步登上了、
+    remove_crafting_recipes 开着）在 table 那一步登"砧板菜不进书"；条件不满足什么都不登、记 ok（和服务端 table 一步一样）；登记口不在：skipped。"""
+    TableClientLink = lambda: mod("TableClientLink")    # noqa: E731 - 每次开机后模块是新导入的
+    hooks = BookHooks()
+    calls, steps, scenes, muted = bootClient(hooks=hooks)
+    assert steps["table"] == "ok" and hooks.hidden == [TableClientLink().hidden]
+    hooks = BookHooks()
+    assert bootClient(hooks=hooks, remove_crafting_recipes=False)[1]["table"] == "ok" and hooks.hidden == [], "配置关了：书照旧全列"
+    hooks = BookHooks()
+    assert bootClient(hooks=hooks, off=("board",))[1]["table"] == "ok" and hooks.hidden == [], "砧板站点没登上：不挡"
+    assert bootClient(hooks=False)[1]["table"] == "skipped", "前置包没有这个登记口"
 
 
 if __name__ == "__main__":

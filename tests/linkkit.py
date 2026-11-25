@@ -21,6 +21,7 @@ import fdtest
 PACKAGE = fdtest.SCRIPTS
 DIEGESIS = PACKAGE + ".Compat.Diegesis"
 TABLE_HOOKS = "arrisDiegesisScripts.Vanilla.Server.TableHooks"      # 前置包的原版工作台接口（Compat/Diegesis/TableHooksLink 问它）
+BOOK_HOOKS = "arrisDiegesisScripts.Vanilla.Client.TableBookHooks"  # 它的配方书的客户端登记口（Compat/Diegesis/TableClientLink 问它）
 ENTRY = ("ServerBoot", "ClientBoot", "Presence", "Steps", "ServerSteps", "ClientSteps")      # 没联动时也会导入的：入口、判定、步骤表
 Mode = fdtest.load("Shared.Rules.HandsOnMode")
 
@@ -122,7 +123,7 @@ class _Api(object):
 
     def ImportModule(self, name):
         self.env.asked[self.side].append(name)
-        if name == TABLE_HOOKS:                       # 前置包的原版工作台接口（Compat/Diegesis/TableHooksLink）：另给，缺省没有
+        if name in (TABLE_HOOKS, BOOK_HOOKS):         # 前置包的原版工作台接口（服务端 TableHooksLink、客户端 TableClientLink）：另给，缺省没有
             return self.env.tableHooks.get(self.side)
         api = self.env.apis[self.side]
         if isinstance(api, Exception):

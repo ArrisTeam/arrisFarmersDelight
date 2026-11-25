@@ -42,11 +42,14 @@ class _ServerApi(object):
 
 
 class _ClientApi(object):
-    """clientApi 的替身：同上。"""
+    """clientApi 的替身：同上；问前置包配方书的客户端登记口（Compat/Diegesis/TableClientLink）时前置包在场就给它真的那个模块
+    （Vanilla/Client/TableBookHooks），不在是 None。"""
     api = None
 
     @classmethod
     def ImportModule(cls, name):
+        if name == linkkit.BOOK_HOOKS:
+            return TableBookHooks if cls.api is not None else None
         return cls.api
 
 
@@ -78,6 +81,7 @@ ServerRegistry = dgtest.load("Server.Registry")
 ClientRegistry = dgtest.load("Client.Registry")
 ServerApi = dgtest.load("Api.Server")
 TableHooks = dgtest.load("Vanilla.Server.TableHooks")
+TableBookHooks = dgtest.load("Vanilla.Client.TableBookHooks")
 Geometry = dgtest.load("Shared.Geometry")
 Schema = dgtest.load("Shared.Schema")
 
@@ -90,7 +94,7 @@ DISH_CRAFTS = (PACKAGE + ".Compat.Diegesis.DishCrafts", "onCraft")
 class Booted(object):
     """一次启动之后：stations 是登记的站点编号（按登记顺序），looks 是世界外观广播 / 场景开没开，dishCrafts 是工作台拦截登记了没有，
     mode 是这一端的运行模式（Shared/Rules/HandsOnMode），steps 是每一步的状态 {步骤名: ok / skipped / failed}，
-    tableHooks 是前置包真的原版工作台接口上登了什么 {"vetoes": 个数, "remainders": 个数}（客户端是 None）。"""
+    tableHooks 是前置包真的原版工作台接口上登了什么：服务端 {"vetoes": 个数, "remainders": 个数}，客户端 {"hidden": 个数}（配方书不列的）。"""
 
     def __init__(self, stations, looks, dishCrafts, mode=None, steps=None, tableHooks=None):
         self.stations = stations
@@ -147,6 +151,7 @@ class ClientApi(object):
 def bootClient(api=None):
     """ClientBoot 重新来一次：入口重新导入（前置包的客户端 Api 是 api，缺省上面的替身，ABSENT 是没装），再发 LoadClientAddonScriptsAfter。"""
     ClientRegistry.clearAll()
+    TableBookHooks.clear()
     for scenes in (PotScenes, PanScenes, StoveScenes, BoardWatch):
         scenes._state["on"] = False
     linkkit.unlink("client")
@@ -154,4 +159,4 @@ def bootClient(api=None):
     reload(ClientBoot)
     Presence.onClientLoaded()
     looks = {"pot": PotScenes.enabled(), "pan": PanScenes.enabled(), "stove": StoveScenes.enabled(), "board": BoardWatch.enabled()}
-    return Booted(list(ClientRegistry._order), looks, None, Mode.mode("client"), _stepsOf("client"))
+    return Booted(list(ClientRegistry._order), looks, None, Mode.mode("client"), _stepsOf("client"), {"hidden": len(TableBookHooks._hidden)})
