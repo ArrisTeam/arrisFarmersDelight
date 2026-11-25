@@ -14,7 +14,7 @@
 import json
 import traceback
 
-from . import RecipeIds, RecipeTables
+from . import RecipeIds, RecipeTables, RecipeViews
 from .RecipeBuilder import RecipeBuilder
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Rules import CookingPot, RecipeJson
@@ -102,12 +102,12 @@ class Recipes(object):
 
     def getRecipeById(self, recipeId):
         """这个 ID 的配方（JE 配方 JSON 的样子，带 "id"）；没有或已经删了是 None。"""
-        return RecipeTables.view(recipeId)
+        return RecipeViews.view(recipeId)
 
     def getRecipesOfType(self, recipeType):
         """这一类的全部配方（同上的样子）；类型不认识是 []。"""
         kind = RecipeIds.typeOf(recipeType)
-        return [RecipeTables.view(recipeId) for recipeId in RecipeTables.idsOf(kind)] if kind else []
+        return [RecipeViews.view(recipeId) for recipeId in RecipeTables.idsOf(kind)] if kind else []
 
     def removeRecipe(self, recipeId):
         return self._refused(recipeId) or RecipeTables.remove(recipeId)

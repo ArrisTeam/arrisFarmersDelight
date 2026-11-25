@@ -142,7 +142,7 @@ def _cooking(spec, recipeId, index):
     slots = [[_option(option) for option in slot] for slot in spec["slots"]]
     old = CookingPotRecipeList[index] if index is not None and isinstance(CookingPotRecipeList[index], dict) else None
     row = {"Id": recipeId, "Slots": slots, "Recipe": _ways(slots, old),
-           "CookResult": tuple(spec["result"]), "CookCount": spec["count"], "PushItem": [], "text": spec.get("text") or spec["result"][0],
+           "CookResult": tuple(spec["result"]), "CookCount": spec["count"], "PushItem": [], "text": _text(spec, old),
            "CookTime": spec["cookingTime"] / 20.0, "Experience": float(spec["experience"])}
     if spec.get("container"):
         row["Vessel"] = tuple(spec["container"])
@@ -155,6 +155,16 @@ def _cooking(spec, recipeId, index):
         CookingPotRecipeList[index] = row
     CookingPot.rebuildIndex()
     return answer(True, None, recipeId)
+
+
+def _text(spec, old):
+    """经典界面食谱格里的名字：给了用给的；覆盖时没给沿用旧行的（农夫乐事的中文名不丢）；新登记的没给用成品的物品名
+    （界面的标题、搜索都读这个键，没有它旧的原生界面会出错，所以不空着）。"""
+    given = spec.get("text")
+    if given:
+        return given
+    kept = old.get("text") if old is not None else None
+    return kept if isinstance(kept, _TEXT) and kept else spec["result"][0]
 
 
 def _ways(slots, old):
@@ -190,57 +200,3 @@ def remove(recipeId):
     else:
         _forget(kind, key)
     return answer(True, None, recipeId)
-
-
-def _item(kind, count=None):
-    found = {"item": kind[0]}
-    if kind[1]:
-        found["data"] = kind[1]
-    if count is not None and count != 1:
-        found["count"] = count
-    return found
-
-
-def _ingredient(slot):
-    options = []
-    for option in slot:
-        parsed = PotSlots.parseOption(option)
-        if parsed is not None:
-            options.append({"tag": parsed[1]} if parsed[0] == "tag" else _item(parsed[1]))
-    return options[0] if len(options) == 1 else options
-
-
-def _number(value, default=None):
-    try:
-        return float(value) if value is not None else default
-    except (TypeError, ValueError):
-        return default
-
-
-def view(recipeId):
-    """这个 ID 的配方写成 JE 配方 JSON 的样子（加上 "id"），能原样交回 registerFromJson；没有是 None。"""
-    found = find(recipeId)
-    if found is None:
-        return None
-    kind, key = found
-    if kind == "campfire_cooking":
-        return {"id": recipeId, "type": "minecraft:campfire_cooking", "ingredient": {"item": key}, "result": CanCookedFoodDict[key]}
-    if kind == "cutting":
-        entry = _table(kind, key)[key]
-        actions = [action for tools, _itemType, action in TOOLS.values() if tools is entry.get("tool")]
-        tool = {"type": "farmersdelight:tool_action", "action": actions[0]} if actions else [{"item": name} for name in entry.get("tool") or ()]
-        results = [dict(_item((result["itemName"], result.get("auxValue", 0)), result.get("count", 1)),
-                        **({"chance": result["chance"]} if "chance" in result else {})) for result in entry["itemList"]]
-        source = {"tag": key} if not isinstance(key, tuple) else _item(key)
-        return {"id": recipeId, "type": "farmersdelight:cutting", "ingredients": [source], "tool": tool, "result": results}
-    row = CookingPotRecipeList[key]
-    slots = CookingPot.slotsOf(row) or [[entry] for entry in (CookingPot.waysOf(row) or [[]])[0]]
-    data = {"id": recipeId, "type": "farmersdelight:cooking", "ingredients": [_ingredient(slot) for slot in slots],
-            "result": _item(row["CookResult"], max(1, int(row.get("CookCount") or 1))),
-            "cookingtime": int(round((_number(row.get("CookTime")) or CookingPot.DEFAULT_COOK_SECONDS) * 20)),
-            "experience": _number(row.get("Experience"), CookingPot.DEFAULT_EXPERIENCE)}
-    if row.get("Vessel"):
-        data["container"] = _item(row["Vessel"])
-    if row.get("text") and row["text"] != row["CookResult"][0]:
-        data["text"] = row["text"]
-    return data

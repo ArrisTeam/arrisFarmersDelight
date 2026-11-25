@@ -278,6 +278,18 @@ def testACopiedIdOnALegacyRowGetsADerivedId():
         assert SERVER.removeRecipe("legacy:cooking/arris/cookbeef_stew")["ok"] and Pot.CookingPotRecipeList[-1].get("Disabled") is True
 
 
+def testOverridingWithoutTextKeepsTheOldName():
+    """T 复核时指出的：覆盖农夫乐事的菜时不写 text，中文名就丢了（缺省是物品 ID）。现在沿用旧行的；新登记的没写照旧用物品名。"""
+    with Sandbox():
+        view = SERVER.getRecipeById("farmersdelight:cooking/beef_stew")
+        del view["text"]
+        assert SERVER.registerFromJson(view)["ok"]
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        assert stew["text"] == "牛肉炖"
+        assert SERVER.createBuilder("mymod:cooking/plain", "cooking").ingredient("minecraft:cookie").output("mymod:plain").register()["ok"]
+        assert Pot.CookingPotRecipeList[-1]["text"] == "mymod:plain"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
