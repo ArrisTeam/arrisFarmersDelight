@@ -349,6 +349,25 @@ def testAHostCuttingOrCampfireIdStaysWithItsIngredient():
             "第三方自己的 ID 照旧能挪原料"
 
 
+def testARemovedHostCuttingOrCampfireIdStaysItsType():
+    """主会话读 d425f66 时指出的：绑定检查在进厨锅那一支之后，自带的砧板 / 营火配方删掉以后，还能拿它的 ID 登记一条厨锅配方（problemOf 因为它在
+    _builtInIds 里放行）；之后旧接口把卷心菜加回来，派生出同一个 ID，又是两条一个 ID。现在类型对不上先拒绝（type_mismatch，current 是那个 ID
+    本来的类型）；类型、原料都对得上照旧加得回来。"""
+    cabbage, beef = "farmersdelight:cutting/arris/cabbage", "farmersdelight:campfire_cooking/minecraft/beef"
+    with Sandbox():
+        assert SERVER.removeRecipe(cabbage)["ok"] and SERVER.removeRecipe(beef)["ok"]
+        found = SERVER.createBuilder(cabbage, "cooking").ingredient("minecraft:kelp").output("minecraft:dried_kelp").register()
+        assert (found["error"], found.get("current")) == ("type_mismatch", "cutting"), found
+        found = SERVER.createBuilder(beef, "cutting").ingredient("minecraft:beef").output("arris:minced_beef").tool("knife").register()
+        assert (found["error"], found.get("current")) == ("type_mismatch", "campfire_cooking"), found
+        assert Legacy.ArrisFarmersDelightInterface("CuttingBoardDict", {("arris:cabbage", 0): {"itemList": [{"itemName": "arris:cabbage_leaf", "count": 2}],
+                                                                                              "tool": Cutting.knifeList}})
+        ids = [view["id"] for kind in ("cooking", "cutting", "campfire_cooking") for view in SERVER.getRecipesOfType(kind)]
+        assert len(ids) == len(set(ids)) and ids.count(cabbage) == 1
+        assert SERVER.createBuilder(beef, "campfire_cooking").ingredient("minecraft:beef").output("minecraft:cooked_beef").register()["ok"], \
+            "类型、原料都对得上照旧加得回来"
+
+
 def testCookingIdsNeverCollide():
     """T 复核 3.5：明写的 legacy: ID 会和别的行派生的撞；派生规则自己也会撞（成品 pie、pie、pie_2 三行，后两行都是 pie_2）。
     现在明写的 legacy: 和写法不对的当没写，派生的名字被占了就接着加 _n。"""
