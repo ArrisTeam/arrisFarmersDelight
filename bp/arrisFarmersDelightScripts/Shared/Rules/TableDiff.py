@@ -41,6 +41,7 @@ class Syncer(object):
         self._base = dict((name, self._baseline(kind, container)) for name, kind, container in self.tables)
         self._sent = dict((name, set()) for name, kind, _ in self.tables if kind == SyncTables.MAP)     # 字典表里发出去过的键
         self._gone = dict((name, set()) for name, kind, _ in self.tables if kind == SyncTables.MAP)     # 发过"删了"的键：加回来要再发
+        self._sentRows = dict((name, set()) for name, kind, _ in self.tables if kind == SyncTables.ROWS)  # ROWS 表里发出去过的下标
         self._seen = self._copies()
         self._messages = None        # {表名: [消息]}（没有差异的表不在里面）；None：还没算过
 
@@ -138,7 +139,7 @@ class Syncer(object):
             except WireError as error:
                 problems.append("%s 的条目 %r 传不了，已跳过：%s" % (name, key, error))
                 continue
-            if key not in base or base[key] != wireValue or key in gone:
+            if key not in base or base[key] != wireValue or key in gone or key in sent:    # 发过的一直发当前值：改回基线也要发
                 ops.append({"k": wireKey, "v": wireValue})
                 sent.add(key)
         for key in (set(base) | sent) - set(container):
@@ -151,7 +152,7 @@ class Syncer(object):
         return ops
 
     def _diffRows(self, name, container, problems):
-        base, ops = self._base[name], []
+        base, sent, ops = self._base[name], self._sentRows[name], []
         for index, row in enumerate(container):
             try:
                 wireRow = self.codec.encode(row)
@@ -160,8 +161,9 @@ class Syncer(object):
                 if index < len(base):
                     continue
                 wireRow = self._holes[name]
-            if index >= len(base) or base[index] != wireRow:
+            if index >= len(base) or base[index] != wireRow or index in sent:    # 发过的一直发：墓碑复活、改回基线也要发
                 ops.append({"at": index, "v": wireRow})
+                sent.add(index)
         return ops
 
     def _chunks(self, ops):
