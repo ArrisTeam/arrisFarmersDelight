@@ -6,7 +6,7 @@
   原来配不上的（一到三件料的组合）照旧配不上；站点的候选摆法（candidatesFor）和原来一模一样；
 - 标签格：别的模组的东西进了标签就能用（假的引擎口）。口准备好之前照 ItemTags 的规矩按单件问引擎、枚举只给静态表，而且什么答案都不记
   （引擎改了口马上跟上）；准备好以后记着答案，换代（ItemTags.generation 变了）时作废；
-- 表里靠前的赢（格子形和旧写法之间也是）；墓碑（Disabled）哪里都不认；只有 Slots、没有写法的配方也配得上，余料按锅里实际那几件算；
+- 表里靠前的赢（格子形和旧写法之间也是）；墓碑（Disabled）配不上（锅里已经煮好的照它盛）；只有 Slots、没有写法的配方也配得上，余料按锅里实际那几件算；
 - rebuildIndex 只是作废，下次用到时重算。
 """
 from __future__ import print_function
@@ -167,16 +167,19 @@ def testTheEarlierRecipeWinsBetweenSlotsAndWays():
 
 
 def testTombstonesAreSkippedEverywhere():
+    """墓碑配不上、不是食材、不出摆法；但锅里已经煮好的那道菜照样盛得出来（T 复核时复现的：以前容器查不到、经典界面不转出、站点不给盛）：
+    按成品查的（findRecipeByResult、容器、时间、经验、是不是容器）没有活配方时退回墓碑那一行，有活的用活的。"""
     dead = {"Id": "test:cooking/dead", "Slots": [["test:x"]], "Recipe": [[("test:x", 0)]], "CookResult": ("test:dead", 0),
-            "Vessel": ("test:cup", 0), "PushItem": [], "text": "x", "Disabled": True, "CookTime": 3.0}
+            "Vessel": ("test:cup", 0), "PushItem": [], "text": "x", "Disabled": True, "CookTime": 3.0, "Experience": 2.0}
     alive = {"Recipe": [[("test:x", 0)]], "CookResult": ("test:dead", 0), "PushItem": [], "text": "y"}
     with Rows(dead):
         assert Rules.matchRecipe([_item("test:x")]) == (None, None) and not Rules.isIngredient(("test:x", 0))
-        assert not Rules.isVessel("test:cup") and Rules.findRecipeByResult("test:dead") is None and Rules.vesselOf("test:dead") is None
-        assert Rules.cookSecondsOf("test:dead") == Rules.DEFAULT_COOK_SECONDS
         assert Rules.candidatesFor([("test:x", 0)]) == []
+        assert Rules.findRecipeByResult("test:dead") is dead and Rules.vesselOf("test:dead") == ("test:cup", 0) and Rules.isVessel("test:cup")
+        assert Rules.cookSecondsOf("test:dead") == 3.0 and Rules.servingExperienceOf("test:dead") == 2.0
         with Rows(alive):
             assert Rules.matchIndex([_item("test:x")]) == len(TABLE) - 1 and Rules.findRecipeByResult("test:dead") is alive
+            assert Rules.vesselOf("test:dead") is None and Rules.cookSecondsOf("test:dead") == Rules.DEFAULT_COOK_SECONDS, "有活的用活的"
 
 
 def testASlotsOnlyRecipeGivesBackWhatThePotActuallyHeld():
@@ -214,6 +217,22 @@ def testBadRowsAreNotRecipes():
         assert Rules.matchRecipe([_item("test:y")])[0]["newItemName"] == "test:half", "写坏的写法跳过，好的照用"
         assert Rules.cookSecondsOf("test:half") == Rules.DEFAULT_COOK_SECONDS and Rules.experienceOf("test:half") == Rules.DEFAULT_EXPERIENCE
         assert Rules.optionsOf(rows[2]) is None and Rules.matchRecipe([_item("bad")]) == (None, None)
+
+
+def testFramesAreRememberedWhileTheTagsAreReadyUntilTheTableChanges():
+    """T 复核时指出的性能：framesOf / extraWays 每次都把旧写法过一遍格子配对。现在按 (配方表的版本, 标签代数) 记住；
+    引擎口没准备好时不记（照 ItemTags 的规矩），配方表改过（rebuildIndex）就重算。"""
+    stew = TABLE[next(at for at, recipe in enumerate(TABLE) if recipe["Id"] == "farmersdelight:cooking/beef_stew")]
+    assert Rules.framesOf(stew) is not Rules.framesOf(stew), "没有口：不记"
+    ItemTags.setPort("server", Port({}, ready=True))
+    try:
+        first = Rules.framesOf(stew)
+        assert Rules.framesOf(stew) is first and Rules.extraWays(stew) is Rules.extraWays(stew)
+        Rules.rebuildIndex()
+        again = Rules.framesOf(stew)
+        assert again is not first and again == first
+    finally:
+        ItemTags.setPort("server", None)
 
 
 if __name__ == "__main__":

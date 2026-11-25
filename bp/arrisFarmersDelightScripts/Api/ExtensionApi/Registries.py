@@ -12,6 +12,7 @@ from ...Shared.Data.Cooking import CanProvideHeatBlockList, StoveList
 from ...Shared.Data.Cutting import knifeList
 from ...Shared.Data.Farming import ComposterItemDict
 from ...Shared.Rules import BoardStation, ItemTags
+from ...Shared.Rules.TableWire import INT_TYPES, isInt
 
 try:
     _TEXT = (str, unicode)  # noqa: F821 - py2
@@ -68,9 +69,9 @@ class Registries(object):
         if self._side != "server":
             return _answer(False, "server_only", itemName)
         found = _name(itemName)
-        if found is None or isinstance(aux, bool) or not isinstance(aux, int) or aux < 0:
+        if found is None or not isInt(aux) or aux < 0:
             return _answer(False, "invalid_name", itemName)
-        if isinstance(chance, bool) or not isinstance(chance, (int, float)) or not 0 < chance <= 100:
+        if isinstance(chance, bool) or not isinstance(chance, INT_TYPES + (float,)) or not 0 < chance <= 100:
             return _answer(False, "invalid_chance", found)
         ComposterItemDict[(found, aux)] = chance
         return _answer(True, None, found)

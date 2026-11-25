@@ -14,7 +14,7 @@
 import json
 import traceback
 
-from . import RecipeIds, RecipeTables
+from . import RecipeIds, RecipeTables, RecipeViews
 from .RecipeBuilder import RecipeBuilder
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Rules import CookingPot, RecipeJson
@@ -80,6 +80,9 @@ class Recipes(object):
 
     def registerFromJson(self, source, recipeId=None):
         """登记一份 JE 写法的配方 JSON（文本或已经读出来的字典）；配方 ID 不给就用 JSON 里的 "id"。"""
+        refused = self._refused(recipeId)
+        if refused is not None:
+            return refused                   # 客户端：先答 server_only，坏文本也一样（不先去读它）
         data = source
         if not isinstance(source, dict):
             try:
@@ -102,12 +105,12 @@ class Recipes(object):
 
     def getRecipeById(self, recipeId):
         """这个 ID 的配方（JE 配方 JSON 的样子，带 "id"）；没有或已经删了是 None。"""
-        return RecipeTables.view(recipeId)
+        return RecipeViews.view(recipeId)
 
     def getRecipesOfType(self, recipeType):
         """这一类的全部配方（同上的样子）；类型不认识是 []。"""
         kind = RecipeIds.typeOf(recipeType)
-        return [RecipeTables.view(recipeId) for recipeId in RecipeTables.idsOf(kind)] if kind else []
+        return [RecipeViews.viewAt(found, recipeId) for recipeId, found in RecipeTables.entriesOf(kind)] if kind else []
 
     def removeRecipe(self, recipeId):
         return self._refused(recipeId) or RecipeTables.remove(recipeId)
@@ -121,9 +124,9 @@ class Recipes(object):
             return None
         meal, pushed = CookingPot.matchRecipe(dicts)
         index = int(index)                   # 上面已经排除了 None（机审的 pylint 推不出来）
-        row = CookingPotRecipeList[index]
+        vessel = CookingPot.vesselOf(meal["newItemName"])     # 锅实际会用的：这个成品的第一条活配方的容器（锅只记得成品）
         return {"id": RecipeIds.cookingIds(CookingPotRecipeList)[index], "result": meal,
-                "container": tuple(row["Vessel"]) if row.get("Vessel") else None, "pushItems": pushed}
+                "container": tuple(vessel) if vessel else None, "pushItems": pushed}
 
     def onRecipesChanged(self, handler):
         refused = self._refused()

@@ -96,6 +96,12 @@ class FarmersDelightClientLink(ClientSystem):
 
 服务端、客户端的系统分两个文件写：服务端的文件不要导入客户端的接口，反过来也一样。
 
+这一节是对着 QuModLibs 的源码写的（农夫乐事带的那份，arrisCreate 的 kit），**还没在游戏里跑过**（2026-11-26 实机核的是 §1.1 原生系统的写法）。
+源码里看得到的：`regNativePyServer(命名空间, 系统名, 路径)` 只是记下来，路径前面拼上你的脚本目录名（`EasyMod` 的 `_modDirName`）；
+QuMod 在自己的 `InitServer` 里对记下的每一个调 `serverApi.RegisterSystem`（引擎当场构造系统，`__init__` 里的监听在这时就登记了），
+这早于引擎发 `LoadServerAddonScriptsAfter`，所以赶得上农夫乐事的广播；客户端的 `regNativePyClient` 同理（`InitClient`）。
+别的版本的 QuModLibs 没核过：用之前看一眼它的 `QuMod.py` 里有没有 `regNativePyServer`。
+
 ### 1.3 什么时候监听、先后顺序
 
 - **在系统的 `__init__` 里监听**（或者 QuModLibs 的原生小系统，1.2）。不要在你自己的 `LoadServerAddonScriptsAfter` 处理函数里才监听：
@@ -116,6 +122,8 @@ T4  农夫乐事读全部行为包里的 farmersdelight_recipes/**.json（RECIPE
 T5  调一次 onRecipesChanged 的处理函数（types、recipeIds 都是 None）
 T6  玩家进服：表同步把 T3、T4 的改动发给他的客户端
 ```
+
+T2 → T5 的先后 2026-11-26 在游戏里核过：第三方在 ready 的处理函数里查不到行为包里的 JSON 配方（还没读），`onRecipesChanged` 在读完之后才调。
 
 客户端：`__init__` 里监听 `ClientExtensionApiReady` → 引擎发 `LoadClientAddonScriptsAfter` → 农夫乐事广播。客户端的配方表是服务端同步过来的：
 玩家进服之前，客户端只有农夫乐事自带的配方。
@@ -188,7 +196,7 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `stoves` | 服务端 | `ext.registerStove`（§6） |
 | `compostables` | 服务端 | `ext.registerCompostable`（§6） |
 | `item_tags` | 两端 | `ext.tags`（§7） |
-| `recipe_json_files` | 服务端（还没登记） | 行为包里的 `farmersdelight_recipes/`（[RECIPE-JSON.md](RECIPE-JSON.md)）。已经实现、照常会读，但跨包读文件的那条路还没在游戏里核过，核过才登记这个名字 |
+| `recipe_json_files` | 服务端 | 行为包里的 `farmersdelight_recipes/`（[RECIPE-JSON.md](RECIPE-JSON.md)；跨行为包读文件 2026-11-26 在游戏里核过） |
 
 ---
 
@@ -225,6 +233,9 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `cooking` | `"cooking"`、`"farmersdelight:cooking"` | 厨锅：1 到 6 格配料，一份出几个成品，可以要容器 | 留墓碑（见 5.6） |
 | `cutting` | `"cutting"`、`"farmersdelight:cutting"` | 砧板：一样原料（物品或一个标签）、一种工具、1 到 4 个产物（可以带概率） | 真删 |
 | `campfire_cooking` | `"campfire_cooking"`、`"minecraft:campfire_cooking"` | 煎锅、炉灶、手持煎锅"能煎烤什么"：一样物品 -> 一样物品 | 真删 |
+
+**同一个成品只有一套容器、时间、经验**：锅只记得煮的是哪个成品，盛的时候按表里这个成品的**第一条活配方**要容器、算时间和经验。
+再登记一条同成品、容器不同的配方，锅里实际照第一条来（`matchCooking` 报的也是这一套）；要换掉自带那道菜的容器，就用它的 ID 覆盖它。
 
 配方存在农夫乐事原来那几张表里（和兼容入口同一份数据：`CookingPotRecipeList`、`CuttingBoardDict` / `CuttingTagDict`、`CanCookedFoodDict`），
 所以两种接口登记的配方是一回事：旧接口追加的新接口查得到，新接口登记的旧读者（下游包、表同步）也看得到。
@@ -273,7 +284,7 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 | --- | --- | --- |
 | `ingredient(*选项)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项 |
 | `output(物品, count=1, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出） |
-| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`），不写就不要容器 |
+| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |
@@ -426,6 +437,7 @@ def register(ext):
 **问：我用兼容入口（旧接口）加的配方，新接口查得到吗？** 查得到，ID 是 `legacy:` 开头的派生 ID（§5.2），也能删。
 
 **问：怎么改农夫乐事自带的一道菜？** 用它的 `farmersdelight:` ID 覆盖：`getRecipeById` 拿到 JSON，改了交回 `registerFromJson`。
+别的模组用兼容入口（`AddCookingPotRecipe`）给这道菜加的写法，覆盖之后照样留着（接在新行的 `Recipe` 后面），和谁先加载无关。
 
 **问：一个标签里没有成员会怎样？** 那一格什么都不收，这条配方配不上；不报错。等有模组登记了成员（或玩家装了那个模组）就能配。
 

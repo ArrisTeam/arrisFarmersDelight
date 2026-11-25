@@ -87,7 +87,7 @@ Server/                 服务端
                         Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给；PopFromBoard / PopFromPan 读方块朝向往侧面弹）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
-                        PackJson（读全部行为包里某个目录下的 JSON：引擎内部的 server_resource，经 traceback.sys.modules 取，只在这里碰它；游戏里还没核过）
+                        PackJson（读全部行为包里某个目录下的 JSON：引擎内部的 server_resource，经 traceback.sys.modules 取，只在这里碰它；2026-11-26 游戏里核过）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
@@ -290,7 +290,7 @@ def OnServerSkilletBlockUse(args):
 （`tests/test_extension_docs.py` 核对和 EXTENSION-API.md §3 的表一样）。`Api/` 只导入 `Shared/`：服务端要做的引擎的事（`syncToClients` 时现在就同步）
 由 `Server/ExtensionReady` 在广播之前经 `Recipes.provide(syncNow=…)` 交进去。服务端广播之后接着读行为包里的 `farmersdelight_recipes/**.json`
 （`Api/ExtensionApi/RecipeFiles.py` 定 ID、登记；跨包读文件的 `Server/Helpers/PackJson.py` 用引擎内部的 `server_resource`，经 `traceback.sys.modules` 取，
-**游戏里还没核过**，所以能力名 `recipe_json_files` 先不登记：`Events.RECIPE_JSON_FILES_VERIFIED`），再调一次 `onRecipesChanged` 的处理函数；
+2026-11-26 在游戏里核过：探针包里不写 id 的 JSON 读到了，能力名 `recipe_json_files` 因此登记，`Events.RECIPE_JSON_FILES_VERIFIED`），再调一次 `onRecipesChanged` 的处理函数；
 `ExtensionReady.scanReport()` 给自检读这一次读了什么。
 
 **配方存在哪**：不另起存储，还是联动契约的那几张表（表同步、六个下游包、十几个读表的地方都建在上面），只加可选的键：

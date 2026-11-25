@@ -10,6 +10,8 @@ JE 的厨锅就是这么认的（CookingPotRecipe.matches：RecipeMatcher.findMa
 """
 import itertools
 
+from .TableWire import isInt as _isInt      # py2 的 long 也算整数（引擎给的 aux 可能是 long），bool 不算
+
 TAG_MARK = "#"
 MOST_SLOTS = 6          # 厨锅只有 6 个食材格
 
@@ -17,10 +19,6 @@ try:
     _TEXT = (str, unicode)  # noqa: F821 - py2
 except NameError:
     _TEXT = (str,)
-
-
-def _isInt(value):
-    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def parseOption(option):

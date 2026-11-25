@@ -9,7 +9,7 @@
 - PackJson：经 traceback.sys.modules 拿引擎内部的 server_resource（没有、缺函数、列目录抛异常都是 None）；只要 .json、去重、排好序、剥注释、
   解码 UTF-8，读不了的那个跳过；
 - 接线：ready 广播之后读（ready 里登记的同 ID 配方被文件覆盖），读完调一次 onRecipesChanged 的处理函数（types、recipeIds 都是 None），
-  每端只读一次；能力名 recipe_json_files 等游戏里核过才登记（Events.RECIPE_JSON_FILES_VERIFIED）。
+  每端只读一次；能力名 recipe_json_files（2026-11-26 游戏里核过才登记的：Events.RECIPE_JSON_FILES_VERIFIED）只在服务端。
 """
 from __future__ import print_function
 
@@ -145,6 +145,33 @@ def testEachFileIsOneRecipeAndTheProblemsAreNamed():
         assert SERVER.recipes.getRecipeById("probe:cooking/tomato_mash")["result"] == {"item": "probe:tomato_mash", "count": 3}
 
 
+def testBrokenJsonNeverRaisesAndOneBadFileDoesNotStopTheRest():
+    """T 复核时复现的：type / tool 的 action、tag 写成列表或字典，数写 NaN / Infinity，Builder 的 tool 给字典——都答"格式不对"，不抛；
+    读文件时一个文件出什么错都只记下它，后面的照读。"""
+    cut = {"type": "farmersdelight:cutting", "ingredients": [{"item": "a:b"}], "result": [{"item": "a:c"}]}
+    broken = [dict(MASH, type=["farmersdelight:cooking"]), dict(MASH, type={"x": 1}), dict(MASH, cookingtime=float("nan")),
+              dict(MASH, cookingtime=float("inf")), dict(MASH, experience=float("nan")), dict(MASH, result={"item": "a:b", "count": float("inf")}),
+              dict(cut, tool={"type": "farmersdelight:tool_action", "action": ["knife_dig"]}), dict(cut, tool={"tag": {"x": 1}}),
+              dict(cut, tool={"type": "farmersdelight:tool_action", "action": "knife_dig"}, result=[{"item": "a:c", "chance": float("nan")}])]
+    for data in broken:
+        answer = SERVER.recipes.registerFromJson(data, "probe:cooking/broken")
+        assert answer["error"] == "invalid_recipe" and answer["message"], (data, answer)
+    assert SERVER.recipes.createBuilder("probe:cutting/odd", "cutting").ingredient("a:b").output("a:c").tool({"x": 1}).register()["error"] \
+        == "invalid_recipe", "Builder 的 tool 给字典也不抛"
+    with Sandbox():
+        files = [("farmersdelight_recipes/probe/a.json", json.dumps(dict(MASH, cookingtime=float("nan")))),
+                 ("farmersdelight_recipes/probe/b.json", json.dumps(dict(MASH, type=[1]))),
+                 ("farmersdelight_recipes/probe/cooking/tomato_mash.json", json.dumps(MASH))]
+        loaded, problems = Files.load(files, SERVER.recipes.registerFromJson)
+        assert loaded == ["probe:cooking/tomato_mash"] and [path for path, _reason in problems] == [path for path, _text in files[:2]], problems
+
+        def raising(data, recipeId):
+            raise RuntimeError("their bug")
+
+        loaded, problems = Files.load(files[2:], raising)
+        assert loaded == [] and problems[0][1].startswith("invalid_recipe"), problems
+
+
 class _Resource(object):
     """server_resource 的替身：列目录给的路径、读文件给的字节；raises 里的路径读的时候抛异常。"""
 
@@ -184,11 +211,12 @@ def testPackJsonReadsEveryPackThroughTheEnginesInternalModule():
     commented = u'{\n  // 番茄泥\n  "type": "farmersdelight:cooking", /* 两格\n */ "text": "a//b /* c */"\n}'
     resource = _Resource(["farmersdelight_recipes/b.json", "farmersdelight_recipes/a.json", "farmersdelight_recipes/readme.txt",
                           "farmersdelight_recipes/a.json", "farmersdelight_recipes/gone.json", None],
-                         {"farmersdelight_recipes/a.json": commented.encode("utf-8"), "farmersdelight_recipes/b.json": b'{"x": 1}'},
+                         {"farmersdelight_recipes/a.json": commented.encode("utf-8"), "farmersdelight_recipes/b.json": b'\xef\xbb\xbf{"x": 1}'},
                          raises=("farmersdelight_recipes/gone.json",))
     found, printed = _withResource(resource, lambda: PackJson.files("farmersdelight_recipes"))
     assert [path for path, _text in found] == ["farmersdelight_recipes/a.json", "farmersdelight_recipes/b.json"], found
     assert json.loads(found[0][1]) == {"type": "farmersdelight:cooking", "text": "a//b /* c */"}, "注释剥掉，字符串里的不动"
+    assert json.loads(found[1][1]) == {"x": 1}, "开头带 BOM 的 UTF-8 也读得进来（T 复核时复现的：以前 json 读不了）"
     assert found[0][1].count("\n") == commented.count("\n"), "块注释里的换行留着（报错的行号对得上）"
     assert resource.asked == ["farmersdelight_recipes"] and "gone.json" in printed, "读不了的那个跳过、记一行"
     assert _withResource(None, lambda: PackJson.files("farmersdelight_recipes"))[0] is None, "没有这个模块"
@@ -250,10 +278,11 @@ def testTheFilesAreReadAfterTheReadyBroadcastAndThenTheHandlersAreToldOnce():
             Ready.reset()
 
 
-def testTheCapabilityWaitsForTheGame():
-    assert Events.RECIPE_JSON_FILES_VERIFIED is False, "server_resource 这条路游戏里核过之后才改成 True"
-    assert "recipe_json_files" not in Events.SERVER_CAPABILITIES and "recipe_json_files" not in Events.CLIENT_CAPABILITIES
-    assert not SERVER.hasCapability("recipe_json_files")
+def testTheCapabilityIsRegisteredOnTheServerOnly():
+    """2026-11-26 游戏里核过（另一个行为包里的文件读到了），能力名登记上；只在服务端（文件只有服务端读）。"""
+    assert Events.RECIPE_JSON_FILES_VERIFIED is True
+    assert "recipe_json_files" in Events.SERVER_CAPABILITIES and "recipe_json_files" not in Events.CLIENT_CAPABILITIES
+    assert SERVER.hasCapability("recipe_json_files") and not Facade.getExtensionApi("client").hasCapability("recipe_json_files")
 
 
 if __name__ == "__main__":

@@ -45,8 +45,7 @@ def testTheCapabilityTableIsWhatEventsRegisters():
     assert server == set(Events.SERVER_CAPABILITIES), sorted(server ^ set(Events.SERVER_CAPABILITIES))
     assert client == set(Events.CLIENT_CAPABILITIES), sorted(client ^ set(Events.CLIENT_CAPABILITIES))
     assert not pending & (Events.SERVER_CAPABILITIES | Events.CLIENT_CAPABILITIES), "写着还没登记的，Events 里就不能有"
-    if not Events.RECIPE_JSON_FILES_VERIFIED:
-        assert pending == set(["recipe_json_files"]), pending
+    assert pending == (set() if Events.RECIPE_JSON_FILES_VERIFIED else set(["recipe_json_files"])), pending
     changelog = _read(DOCS, "API-CHANGELOG.md")
     missing = [name for name in sorted(Events.SERVER_CAPABILITIES | Events.CLIENT_CAPABILITIES | pending) if u"`%s`" % name not in changelog]
     assert not missing, "API-CHANGELOG.md 里没写的能力名：%r" % missing

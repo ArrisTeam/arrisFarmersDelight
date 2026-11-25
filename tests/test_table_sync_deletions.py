@@ -86,5 +86,25 @@ def testListsStayAppendOnlyAndRowsUseTombstones():
     assert client.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList[-1].get("Disabled") is True, "厨锅配方删了是墓碑：一行变了"
 
 
+def testAValueChangedAndChangedBackReachesTheClientBothTimes():
+    """T 复核时复现的：只发和基线不同的，改掉再改回基线时在线的客户端收不到"改回"。发过的键 / 下标以后一直发当前值。"""
+    server, client, syncer = _pair()
+    cooked = server.load("Shared.Data.Cooking").CanCookedFoodDict
+    original = cooked["minecraft:beef"]
+    cooked["minecraft:beef"] = "test:charcoal"
+    _sync(syncer, client)
+    assert client.load("Shared.Data.Cooking").CanCookedFoodDict["minecraft:beef"] == "test:charcoal"
+    cooked["minecraft:beef"] = original
+    _sync(syncer, client)
+    assert client.load("Shared.Data.Cooking").CanCookedFoodDict["minecraft:beef"] == original, "改回基线也发"
+    rows = server.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList
+    rows[0]["Disabled"] = True
+    _sync(syncer, client)
+    assert client.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList[0].get("Disabled") is True
+    del rows[0]["Disabled"]
+    _sync(syncer, client)
+    assert "Disabled" not in client.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList[0], "基线配方打了墓碑又复活：客户端也复活"
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

@@ -27,7 +27,9 @@
 2. **配方 JSON 的写法**（[RECIPE-JSON.md](RECIPE-JSON.md)）和配方 ID 的规矩（EXTENSION-API.md §5.2），包括农夫乐事自带配方的 ID。
 3. **兼容入口**：`CreateModAttr("arris")` 的三个函数 `ArrisFarmersDelightInterface` / `ArrisFarmersDelightObtain` / `ArrisAddCookingPotRecipe`，
    它们交出去的那些表（同一个对象，下游拿的是活引用）和表里原有的写法（linkage.md、`Shared/Data/` 里对应的文件）。不改不删，不再加新功能；
-   表里以后可能多出可选的键（比如厨锅配方行的 `Id`、`Slots`、`Disabled`），读表的请按键名取、容忍多出来的键。
+   表里以后可能多出可选的键（比如厨锅配方行的 `Id`、`Slots`，砧板条目的 `id`），读表的请按键名取、容忍多出来的键。
+   **例外是厨锅配方行的 `Disabled`（墓碑）**：它改变这一行的含义——带 `"Disabled": True` 的行是被删掉的配方（行还留在表里，
+   因为别处拿行的位置当身份），遍历 `CookingPotRecipeList` 时要跳过它；另外新接口登记的配方 `Recipe` 可能是空列表（只写了格子、展开不出写法）。
 4. **标签词表**：[TAGS.md](TAGS.md) 列出的 `common:` 标签名和含义（成员会随版本增加）。
 
 其余一律是内部实现，任何一次发版都可能改名、移动或删除，例如：`Server.*`、`Client.*`、`Compat.*`、`Shared.*` 下的模块和函数

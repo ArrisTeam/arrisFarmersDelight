@@ -4,9 +4,8 @@
 写法就是 JE 农夫乐事的配方 JSON，物品名换成网易版的、标签写农夫乐事词表里的 `common:` 名（JE 的标签名也认，见 §3）：
 把 JE 的配方文件改改物品名就能用。代码里登记用的是同一种写法（`ext.recipes.registerFromJson`、Builder 的 `toJson()`，见 [EXTENSION-API.md](EXTENSION-API.md) §5）。
 
-> **状态：没在游戏里核过。** 农夫乐事每次开服都会读这个目录，但跨行为包读文件用的是引擎内部的 `server_resource`
-> （和机械动力的 `create_recipes/` 同一条路），农夫乐事这边还没在游戏里核过，所以能力名 `recipe_json_files` 还没登记。
-> 核过之前要稳的话，在代码里用 `registerFromJson` 登记同一份 JSON：两条路登记同一个 ID 只是覆盖，不会多出一条。
+> 能力名 `recipe_json_files`（服务端）。跨行为包读文件用的是引擎内部的 `server_resource`（和机械动力的 `create_recipes/` 同一条路），
+> 2026-11-26 在游戏里核过：另一个行为包里不写 `id`、带注释的配方 JSON 开服时读到了，按路径派生了 ID，登记上了。
 
 ---
 
@@ -27,7 +26,7 @@ mymod_bp/
   直接放在 `farmersdelight_recipes/` 下、又没写 `"id"` 的文件不收（不知道算谁的）。ID 的规矩和代码登记一样（EXTENSION-API.md §5.2）：
   用你自己的命名空间；`farmersdelight:` 只能覆盖农夫乐事已有的配方；`legacy:` 不能用。
 - 可以写 `//` 和 `/* */` 注释，文件用 UTF-8。
-- 读的时机：ready 广播之后（EXTENSION-API.md §1.3 的 T4），所以别的模组在 ready 里用代码登记的同 ID 配方会被文件覆盖。
+- 读的时机：ready 广播之后（EXTENSION-API.md §1.3 的 T4），所以别的模组在 ready 里用代码登记的同 ID 配方会被文件覆盖（这个先后 2026-11-26 在游戏里核过）。
   全部行为包的文件按路径排好序一个一个读；同一个 ID 写了两份时后读的覆盖先读的（别这么写）。
 - 读不进来的文件，每个在日志里写一行，不耽误别的文件：
 
@@ -61,13 +60,14 @@ mymod_bp/
 | `type` | 是 | `"farmersdelight:cooking"`（`"cooking"` 也认） |
 | `ingredients` | 是 | 1 到 6 个配料，一个是一格（写法见 §3）；锅里每件东西要分给一个收它的格，格子正好用完才配得上 |
 | `result` | 是 | `{"item": 物品名, "count": 一份出几个, "data": aux}`，`count`、`data` 可不写（1、0）；也可以直接写物品名字符串 |
-| `container` | 否 | 盛这道菜要的容器 `{"item": 物品名}`，不写就不要容器 |
+| `container` | 否 | 盛这道菜要的容器 `{"item": 物品名}`。不写时照 JE 推：成品有合成剩余物（农夫乐事的剩余物表 `Shared/Data/Remainders.py`：碗装的菜剩碗、饮料剩玻璃瓶、奶桶剩桶……）就要它，没有就不要容器；别的模组的成品不在那张表里，要容器就写明 |
 | `cookingtime` | 否 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience` | 否 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `text` | 否 | 农夫乐事加的：经典厨锅界面食谱格里的名字，不写是成品的物品名 |
 | `id` | 否 | 配方 ID（§1） |
 
-JE 的 `recipe_book_tab` 这类键不管。几条配方都配得上同一锅东西时，表里靠前的赢（农夫乐事自己的在最前）。
+同一个成品只有一套容器、时间、经验：锅只记得煮的是哪个成品，盛的时候按表里这个成品的第一条配方算（推出来的容器也一样）。
+所以给农夫乐事已有的菜再写一条"换个碗"的配方是做不到的；要换就用那道菜的 ID 覆盖它。JE 的 `recipe_book_tab` 这类键不管。几条配方都配得上同一锅东西时，表里靠前的赢（农夫乐事自己的在最前）。
 
 ---
 
@@ -76,8 +76,8 @@ JE 的 `recipe_book_tab` 这类键不管。几条配方都配得上同一锅东�
 | 写法 | 意思 |
 | --- | --- |
 | `{"item": "mymod:tofu"}` | 这样物品（aux 0） |
-| `{"item": "minecraft:dye", "data": 4}` | 这样物品、这个 aux |
-| `{"tag": "common:tomato"}` | 现在带这个标签的任何物品（标签没有 aux） |
+| `{"item": "minecraft:potion", "data": 4}` | 这样物品、这个 aux |
+| `{"tag": "common:tomato"}` | 现在带这个标签的任何物品（标签格不看 aux：带标签的物品哪个 aux 都收） |
 | `[配料, 配料, ...]` | 这一格的几个选项，任一个都行 |
 | `"mymod:tofu"`、`"#common:tomato"` | 字符串的简写，同上面两种 |
 
@@ -154,20 +154,21 @@ JE 农夫乐事（1.20.1）的 `data/farmersdelight/recipes/cooking/beef_stew.js
 }
 ```
 
-搬过来要改成品的物品名（标签名会自动换成 `common:raw_beef`、`common:carrot`、`common:potato`），给它一个你的 ID，
-再把容器写明：JE 的文件常常不写 `container`（JE 从成品物品身上推出要碗），这边没写就是不要容器。
+照它给你自己的一道菜写一份：标签名不用改（会自动换成 `common:raw_beef`、`common:carrot`、`common:potato`），配料、成品换成你的，给它一个你的 ID。
+JE 的文件常常不写 `container`（JE 用成品物品的合成剩余物：碗装的菜就要碗），这边同样推，但只认得农夫乐事那张剩余物表（§2）：
+你自己的成品不在表里，要容器就写明。
 
 ```json
 {
-  "id": "mymod:cooking/beef_stew_with_my_bowl",
+  "id": "mymod:cooking/venison_stew",
   "type": "farmersdelight:cooking",
-  "container": {"item": "mymod:clay_bowl"},
+  "container": {"item": "minecraft:bowl"},
   "cookingtime": 200,
   "experience": 1.0,
-  "ingredients": [{"tag": "forge:raw_beef"}, {"tag": "forge:crops/carrot"}, {"tag": "forge:crops/potato"}],
-  "result": {"item": "arris:cookbeef_stew"}
+  "ingredients": [{"item": "mymod:venison"}, {"tag": "forge:crops/carrot"}, {"tag": "forge:crops/potato"}],
+  "result": {"item": "mymod:venison_stew"}
 }
 ```
 
-（这份和农夫乐事自带的牛肉炖配料一样：两条都配得上时自带的在前，所以这份只是举例怎么搬。要改自带的那一道，用它的 ID
-`farmersdelight:cooking/beef_stew` 覆盖。）
+要改农夫乐事自带的那一道，用它的 ID（`farmersdelight:cooking/beef_stew`）覆盖：照搬上面 JE 那份、成品写 `arris:cookbeef_stew`，
+不写 `container` 也会推出碗（牛肉炖在剩余物表里）。

@@ -7,6 +7,7 @@ Shared/Rules/CookingPot.py 的公共函数都从这里取，别处不直接用�
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from . import ItemTags, PotSlots
+from .TableWire import isInt
 
 DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
 DEFAULT_EXPERIENCE = 1.0     # 旧格式没写 Experience 时给的经验（新接口登记的配方把经验明写进行里，JE 的缺省是 0）
@@ -39,7 +40,12 @@ def isPair(value):
     """(物品名, aux)：名字是文字，aux 是整数（过了线的元组是列表，也算）。"""
     if not (isinstance(value, (tuple, list)) and len(value) == 2):
         return False
-    return isinstance(value[0], _TEXT) and isinstance(value[1], int) and not isinstance(value[1], bool)
+    return isinstance(value[0], _TEXT) and isInt(value[1])          # py2 的 long 也算（引擎给的 aux 可能是 long）
+
+
+def isDish(recipe):
+    """这一行写着一道菜（成品写对了）：活的配方和墓碑都算（锅里已经煮好的菜按成品查它的容器、时间、经验）。"""
+    return isinstance(recipe, dict) and isPair(recipe.get("CookResult")) and bool(recipe["CookResult"][0])
 
 
 def isLive(recipe):
@@ -81,13 +87,7 @@ def _rebuild():
     for index, recipe in enumerate(CookingPotRecipeList):
         if not isLive(recipe):
             continue
-        name = recipe["CookResult"][0]
-        seconds.setdefault(name, number(recipe.get("CookTime"), DEFAULT_COOK_SECONDS) or DEFAULT_COOK_SECONDS)
-        given = number(recipe.get("Experience"), DEFAULT_EXPERIENCE)
-        perItem.setdefault(name, given / countOf(recipe))
-        perServing.setdefault(name, given)
-        if isPair(recipe.get("Vessel")):
-            vessels.add(recipe["Vessel"][0])
+        _dishFacts(recipe, seconds, perItem, perServing, vessels)
         for variant in waysOf(recipe):
             legacy.setdefault(tuple(sorted(variant)), (index, variant))
             parts = {}
@@ -100,9 +100,23 @@ def _rebuild():
             slotted.append((index, slots))
             exact.update(PotSlots.itemsIn(slots))
             tags.update(PotSlots.tagsIn(slots))
+    for recipe in CookingPotRecipeList:
+        if isDish(recipe) and not isLive(recipe):
+            _dishFacts(recipe, seconds, perItem, perServing, vessels)     # 墓碑：同成品没有活配方时才用得上（setdefault）
     _table.clear()
     _table.update(legacy=legacy, legacyParts=legacyParts, exact=exact, tags=tags, vessels=vessels, slotted=slotted,
                   seconds=seconds, perItem=perItem, perServing=perServing)
+
+
+def _dishFacts(recipe, seconds, perItem, perServing, vessels):
+    """按成品记的几样：一份煮几秒、经验、要什么容器（同成品先到先得）。"""
+    name = recipe["CookResult"][0]
+    seconds.setdefault(name, number(recipe.get("CookTime"), DEFAULT_COOK_SECONDS) or DEFAULT_COOK_SECONDS)
+    given = number(recipe.get("Experience"), DEFAULT_EXPERIENCE)
+    perItem.setdefault(name, given / countOf(recipe))
+    perServing.setdefault(name, given)
+    if isPair(recipe.get("Vessel")):
+        vessels.add(recipe["Vessel"][0])
 
 
 def table():
@@ -129,6 +143,24 @@ def _remember(store, key, value):
         store.clear()
     store[key] = value
     return value
+
+
+_derived = {}      # (哪个函数, id(行)) -> 答案（None 键记着戳）：配方表改过、标签换代时清掉；引擎口没准备好时不记
+
+
+def remembered(name, recipe, compute):
+    """CookingPot.framesOf / extraWays 记住的答案（经典界面每次刷新要算两遍、JEI 一页一页地要）。调用的人只读不改。"""
+    stamp = (revision(), ItemTags.generation())
+    if _derived.get(None) != stamp:
+        _derived.clear()
+        _derived[None] = stamp
+    key = (name, id(recipe))
+    if key not in _derived:
+        value = compute(recipe)
+        if not ItemTags.ready() or len(_derived) > MEMO_LIMIT:
+            return value
+        _derived[key] = value
+    return _derived[key]
 
 
 def resolve(key):

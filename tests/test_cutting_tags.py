@@ -88,7 +88,8 @@ def testExactRecipesComeFirstThenTags():
         assert Books.boardCurrent([], _item(OTHER_DOUGH)) == "c:#" + Tags.DOUGH
         assert Books.boardCurrent([], _item(OUR_DOUGH)) == "c:arris:wheat_dough:0"
         page = next(page for page in Books.boardPages() if page["key"] == "c:#" + Tags.DOUGH)
-        assert page["ways"][0][0] == [OUR_DOUGH, OTHER_DOUGH] and page["item"]["newItemName"] == "arris:raw_pasta" and page["kind"] == "knife"
+        assert page["ways"][0][0] == [OTHER_DOUGH] and page["item"]["newItemName"] == "arris:raw_pasta" and page["kind"] == "knife", \
+            "自己的面团有精确的那一页，标签页不再列它（T 复核时指出出了两页）"
     assert Station.recipeOf(None) is None and Station.recipeOf(("", 0)) is None
 
 
@@ -118,8 +119,26 @@ def testJeiListsTheTagRecipeUnderEveryMember():
     jei = _jei()
     with Ported():
         records = dict((tuple(inputs), recipe) for inputs, recipe in jei.records())
-    assert records[(OUR_DOUGH, OTHER_DOUGH)] is Cutting.CuttingTagDict[Tags.DOUGH]
+    assert records[(OTHER_DOUGH,)] is Cutting.CuttingTagDict[Tags.DOUGH], "自己的面团只在精确的那一条里"
     assert records[(OUR_DOUGH,)] is Cutting.CuttingBoardDict[OUR_DOUGH]
+    assert [inputs for inputs, recipe in jei.records() if recipe is Cutting.CuttingTagDict[Tags.DOUGH]] == [], "只有自己的面团时标签那条不登"
+
+
+def testTheLegacyEntryStillWorksOnAnEmptiedTagTable():
+    """T 复核时指出的：CuttingTagDict 被新接口删空以后，旧接口的"容器为空返回 False"让它再也加不进去。新名字没有旧语义要守：空了照常收、照常给；
+    原来的 24 个名字照旧。"""
+    Legacy = fdtest.load("Api.LegacyModAttr")
+    Cutting = fdtest.load("Shared.Data.Cutting")
+    saved = dict(Cutting.CuttingTagDict)
+    try:
+        Cutting.CuttingTagDict.clear()
+        assert Legacy.ArrisFarmersDelightObtain("CuttingTagDict") is Cutting.CuttingTagDict
+        entry = {"itemList": [{"itemName": "test:noodle", "count": 1}], "tool": Cutting.knifeList}
+        assert Legacy.ArrisFarmersDelightInterface("CuttingTagDict", {"common:test_dough": entry}) is Cutting.CuttingTagDict
+        assert Cutting.CuttingTagDict == {"common:test_dough": entry}
+    finally:
+        Cutting.CuttingTagDict.clear()
+        Cutting.CuttingTagDict.update(saved)
 
 
 if __name__ == "__main__":

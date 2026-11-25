@@ -2,7 +2,7 @@
 """RecipeJson - 配方 JSON（JE 农夫乐事的写法，物品名写网易的）读成规整的配方：厨锅、砧板、营火烹饪（双端，纯规则）
 
 格式就是 JE 农夫乐事的配方 JSON（recipes/cooking、recipes/cutting）和原版的营火配方，把物品名换成网易版的就能用：
-- 厨锅 {"type": "farmersdelight:cooking", "ingredients": [配料, ...]（1 到 6 格）, "result": {"item", "count"}, "container": {"item"},
+- 厨锅 {"type": "farmersdelight:cooking", "ingredients": [配料, ...]（1 到 6 格）, "result": {"item", "count"}, "container": {"item"}（不写照 JE 取成品的合成剩余物）,
        "cookingtime": 刻（缺省 200）, "experience": 数（缺省 0，JE 的缺省）, "text": 经典界面食谱格里的名字（农夫乐事加的，可不写）}；
 - 砧板 {"type": "farmersdelight:cutting", "ingredients": [一个配料], "tool": 工具, "result": [{"item", "count", "chance"}, ...]（1 到 4 个）}；
 - 营火 {"type": "minecraft:campfire_cooking", "ingredient": 物品, "result": 物品}（煎锅、炉灶、手持煎锅读的那张表，只认物品）。
@@ -16,7 +16,13 @@ parse(数据, aliases) -> (规整的配方, None) 或 (None, 一句说哪里不�
     {"type": "cutting", "input": (名, aux) 或 "#标签", "tool": 工具种类（"knife"……）或 [物品名], "results": [{"itemName", "count", ("auxValue"), ("chance")}]}
     {"type": "campfire_cooking", "input": 名, "result": 名}
 """
-from ..Data.Tags import JE_NAMES
+import math
+
+from ..Data.Remainders import CRAFT
+from ..Data.Tags import ITEM_TAGS, JE_NAMES, VANILLA_TAGS, WITHOUT_MEMBERS
+from .TableWire import INT_TYPES
+
+_NUMBER = INT_TYPES + (float,)      # py2 的 long 也算
 
 TYPES = {"cooking": "cooking", "farmersdelight:cooking": "cooking", "cutting": "cutting", "farmersdelight:cutting": "cutting",
          "campfire_cooking": "campfire_cooking", "minecraft:campfire_cooking": "campfire_cooking"}
@@ -46,10 +52,21 @@ def text(value):
     return value
 
 
+def _finite(value):
+    """是有限的数（NaN、正负无穷不算；json 读得出这几个字面量）。"""
+    return isinstance(value, _NUMBER) and not isinstance(value, bool) and not (math.isnan(value) or math.isinf(value))
+
+
+def _key(value):
+    """拿来查表的文字：不是文字（列表、字典……）是 None，查表时不抛。"""
+    value = text(value)
+    return value if isinstance(value, str) else None
+
+
 def _int(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or int(value) != value or value < 0:
+    if not _finite(value) or int(value) != value or value < 0:
         raise _Bad("%s 要是不小于 0 的整数，给的是 %r" % (what, value))
     return int(value)
 
@@ -57,7 +74,7 @@ def _int(value, default, what):
 def _number(value, default, what):
     if value is None:
         return default
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+    if not _finite(value) or value < 0:
         raise _Bad("%s 要是不小于 0 的数，给的是 %r" % (what, value))
     return float(value)
 
@@ -104,19 +121,28 @@ def _cooking(data, aliases):
         raise _Bad("ingredients 要是 1 到 %d 个配料" % MOST_SLOTS)
     name, aux, count = _stack(data.get("result"), "result")
     container = data.get("container")
+    vessel = _stack(container, "container")[:2] if container is not None else _remainderOf(name)
     return {"type": "cooking", "slots": [_slot(entry, aliases, "第 %d 个配料" % (index + 1)) for index, entry in enumerate(ingredients)],
             "result": (name, aux), "count": max(1, count),
-            "container": _stack(container, "container")[:2] if container is not None else None,
+            "container": vessel,
             "cookingTime": _int(data.get("cookingtime"), 200, "cookingtime"), "experience": _number(data.get("experience"), 0.0, "experience"),
             "text": text(data["text"]) if isinstance(data.get("text"), _TEXT) else None}
 
 
+def _remainderOf(name):
+    """没写容器时照 JE（CookingPotRecipe 的构造：container 空就取成品的 getCraftingRemainingItem）：成品有合成剩余物就要它当容器
+    （Shared/Data/Remainders.CRAFT 就是 JE 的那个物品属性：碗装的菜剩碗、饮料剩玻璃瓶、奶桶剩桶……），没有就不要容器。
+    别的模组的成品不在那张表里：要容器就写明。"""
+    found = CRAFT.get(name)
+    return (found, 0) if found else None
+
+
 def _tool(value):
     for entry in (value if isinstance(value, list) else [value]):
-        if isinstance(entry, dict) and text(entry.get("type")) == "farmersdelight:tool_action" and text(entry.get("action")) in TOOL_ACTIONS:
-            return TOOL_ACTIONS[text(entry["action"])]
-        if isinstance(entry, dict) and text(entry.get("tag")) in TOOL_TAGS:
-            return TOOL_TAGS[text(entry["tag"])]
+        if isinstance(entry, dict) and _key(entry.get("type")) == "farmersdelight:tool_action" and _key(entry.get("action")) in TOOL_ACTIONS:
+            return TOOL_ACTIONS[_key(entry["action"])]
+        if isinstance(entry, dict) and _key(entry.get("tag")) in TOOL_TAGS:
+            return TOOL_TAGS[_key(entry["tag"])]
     items = [_name(entry["item"], "tool 的 item") for entry in (value if isinstance(value, list) else [value])
              if isinstance(entry, dict) and "item" in entry]
     if not items:
@@ -161,8 +187,10 @@ def _campfire(data, aliases):
 
 
 def javaAliases():
-    """JE 的标签名 -> 词表的 common: 名（Shared/Data/Tags.JE_NAMES 反过来；测试保证一个 JE 名只对应一个）。"""
-    return dict((javaName, name) for name, javaNames in JE_NAMES.items() for javaName in javaNames)
+    """JE 的物品标签名 -> 词表里的物品标签名（Shared/Data/Tags.JE_NAMES 反过来；测试保证一个 JE 名只对应一个）。只取物品标签：
+    配料、工具都是物品，方块标签（热源、传热、蘑菇菌落长在哪……）的 JE 名换过来反而会把一格写成方块标签。"""
+    items = set(ITEM_TAGS) | set(VANILLA_TAGS) | set(WITHOUT_MEMBERS)
+    return dict((javaName, name) for name, javaNames in JE_NAMES.items() if name in items for javaName in javaNames)
 
 
 ALIASES = javaAliases()
@@ -172,10 +200,12 @@ def parse(data, aliases=None):
     """一份配方 JSON（读出来的字典）-> (规整的配方, None)；读不成是 (None, 哪里不对)。aliases 缺省是 ALIASES。"""
     if not isinstance(data, dict):
         return None, "配方要是 JSON 对象"
-    kind = TYPES.get(text(data.get("type")))
+    kind = TYPES.get(_key(data.get("type")))
     if kind is None:
         return None, "type %r 不认识：要 farmersdelight:cooking、farmersdelight:cutting 或 minecraft:campfire_cooking" % (data.get("type"),)
     try:
         return {"cooking": _cooking, "cutting": _cutting, "campfire_cooking": _campfire}[kind](data, ALIASES if aliases is None else aliases), None
     except _Bad as error:
         return None, str(error)
+    except Exception as error:  # noqa: BLE001 - 别的模组写坏的 JSON 不能让农夫乐事抛出去：照"格式不对"答
+        return None, "读不懂：%r" % (error,)

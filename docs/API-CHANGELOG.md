@@ -27,12 +27,14 @@
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。
   能力 `item_tags`（两端）。见 EXTENSION-API.md §7、[TAGS.md](TAGS.md)。
 - **行为包里的配方 JSON**：任何行为包根下的 `farmersdelight_recipes/**.json`，开服时在 ready 广播之后读，写法同 `registerFromJson`。
-  已经实现，但跨包读文件的那条路还没在游戏里核过，能力名 `recipe_json_files` **还没登记**；核过之后在这里补一条。见 [RECIPE-JSON.md](RECIPE-JSON.md)。
+  跨行为包读文件 2026-11-26 在游戏里核过。能力 `recipe_json_files`（服务端）。见 [RECIPE-JSON.md](RECIPE-JSON.md)。
 - **兼容入口的表**：白名单多一个名字 `CuttingTagDict`（原料是一个物品标签的砧板配方，`{标签名: 和 CuttingBoardDict 一样的值}`），
   JE 的 `cutting/tag_dough`（`common:dough` 切成生意面）在这里。
 
 变更：
 
+- 兼容入口的 `CookingPotRecipeList`：被新接口删掉的配方留一个墓碑（行里多 `"Disabled": True`，`Recipe` / `Slots` 原样留着），遍历这张表的下游包要跳过它；
+  新接口登记的配方 `Recipe` 可能是空列表。见 linkage.md、[COMPATIBILITY.md](COMPATIBILITY.md) §2。
 - 农夫乐事自带的 28 道厨锅菜按 JE 还原了标签格（厨锅配方行多了 `Id`、`Slots` 两个键；`Recipe` 里的写法和原来一样）：别的模组的番茄、米、面团、生肉……
   登记进同名的 `netease_tags` 就能进这些菜。鸡蛋的格子收普通、蓝色、棕色三种蛋。
 - 兼容入口的字典表（`CuttingBoardDict`、`CanCookedFoodDict`……）删掉的键也会同步给客户端（以前只同步新增和改动）。

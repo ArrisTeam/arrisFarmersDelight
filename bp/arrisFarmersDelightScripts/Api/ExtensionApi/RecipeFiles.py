@@ -48,17 +48,24 @@ def load(files, register):
     loaded, problems = [], []
     for path, source in files:
         try:
-            data = json.loads(source)
-        except (TypeError, ValueError) as error:
-            problems.append((text(path), "invalid_json：%s" % (error,)))
-            continue
-        recipeId = idOf(path, data)
-        if recipeId is None:
-            problems.append((text(path), "no_id：没写 \"id\"，也不在 %s/<命名空间>/ 下面" % DIRECTORY))
-            continue
-        answer = register(data, recipeId)
-        if answer.get("ok"):
-            loaded.append(answer.get("id"))
+            recipeId, problem = _one(path, source, register)
+        except Exception as error:  # noqa: BLE001 - 一个文件出什么错都只记下它，后面的文件照读
+            recipeId, problem = None, "invalid_recipe：%r" % (error,)
+        if problem is None:
+            loaded.append(recipeId)
         else:
-            problems.append((text(path), _reason(answer)))
+            problems.append((text(path), problem))
     return loaded, problems
+
+
+def _one(path, source, register):
+    """一个文件 -> (登记上的 ID, None) 或 (None, 原因)。"""
+    try:
+        data = json.loads(source)
+    except (TypeError, ValueError) as error:
+        return None, "invalid_json：%s" % (error,)
+    recipeId = idOf(path, data)
+    if recipeId is None:
+        return None, "no_id：没写 \"id\"，也不在 %s/<命名空间>/ 下面" % DIRECTORY
+    answer = register(data, recipeId)
+    return (answer.get("id"), None) if answer.get("ok") else (None, _reason(answer))

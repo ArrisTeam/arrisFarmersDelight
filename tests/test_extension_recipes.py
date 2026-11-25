@@ -108,6 +108,42 @@ def testTheJsonIsTheJavaFormatWithJavaTagNamesMapped():
         assert problem is None and spec["slots"] == [["#common:raw_beef"], ["#common:carrot"], ["#common:potato"]], (problem, spec)
 
 
+def testOnlyItemTagNamesAreTranslated():
+    """JE 标签名的对照只取物品标签（T 复核时指出的：以前把方块标签也算进去了，farmersdelight:heat_sources 会换成 common:heat_source）。
+    合进来的 farmersdelight: 物品分类标签照样认（换成它自己）。"""
+    Tags = fdtest.load("Shared.Data.Tags")
+    items = set(Tags.ITEM_TAGS) | set(Tags.VANILLA_TAGS) | set(Tags.WITHOUT_MEMBERS)
+    assert RecipeJson.ALIASES and all(name in items for name in RecipeJson.ALIASES.values())
+    assert not set(RecipeJson.ALIASES.values()) & set(Tags.BLOCK_TAGS)
+    assert "farmersdelight:heat_sources" not in RecipeJson.ALIASES and "minecraft:campfires" not in RecipeJson.ALIASES
+    assert RecipeJson.ALIASES["forge:raw_beef"] == "common:raw_beef" and RecipeJson.ALIASES["forge:eggs"] == "minecraft:egg"
+    spec, _problem = RecipeJson.parse({"type": "farmersdelight:cooking", "ingredients": [{"tag": "farmersdelight:heat_sources"}], "result": "a:b"})
+    assert spec["slots"] == [["#farmersdelight:heat_sources"]], "认不出的标签名原样用"
+
+
+def testAMissingContainerIsTheResultsCraftingRemainderLikeJava():
+    """JE 的 CookingPotRecipe：没写 container 就取成品的合成剩余物（Shared/Data/Remainders.CRAFT 就是那个属性）。.refs 在场时 28 个 JE 文件
+    逐个核：成品换成农夫乐事自己那一行的，推出来（或写明）的容器正好是那一行的 Vessel（24 个没写的推出碗 / 玻璃瓶 / 不要，4 个写明的照写）。"""
+    base = {"type": "farmersdelight:cooking", "ingredients": [{"tag": "forge:raw_beef"}]}
+    for result, vessel in (("arris:cookbeef_stew", ("minecraft:bowl", 0)), ("arris:hot_cocoa", ("minecraft:glass_bottle", 0)),
+                           ("arris:dumplings", None), ("mymod:stew", None)):
+        spec, problem = RecipeJson.parse(dict(base, result={"item": result}))
+        assert problem is None and spec["container"] == vessel, (result, spec["container"])
+    spec, _problem = RecipeJson.parse(dict(base, result={"item": "arris:cookbeef_stew"}, container={"item": "mymod:clay_bowl"}))
+    assert spec["container"] == ("mymod:clay_bowl", 0), "写了就照写"
+    if not os.path.isdir(JE_COOKING):
+        return
+    checked = 0
+    for name in sorted(os.listdir(JE_COOKING)):
+        with io.open(os.path.join(JE_COOKING, name), encoding="utf-8") as handle:
+            data = json.load(handle)
+        row = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/" + name[:-len(".json")])
+        spec, problem = RecipeJson.parse(dict(data, result={"item": row["CookResult"][0]}))
+        assert problem is None and spec["container"] == (tuple(row["Vessel"]) if row.get("Vessel") else None), (name, spec["container"])
+        checked += 1
+    assert checked == 28, checked
+
+
 def testACookingRecipeWithATagSlotWorksEverywhere():
     with Sandbox():
         builder = _stew()
@@ -189,6 +225,93 @@ def testTheClientSeesTheSameCuttingIdsWhileCampfireOnesAreDerived():
             "旧接口把条目整个换掉了：那就是一条旧接口的配方"
 
 
+def testTheLegacyAddSkipsRemovedDishes():
+    """T 复核时复现的：旧接口的 AddCookingPotRecipe 往被删的菜（墓碑）里加写法，返回成功却永远不生效。现在跳过不是活配方的行，
+    同成品后面有活的就加到它上面，没有活的返回 False（和原来"没有这道菜"一样）。"""
+    with Sandbox():
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        ways = list(stew["Recipe"])
+        assert SERVER.removeRecipe("farmersdelight:cooking/beef_stew")["ok"]
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)]) is False and stew["Recipe"] == ways
+        assert SERVER.createBuilder("mymod:cooking/beef_again", "cooking").ingredient("minecraft:cookie").output("arris:cookbeef_stew").register()["ok"]
+        again = Pot.CookingPotRecipeList[-1]
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)]) is again["Recipe"] and again["Recipe"][-1] == [("minecraft:dirt", 0)]
+        assert stew["Recipe"] == ways and CookingPot.matchRecipe([{"newItemName": "minecraft:dirt", "newAuxValue": 0, "count": 1}])[0]["newItemName"] \
+            == "arris:cookbeef_stew"
+
+
+def testOverridingAHostDishKeepsTheWaysOtherModsAddedThroughTheLegacyEntry():
+    """T 复核时指出的：覆盖农夫乐事的菜整行换掉，别的模组用旧接口 AddCookingPotRecipe 加的写法就丢了（看谁先加载）。
+    现在覆盖时把旧行里格子不收的那几种写法接进新行；先加后覆盖、先覆盖后加都配得上。"""
+    dirt = [{"newItemName": "minecraft:dirt", "newAuxValue": 0, "count": 1}]
+    with Sandbox():
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)])
+        view = SERVER.getRecipeById("farmersdelight:cooking/beef_stew")
+        assert SERVER.registerFromJson(dict(view, cookingtime=100))["ok"]
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        assert [("minecraft:dirt", 0)] in stew["Recipe"] and stew["CookTime"] == 5.0
+        assert CookingPot.matchRecipe(dirt)[0]["newItemName"] == "arris:cookbeef_stew", "先加后覆盖：照样配得上"
+        assert SERVER.registerFromJson(dict(view, cookingtime=120))["ok"] and stew["Recipe"].count([("minecraft:dirt", 0)]) == 1, "不重复接"
+
+
+def testOneResultHasOneContainerTimeAndExperience():
+    """锅只记得成品：同一成品的容器、时间、经验跟着表里第一条活配方（T 复核时指出 matchCooking 以前报的是配上那一行的，和锅实际不一致）。"""
+    with Sandbox():
+        assert SERVER.createBuilder("mymod:cooking/soup_a", "cooking").ingredient("minecraft:cookie").output("mymod:soup") \
+            .container("minecraft:bowl").cookingTime(100).register()["ok"]
+        assert SERVER.createBuilder("mymod:cooking/soup_b", "cooking").ingredient("minecraft:apple").output("mymod:soup") \
+            .container("minecraft:bucket").cookingTime(300).register()["ok"]
+        matched = SERVER.matchCooking(["minecraft:apple"])
+        assert matched["id"] == "mymod:cooking/soup_b" and matched["container"] == ("minecraft:bowl", 0), matched
+        assert CookingPot.vesselOf("mymod:soup") == ("minecraft:bowl", 0) and CookingPot.cookSecondsOf("mymod:soup") == 5.0
+
+
+def testACopiedIdOnALegacyRowGetsADerivedId():
+    """T 复核时指出的：旧接口追加的行带着拷贝来的 "Id"，ID 就重复了，只认得第一行。后出现的同 ID 改给派生的 legacy: ID。"""
+    with Sandbox():
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        copy = dict(stew, Recipe=[[("minecraft:dirt", 0)]], Slots=None)
+        del copy["Slots"]
+        assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", copy)
+        assert SERVER.getRecipeById("farmersdelight:cooking/beef_stew")["ingredients"][0] == {"tag": "common:raw_beef"}, "第一行照旧"
+        assert SERVER.getRecipeById("legacy:cooking/arris/cookbeef_stew")["ingredients"] == [{"item": "minecraft:dirt"}], "拷来的那行给派生 ID"
+        assert SERVER.removeRecipe("legacy:cooking/arris/cookbeef_stew")["ok"] and Pot.CookingPotRecipeList[-1].get("Disabled") is True
+
+
+def testOverridingWithoutTextKeepsTheOldName():
+    """T 复核时指出的：覆盖农夫乐事的菜时不写 text，中文名就丢了（缺省是物品 ID）。现在沿用旧行的；新登记的没写照旧用物品名。"""
+    with Sandbox():
+        view = SERVER.getRecipeById("farmersdelight:cooking/beef_stew")
+        del view["text"]
+        assert SERVER.registerFromJson(view)["ok"]
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        assert stew["text"] == "牛肉炖"
+        assert SERVER.createBuilder("mymod:cooking/plain", "cooking").ingredient("minecraft:cookie").output("mymod:plain").register()["ok"]
+        assert Pot.CookingPotRecipeList[-1]["text"] == "mymod:plain"
+
+
+def testARemovedHostCuttingOrCampfireRecipeCanComeBackUnderItsId():
+    """T 复核时指出的：删掉的自带砧板 / 营火配方（键真删了）不能再用原来的 farmersdelight: ID 加回来（报 reserved_namespace），
+    和厨锅的墓碑能复活不对称。现在记着自带的那些 ID，允许加回来；新编的 farmersdelight: ID 照旧不收。"""
+    with Sandbox():
+        assert SERVER.removeRecipe("farmersdelight:cutting/arris/cabbage")["ok"] and ("arris:cabbage", 0) not in Cutting.CuttingBoardDict
+        back = SERVER.createBuilder("farmersdelight:cutting/arris/cabbage", "cutting").ingredient("arris:cabbage").output("arris:cabbage_leaf", 2) \
+            .tool("knife").register()
+        assert back["ok"] and SERVER.getRecipeById("farmersdelight:cutting/arris/cabbage")["result"] == [{"item": "arris:cabbage_leaf", "count": 2}]
+        assert SERVER.removeRecipe("farmersdelight:campfire_cooking/minecraft/beef")["ok"]
+        assert SERVER.createBuilder("farmersdelight:campfire_cooking/minecraft/beef", "campfire_cooking").ingredient("minecraft:beef") \
+            .output("minecraft:cooked_beef").register()["ok"]
+        assert SERVER.createBuilder("farmersdelight:cutting/made_up", "cutting").ingredient("minecraft:dirt").output("minecraft:sand") \
+            .tool("knife").register()["error"] == "reserved_namespace"
+
+
+def testListingATypeIsTheSameAsLookingEachOneUp():
+    """getRecipesOfType 一次算完（T 复核时指出以前是一个个按 ID 找，O(n²)），给的和按 ID 一个个查的一样。"""
+    for kind in ("cooking", "cutting", "campfire_cooking"):
+        listed = SERVER.getRecipesOfType(kind)
+        assert listed and listed == [SERVER.getRecipeById(view["id"]) for view in listed], kind
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
@@ -235,6 +358,7 @@ def testSyncToClientsCallsTheSyncAndTheHandlers():
         assert synced == [1, 1] and seen == [(["cooking"], ["mymod:cooking/x"]), (None, None)]
         assert "".join(out.parts).count("Traceback") == 1, "出错的处理函数只打一次调用栈"
         assert SERVER.syncToClients(["fishing"])["error"] == "invalid_recipe_types"
+        assert CLIENT.registerFromJson("{not json")["error"] == "server_only", "客户端先答 server_only，坏文本也一样"
 
 
 if __name__ == "__main__":
