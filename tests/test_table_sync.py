@@ -118,11 +118,12 @@ def testTablesInAnyOrderAndRepeatedConverge():
 def testAVariantAddedToABuiltInRecipeIsMergedInPlaceAndKeepsTheSlots():
     server, client, syncer = _pair()
     stew, ways = K.mushroomStew(client), K.mushroomStew(client)["Recipe"]
-    assert hasattr(ways, "slots") and K.MUSHROOM_VARIANT not in ways
+    slots = stew["Slots"]
+    assert slots and K.MUSHROOM_VARIANT not in ways
     K.downstream(server)
     _sync(server, client, syncer)
     assert K.mushroomStew(client) is stew and stew["Recipe"] is ways, "对象不换"
-    assert K.MUSHROOM_VARIANT in ways and hasattr(ways, "slots"), "客户端的这条配方还是 _Ways：食谱书一格一格轮换备选要读它的 slots"
+    assert K.MUSHROOM_VARIANT in ways and stew["Slots"] == slots, "客户端的这条配方还带着每格的选项（Slots）：食谱书一格一格轮换备选要读它"
     assert K.snapshot(server)["CookingPotRecipeList"] == K.snapshot(client)["CookingPotRecipeList"]
 
 

@@ -136,6 +136,7 @@ class _Control(object):
         written[self.path] = text
 
     def SetUiItem(self, *args):
+        written[self.path] = args
         return True
 
 
@@ -239,6 +240,39 @@ def testThePagesAndTheBookFooterTurnSecondsIntoTheSameNumber():
             assert _render(None)[1][module] == u"3 秒" and _render("en_US")[1][module] == u"3 s", "配方页也是半数进位（不是截掉小数）：经的是 shownSeconds"
         finally:
             setattr(MODULES[module], constant, kept)
+
+
+def testTheThreeEggsShareOneSkilletAndStovePage():
+    """JEI 的煎锅 / 炉灶页和站点的书一样分组（StationBooks.cookGroups）：三种蛋一页，按煎蛋、按哪种蛋查都是这一页，页上的蛋每秒换一种。"""
+    calls = []
+
+    class Registry(object):
+        @staticmethod
+        def getAllRegisteredItems():
+            return [("minecraft:blue_egg", 0), ("arris:fried_egg", 0), ("minecraft:beef", 0)]
+
+        @staticmethod
+        def setRecipeByResult(tag, item, records):
+            calls.append(("result", tag, item[0], [record["inputs"] for record in records]))
+
+        @staticmethod
+        def setRecipeByInput(tag, item, records):
+            calls.append(("input", tag, item[0], [record["inputs"] for record in records]))
+
+    eggs = ["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"]
+    fdtest.load("Compat.Jei.CookPages").register(Registry(), "skillet")
+    assert ("result", "skillet", "arris:fried_egg", [eggs]) in calls and ("input", "skillet", "minecraft:blue_egg", [eggs]) in calls, calls
+    assert ("input", "skillet", "minecraft:beef", [["minecraft:beef"]]) in calls
+    for module, page in PAGES:
+        written.clear()
+        recipe = getattr(MODULES[module], page)(None, _Page(), {"input": eggs[0], "inputs": eggs, "output": "arris:fried_egg"}, 0, ("arris:fried_egg", 0))
+        recipe.OnCreate()
+        shown = [written["/bg/jeiInputItemRender/item_cell/item/item_renderer"][0]]
+        for _turn in range(3):
+            recipe.OnInterval()
+            shown.append(written["/bg/jeiInputItemRender/item_cell/item/item_renderer"][0])
+        assert shown == eggs + [eggs[0]], (module, shown)
+        assert written["/bg/jeiOutputItemRender/item_cell/item/item_renderer"][0] == "arris:fried_egg"
 
 
 if __name__ == "__main__":

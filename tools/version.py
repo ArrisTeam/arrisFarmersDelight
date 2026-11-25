@@ -9,7 +9,8 @@
 版本号的权威来源是配置里 manifests 的第一个的 header.version。别的位置由本工具一起改，不要手改：
   - 每个 manifest 的 header.version 和 modules[].version；
   - dependencies 里指向本配置另一个 manifest（uuid 等于它的 header.uuid）的那几项的 version：同一套包之间的依赖跟着走；
-    别的依赖（别的作品、引擎的模块，比如农夫乐事 bp 依赖的 3ca4eaf4-…）永远不动，show 把它们列出来。
+    别的依赖（别的作品、引擎的模块，比如农夫乐事 bp 依赖的 3ca4eaf4-…）永远不动，show 把它们列出来；
+  - 脚本里的版本号常量（下面的 PYTHON_CONSTANTS：脚本读不到 manifest，新联动接口的 ext.hostVersion 读的是 Api/ExtensionApi/Version.py 的 HOST_VERSION）。
 --new-uuid：每个 manifest 的 header.uuid、每个 module 的 uuid 各换一个新的 uuid4（不和这几个 manifest 里已有的任何 uuid 重），
 同一套里指着旧 header.uuid 的依赖跟着换成新的；别的依赖不动（照机械动力 tools/version.py 的 set --new-uuid）。
 改写时保留原文件的排版：缩进（2 / 4 / Tab）、键的顺序、换行符（LF / CRLF）、BOM、末尾有没有换行；
@@ -41,6 +42,9 @@ import uuid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "release.json")
+# 脚本里的版本号常量：(相对仓库根的路径, 常量名)，文件里正好一处 名字 = (x, y, z)。show / check 和 manifest 一起核对，set / bump 一起改写。
+# 写在这里、不写进 release.json：那份配置只管 manifest 和出包
+PYTHON_CONSTANTS = (("bp/arrisFarmersDelightScripts/Api/ExtensionApi/Version.py", "HOST_VERSION"),)
 VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 INDENTS = (2, 4, chr(9))
@@ -150,6 +154,26 @@ def internal(dep, rel, own):
     return target if target not in (None, rel) else None
 
 
+def constantPattern(name):
+    return re.compile(r"^(%s\s*=\s*)\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)" % re.escape(name), re.M)
+
+
+def loadConstants():
+    """[(位置, 绝对路径, 文本, 排版, 正则)]：PYTHON_CONSTANTS 的每一个；文件不在、常量不是正好一处时抛 VersionError（set 在写任何文件之前就查完）。"""
+    loaded = []
+    for rel, name in PYTHON_CONSTANTS:
+        path = os.path.join(ROOT, *rel.split("/"))
+        if not os.path.isfile(path):
+            raise VersionError("%s 不存在（%s 的 PYTHON_CONSTANTS 里写着它）" % (rel, tool()))
+        text, fmt = readText(path)
+        pattern = constantPattern(name)
+        hits = len(pattern.findall(text))
+        if hits != 1:
+            raise VersionError("%s 里 %s = (x, y, z) 要正好一处，找到 %d 处" % (rel, name, hits))
+        loaded.append(("%s %s" % (rel, name), path, text, fmt, pattern))
+    return loaded
+
+
 def uuidsOf(rel, data):
     """[(位置, uuid)]：header 的和每个 module 的。"""
     found = [("%s header.uuid" % rel, data["header"]["uuid"])]
@@ -181,6 +205,8 @@ def collect(cfg):
             else:
                 name = (dep.get("uuid") or dep.get("module_name")) if isinstance(dep, dict) else dep
                 outside.append(("%s dependencies[%d]" % (rel, i), name))
+    for where, _path, text, _fmt, pattern in loadConstants():
+        found.append((where, "%s.%s.%s" % pattern.search(text).groups()[1:]))
     return found, outside
 
 
@@ -237,6 +263,7 @@ def setVersion(cfg, version, newUuid=False):
         raise VersionError("版本号要写成 X.Y.Z（三段数字），收到 %r" % (version,))
     triple = [int(part) for part in m.groups()]
     loaded, own = loadAll(cfg)
+    constants = loadConstants()
     taken, renamed, replaced = set(), {}, 0
     for rel, _path, data, _fmt in loaded:
         taken.update(value for _where, value in uuidsOf(rel, data))
@@ -259,6 +286,8 @@ def setVersion(cfg, version, newUuid=False):
                     dep["uuid"] = renamed[dep["uuid"]]
     for _rel, path, data, fmt in loaded:
         writeText(path, dumps(data, fmt["indent"]) + ("\n" if fmt["finalNewline"] else ""), fmt)
+    for _where, path, text, fmt, pattern in constants:
+        writeText(path, pattern.sub(lambda hit: "%s(%d, %d, %d)" % ((hit.group(1),) + tuple(triple)), text), fmt)
     return check(cfg), replaced
 
 

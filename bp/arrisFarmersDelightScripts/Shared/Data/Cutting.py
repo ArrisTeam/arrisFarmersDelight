@@ -4,7 +4,9 @@
 CuttingBoardDict 里刀具条目的 "tool" 与 knifeList 是同一个列表对象：
 下游往 knifeList 里加刀要对所有条目生效（联动契约）。
 每条：itemList 产物（chance 可缺省 = 必给，有就按概率，JE 的 ChanceResult）、tool 能用的工具表、
-item_type 要求的物品类型（斧 / 镐 / 锹 / 锄；下游的同类工具也认）。配方照 JE 1.3.4 的 recipes/cutting 和 salvaging。
+item_type 要求的物品类型（斧 / 镐 / 锹 / 锄 / 剪刀，引擎的 itemType；下游的同类工具也认）。配方照 JE 1.3.4 的 recipes/cutting 和 salvaging。
+CuttingTagDict：原料是一个物品标签的砧板配方（键是标签名，不带 #，值和 CuttingBoardDict 的一样）：板上的东西在 CuttingBoardDict 里查不到时
+按标签名的顺序看它带不带这个标签（Shared/Rules/CuttingStation.recipeOf）。2026-11-26 加进联动契约的白名单（只加不改）。
 """
 # 刀列表
 knifeList = [
@@ -127,12 +129,12 @@ CuttingBoardDict = {
     ("minecraft:chest_minecart", 0): {"itemList": [{"itemName": "minecraft:minecart", "count": 1}, {"itemName": "minecraft:chest", "count": 1}], "tool": hoeList, "item_type": "hoe"},
     ("minecraft:hopper_minecart", 0): {"itemList": [{"itemName": "minecraft:minecart", "count": 1}, {"itemName": "minecraft:hopper", "count": 1}], "tool": hoeList, "item_type": "hoe"},
     ("minecraft:tnt_minecart", 0): {"itemList": [{"itemName": "minecraft:minecart", "count": 1}, {"itemName": "minecraft:tnt", "count": 1}], "tool": hoeList, "item_type": "hoe"},
-    ("minecraft:leather_helmet", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList},
-    ("minecraft:leather_chestplate", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList},
-    ("minecraft:leather_leggings", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList},
-    ("minecraft:leather_boots", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList},
-    ("minecraft:leather_horse_armor", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 2}], "tool": shearsList},
-    ("minecraft:saddle", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 2}, {"itemName": "minecraft:iron_nugget", "count": 2, "chance": 0.5}], "tool": shearsList},
+    ("minecraft:leather_helmet", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList, "item_type": "shears"},
+    ("minecraft:leather_chestplate", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList, "item_type": "shears"},
+    ("minecraft:leather_leggings", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList, "item_type": "shears"},
+    ("minecraft:leather_boots", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 1}], "tool": shearsList, "item_type": "shears"},
+    ("minecraft:leather_horse_armor", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 2}], "tool": shearsList, "item_type": "shears"},
+    ("minecraft:saddle", 0): {"itemList": [{"itemName": "minecraft:leather", "count": 2}, {"itemName": "minecraft:iron_nugget", "count": 2, "chance": 0.5}], "tool": shearsList, "item_type": "shears"},
     ("minecraft:wooden_door", 0): {"itemList": [{"itemName": "minecraft:oak_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"},
     ("minecraft:trapdoor", 0): {"itemList": [{"itemName": "minecraft:oak_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"},
     ("minecraft:oak_sign", 0): {"itemList": [{"itemName": "minecraft:oak_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"},
@@ -241,4 +243,11 @@ CuttingBoardDict = {
     ("minecraft:warped_pressure_plate", 0): {"itemList": [{"itemName": "minecraft:warped_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"},
     ("minecraft:warped_button", 0): {"itemList": [{"itemName": "minecraft:warped_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"},
     ("arris:warped_cabinet", 0): {"itemList": [{"itemName": "minecraft:warped_planks", "count": 1, "chance": 0.75}], "tool": axeList, "item_type": "axe"}
+}
+
+# 原料是标签的砧板配方（JE 的 cutting/tag_dough.json：#forge:dough -> 生意面）：别的模组登记进 common:dough 的面团也切得成面条。
+# 农夫乐事自己的面团照旧走 CuttingBoardDict 里精确的那一条（契约里原有的条目不动）。键就是 Shared/Data/Tags.DOUGH，这里不导入它：
+# tools/gen_item_masks.py 把本文件单独载入（没有包），相对导入用不了（tests/test_cutting_tags.py 核对两者相等）
+CuttingTagDict = {
+    "common:dough": {"itemList": [{"itemName": "arris:raw_pasta", "count": 1}], "tool": knifeList},
 }

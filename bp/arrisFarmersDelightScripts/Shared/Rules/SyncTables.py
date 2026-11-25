@@ -6,7 +6,8 @@
 这些表（托盘里哪些亮、借哪把刀、点板是切还是敲、食谱书的页、哪些方块开炉灶站点……）。所以服务端把"现在的表 - 导入时的表"发过去（TableDiff），
 客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张（OneSidedList 例外：客户端眼下不读，
 照旧发，见它那一行），别的在 NOT_SYNCED 里写明为什么不发。
-三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，两端必须一一对上）。
+三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组；删掉的键也同步）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，
+两端必须一一对上；删配方是打墓碑）。
 """
 from ..Data import Cooking, CookingPotRecipes, Cutting, Dishes, Food
 from . import BoardStation, CookingPot, DishStation
@@ -18,6 +19,7 @@ ITEMS, MAP, ROWS = "items", "map", "rows"
 
 TABLES = (
     ("CuttingBoardDict", MAP, Cutting.CuttingBoardDict),                    # 砧板：能切什么、托盘里亮不亮、板上怎么画、食谱书
+    ("CuttingTagDict", MAP, Cutting.CuttingTagDict),                        # 砧板：原料是标签的配方（键是标签名），读法同上
     ("knifeList", ITEMS, Cutting.knifeList),                                # 谁是刀：借刀、虚线、炉灶开不开
     ("axeList", ITEMS, Cutting.axeList),                                    # 斧：砧板配方的工具表
     ("CanCookedFoodDict", MAP, Cooking.CanCookedFoodDict),                  # 煎锅 / 炉灶能煎烤什么、食谱书、手持煎锅"煎还是吃"
@@ -61,7 +63,7 @@ def recompute(name):
     """name 这张表被并进了新内容之后：依赖它的缓存重算（客户端的 TableMerge 调；站点读表是现读的，只有这两样自己存了一份）。"""
     if name == "CookingPotRecipeList":
         CookingPot.rebuildIndex()          # 按配方建的索引：哪些是食材 / 容器、各道菜煮多久、料怎么摆
-    elif name in ("CuttingBoardDict", "knifeList", "axeList"):
+    elif name in ("CuttingBoardDict", "CuttingTagDict", "knifeList", "axeList"):
         BoardStation.invalidate()          # 全部配方的工具名和物品类型
     elif name == "DishList":
         DishStation.rebuildIndex()         # 摆盘菜的索引：底座、收尾、哪些是成品

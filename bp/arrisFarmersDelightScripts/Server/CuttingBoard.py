@@ -22,7 +22,6 @@ from .Helpers.Fx import ToAllPlayerCrumbs, ToAllPlayerPlaySound
 from .Helpers.Items import CanStack, GetItemType, GetMaxStack, IsKnife
 from .Helpers.Player import IsCreative, SetPlayerUsedCD, SetCarriedDurability
 from ..Shared.Data import Tips
-from ..Shared.Data.Cutting import CuttingBoardDict
 from ..Shared.Rules import BoardSounds, BoardStation, BoardSupport, CuttingStation
 from ..Shared.Rules.HandsOn import ItemData
 
@@ -166,7 +165,7 @@ def _place(blockEntityData, carriedDict, blockPos, dimensionId, playerId):
 
 def _process(blockEntityData, board, carriedDict, blockPos, dimensionId, playerId):
     """JE 的 processStoredItemUsingTool：板上的东西没有切法提示不能切，手里的工具不对提示换工具，对了切一件。"""
-    result = CuttingBoardDict.get(_kind(board))
+    result = CuttingStation.recipeOf(_kind(board))
     if not result:
         ShowTip(playerId, Tips.BOARD_INVALID_ITEM)
     elif CuttingStation.fitsTool(carriedDict["newItemName"], GetItemType(carriedDict), result, IsKnife):

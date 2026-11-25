@@ -51,7 +51,7 @@ def fillPot(logic, playerId, key, sets, maxStackOf):
     station, window = logic.station, logic.ctx.inventory
     before = PotContainer.inputs(station.dimensionId, station.pos)
     held = dict(PotLayout.kindsOf(before))
-    plan = PotLayout.planFill(recipe.get("Recipe") or (), held, _windowPool(window), setsOf(sets), maxStackOf)
+    plan = PotLayout.planFillFor(recipe, held, _windowPool(window), setsOf(sets), maxStackOf)
     if plan is None:
         return False
     each, count = plan

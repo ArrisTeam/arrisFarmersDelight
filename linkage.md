@@ -2,6 +2,13 @@
 
 作者：Lovely\_小柒丫
 
+> **有新接口了**（2026-11 起）：农夫乐事在加载完时广播 ready 事件，事件里带一个接口对象 `ext`：配方有 ID、原料能写标签、能查能删能覆盖，
+> 还能直接在行为包里放配方 JSON。新写联动请看 [docs/EXTENSION-API.md](docs/EXTENSION-API.md)（配方 JSON：[docs/RECIPE-JSON.md](docs/RECIPE-JSON.md)，
+> 兼容承诺：[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)，标签：[docs/TAGS.md](docs/TAGS.md)）。
+>
+> 本文写的是原来的接口（`CreateModAttr("arris")` 拿的三个函数），现在叫"兼容入口"：照常可用、不改不删，只是不再加新功能。
+> 两种接口登记的是同一份数据：这里追加的配方，新接口查得到（ID 是 `legacy:` 开头的派生 ID）。
+
 ## 功能描述
 
 本接口主要用于副包或其他模组与农夫乐事主包之间的联动，支持：
@@ -155,7 +162,18 @@ def FarmersDelight(self, args):
 - 追加的值请只用 `str`、数字、`bool`、`None`、`list`、`tuple`、`dict`（嵌套字典的键用 `str`）；`(物品名, aux)` 元组当键、当配方里的食材都可以。
   放了别的东西（自定义对象、集合……）的那一条不会同步：服务端照常认，客户端的站点不认，日志里有一行 `[arrisFarmersDelight] 表同步：……`。
 - 砧板配方的 `tool` 请照上面的写法用 `obtain("knifeList")` 拿到的列表本身（不要拷一份）：客户端会换成它自己的那一个，之后追加的刀对所有配方一起生效。
-- 只同步新增和改动，从表里删东西不会同步。
+- 字典表（`CuttingBoardDict`、`CanCookedFoodDict` 这些）删掉的键也会同步给客户端；名字列表（`knifeList`、`StoveList` 这些）只同步新增，从列表里删名字不会同步。
+
+## 标签（netease_tags，网易 3.10 起）
+
+农夫乐事用网易 3.10 的 `netease_tags` 登记了一套 `common:` 标签词表，见 [docs/TAGS.md](docs/TAGS.md)。别的模组在自己行为包的 `netease_tags/` 里
+往同名的标签放自己的东西，农夫乐事就认得。下面三件事原来只能靠追加表，现在也能用标签；**原来的表照旧有效，标签是并上去的**：
+
+- **刀**：在自己的 `netease_tags` 里把刀登记进 `common:knife`。物品 JSON 的 `minecraft:tags` 里写 `arris:knife`、往 `knifeList` 追加，都照旧有效。
+- **热源方块**：登记进 `common:heat_source`；要看点燃状态的（灭了就不给热）登记进 `common:heat_source_lit`
+  （方块状态名是 `lit` / `*:lit`，或者 `extinguished`，见 TAGS.md）。往 `CanProvideHeatBlockList` 追加照旧有效。
+- **能煎的生肉**：写一份原版写法的营火配方（配方 JSON 的 `tags` 带 `campfire`）就行，煎锅、炉灶、手持煎锅都认，煎成配方里的东西。
+  往 `CanCookedFoodDict` 追加照旧有效（食谱书、JEI 的煎锅 / 炉灶页只列这张表里的）。
 
 ## 联动配置
 

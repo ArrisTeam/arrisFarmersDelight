@@ -43,6 +43,8 @@ _TARGETS = {
     "DishList": Dishes.DishList,                    # 砧板上摆的菜：一行一道，写法见 Shared/Data/Dishes.py
     "OneSidedList": Cooking.OneSidedList,           # 煎锅上只煎一面、不用翻的物品名
     "NotOnGrillList": Cooking.NotOnGrillList,       # 炉灶的烤架不收的物品名
+    # 2026-11-26 加进白名单（只加不改）：原料是一个物品标签的砧板配方，{标签名: 和 CuttingBoardDict 一样的值}（JE 的 cutting/tag_dough）
+    "CuttingTagDict": Cutting.CuttingTagDict,
 }
 # 摆盘的菜一道最多几层（砧板站点的 layers 槽组只有 9 格，Shared/Rules/BoardStation.MOST_LAYERS）
 MAX_DISH_LAYERS = 9

@@ -6,14 +6,15 @@
 - 厨锅：一道菜一页，键是配方表下标；脚注是盛菜的容器和时钟，注明一份在站点里几秒（JE 的 CookTime x 配置倍率 / 1.5，HoD 的 PotBook）；能从背包放料；
 - 砧板：摆盘的菜按成品一页（键 "d:成品名"，写法底座在前），能切的东西按食材一页（键 "c:名字:aux"，第二格是能用的工具，
   脚注是全部产物（产物不止一种才有，含主产物，BoardBook.java:55）；标签：全部 / 摆盘 / 刀切 / 别的工具；摆盘的菜能从背包放料，切的只看；
-- 煎锅、炉灶：能煎 / 烤的一件一页，注明两面一共几秒（SkilletBook 31 行 / StoveBook 36 行：2 * sideTicks，不看 one_sided——只煎一面的
+- 煎锅、炉灶：能煎 / 烤的一件一页（成品相同的几种蛋并成一页，cookGroups），注明两面一共几秒（SkilletBook 31 行 / StoveBook 36 行：2 * sideTicks，不看 one_sided——只煎一面的
   从下往上煎透，用的也是两面的时间）；只看。
 三种时间都带着配置里的倍率（cooking_pot_time / skillet_time / stove_time，站点关了算 1.0），书上写的就是服务端此刻的时间（两端同一份配置表）。
 """
+from ..Data import Tags
 from ..Data.Cooking import CanCookedFoodDict
 from ..Data.CookingPotRecipes import CookingPotRecipeList
-from ..Data.Cutting import CuttingBoardDict
-from . import CookingPot, CuttingStation, DishStation, GrillStation, PanStation
+from ..Data.Cutting import CuttingBoardDict, CuttingTagDict
+from . import CookingPot, CuttingStation, DishStation, GrillStation, ItemTags, PanStation
 from .HandsOn import PotCooking
 from .HandsOn.Mth import roundInt
 
@@ -91,18 +92,18 @@ def bestKinds(variants, pool):
 # ---------------------------------------------------------------- 厨锅
 
 def _potWays(recipe):
-    """配料井怎么摆（RecipeBook.drawDish：一格是一组备选，每秒换一种）：配方表里 _ways 展开的留着每格的选项，就摆成一种写法、
-    一格几个选项，玩家一眼知道"任一生肉"都行；没有（下游模组追加的、只有展开后的写法）每种写法一种、一格一件。"""
-    cells = getattr(recipe.get("Recipe"), "slots", ())
-    if cells:
-        return [[[(name, 0) for name in options] for options in cells]]
-    return [[[(entry[0], entry[1])] for entry in variant] for variant in (recipe.get("Recipe") or ()) if variant]
+    """配料井怎么摆（RecipeBook.drawDish：一格是一组备选，每秒换一种）：有 Slots 的配方（农夫乐事自己的、新接口登记的）摆成一种写法、
+    一格几个选项（标签换成它现在的成员），玩家一眼知道"任一生肉"都行；格子不收的旧写法（契约的 AddCookingPotRecipe 给它加的）各自再成一种。
+    没有 Slots 的（旧接口追加的，只有写法）每种写法一种、一格一件。某格一个成员都没有的不画那一种。"""
+    cells = CookingPot.optionsOf(recipe)
+    ways = [[list(options) for options in cells]] if cells and all(cells) else []
+    return ways + [[[(entry[0], entry[1])] for entry in variant] for variant in CookingPot.extraWays(recipe) if variant]
 
 
 def potPages():
     pages = []
     for index, recipe in enumerate(CookingPotRecipeList):
-        result = recipe.get("CookResult") if isinstance(recipe, dict) else None
+        result = recipe.get("CookResult") if CookingPot.isLive(recipe) else None
         ways = _potWays(recipe) if _pair(result) else []
         if not ways:
             continue
@@ -114,17 +115,20 @@ def potPages():
 
 
 def potRecipe(key):
-    """键 -> 配方字典；不认识返回 None。"""
+    """键 -> 配方字典；不认识、或那一行已经被移除（墓碑）返回 None。"""
     if isinstance(key, int) and not isinstance(key, bool) and 0 <= key < len(CookingPotRecipeList):
-        return CookingPotRecipeList[key]
+        recipe = CookingPotRecipeList[key]
+        return recipe if CookingPot.isLive(recipe) else None
     return None
 
 
 def potCurrent(inputs, meal=None):
-    """锅里的料正在做的那道菜的键；料做不成菜时是锅里已经煮好的那锅（meal）的菜（PotBook.current）；都没有返回 None。"""
-    cooking, _pushed = CookingPot.matchRecipe([item for item in inputs or () if item])
-    made = cooking or meal
-    recipe = CookingPot.findRecipeByResult(made["newItemName"]) if made else None
+    """锅里的料正在做的那道菜的键：锅读成的那条配方（同一成品有几条配方时不会指错）；料做不成菜时是锅里已经煮好的那锅（meal）
+    的菜（PotBook.current）；都没有返回 None。"""
+    found = CookingPot.matchIndex([item for item in inputs or () if item])
+    if found is not None:
+        return found
+    recipe = CookingPot.findRecipeByResult(meal["newItemName"]) if meal else None
     for index, candidate in enumerate(CookingPotRecipeList):
         if candidate is recipe:
             return index
@@ -159,14 +163,21 @@ def boardPages():
             byResult[name] = page
             pages.append(page)
         page["ways"].append(dishWay(dish))
-    for (name, aux), recipe in sorted(CuttingBoardDict.items()):
+    cuts = [(_cutKey(key), [key], recipe) for key, recipe in sorted(CuttingBoardDict.items())]
+    cuts += [(_cutKey(tag), [(name, 0) for name in ItemTags.itemsOf(tag)], recipe) for tag, recipe in sorted(CuttingTagDict.items())]
+    for key, inputs, recipe in cuts:
         outputs = [stack(entry["itemName"], entry.get("auxValue", 0), entry.get("count", 1)) for entry in recipe["itemList"]]
         tools = [(tool, 0) for tool in recipe.get("tool") or ()]
-        if not outputs or not tools:
+        if not outputs or not tools or not inputs:
             continue
-        pages.append({"key": "%s%s:%d" % (CUT_PREFIX, name, aux), "item": outputs[0], "ways": [[[(name, aux)], tools]],
-                      "foot": outputs if len(outputs) > 1 else [], "note": "", "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
+        pages.append({"key": key, "item": outputs[0], "ways": [[inputs, tools]], "foot": outputs if len(outputs) > 1 else [], "note": "",
+                      "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
     return pages
+
+
+def _cutKey(found):
+    """切的那一页的键：精确的配方 "c:物品名:aux"，按标签的 "c:#标签名"（一格是标签的全部成员，轮换着画）。"""
+    return "%s#%s" % (CUT_PREFIX, found) if not isinstance(found, tuple) else "%s%s:%d" % (CUT_PREFIX, found[0], found[1])
 
 
 def dishOf(key):
@@ -182,17 +193,31 @@ def boardCurrent(layers, item):
     target = DishStation.targetOf(kinds) if kinds else None
     if target is not None:
         return DISH_PREFIX + target["result"][0]
-    if item and item.get("newItemName") and (item["newItemName"], item.get("newAuxValue") or 0) in CuttingBoardDict:
-        return "%s%s:%d" % (CUT_PREFIX, item["newItemName"], item.get("newAuxValue") or 0)
-    return None
+    found = CuttingStation.recipeKeyOf((item["newItemName"], item.get("newAuxValue") or 0)) if item and item.get("newItemName") else None
+    return _cutKey(found) if found is not None else None
 
 
 # ---------------------------------------------------------------- 煎锅、炉灶
 
+def cookGroups():
+    """营火配方（CanCookedFoodDict）怎么分页（站点的书、JEI 的煎锅 / 炉灶页共用）：成品相同、原料都在原版 minecraft:egg 标签里的并成一页
+    （基岩版的三种蛋都煎成煎蛋：一页，原料那一格轮换），别的一件一页。[(原料名列表, 成品名)]：组里按标签成员的先后，组按第一件原料的名字排。"""
+    eggs = list(ItemTags.itemsOf(Tags.EGG))
+    groups = {}
+    for raw in sorted(CanCookedFoodDict):
+        result = CanCookedFoodDict[raw]
+        groups.setdefault((result,) if raw in eggs else (result, raw), []).append(raw)
+    found = []
+    for key, raws in groups.items():
+        raws.sort(key=lambda name: (eggs.index(name) if name in eggs else len(eggs), name))
+        found.append((raws, key[0]))
+    return sorted(found)
+
+
 def _cookPages(sideSeconds):
-    """能煎 / 烤的一件一页，每道都写两面一共几秒（2 * sideTicks）：不看 one_sided（只煎一面的从下往上煎透，用的也是两面的时间）。"""
-    return [{"key": raw, "item": stack(CanCookedFoodDict[raw]), "ways": [[[(raw, 0)]]], "foot": [stack(CLOCK)],
-             "note": _seconds(2 * sideSeconds), "kind": None} for raw in sorted(CanCookedFoodDict)]
+    """一组原料一页（cookGroups），键是组里的第一件；每道都写两面一共几秒（2 * sideTicks）：不看 one_sided（只煎一面的从下往上煎透，用的也是两面的时间）。"""
+    return [{"key": raws[0], "item": stack(result), "ways": [[[(raw, 0) for raw in raws]]], "foot": [stack(CLOCK)],
+             "note": _seconds(2 * sideSeconds), "kind": None} for raws, result in cookGroups()]
 
 
 def panPages():
@@ -206,9 +231,9 @@ def grillPages():
 
 
 def cookCurrent(items):
-    """煎锅 / 炉灶上第一件还生着的东西的键；没有返回 None。"""
+    """煎锅 / 炉灶上第一件还生着的东西在哪一页（页的键：并成一页的几种蛋都翻到那一页）；没有返回 None。"""
     for item in items or ():
         name = item.get("newItemName") if item else None
         if name in CanCookedFoodDict:
-            return name
+            return next((raws[0] for raws, _result in cookGroups() if name in raws), name)
     return None
