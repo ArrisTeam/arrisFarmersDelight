@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """FoodEffects - 牛奶瓶 / 热可可 / 西瓜汁 / 冰棒 / 原版汤的追加结算，滋养与舒适效果（服务端）"""
 import random
+import traceback
 
 from .EventRegistry import registerHandler
-from .Helpers.Engine import compFactory, serverApi
-from ..Shared.Data.Effects import negativeEffect, COMFORT, NOURISHMENT
+from .Helpers.Engine import compFactory, levelId, serverApi
+from ..Shared.Data.Effects import COMFORT, NOURISHMENT
 from ..Shared.Rules import FoodEffects as Rules
+
+REGENERATION = "regeneration"
+_timer = []
 
 
 def _heal(playerId, amount):
@@ -41,19 +45,31 @@ def OnPlayerHungerChange(args):
         args["cancel"] = True
 
 
-@registerHandler("AddEffectServerEvent")
-def OnAddEffect(args):
-    # 舒适：免疫负面效果；获得舒适时清掉身上已有的负面效果
-    entityId = args["entityId"]
-    effectName = args["effectName"]
-    effectComp = compFactory.CreateEffect(entityId)
-    if effectName in negativeEffect:
-        if effectComp.HasEffect(COMFORT) is True:
-            effectComp.RemoveEffectFromEntity(effectName)
-    elif effectName == COMFORT:
-        for effectDict in effectComp.GetAllEffects() or []:
-            if effectDict["effectName"] in negativeEffect:
-                effectComp.RemoveEffectFromEntity(effectDict["effectName"])
+def comfortTick():
+    # 舒适（JE 1.3.4 的 ComfortEffect）：每 4 秒看一遍身上有舒适的玩家（JE 的生物也吃这个效果；它只能用指令给，这边只管玩家）
+    attrType = serverApi.GetMinecraftEnum().AttrType
+    for playerId in serverApi.GetPlayerList() or ():
+        effectComp = compFactory.CreateEffect(playerId)
+        if effectComp.HasEffect(COMFORT) is not True:
+            continue
+        attrComp = compFactory.CreateAttr(playerId)
+        if Rules.comfortHeals(effectComp.HasEffect(REGENERATION) is True, attrComp.GetAttrValue(attrType.SATURATION),
+                              attrComp.GetAttrValue(attrType.HEALTH), attrComp.GetAttrMaxValue(attrType.HEALTH)):
+            _heal(playerId, Rules.COMFORT_HEAL)
+
+
+def _comfortTick():
+    try:
+        comfortTick()
+    except Exception:  # noqa: BLE001 - 定时器边界：出错只打印，下一轮接着来
+        print("[arrisFarmersDelight] 舒适回血出错")
+        traceback.print_exc()
+
+
+@registerHandler("ClientLoadAddonsFinishServerEvent")
+def OnComfortPlayerJoin(args):
+    if not _timer:
+        _timer.append(compFactory.CreateGame(levelId).AddRepeatedTimer(Rules.COMFORT_SECONDS, _comfortTick))
 
 
 @registerHandler("PlayerDieEvent")

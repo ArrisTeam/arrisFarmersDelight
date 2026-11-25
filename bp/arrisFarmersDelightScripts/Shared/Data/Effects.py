@@ -21,7 +21,7 @@ VANILLA_SOUP_BUFFS = {
     "minecraft:rabbit_stew": [(NOURISHMENT, LONG_DURATION, 0, False), ("jump_boost", 10, 1, True)],
 }
 
-# 原版所有负面效果 (frozenset for O(1) lookup)。热可可 / 舒适靠它判断"有害"；Api/LegacyModAttr.py 的联动白名单里也有它，名字和对象身份别动
+# 原版所有负面效果 (frozenset for O(1) lookup)。热可可靠它判断"有害"；Api/LegacyModAttr.py 的联动白名单里也有它，名字和对象身份别动
 negativeEffect = frozenset([
     "slowness",
     "mining_fatigue",

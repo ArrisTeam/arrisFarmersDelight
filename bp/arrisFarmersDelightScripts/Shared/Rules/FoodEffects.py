@@ -87,3 +87,14 @@ def eatActions(itemName, activeEffects, rng):
     if rule is None:
         return []
     return rule(activeEffects, rng)
+
+
+# 舒适（JE 1.3.4 的 ComfortEffect，已弃用：没有食物再给，只能用指令拿到）：每 80 刻（4 秒）一次，身上有生命恢复、
+# （玩家）还有饱和度可花、或者满血时什么都不做，否则回 1 点血；不管等级。旧版这里是"免疫负面效果"，JE 早就不是了
+COMFORT_SECONDS = 4.0
+COMFORT_HEAL = 1.0
+
+
+def comfortHeals(hasRegeneration, saturation, health, maxHealth):
+    """舒适这一下回不回血。"""
+    return not hasRegeneration and saturation <= 0.0 and health < maxHealth

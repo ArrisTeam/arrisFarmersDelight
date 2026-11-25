@@ -44,10 +44,11 @@ class FakeAttr(object):
     def __init__(self):
         self.health = 20.0
         self.top = 20.0
+        self.saturation = 0.0
         self.log = []
 
     def GetAttrValue(self, attrType):
-        return self.health
+        return self.saturation if attrType == SATURATION else self.health
 
     def GetAttrMaxValue(self, attrType):
         return self.top
@@ -62,10 +63,23 @@ class FakeAttr(object):
         return True
 
 
+class FakeGame(object):
+    def __init__(self):
+        self.timers = []
+
+    def AddRepeatedTimer(self, seconds, func, *params):
+        self.timers.append((seconds, func))
+        return len(self.timers)
+
+
 class FakeFactory(object):
     def __init__(self):
         self.effects = {}
         self.attrs = {}
+        self.game = FakeGame()
+
+    def CreateGame(self, levelId):
+        return self.game
 
     def CreateEffect(self, entityId):
         return self.effects.setdefault(entityId, FakeEffects())
@@ -75,20 +89,26 @@ class FakeFactory(object):
 
 
 HEALTH = 7  # 假的 AttrType.HEALTH，只要前后一致
+SATURATION = 5
 
 
 class FakeServerApi(object):
     class _Enum(object):
         class AttrType(object):
             HEALTH = HEALTH
+            SATURATION = SATURATION
 
     def GetMinecraftEnum(self):
         return self._Enum
+
+    def GetPlayerList(self):
+        return [PLAYER]
 
 
 FACTORY = FakeFactory()
 _engine = types.ModuleType("arrisFarmersDelightScripts.Server.Helpers.Engine")
 _engine.compFactory = FACTORY
+_engine.levelId = "level"
 _engine.serverApi = FakeServerApi()
 sys.modules[_engine.__name__] = _engine
 
@@ -196,17 +216,37 @@ def testNourishmentCancelsHungerLossButNotEating():
     assert not plain.get("cancel"), "没有滋养不拦"
 
 
-def testComfortStillBlocksHarmfulEffects():
-    # 舒适虽然没有食物再给了，效果和处理仍在（别的包 / 指令可以给）
+def testComfortNoLongerBlocksHarmfulEffects():
+    # JE 1.3.4 的舒适不挡负面效果（旧版这里有个 AddEffectServerEvent 处理函数，已经去掉）
+    assert [name for module, name in Registry.handlerNames("AddEffectServerEvent") if module == MODULE] == []
     comp = _player("arris:comfort")
     Registry.dispatch("AddEffectServerEvent", {"entityId": PLAYER, "effectName": "poison"})
-    assert comp.log == [("remove", "poison")]
-    comp = _player("speed")
-    Registry.dispatch("AddEffectServerEvent", {"entityId": PLAYER, "effectName": "poison"})
-    assert comp.log == [], "没有舒适不清除"
-    comp = _player("poison", "speed", "hunger")
-    Registry.dispatch("AddEffectServerEvent", {"entityId": PLAYER, "effectName": "arris:comfort"})
-    assert sorted(entry[1] for entry in comp.log) == ["hunger", "poison"], "获得舒适时清掉身上的有害效果"
+    assert comp.log == []
+
+
+def _comfortCase(effects, health=15.0, saturation=0.0, top=20.0):
+    _player(*effects)
+    attr = FACTORY.CreateAttr(PLAYER)
+    attr.health, attr.saturation, attr.top = health, saturation, top
+    del attr.log[:]
+    FoodEffects.comfortTick()
+    return attr.health
+
+
+def testComfortHealsOnePointWhenNothingElseWould():
+    # JE ComfortEffect：每 80 刻，没有生命恢复、饱和度用完了、没满血时回 1 点
+    assert _comfortCase(["arris:comfort"]) == 16.0
+    assert _comfortCase(["arris:comfort", "regeneration"]) == 15.0
+    assert _comfortCase(["arris:comfort"], saturation=2.0) == 15.0
+    assert _comfortCase(["arris:comfort"], health=20.0) == 20.0
+    assert _comfortCase(["arris:comfort"], health=19.5) == 20.0          # 不超过上限
+    assert _comfortCase([]) == 15.0
+
+
+def testTheComfortTimerStartsOnceEveryFourSeconds():
+    Registry.dispatch("ClientLoadAddonsFinishServerEvent", {"playerId": PLAYER})
+    Registry.dispatch("ClientLoadAddonsFinishServerEvent", {"playerId": PLAYER})
+    assert [seconds for seconds, _func in FACTORY.game.timers] == [4.0]
 
 
 def testDeathClearsBothEffects():
