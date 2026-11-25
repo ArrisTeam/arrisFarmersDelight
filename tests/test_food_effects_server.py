@@ -77,7 +77,8 @@ class FakeGame(object):
         self.once.append((seconds, func, params))
 
     def GetGameRulesInfoServer(self):
-        return {"option_info": dict(self.rules)}
+        # 实机（2026-11-26）的形状：{"option_info": {..., "natural_regeneration": ...}, "cheat_info": {...}}
+        return {"option_info": dict(self.rules), "cheat_info": {"natural_regeneration": True}, "natural_regeneration": True}
 
 
 class FakePlayer(object):
@@ -291,7 +292,8 @@ def testNourishmentClearsExhaustionUnlessHealingWithSaturation():
     assert _nourishCase(["arris:nourishment"], health=20.0) == 0.0
     assert _nourishCase(["arris:nourishment"], saturation=0.0) == 0.0
     assert _nourishCase(["arris:nourishment"], regen=False) == 0.0
-    assert _nourishCase(["arris:nourishment"], gamerule=False) == 0.0
+    assert _nourishCase(["arris:nourishment"], gamerule=False) == 0.0     # 只认 option_info 那一层（最外层、cheat_info 里的同名键不算）
+    assert _nourishCase(["arris:nourishment"], gamerule=True) == 3.5
     assert _nourishCase([], health=20.0) == 3.5                              # 没有滋养不管
 
 
