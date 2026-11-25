@@ -20,13 +20,19 @@ BLOCK_OF = {B.POT: B.POT_BLOCK, B.BOARD: B.BOARD_BLOCK, B.SKILLET: B.SKILLET_BLO
 STEP_OF = {"cooking_pot": "pot", "cutting_board": "board", "skillet": "pan", "stove": "grill"}      # 每个站点在步骤表里的步骤名
 DEFAULT_ORDER = [B.BOARD, B.POT, B.SKILLET, B.STOVE]       # 缺省的登记顺序（原来的 tryRegister / OnLoadClientAddonScriptsAfter 照这个次序，现在是步骤表的顺序）
 EXTRA_STEPS = {"table": "ok"}                              # 不是站点的步骤：前置包原版工作台上的登记（它真的接口在，两端都 ok）
+CLIENT_ONLY = {"settings": "skipped"}                      # 只有客户端有的最后一步（玩家开关）：bootkit 的接口替身没有 SETTINGS（test_settings_link.py 管它）
+
+
+def _shared(steps):
+    return dict((name, status) for name, status in steps.items() if name not in CLIENT_ONLY)
 
 
 def testTheShippedDefaultsRegisterEverythingInTheOrderTheBootsAlwaysDid():
     server, client = B.bootServer(), B.bootClient()
     assert server.stations == DEFAULT_ORDER and client.stations == DEFAULT_ORDER, (server.stations, client.stations)
     assert server.mode == client.mode == B.Mode.LINKED
-    assert server.steps == client.steps == dict({"board": "ok", "pot": "ok", "pan": "ok", "grill": "ok"}, **EXTRA_STEPS)
+    assert server.steps == _shared(client.steps) == dict({"board": "ok", "pot": "ok", "pan": "ok", "grill": "ok"}, **EXTRA_STEPS)
+    assert client.steps["settings"] == CLIENT_ONLY["settings"]
     assert server.tableHooks == {"vetoes": 1, "remainders": 1}, "前置包真的原版工作台接口收下了砧板菜的否决和补还剩余物"
     assert client.tableHooks == {"hidden": 1}, "前置包配方书真的客户端登记口收下了砧板菜不进书"
     assert server.looks == {"pot": True, "pan": True, "stove": True, "board": True}
@@ -44,7 +50,7 @@ def testEachSwitchTurnsOffOnlyItsOwnStationAndWhatHangsOnIt():
         expected = [stationId for stationId in DEFAULT_ORDER if stationId != STATION_OF[key]]
         assert server.stations == expected and client.stations == expected, (key, server.stations, client.stations)
         skipped = dict(dict((step, "skipped" if STEP_OF[key] == step else "ok") for step in STEP_OF.values()), **EXTRA_STEPS)
-        assert server.steps == client.steps == skipped, (key, server.steps, client.steps)
+        assert server.steps == _shared(client.steps) == skipped, (key, server.steps, client.steps)
         assert server.tableHooks == {"vetoes": int(key != "cutting_board"), "remainders": 1}, "否决跟着砧板站点走，补还剩余物一直登"
         assert client.tableHooks == {"hidden": int(key != "cutting_board")}, "书里不列砧板菜也跟着砧板站点走"
         for name in ("pot", "pan", "stove", "board"):
