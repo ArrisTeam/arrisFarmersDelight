@@ -195,7 +195,9 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
             self.foodRecipeTimerRunning = True
             compFactory.CreateGame(levelId).AddTimer(1.0, self.FoodRecipeTimerSwitch)
 
-        recipe = self.foodRecipeList[self.foodRecipeIndex]
+        if not self.foodRecipeList:
+            return                           # 新接口登记的配方可能只有格子、Recipe 是空列表：没有写法可画
+        recipe = self.foodRecipeList[self.foodRecipeIndex % len(self.foodRecipeList)]
         for index in range(6):
             recipeItem = self.screenNode.GetBaseUIControl(cookRecipePanel + "/cook_recipe/grid/recipe_item{}".format(index + 1)).GetChildByName("item_renderer")
             recipeItem.SetVisible(False)

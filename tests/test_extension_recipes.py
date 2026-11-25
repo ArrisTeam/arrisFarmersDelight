@@ -351,6 +351,7 @@ def testSyncToClientsCallsTheSyncAndTheHandlers():
         assert synced == [1, 1] and seen == [(["cooking"], ["mymod:cooking/x"]), (None, None)]
         assert "".join(out.parts).count("Traceback") == 1, "出错的处理函数只打一次调用栈"
         assert SERVER.syncToClients(["fishing"])["error"] == "invalid_recipe_types"
+        assert CLIENT.registerFromJson("{not json")["error"] == "server_only", "客户端先答 server_only，坏文本也一样"
 
 
 if __name__ == "__main__":

@@ -166,7 +166,8 @@ def FarmersDelight(self, args):
 
 ## 标签（netease_tags，网易 3.10 起）
 
-农夫乐事用网易 3.10 的 `netease_tags` 登记了一套 `common:` 标签词表，见 [docs/TAGS.md](docs/TAGS.md)。别的模组在自己行为包的 `netease_tags/` 里
+农夫乐事用网易 3.10 的 `netease_tags` 登记了一套 `common:` 标签词表，见 [docs/TAGS.md](docs/TAGS.md)；
+JE 农夫乐事自己的 `farmersdelight:` 标签（菜、饮料、热源、传热……）见 TAGS.md 的「JE 农夫乐事自己的标签（farmersdelight:）」一节。别的模组在自己行为包的 `netease_tags/` 里
 往同名的标签放自己的东西，农夫乐事就认得。下面三件事原来只能靠追加表，现在也能用标签；**原来的表照旧有效，标签是并上去的**：
 
 - **刀**：在自己的 `netease_tags` 里把刀登记进 `common:knife`。物品 JSON 的 `minecraft:tags` 里写 `arris:knife`、往 `knifeList` 追加，都照旧有效。

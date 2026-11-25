@@ -80,6 +80,9 @@ class Recipes(object):
 
     def registerFromJson(self, source, recipeId=None):
         """登记一份 JE 写法的配方 JSON（文本或已经读出来的字典）；配方 ID 不给就用 JSON 里的 "id"。"""
+        refused = self._refused(recipeId)
+        if refused is not None:
+            return refused                   # 客户端：先答 server_only，坏文本也一样（不先去读它）
         data = source
         if not isinstance(source, dict):
             try:

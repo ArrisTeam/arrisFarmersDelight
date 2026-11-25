@@ -76,8 +76,8 @@ mymod_bp/
 | 写法 | 意思 |
 | --- | --- |
 | `{"item": "mymod:tofu"}` | 这样物品（aux 0） |
-| `{"item": "minecraft:dye", "data": 4}` | 这样物品、这个 aux |
-| `{"tag": "common:tomato"}` | 现在带这个标签的任何物品（标签没有 aux） |
+| `{"item": "minecraft:potion", "data": 4}` | 这样物品、这个 aux |
+| `{"tag": "common:tomato"}` | 现在带这个标签的任何物品（标签格不看 aux：带标签的物品哪个 aux 都收） |
 | `[配料, 配料, ...]` | 这一格的几个选项，任一个都行 |
 | `"mymod:tofu"`、`"#common:tomato"` | 字符串的简写，同上面两种 |
 
