@@ -9,7 +9,8 @@
 - LookupItemsByItemTag(标签) -> [{"itemName": 物品名}]：没人登记过的标签是 []（3.10 起，两端）；
 - LookupBlocksByBlockTag(标签) -> [{"blockName": 方块名}]（3.10 起，两端；成员名引擎不校验）；
 - GetBlockTags(方块名) -> [标签名]：方块不存在是 None（只有服务端，3.2 起）；
-- GetRecipesByInput(物品名, "campfire", aux, 1) -> [配方]（两端；熔炉类配方的形状没有实机记录，原样交给 Grilling 去宽容地解析）。
+- GetRecipesByInput(物品名, "campfire", aux, 1) -> [配方]（两端；3.10 实机是 [{"input": 原料名, "output": 产物名}]，原样交给 Grilling 解析，
+  它也认别的写法）。
 组件或接口没有（getattr 探不到）、调用抛异常、返回读不懂的东西：都当"答不了"，返回 None，不往外抛——ItemTags 那时按静态词表答。
 
 准备好没有（ready）：

@@ -6,7 +6,8 @@
   1. 表照旧是第一来源，下游追加的马上生效；没有引擎口时只认表（和以前一样）
   2. 口准备好了：表里没有的问营火配方（GetRecipesByInput(名字, "campfire", aux, 1)），按 (名字, aux) 缓存，没有配方的也记着；
      口没准备好（客户端进世界之前）只认表、不问；两个口用服务端的；口出错当没有
-  3. 配方的形状没有实机记录：output / result、字符串 "名字" / "名字:aux"、dict 的名字键、列表、整份配方 JSON 都认；认不出来当没有配方，不抛
+  3. 配方的形状：3.10 实机两端是 [{"input": 原料名, "output": 产物名}]（2026-11-26 量的）；别的写法也认（留给别的版本）：
+     output / result、字符串 "名字" / "名字:aux"、dict 的名字键、列表、整份配方 JSON；认不出来当没有配方，不抛
   4. 煎锅 / 炉灶站点（PanStation / GrillStation）、EnginePort.campfireRecipes 都走这里
 """
 from __future__ import print_function
@@ -107,6 +108,15 @@ def testTheServerPortWinsAndABrokenPortIsNoRecipe():
     else:
         raise AssertionError("端只有 server / client")
     _reset()
+
+
+def testTheShapeMeasuredInGame():
+    """3.10 实机（两端一样）：GetRecipesByInput("minecraft:beef", "campfire", 0, 1) 的原样返回值。"""
+    measured = [{'input': 'minecraft:beef', 'output': 'minecraft:cooked_beef'}]
+    assert Grilling.cookedOf(measured, "minecraft:beef") == "minecraft:cooked_beef"
+    assert Grilling.cookedOf([{'input': 'arris:minced_beef', 'output': 'arris:beef_patty'}], "arris:minced_beef") == "arris:beef_patty"
+    for egg in ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"):
+        assert Grilling.cookedOf([{'input': egg, 'output': 'arris:fried_egg'}], egg) == "arris:fried_egg", egg
 
 
 def testTheShapesItReads():
