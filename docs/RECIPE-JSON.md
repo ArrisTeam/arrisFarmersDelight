@@ -60,7 +60,7 @@ mymod_bp/
 | `type` | 是 | `"farmersdelight:cooking"`（`"cooking"` 也认） |
 | `ingredients` | 是 | 1 到 6 个配料，一个是一格（写法见 §3）；锅里每件东西要分给一个收它的格，格子正好用完才配得上 |
 | `result` | 是 | `{"item": 物品名, "count": 一份出几个, "data": aux}`，`count`、`data` 可不写（1、0）；也可以直接写物品名字符串 |
-| `container` | 否 | 盛这道菜要的容器 `{"item": 物品名}`，不写就不要容器 |
+| `container` | 否 | 盛这道菜要的容器 `{"item": 物品名}`。不写时照 JE 推：成品有合成剩余物（农夫乐事的剩余物表 `Shared/Data/Remainders.py`：碗装的菜剩碗、饮料剩玻璃瓶、奶桶剩桶……）就要它，没有就不要容器；别的模组的成品不在那张表里，要容器就写明 |
 | `cookingtime` | 否 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience` | 否 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `text` | 否 | 农夫乐事加的：经典厨锅界面食谱格里的名字，不写是成品的物品名 |
@@ -153,20 +153,21 @@ JE 农夫乐事（1.20.1）的 `data/farmersdelight/recipes/cooking/beef_stew.js
 }
 ```
 
-搬过来要改成品的物品名（标签名会自动换成 `common:raw_beef`、`common:carrot`、`common:potato`），给它一个你的 ID，
-再把容器写明：JE 的文件常常不写 `container`（JE 从成品物品身上推出要碗），这边没写就是不要容器。
+照它给你自己的一道菜写一份：标签名不用改（会自动换成 `common:raw_beef`、`common:carrot`、`common:potato`），配料、成品换成你的，给它一个你的 ID。
+JE 的文件常常不写 `container`（JE 用成品物品的合成剩余物：碗装的菜就要碗），这边同样推，但只认得农夫乐事那张剩余物表（§2）：
+你自己的成品不在表里，要容器就写明。
 
 ```json
 {
-  "id": "mymod:cooking/beef_stew_with_my_bowl",
+  "id": "mymod:cooking/venison_stew",
   "type": "farmersdelight:cooking",
-  "container": {"item": "mymod:clay_bowl"},
+  "container": {"item": "minecraft:bowl"},
   "cookingtime": 200,
   "experience": 1.0,
-  "ingredients": [{"tag": "forge:raw_beef"}, {"tag": "forge:crops/carrot"}, {"tag": "forge:crops/potato"}],
-  "result": {"item": "arris:cookbeef_stew"}
+  "ingredients": [{"item": "mymod:venison"}, {"tag": "forge:crops/carrot"}, {"tag": "forge:crops/potato"}],
+  "result": {"item": "mymod:venison_stew"}
 }
 ```
 
-（这份和农夫乐事自带的牛肉炖配料一样：两条都配得上时自带的在前，所以这份只是举例怎么搬。要改自带的那一道，用它的 ID
-`farmersdelight:cooking/beef_stew` 覆盖。）
+要改农夫乐事自带的那一道，用它的 ID（`farmersdelight:cooking/beef_stew`）覆盖：照搬上面 JE 那份、成品写 `arris:cookbeef_stew`，
+不写 `container` 也会推出碗（牛肉炖在剩余物表里）。

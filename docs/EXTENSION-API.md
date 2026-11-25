@@ -273,7 +273,7 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 | --- | --- | --- |
 | `ingredient(*选项)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项 |
 | `output(物品, count=1, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出） |
-| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`），不写就不要容器 |
+| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |

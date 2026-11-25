@@ -2,7 +2,7 @@
 """RecipeJson - 配方 JSON（JE 农夫乐事的写法，物品名写网易的）读成规整的配方：厨锅、砧板、营火烹饪（双端，纯规则）
 
 格式就是 JE 农夫乐事的配方 JSON（recipes/cooking、recipes/cutting）和原版的营火配方，把物品名换成网易版的就能用：
-- 厨锅 {"type": "farmersdelight:cooking", "ingredients": [配料, ...]（1 到 6 格）, "result": {"item", "count"}, "container": {"item"},
+- 厨锅 {"type": "farmersdelight:cooking", "ingredients": [配料, ...]（1 到 6 格）, "result": {"item", "count"}, "container": {"item"}（不写照 JE 取成品的合成剩余物）,
        "cookingtime": 刻（缺省 200）, "experience": 数（缺省 0，JE 的缺省）, "text": 经典界面食谱格里的名字（农夫乐事加的，可不写）}；
 - 砧板 {"type": "farmersdelight:cutting", "ingredients": [一个配料], "tool": 工具, "result": [{"item", "count", "chance"}, ...]（1 到 4 个）}；
 - 营火 {"type": "minecraft:campfire_cooking", "ingredient": 物品, "result": 物品}（煎锅、炉灶、手持煎锅读的那张表，只认物品）。
@@ -16,6 +16,7 @@ parse(数据, aliases) -> (规整的配方, None) 或 (None, 一句说哪里不�
     {"type": "cutting", "input": (名, aux) 或 "#标签", "tool": 工具种类（"knife"……）或 [物品名], "results": [{"itemName", "count", ("auxValue"), ("chance")}]}
     {"type": "campfire_cooking", "input": 名, "result": 名}
 """
+from ..Data.Remainders import CRAFT
 from ..Data.Tags import JE_NAMES
 from .TableWire import INT_TYPES
 
@@ -107,11 +108,20 @@ def _cooking(data, aliases):
         raise _Bad("ingredients 要是 1 到 %d 个配料" % MOST_SLOTS)
     name, aux, count = _stack(data.get("result"), "result")
     container = data.get("container")
+    vessel = _stack(container, "container")[:2] if container is not None else _remainderOf(name)
     return {"type": "cooking", "slots": [_slot(entry, aliases, "第 %d 个配料" % (index + 1)) for index, entry in enumerate(ingredients)],
             "result": (name, aux), "count": max(1, count),
-            "container": _stack(container, "container")[:2] if container is not None else None,
+            "container": vessel,
             "cookingTime": _int(data.get("cookingtime"), 200, "cookingtime"), "experience": _number(data.get("experience"), 0.0, "experience"),
             "text": text(data["text"]) if isinstance(data.get("text"), _TEXT) else None}
+
+
+def _remainderOf(name):
+    """没写容器时照 JE（CookingPotRecipe 的构造：container 空就取成品的 getCraftingRemainingItem）：成品有合成剩余物就要它当容器
+    （Shared/Data/Remainders.CRAFT 就是 JE 的那个物品属性：碗装的菜剩碗、饮料剩玻璃瓶、奶桶剩桶……），没有就不要容器。
+    别的模组的成品不在那张表里：要容器就写明。"""
+    found = CRAFT.get(name)
+    return (found, 0) if found else None
 
 
 def _tool(value):

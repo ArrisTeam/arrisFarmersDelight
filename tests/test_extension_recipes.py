@@ -108,6 +108,29 @@ def testTheJsonIsTheJavaFormatWithJavaTagNamesMapped():
         assert problem is None and spec["slots"] == [["#common:raw_beef"], ["#common:carrot"], ["#common:potato"]], (problem, spec)
 
 
+def testAMissingContainerIsTheResultsCraftingRemainderLikeJava():
+    """JE 的 CookingPotRecipe：没写 container 就取成品的合成剩余物（Shared/Data/Remainders.CRAFT 就是那个属性）。.refs 在场时 28 个 JE 文件
+    逐个核：成品换成农夫乐事自己那一行的，推出来（或写明）的容器正好是那一行的 Vessel（24 个没写的推出碗 / 玻璃瓶 / 不要，4 个写明的照写）。"""
+    base = {"type": "farmersdelight:cooking", "ingredients": [{"tag": "forge:raw_beef"}]}
+    for result, vessel in (("arris:cookbeef_stew", ("minecraft:bowl", 0)), ("arris:hot_cocoa", ("minecraft:glass_bottle", 0)),
+                           ("arris:dumplings", None), ("mymod:stew", None)):
+        spec, problem = RecipeJson.parse(dict(base, result={"item": result}))
+        assert problem is None and spec["container"] == vessel, (result, spec["container"])
+    spec, _problem = RecipeJson.parse(dict(base, result={"item": "arris:cookbeef_stew"}, container={"item": "mymod:clay_bowl"}))
+    assert spec["container"] == ("mymod:clay_bowl", 0), "写了就照写"
+    if not os.path.isdir(JE_COOKING):
+        return
+    checked = 0
+    for name in sorted(os.listdir(JE_COOKING)):
+        with io.open(os.path.join(JE_COOKING, name), encoding="utf-8") as handle:
+            data = json.load(handle)
+        row = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/" + name[:-len(".json")])
+        spec, problem = RecipeJson.parse(dict(data, result={"item": row["CookResult"][0]}))
+        assert problem is None and spec["container"] == (tuple(row["Vessel"]) if row.get("Vessel") else None), (name, spec["container"])
+        checked += 1
+    assert checked == 28, checked
+
+
 def testACookingRecipeWithATagSlotWorksEverywhere():
     with Sandbox():
         builder = _stew()
