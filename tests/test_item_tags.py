@@ -4,7 +4,8 @@
 
 锁的事：
   1. 没有口时等于静态词表（Shared/Data/Tags：农夫乐事单独在场时的答案），原版自带的 minecraft:egg 也答得出
-  2. 口没准备好时按静态表答、不问它的查询、不缓存；准备好的那一刻换代，之后是静态表 ∪ 引擎、缓存住；refresh() 换代、重新问
+  2. 口没准备好时枚举（itemsOf / blocksOf）只给静态表、不问它，按单件问的照样问引擎、并上静态表、不缓存；准备好的那一刻换代，
+     之后是静态表 ∪ 引擎、缓存住；refresh() 换代、重新问
   3. 两个口都在（单机）用服务端的；口答 None、抛异常、答读不懂的东西时不炸，按静态表答
   4. EnginePort：引擎返回值的形状（[{"itemName"}] / [{"blockName"}] / [标签名] / None）；3.10 以前没有的接口当答不了；
      准备好 = 反查探针标签里出现了那件原版物品（没有反查接口时 = GetItemTags 答得了那件原版物品）；探测限频、算好之后不再探
@@ -80,17 +81,31 @@ def testWithoutAPortItAnswersFromTheStaticTable():
     assert not ItemTags.blockHas("minecraft:campfire", Tags.HEAT_SOURCE), "营火在要看点燃状态的那个标签里"
 
 
-def testAPortThatIsNotReadyIsNeitherAskedNorCachedThenTakesOverWithANewGeneration():
+def testANotReadyPortAnswersSingleItemsUncachedButNoEnumerationsThenTakesOver():
+    """口没准备好：枚举（itemsOf / blocksOf）只给静态表、不问它（客户端进世界前反查漏成员）；按单件问的照样问、并上静态表、不缓存
+    （那时引擎按单件给的可能不全，但不会多给）。准备好的那一刻换代，之后枚举也接上引擎、都缓存住；refresh() 换代、重新问。"""
     _reset()
     port = FakePort(ready=False, answers={("items", Tags.TOMATO): [u"kaleidoscope_cookery:tomato", "arris:tomato"],
-                                          ("tags", "kaleidoscope_cookery:tomato"): ["common:tomato", "kaleidoscope_cookery:vegetable"]})
+                                          ("tags", "kaleidoscope_cookery:tomato"): ["common:tomato", "kaleidoscope_cookery:vegetable"],
+                                          ("blocks", Tags.HEAT_SOURCE): ["mymod:burner"],
+                                          ("blocktags", "mymod:oven"): ["common:heat_source"]})
     ItemTags.setPort("client", port)
     first = ItemTags.generation()
     assert not ItemTags.ready()
-    assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",) and not ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
-    assert port.calls == {}, "没准备好时只按静态表答，不问它（早期的不全的答案不进缓存）"
+    assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
+    assert ItemTags.blocksOf(Tags.HEAT_SOURCE) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCE])
+    assert not ItemTags.blockHas("mymod:burner", Tags.HEAT_SOURCE), "只在反查里的：没准备好不认"
+    assert "items" not in port.calls and "blocks" not in port.calls, "没准备好时不问枚举"
+    assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO), "按单件问的照样问引擎"
+    assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCE) and Tags.HEAT_SOURCE in ItemTags.blockTagsOf("mymod:oven")
+    assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS)), "引擎没答（None）：静态表的"
+    asked = port.calls["tags"]
+    ItemTags.tagsOf("kaleidoscope_cookery:tomato")
+    ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
+    assert port.calls["tags"] == asked + 2, "没准备好时不缓存：每次都问"
     assert ItemTags.generation() == first
     port.isReady = True
+    port.calls = {}
     assert ItemTags.generation() == first + 1, "准备好的那一刻换代"
     assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato", "kaleidoscope_cookery:tomato"), "静态表的在前，引擎多出来的接在后面"
     assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
@@ -246,6 +261,7 @@ def testTheEnginePortIsReadyOnlyWhenTheProbeMemberHasArrived():
     assert port.ready() and items.lookups == 2
     items.members.clear()
     assert port.ready() and items.lookups == 2, "算好之后一直算好、不再探"
+    assert (port.probes, port.firstProbeAt, port.readyAt) == (2, 100.0, clock.now), "给游戏内自检看的记录"
 
 
 def testBeforeTenThePortIsReadyWhenVanillaItemsAnswer():
@@ -264,19 +280,23 @@ def testBeforeTenThePortIsReadyWhenVanillaItemsAnswer():
 
 
 def testTheClientTakesOverWhenItsTagsArrive():
-    """客户端的整个过程：进世界前按静态表答，探针到了换代、换成引擎的答案（别的模组的番茄），之前的答案没留在缓存里。"""
+    """客户端的整个过程：进世界前枚举按静态表，按单件问的引擎答多少算多少（原版物品那时是 None）；探针到了换代，枚举换成引擎的
+    （别的模组的番茄），原版物品的标签也有了——早先的答案没留在缓存里。"""
     _reset()
     clock = FakeClock()
     items = FakeItemComp(tags={"kaleidoscope_cookery:tomato": ["common:tomato"]},
                          members={Tags.TOMATO: ["arris:tomato", "kaleidoscope_cookery:tomato"], PROBE_TAG: ["arris:minced_beef"]})
     ItemTags.setPort("client", TagPort.EnginePort(lambda: items, clock=clock))
     early = ItemTags.generation()
-    assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",) and not ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
+    assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
+    assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO), "自定义物品按单件问，早就答得全"
+    assert ItemTags.tagsOf(PROBE_ITEM) == frozenset((Tags.RAW_BEEF, Tags.RAW_MEAT)), "原版物品那时引擎答 None：只有静态表的"
     items.members[PROBE_TAG].append(PROBE_ITEM)
+    items.tags[PROBE_ITEM] = ["minecraft:is_meat", PROBE_TAG]
     clock.now += 1.0
     assert ItemTags.generation() == early + 1
     assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato", "kaleidoscope_cookery:tomato")
-    assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
+    assert "minecraft:is_meat" in ItemTags.tagsOf(PROBE_ITEM), "早先的答案没缓存"
     _reset()
 
 

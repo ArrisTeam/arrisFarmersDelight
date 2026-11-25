@@ -13,8 +13,9 @@ JE 的 PAN 槽是 FD 煎锅自己那一格的窗口，放和取都不走库的�
 走 onInventoryShiftClick），取走 take。基岩版内核对非空槽先问 mayTake，所以光标栈放进有东西的锅只能走 place；托盘里 Shift 点是内核的
 QUICK_MOVE，它只看 pan 槽组的规则（accepts、一批 16 件的上限）和 mayPlace——两条路用的是同一份判断（mayPlace / SlotRules）。
 """
-from ..Data.Cooking import CanCookedFoodDict, OneSidedList
+from ..Data.Cooking import OneSidedList
 from ..Data.PotSunk import CRACKED as CRACKED_KINDS
+from . import Grilling
 from . import HandsOnOptions as Options
 from .HandsOn import Frying
 
@@ -29,11 +30,13 @@ CRACKED = frozenset(name for name, _aux in CRACKED_KINDS)    # 蛋（HoD 的 Kit
 
 
 def canFry(itemName):
-    return itemName in CanCookedFoodDict
+    """煎得了吗：营火配方里有（Grilling：先查 CanCookedFoodDict，再问引擎的营火配方；炉灶站点 GrillStation 也用这两个）。"""
+    return Grilling.canCook(itemName)
 
 
 def friedOf(itemName):
-    return CanCookedFoodDict.get(itemName)
+    """煎成什么（物品名）；煎不了 None。"""
+    return Grilling.resultOf(itemName)
 
 
 def isOneSided(itemName):

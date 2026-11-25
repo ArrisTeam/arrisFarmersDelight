@@ -20,6 +20,8 @@ POURED = (
 
 CRACKED = (
     ("minecraft:egg", 0),
+    ("minecraft:blue_egg", 0),          # 基岩版另外两种蛋（JE 没有）：和鸡蛋一视同仁（Shared/Data/Cooking 的 _EGGS）
+    ("minecraft:brown_egg", 0),
 )
 
 DISSOLVES = (

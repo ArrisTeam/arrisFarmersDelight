@@ -28,7 +28,9 @@ def testOnlyTheEggIsCrackedAndOneSidedIsAnotherList():
     SkilletCooking.isOneSided，缺省是 #cracked）。这边一个是 PotSunk.CRACKED，一个是联动契约的 OneSidedList，缺省两样都只有蛋；
     下游往 OneSidedList 里加的只煎一面，不因此变成蛋。炉灶和煎锅同一张表。"""
     assert Rules.isCracked("minecraft:egg") and not Rules.isCracked("minecraft:beef") and not Rules.isCracked("arris:fried_egg")
-    assert Cooking.OneSidedList == ["minecraft:egg"] and Rules.CRACKED == frozenset(["minecraft:egg"]), "缺省：两样都只有蛋"
+    eggs = ["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"]
+    assert Cooking.OneSidedList == eggs and Rules.CRACKED == frozenset(eggs), "缺省：两样都只有蛋（基岩版的三种蛋）"
+    assert Rules.isCracked("minecraft:blue_egg") and Rules.isOneSided("minecraft:brown_egg") and Rules.friedOf("minecraft:blue_egg") == "arris:fried_egg"
     assert Grill.isCracked is Rules.isCracked and Grill.isOneSided is Rules.isOneSided
     Cooking.OneSidedList.append("minecraft:potato")
     try:
@@ -36,7 +38,7 @@ def testOnlyTheEggIsCrackedAndOneSidedIsAnotherList():
         assert Rules.isCracked("minecraft:egg") and Rules.isOneSided("minecraft:egg"), "蛋照旧"
     finally:
         Cooking.OneSidedList.remove("minecraft:potato")
-    assert Cooking.OneSidedList == ["minecraft:egg"]
+    assert Cooking.OneSidedList == eggs
 
 
 def testASideTakesLongerForABiggerBatch():

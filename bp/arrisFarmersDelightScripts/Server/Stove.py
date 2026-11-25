@@ -23,8 +23,8 @@ from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
 from ..Shared.Data import Tips
-from ..Shared.Data.Cooking import CanCookedFoodDict, StoveList
-from ..Shared.Rules import GrillBlocks, StoveBurn, StoveCover
+from ..Shared.Data.Cooking import StoveList
+from ..Shared.Rules import GrillBlocks, Grilling, StoveBurn, StoveCover
 from ..Shared.Rules.BlockDisplay import KIND_STOVE
 from ..Shared.Rules.Ticks import Pacer
 
@@ -91,7 +91,7 @@ def OnServerStoveItemUse(args):
     freeIndex = _freeSlot(blockEntityData)
     if freeIndex is None:
         return
-    if itemDict["newItemName"] in CanCookedFoodDict:
+    if Grilling.canCook(itemDict["newItemName"], itemDict.get("newAuxValue") or 0):       # 营火配方：表，或引擎的配方
         # 烤位上只放一件；先存一份数量为 1 的拷贝，SetNotCreateItem 会就地改手里那件的数量
         slotItem = dict(itemDict)
         slotItem["count"] = 1
@@ -178,7 +178,7 @@ def OnStoveTick(args):
         if data["cookTimer"] > 0:
             continue
         rawDict = data["itemDict"]
-        cookedName = CanCookedFoodDict.get(rawDict["newItemName"])
+        cookedName = Grilling.resultOf(rawDict["newItemName"], rawDict.get("newAuxValue") or 0)
         # 配方被附属包移除了：原样退回生食，别让它卡在烤位上
         output = {"itemName": cookedName, "auxValue": rawDict.get("newAuxValue", 0), "count": 1} if cookedName else rawDict
         blockEntityData[str(index)] = {"itemDict": None, "cookTimer": COOK_TIMER}

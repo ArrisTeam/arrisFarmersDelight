@@ -37,9 +37,8 @@ C.TYPES.update({K.KNIFE: "sword", "ends_delight:chorus_axe": "sword", LOG: "bloc
 
 
 def _forgetItemTypes():
-    """BoardInv 按物品记着引擎说的类型和标签（假引擎的类型表改了就要忘掉）。"""
+    """BoardInv 按物品记着引擎说的类型（假引擎的类型表改了就要忘掉）；是不是刀不再按名字缓存（Shared/Rules/Knives，标签经 ItemTags 问）。"""
     Inv._types.clear()
-    C.BlockItems._knifeTags.clear()
 
 
 class Synced(object):

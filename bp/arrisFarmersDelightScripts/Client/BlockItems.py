@@ -9,18 +9,15 @@
 """
 from ..QuModLibs.Client import AllowCall, Listen
 from .Engine import addDropItem, compFactory, levelId, unwrapDeep, blockEntityExData
-from ..Shared.Data.Cutting import knifeList
-from ..Shared.Rules import BlockDisplay, BoardStation, GrillBlocks, ItemPose, PotModelMath, StoveFacing
+from ..Shared.Rules import BlockDisplay, BoardStation, GrillBlocks, ItemPose, Knives, PotModelMath, StoveFacing
 from ..Shared.Rules.HandsOn import BoardScene
 
 BOARD_BLOCKS = ("arris:cutting_board",)
 SKILLET_BLOCKS = ("arris:skillet",)
-KNIFE_TAG = "arris:knife"
 _shown = {}        # (维度, 坐标) -> [掉落物 id]
 _last = {}         # (维度, 坐标) -> (kind, items)：最后一份内容
 _hidden = set()    # 站点在画、本端不画的方块
 _itemInfo = {}     # (名字, aux) -> (物品类型, 一叠最多几个)
-_knifeTags = {}    # 物品名 -> 带不带 arris:knife 标签
 
 
 def kindOf(blockName):
@@ -54,14 +51,10 @@ def _maxStack(item):
 
 
 def isKnife(name):
-    """刀：登记在 knifeList 里的，或带 arris:knife 物品标签的（客户端读不到标签时只认前者）。砧板站点（Compat/Diegesis/BoardView）问的也是它：
+    """刀：knifeList 里的，或带 arris:knife / common:knife 物品标签的（Shared/Rules/Knives，和服务端的 IsKnife 同一条规则；标签经 ItemTags
+    问客户端的引擎口，不再按名字永久缓存：进世界之前的答案不留）。砧板站点（Compat/Diegesis/BoardView）问的也是它：
     插着的刀站点里画成什么、没开站时画成什么，用的是同一个答案（BoardStation.Env.isCarving）。"""
-    if name in knifeList:
-        return True
-    if name not in _knifeTags:
-        reader = getattr(compFactory.CreateItem(levelId), "GetItemTags", None)
-        _knifeTags[name] = KNIFE_TAG in ((reader(name) if reader is not None else None) or [])
-    return _knifeTags[name]
+    return Knives.isKnife(name)
 
 
 _boardEnv = BoardStation.Env(isKnife, _itemType)      # 板上的东西是不是插着的工具：站点里的画面（BoardView 的 Env）问的是同一件事

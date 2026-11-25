@@ -24,7 +24,7 @@ from .Helpers.Heat import RefreshHeat
 from .Helpers.Items import CanStack, GetMaxStack
 from .Helpers.Player import IsCreative, SetPlayerUsedCD
 from ..Shared.Data import Tips
-from ..Shared.Data.Cooking import CanCookedFoodDict
+from ..Shared.Rules import Grilling
 from ..Shared.Rules import SkilletRules as Rules
 from ..Shared.Rules.BlockDisplay import modelCount
 from ..Shared.Rules.Ticks import Pacer
@@ -77,7 +77,7 @@ def OnServerSkilletBlockUse(args):
     DropLegacyDisplays(blockEntityData)
     carriedDict = GetCarriedItem(playerId, True)
     if carriedDict:
-        if carriedDict["newItemName"] in CanCookedFoodDict:
+        if Grilling.canCook(carriedDict["newItemName"], carriedDict.get("newAuxValue") or 0):   # 营火配方：表，或引擎的配方
             _addFood(dimensionId, blockPos, blockEntityData, carriedDict, playerId)
         elif carriedDict["newItemName"] in _BLOCKED_ITEMS:
             # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
@@ -193,7 +193,8 @@ def _cook(dimensionId, blockPos, blockEntityData):
     if hand is not None and HandFrying.fry(hand, dimensionId, blockPos, blockEntityData, TICK_STEP, SkilletItem.fireAspectOf(blockEntityData)):
         return
     cookingDict = blockEntityData["cookingDict"]
-    if not cookingDict or cookingDict.get("newItemName") not in CanCookedFoodDict:
+    cooked = Grilling.resultOf(cookingDict.get("newItemName"), cookingDict.get("newAuxValue") or 0) if cookingDict else None
+    if cooked is None:
         return
     if blockEntityData["cookTimer"] is None:
         blockEntityData["cookTimer"] = _timerStart(blockEntityData)
@@ -204,7 +205,7 @@ def _cook(dimensionId, blockPos, blockEntityData):
     layersBefore = modelCount(cookingDict["count"], stack)       # 展示的层数（FD 的 getModelCount）：变了才重发
     cookingDict["count"] -= 1
     blockEntityData["cookTimer"] = _timerStart(blockEntityData)
-    output = {"itemName": CanCookedFoodDict[cookingDict["newItemName"]], "auxValue": cookingDict.get("newAuxValue", 0), "count": 1}
+    output = {"itemName": cooked, "auxValue": cookingDict.get("newAuxValue", 0), "count": 1}
     PopFromPan(dimensionId, blockPos, output)
     if cookingDict["count"] <= 0:
         blockEntityData["cookingDict"] = None

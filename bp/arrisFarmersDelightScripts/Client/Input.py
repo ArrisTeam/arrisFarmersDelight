@@ -5,7 +5,7 @@ import time
 from ..QuModLibs.Client import Listen, Call
 from .Engine import clientApi, compFactory, levelId, playerId
 from ..Shared.Data import Food
-from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
+from ..Shared.Rules import Grilling, HeatSources
 from ..Shared.Rules.Placement import eatsPumpkinPie
 from ..Shared.Rules.SkilletHandRules import HoldReporter, cooksInsteadOfEating, skilletHand
 from ..Shared.Rules.SkilletRules import SKILLET_ITEM, nearHeat
@@ -39,8 +39,9 @@ def OnClientItemTryUse(args):
         sneaking = compFactory.CreatePlayer(playerId).isSneaking()
         if not eatsPumpkinPie(aimsAtBlock, sneaking, Food.PUMPKIN_PIE_SNEAK_TO_PLACE):
             args["cancel"] = True
-    elif cooksInsteadOfEating(itemName, _offhandName(), SKILLET_ITEM, itemName in CanCookedFoodDict, _nearHeat()):
-        # 副手煎锅、主手原料、身边有热源：这一下是手持煎（Server/SkilletHand.py），不是吃
+    elif cooksInsteadOfEating(itemName, _offhandName(), SKILLET_ITEM, Grilling.canCook(itemName, args["itemDict"].get("newAuxValue") or 0),
+                              _nearHeat()):
+        # 副手煎锅、主手原料（营火配方：表，或引擎的配方，和服务端同一个 Grilling）、身边有热源：这一下是手持煎（Server/SkilletHand.py），不是吃
         args["cancel"] = True
 
 
@@ -50,12 +51,13 @@ def _offhandName():
 
 
 def _nearHeat():
-    """身边 3x3x3 里有没有热源方块（和服务端同一条规则；客户端读不到"着火"，那种情况只由服务端认）。"""
+    """身边 3x3x3 里有没有热源方块（和服务端同一条规则 HeatSources.nearHeat：名单或两个热源标签，不看点没点着——客户端本来也读不到方块状态；
+    客户端读不到"着火"，那种情况只由服务端认）。"""
     footPos = compFactory.CreatePos(playerId).GetFootPos()
     if not footPos:
         return False
     blockInfo = compFactory.CreateBlockInfo(levelId)
-    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], CanProvideHeatBlockList)
+    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], HeatSources.NEAR)
 
 
 def _carryingSkillet():

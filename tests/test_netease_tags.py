@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # runner: py3
-"""行为包的 netease_tags/（tools/gen_tags.py 从词表 Shared/Data/Tags.py 生成）与词表本身。
+"""行为包的 netease_tags/ 和 docs/TAGS.md 里的词表（tools/gen_tags.py 从词表 Shared/Data/Tags.py 生成）与词表本身。
 
 引擎的规矩（网易 3.10 实机，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：一个文件一个标签，各模组登记的同名标签合并去重；
 成员不存在时引擎一直刷 ERROR 日志（所以只写本包的和原版的，名字要真）；没有 aux（只写扁平名）；# 引用"物品 JSON 里声明的标签"展开不全（这里不用 #）。
 锁的事：
-  1. 文件是最新的；每个文件 type / identifier / items 三个键，文件名照 identifier，identifier 不重复，成员不重复、没有 #、没有旧聚合名
+  1. 文件和文档的词表是最新的；每个文件 type / identifier / items 三个键，文件名照 identifier，identifier 不重复，成员不重复、没有 #、没有旧聚合名
   2. 成员只有 arris: 和 minecraft: 的：arris: 的在本包的物品 / 方块定义里；minecraft: 的在本机最新游戏的原版创造目录（物品）/ blocks.json（方块）里
      （本机没装游戏时这一项跳过）
   3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时）；热源两个标签合起来就是现在的热源方块表；
@@ -150,6 +150,9 @@ def testMembersMatchTheJavaTags():
             assert sorted(expanded) == sorted(members), "%s（JE %s）：JE 是 %s，这边是 %s" % (tag, jeName, expanded, members)
     assert checked >= 40, checked
     assert _jeTag("forge:eggs") == ["minecraft:egg"] and set(Tags.VANILLA_TAGS[Tags.EGG]) >= {"minecraft:egg"}
+    # common:flowers 对的是 JE 的 minecraft:flowers（原版定义，.refs 里没有它的文件）：农夫乐事放进去的是它的 small_flowers + tall_flowers
+    flowers = _jeTag("minecraft:small_flowers") + _jeTag("minecraft:tall_flowers")
+    assert sorted(flowers) == sorted(Tags.ITEM_TAGS[Tags.FLOWERS]), (flowers, Tags.ITEM_TAGS[Tags.FLOWERS])
 
 
 def testTheVocabulary():

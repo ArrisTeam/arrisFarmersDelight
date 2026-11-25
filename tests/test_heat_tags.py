@@ -1,0 +1,104 @@
+# -*- coding: utf-8 -*-
+# runner: both
+"""热源的方块标签（Shared/Rules/HeatSources，服务端 Server/Helpers/Heat.IsHeatSource、两端的手持煎锅"身边有没有热源"）。
+
+锁的事：
+  1. "点着"的规则 isLit：有 lit 或 *:lit 状态且为真，或者有 extinguished 且为假；都没有不算
+  2. 名单（CanProvideHeatBlockList）里的照旧（营火看 extinguished、熄着的炉灶不热）；不在名单里的：带 common:heat_source 就热，
+     带 common:heat_source_lit 要点着（别的模组的营火式、lit 状态式炉灶）；什么标签都不带的不热
+  3. 手持煎锅身边的热源：名单 ∪ 两个标签，不看点没点着（JE 的 isPlayerNearHeatSource；名单里的营火熄了也算，标签里的一样）
+引擎是 fakeengine.py 里的假的，标签由假口答。
+"""
+from __future__ import print_function
+
+import fakeengine
+import fdtest
+import skilletkit
+
+world = skilletkit.extend(fakeengine.install())
+Heat = fdtest.load("Server.Helpers.Heat")
+Tags = fdtest.load("Shared.Data.Tags")
+ItemTags = fdtest.load("Shared.Rules.ItemTags")
+HeatSources = fdtest.load("Shared.Rules.HeatSources")
+Skillet = fdtest.load("Shared.Rules.SkilletRules")
+
+BELOW = (10, 64, 10)
+KC_STOVE = "kaleidoscope_cookery:kaleidoscope_cookery_stove"
+
+
+class BlockTagPort(object):
+    """只答方块标签：members = {标签: [方块名]}（反查），tagsOf = {方块名: [标签]}（按方块问，服务端的 GetBlockTags）。"""
+
+    def __init__(self, members=None, blockTags=None):
+        self.members = members or {}
+        self.blockTags = blockTags or {}
+
+    def ready(self):
+        return True
+
+    def blocksOf(self, tag):
+        return self.members.get(tag)
+
+    def blockTagsOf(self, blockName):
+        return self.blockTags.get(blockName)
+
+
+def _reset():
+    for side in ItemTags.SIDES:
+        ItemTags.setPort(side, None)
+
+
+def _hot(name, states=None):
+    world.reset()
+    skilletkit.EngineData()
+    world.setBlock(BELOW[0], BELOW[1], BELOW[2], name, states=dict(states) if states is not None else None)
+    return Heat.IsHeatSource(BELOW, 0)
+
+
+def testLit():
+    for states in ({"lit": True}, {"lit": 1}, {"kaleidoscope_cookery:lit": True}, {"mymod:lit": "true"}, {"extinguished": False},
+                   {"extinguished": 0, "direction": 2}):
+        assert HeatSources.isLit(states), states
+    for states in ({"lit": False}, {"kaleidoscope_cookery:lit": 0}, {"extinguished": True}, {"lit_level": 1}, {"direction": 2}, {}, None):
+        assert not HeatSources.isLit(states), states
+
+
+def testTaggedBlocksHeatTheBlockAboveThem():
+    _reset()
+    ItemTags.setPort("server", BlockTagPort(members={Tags.HEAT_SOURCE: ["mymod:burner"], Tags.HEAT_SOURCE_LIT: [KC_STOVE, "mymod:brazier"]}))
+    assert _hot("mymod:burner"), "common:heat_source：方块名就说明在发热"
+    assert _hot(KC_STOVE, {"kaleidoscope_cookery:lit": True}) and not _hot(KC_STOVE, {"kaleidoscope_cookery:lit": False})
+    assert not _hot(KC_STOVE), "要看状态的、读不到状态：不热"
+    assert _hot("mymod:brazier", {"extinguished": False}) and not _hot("mymod:brazier", {"extinguished": True})
+    assert not _hot("mymod:oven", {"lit": True}), "不带标签的不热，哪怕有 lit"
+    _reset()
+
+
+def testTheServerAlsoAsksTheBlockForItsTags():
+    """按方块问（GetBlockTags：方块 JSON 里的 tag:xxx，3.10 以前也有）也算。"""
+    _reset()
+    ItemTags.setPort("server", BlockTagPort(blockTags={"mymod:oven": [Tags.HEAT_SOURCE_LIT], "mymod:coals": [Tags.HEAT_SOURCE]}))
+    assert _hot("mymod:coals") and _hot("mymod:oven", {"mymod:lit": True}) and not _hot("mymod:oven", {"mymod:lit": False})
+    _reset()
+
+
+def testTheListStillDecidesForItsOwnBlocks():
+    _reset()
+    assert _hot("minecraft:magma") and _hot("arris:stove") and _hot("minecraft:campfire", {"extinguished": False})
+    assert not _hot("minecraft:campfire", {"extinguished": True}) and not _hot("arris:stove_extinguish") and not _hot("minecraft:stone")
+    _reset()
+
+
+def testNearHeatIgnoresWhetherItIsLit():
+    _reset()
+    assert "minecraft:campfire" in HeatSources.NEAR and "arris:stove" in HeatSources.NEAR, "名单里的"
+    assert "arris:stove_extinguish" not in HeatSources.NEAR and "minecraft:air" not in HeatSources.NEAR and None not in HeatSources.NEAR
+    ItemTags.setPort("client", BlockTagPort(members={Tags.HEAT_SOURCE: ["mymod:burner"], Tags.HEAT_SOURCE_LIT: [KC_STOVE]}))
+    assert "mymod:burner" in HeatSources.NEAR and KC_STOVE in HeatSources.NEAR, "标签里的，不看点没点着"
+    near = Skillet.nearHeat((1.5, 64.0, 1.5), lambda pos: KC_STOVE if pos == (1, 63, 1) else "minecraft:air", HeatSources.NEAR)
+    assert near, "脚下 3x3x3 里有一座带标签的炉灶"
+    _reset()
+
+
+if __name__ == "__main__":
+    raise SystemExit(fdtest.run(globals()))

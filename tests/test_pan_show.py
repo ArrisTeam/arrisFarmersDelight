@@ -482,7 +482,7 @@ def testAOneSidedFoodThatIsNotAnEggIsNeitherDrawnAsAnEggNorCracked():
         assert show.nodes["piece_0"].item["newItemName"] == BAKED
     finally:
         Cooking.OneSidedList.remove(POTATO)
-    assert Cooking.OneSidedList == [EGG]
+    assert Cooking.OneSidedList == [EGG, "minecraft:blue_egg", "minecraft:brown_egg"]
     show = make(heated=True)
     apply(show, EGG, 1)
     apply(show, EGG, 2)

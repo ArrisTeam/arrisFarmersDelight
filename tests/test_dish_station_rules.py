@@ -144,7 +144,9 @@ def testACrackedIngredientIsReadFromTheSameTableAsThePotTheBoardAndThePan():
         assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_ARRANGE, "番茄进了 cracked 那张表：摆"
     finally:
         Sunk.CRACKED = kept
-    assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_TOSS and Sunk.CRACKED == (("minecraft:egg", 0),)
+    assert Rules.finishOf(bowl(LEAF, TOMATO)) == Assembly.FINISH_TOSS and Sunk.CRACKED == kept
+    assert [name for name, _aux in Sunk.CRACKED] == ["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"], "基岩版的三种蛋"
+    assert Rules.finishOf(bowl(LEAF, ("minecraft:brown_egg", 0))) == Assembly.FINISH_ARRANGE, "棕色鸡蛋也是蛋"
 
 
 def testWhatIsAWholeBlockOfFood():

@@ -4,7 +4,8 @@
 
 - 只有农夫乐事在场（标签按静态词表答）时，和原来"预先展开 + 排好序查表"的索引一个结果：今天的每一种写法配成同一道菜、余料一样，
   原来配不上的（一到三件料的组合）照旧配不上；站点的候选摆法（candidatesFor）和原来一模一样；
-- 标签格：别的模组的东西进了标签就能用（假的引擎口），口准备好之前不认、准备好的那一刻（ItemTags.generation 变了）记着的答案作废；
+- 标签格：别的模组的东西进了标签就能用（假的引擎口）。口准备好之前照 ItemTags 的规矩按单件问引擎、枚举只给静态表，而且什么答案都不记
+  （引擎改了口马上跟上）；准备好以后记着答案，换代（ItemTags.generation 变了）时作废；
 - 表里靠前的赢（格子形和旧写法之间也是）；墓碑（Disabled）哪里都不认；只有 Slots、没有写法的配方也配得上，余料按锅里实际那几件算；
 - rebuildIndex 只是作废，下次用到时重算。
 """
@@ -118,9 +119,10 @@ def testStationCandidatesAreTheSameAsBefore():
     assert Rules.candidatesFor([("test:nothing", 0)]) == []
 
 
-def testATagSlotTakesOtherModsItemsOnceThePortIsReady():
+def testATagSlotTakesOtherModsItemsAndNothingIsRememberedBeforeThePortIsReady():
     steak = ("other:steak", 0)
-    port = Port({"common:raw_beef": ["minecraft:beef", "arris:minced_beef", "other:steak"]}, ready=False)
+    beef = {"common:raw_beef": ["minecraft:beef", "arris:minced_beef", "other:steak"]}
+    port = Port(dict(beef), ready=False)
     stew = TABLE[next(at for at, recipe in enumerate(TABLE) if recipe["Id"] == "farmersdelight:cooking/beef_stew")]
     row = {"Id": "test:cooking/steak_stew", "Slots": [["#common:raw_beef"], ["test:onion"]], "Recipe": [],
            "CookResult": ("test:steak_stew", 0), "PushItem": [], "text": "x"}
@@ -128,12 +130,22 @@ def testATagSlotTakesOtherModsItemsOnceThePortIsReady():
         ItemTags.setPort("server", port)
         try:
             pot = [_item("other:steak"), _item("test:onion")]
-            assert Rules.matchRecipe(pot) == (None, None) and not Rules.isIngredient(steak), "口还没准备好：只认静态表"
-            port.isReady = True
+            assert Rules.matchRecipe(pot)[0]["newItemName"] == "test:steak_stew" and Rules.isIngredient(steak), \
+                "口没准备好也按单件问引擎（ItemTags 的规矩）：认得别的模组的东西"
+            assert steak not in Rules.optionsOf(row)[0], "枚举标签的成员（书、界面上轮换的）准备好之前只有静态表的"
+            port.extra = {}
+            assert Rules.matchRecipe(pot) == (None, None) and not Rules.isIngredient(steak), "准备好之前不记答案：引擎改了口马上跟上"
+            assert Rules.candidatesFor([steak, ("test:onion", 0)]) == []
+            port.extra, port.isReady = dict(beef), True
             result, pushed = Rules.matchRecipe(pot)
-            assert result == {"newItemName": "test:steak_stew", "newAuxValue": 0, "count": 1} and pushed == [], "准备好了：换代，记着的答案作废"
+            assert result == {"newItemName": "test:steak_stew", "newAuxValue": 0, "count": 1} and pushed == [], "准备好了：换代"
             assert Rules.isIngredient(steak) and Rules.matchIndex(list(reversed(pot))) == len(TABLE) - 1
             assert Rules.candidatesFor([steak, ("test:onion", 0)]) == [(len(TABLE) - 1, {steak: 1, ("test:onion", 0): 1})]
+            assert steak in Rules.optionsOf(row)[0]
+            port.extra = {}
+            assert Rules.matchRecipe(pot)[0]["newItemName"] == "test:steak_stew", "准备好以后记着答案，直到换代"
+            ItemTags.refresh()
+            assert Rules.matchRecipe(pot) == (None, None) and not Rules.isIngredient(steak), "换代：记着的答案作废"
             assert stew["Recipe"] and Rules.matchRecipe([_item("minecraft:beef"), _item("minecraft:carrot"), _item("minecraft:potato")])[0]
         finally:
             ItemTags.setPort("server", None)

@@ -44,7 +44,8 @@ def testObtainHandsOutTheVeryObjectsTheRulesRead():
     assert Legacy.ArrisFarmersDelightObtain("DishList") is Dishes.DishList
     assert Legacy.ArrisFarmersDelightObtain("OneSidedList") is Cooking.OneSidedList is Pan.ONE_SIDED
     assert Legacy.ArrisFarmersDelightObtain("NotOnGrillList") is Cooking.NotOnGrillList is Grill.NOT_ON_GRILL
-    assert Cooking.OneSidedList == ["minecraft:egg"] and Cooking.NotOnGrillList == ["minecraft:egg"], "HoD 的缺省：两样都只有蛋"
+    eggs = ["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"]
+    assert Cooking.OneSidedList == eggs and Cooking.NotOnGrillList == eggs, "HoD 的缺省：两样都只有蛋（基岩版的三种蛋）"
     assert len(Legacy._TARGETS) == 25, "原有 21 个名字加这三个，再加 2026-11-26 的 CuttingTagDict（按标签切的砧板配方）"
 
 

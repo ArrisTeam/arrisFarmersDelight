@@ -3,6 +3,7 @@
 
 Shared/Rules/CookingPot.py 的公共函数都从这里取，别处不直接用。表改过（touch：联动接口追加 / 登记 / 删除、客户端并表之后）下次用到时
 重算；标签的答案变了（ItemTags.generation：远端客户端进世界之后标签才全）只清记着的答案。登记一条配方不再整张重建。
+标签的引擎口准备好之前不记答案（_remember），照 ItemTags 的规矩：那时按单件问的答案还会变。
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from . import ItemTags, PotSlots
@@ -120,6 +121,10 @@ def table():
 
 
 def _remember(store, key, value):
+    """记下答案（满了清掉重记）。标签的引擎口还没准备好时不记：那时按单件问引擎的答案可能不全、准备好之前还会变（ItemTags 自己也不缓存
+    那时的答案；万一口一直没准备好，记下的"配不上"会一直错下去）。没装口（离线、沙箱）也算没准备好：只是不记，答案一样。"""
+    if not ItemTags.ready():
+        return value
     if len(store) >= MEMO_LIMIT:
         store.clear()
     store[key] = value

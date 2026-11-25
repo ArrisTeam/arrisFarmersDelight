@@ -54,7 +54,7 @@ def testThePouredAndCrackedListsAreTheOnesJEUses():
     """poured.json：奶桶 / 水桶 / 蜂蜜瓶 / FD 的奶瓶和番茄酱 / 龙息 / 岩浆桶（别的模组的不写）；cracked.json：蛋。"""
     assert Hands.POURED == frozenset(["minecraft:milk_bucket", "minecraft:water_bucket", "minecraft:honey_bottle", "arris:milk_bottle",
                                       "arris:tomato_sauce", "minecraft:dragon_breath", "minecraft:lava_bucket"])
-    assert Hands.CRACKED == frozenset(["minecraft:egg"])
+    assert Hands.CRACKED == frozenset(["minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"]), "基岩版的三种蛋一视同仁"
     assert not Hands.POURED & Hands.CRACKED
 
 

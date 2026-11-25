@@ -34,6 +34,8 @@ VANILLA = {
     "minecraft:potato": "textures/items/potato", "minecraft:baked_potato": "textures/items/potato_baked",
     "minecraft:carrot": "textures/items/carrot", "minecraft:beetroot": "textures/items/beetroot", "minecraft:apple": "textures/items/apple",
     "minecraft:bread": "textures/items/bread", "minecraft:egg": "textures/items/egg", "minecraft:cake": "textures/items/cake",
+    "minecraft:blue_egg": "textures/items/blue_egg", "minecraft:brown_egg": "textures/items/brown_egg",     # 基岩版另外两种蛋：下锅和鸡蛋一样
+
     "minecraft:melon_slice": "textures/items/melon", "minecraft:pumpkin_pie": "textures/items/pumpkin_pie",
     "minecraft:sweet_berries": "textures/items/sweet_berries", "minecraft:glow_berries": "textures/items/glow_berries",
     "minecraft:kelp": "textures/items/kelp", "minecraft:dried_kelp": "textures/items/dried_kelp", "minecraft:cookie": "textures/items/cookie",

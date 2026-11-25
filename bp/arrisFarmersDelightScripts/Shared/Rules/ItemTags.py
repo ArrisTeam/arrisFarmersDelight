@@ -4,8 +4,10 @@
 以后所有"按标签认"的地方（是不是刀、是不是热源、厨锅的格子收不收……）都问这里，不直接调引擎：
 - 引擎口两端各装一个：服务端 Server/Helpers/Tags.py、客户端 Client/Tags.py，导入时 setPort（口是 Shared/Rules/TagPort.EnginePort）。
   单机时两端在同一个进程、共用这一份模块状态，所以按端各存一个；两个都在就用服务端的（服务端从系统建好起标签就是全的）。
-- 没有口（离线测试、Strata 沙箱）或者口还没准备好（客户端进世界之前，见 TagPort）时，按 Shared/Data/Tags 的静态表作答，
-  就是农夫乐事单独在场时的答案；这时的答案不缓存，口准备好之后换成引擎的。
+- 没有口（离线测试、Strata 沙箱）时按 Shared/Data/Tags 的静态表作答，就是农夫乐事单独在场时的答案。
+- 口还没准备好（客户端进世界之前，见 TagPort）时：枚举（itemsOf / blocksOf）只给静态表；按单件问的（tagsOf / blockTagsOf，以及
+  has / blockHas 里按单件问的那一半）照样问引擎、并上静态表，但不缓存。那时引擎按单件给的答案可能不全（原版物品还是 None），不会多给，
+  并上静态表只会多认、不会错认；3.10 上万一本包的 netease_tags 没挂上（口一直不算准备好），下游在物品 JSON 里挂了 arris:knife 的刀也照样认得到。
 - 口准备好之后：静态表 ∪ 引擎的答案。引擎的答案本来就含农夫乐事登记的那些，并上静态表是保底：引擎那边万一没挂上，农夫乐事自己的东西照样认，
   也就是装了引擎口只会多认别的模组的东西，不会比单独在场时少认。答案按标签 / 物品名缓存（标签加载完就不变了，查询本身也便宜）。
   某一样口答不了（3.10 以前没有反查接口：itemsOf / blocksOf 答 None）时那一样只有静态表的，按物品问（GetItemTags）照旧问引擎。
@@ -80,7 +82,7 @@ def _names(answer):
 
 
 def _sync():
-    """现在能用的口（没有、没准备好返回 None）；口从没准备好变成准备好（或者反过来）时换代。"""
+    """(现在用的口, 它准备好没有)：没装口是 (None, False)；口从没准备好变成准备好（或者反过来）时换代。"""
     port = None
     for side in SIDES:
         port = _ports.get(side)
@@ -90,12 +92,12 @@ def _sync():
     if ok != _state["ready"]:
         _state["ready"] = ok
         _bump()
-    return port if ok else None
+    return port, ok
 
 
 def ready():
-    """现在有没有能用的引擎口（没有时全部按静态词表答）。"""
-    return _sync() is not None
+    """现在有没有准备好的引擎口（没有时枚举按静态词表答）。"""
+    return _sync()[1]
 
 
 def generation():
@@ -137,14 +139,23 @@ def _itemSet(port, tag):
     return _cache[key]
 
 
-def _tagsOf(port, itemName, aux):
-    static = _STATIC_TAGS_OF.get(itemName, _EMPTY)
-    if port is None or not itemName:
+def _single(port, ok, key, static, method, *args):
+    """按单件问（tagsOf / blockTagsOf）：静态表 ∪ 口的答案。口没准备好也问，只是不缓存；准备好了缓存。"""
+    if port is None:
         return static
-    key = ("tags", itemName, aux or 0)
-    if key not in _cache:
-        _cache[key] = static | frozenset(_names(_ask(port, "tagsOf", itemName, aux or 0)) or ())
-    return _cache[key]
+    if ok and key in _cache:
+        return _cache[key]
+    answer = static | frozenset(_names(_ask(port, method, *args)) or ())
+    if ok:
+        _cache[key] = answer
+    return answer
+
+
+def _tagsOf(port, ok, itemName, aux):
+    static = _STATIC_TAGS_OF.get(itemName, _EMPTY)
+    if not itemName:
+        return static
+    return _single(port, ok, ("tags", itemName, aux or 0), static, "tagsOf", itemName, aux or 0)
 
 
 def _blocksOf(port, tag):
@@ -157,47 +168,48 @@ def _blocksOf(port, tag):
     return _cache[key]
 
 
-def _blockTagsOf(port, blockName):
+def _blockTagsOf(port, ok, blockName):
     static = _STATIC_BLOCK_TAGS_OF.get(blockName, _EMPTY)
-    if port is None or not blockName:
+    if not blockName:
         return static
-    key = ("blocktags", blockName)
-    if key not in _cache:
-        _cache[key] = static | frozenset(_names(_ask(port, "blockTagsOf", blockName)) or ())
-    return _cache[key]
+    return _single(port, ok, ("blocktags", blockName), static, "blockTagsOf", blockName)
 
 
 def itemsOf(tag):
-    """这个物品标签现在的全部成员（物品名的元组）：静态表的在前（表里的顺序），引擎多出来的（别的模组登记的）接在后面。"""
-    return _itemsOf(_sync(), tag)
+    """这个物品标签现在的全部成员（物品名的元组）：静态表的在前（表里的顺序），引擎多出来的（别的模组登记的）接在后面；口没准备好时只有静态表的。"""
+    port, ok = _sync()
+    return _itemsOf(port if ok else None, tag)
 
 
 def tagsOf(itemName, aux=0):
-    """这件物品现在带的全部物品标签（frozenset）。口准备好时含引擎给的一切（原版的 minecraft:is_food、物品 JSON 里声明的……）。"""
-    return _tagsOf(_sync(), itemName, aux)
+    """这件物品现在带的全部物品标签（frozenset）：静态表 ∪ 引擎给的一切（原版的 minecraft:is_food、物品 JSON 里声明的……）。"""
+    port, ok = _sync()
+    return _tagsOf(port, ok, itemName, aux)
 
 
 def has(itemName, tag):
     """这件物品带不带这个物品标签：按物品问（GetItemTags）、按标签反查（LookupItemsByItemTag），任一个说带就是带。"""
     if not itemName:
         return False
-    port = _sync()
-    return tag in _tagsOf(port, itemName, 0) or itemName in _itemSet(port, tag)
+    port, ok = _sync()
+    return tag in _tagsOf(port, ok, itemName, 0) or itemName in _itemSet(port if ok else None, tag)
 
 
 def blocksOf(tag):
-    """这个方块标签现在的全部成员（方块名的 frozenset）。"""
-    return _blocksOf(_sync(), tag)
+    """这个方块标签现在的全部成员（方块名的 frozenset）；口没准备好时只有静态表的。"""
+    port, ok = _sync()
+    return _blocksOf(port if ok else None, tag)
 
 
 def blockTagsOf(blockName):
     """这个方块现在带的方块标签（frozenset）。引擎的 GetBlockTags 只有服务端有：客户端只有静态表的，判断用 blockHas（它还按标签反查）。"""
-    return _blockTagsOf(_sync(), blockName)
+    port, ok = _sync()
+    return _blockTagsOf(port, ok, blockName)
 
 
 def blockHas(blockName, tag):
     """这个方块带不带这个方块标签：按标签反查（LookupBlocksByBlockTag，两端）或按方块问（GetBlockTags，服务端）任一个说带就是带。"""
     if not blockName:
         return False
-    port = _sync()
-    return blockName in _blocksOf(port, tag) or tag in _blockTagsOf(port, blockName)
+    port, ok = _sync()
+    return blockName in _blocksOf(port if ok else None, tag) or tag in _blockTagsOf(port, ok, blockName)
