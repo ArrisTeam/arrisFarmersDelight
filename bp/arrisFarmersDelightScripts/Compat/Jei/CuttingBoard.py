@@ -38,7 +38,8 @@ def RegisterCuttingBoardRecipes():
 
 def records():
     """每条砧板配方一条记录 [(原料 [(物品名, aux)], 配方)]：精确的那些原料就是键；按标签的（CuttingTagDict）原料是标签现在的成员
-    （界面就绪时客户端的标签已经全了），配方页上轮换着画，按其中任何一样查用途都查得到。一个成员都没有的标签配方不登。"""
+    （单人游戏里登记时引擎口已经准备好；远端客户端没量过，没准备好时按静态词表，只是少列别的模组的成员），配方页上轮换着画，
+    按其中任何一样查用途都查得到。一个成员都没有的标签配方不登。"""
     found = [([inputItem], data) for inputItem, data in CuttingBoardDict.items()]
     found += [([(name, 0) for name in ItemTags.itemsOf(tag)], data) for tag, data in sorted(CuttingTagDict.items())]
     return [(inputs, data) for inputs, data in found if inputs]

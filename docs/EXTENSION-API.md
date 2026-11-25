@@ -123,6 +123,8 @@ T5  调一次 onRecipesChanged 的处理函数（types、recipeIds 都是 None�
 T6  玩家进服：表同步把 T3、T4 的改动发给他的客户端
 ```
 
+T2 → T5 的先后 2026-11-26 在游戏里核过：第三方在 ready 的处理函数里查不到行为包里的 JSON 配方（还没读），`onRecipesChanged` 在读完之后才调。
+
 客户端：`__init__` 里监听 `ClientExtensionApiReady` → 引擎发 `LoadClientAddonScriptsAfter` → 农夫乐事广播。客户端的配方表是服务端同步过来的：
 玩家进服之前，客户端只有农夫乐事自带的配方。
 
