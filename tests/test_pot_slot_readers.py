@@ -149,7 +149,7 @@ def testSoupPiecesOfASlotsOnlyRecipeUseTheFirstOptions():
     with Setup():
         assert Rules.framesOf(STEW)[0] == [BEEF, ONION, ONION]
         assert Look.dishSlots("test:steak_stew") != Look.EMPTY, "牛肉和洋葱会留下碎料"
-        assert Look.dishSlots("test:dead") == Look.EMPTY
+        assert Look.dishSlots("test:dead") != Look.EMPTY, "删掉的菜（墓碑）：锅里已经煮好的那锅照墓碑那一行漂碎料，不抛"
 
 
 if __name__ == "__main__":

@@ -43,6 +43,11 @@ def isPair(value):
     return isinstance(value[0], _TEXT) and isInt(value[1])          # py2 的 long 也算（引擎给的 aux 可能是 long）
 
 
+def isDish(recipe):
+    """这一行写着一道菜（成品写对了）：活的配方和墓碑都算（锅里已经煮好的菜按成品查它的容器、时间、经验）。"""
+    return isinstance(recipe, dict) and isPair(recipe.get("CookResult")) and bool(recipe["CookResult"][0])
+
+
 def isLive(recipe):
     """这一行是一条配方：成品写对了、不是墓碑（下游写坏的行、表同步占位的空行都不算）。"""
     return isinstance(recipe, dict) and not recipe.get("Disabled") and isPair(recipe.get("CookResult")) and bool(recipe["CookResult"][0])
@@ -82,13 +87,7 @@ def _rebuild():
     for index, recipe in enumerate(CookingPotRecipeList):
         if not isLive(recipe):
             continue
-        name = recipe["CookResult"][0]
-        seconds.setdefault(name, number(recipe.get("CookTime"), DEFAULT_COOK_SECONDS) or DEFAULT_COOK_SECONDS)
-        given = number(recipe.get("Experience"), DEFAULT_EXPERIENCE)
-        perItem.setdefault(name, given / countOf(recipe))
-        perServing.setdefault(name, given)
-        if isPair(recipe.get("Vessel")):
-            vessels.add(recipe["Vessel"][0])
+        _dishFacts(recipe, seconds, perItem, perServing, vessels)
         for variant in waysOf(recipe):
             legacy.setdefault(tuple(sorted(variant)), (index, variant))
             parts = {}
@@ -101,9 +100,23 @@ def _rebuild():
             slotted.append((index, slots))
             exact.update(PotSlots.itemsIn(slots))
             tags.update(PotSlots.tagsIn(slots))
+    for recipe in CookingPotRecipeList:
+        if isDish(recipe) and not isLive(recipe):
+            _dishFacts(recipe, seconds, perItem, perServing, vessels)     # 墓碑：同成品没有活配方时才用得上（setdefault）
     _table.clear()
     _table.update(legacy=legacy, legacyParts=legacyParts, exact=exact, tags=tags, vessels=vessels, slotted=slotted,
                   seconds=seconds, perItem=perItem, perServing=perServing)
+
+
+def _dishFacts(recipe, seconds, perItem, perServing, vessels):
+    """按成品记的几样：一份煮几秒、经验、要什么容器（同成品先到先得）。"""
+    name = recipe["CookResult"][0]
+    seconds.setdefault(name, number(recipe.get("CookTime"), DEFAULT_COOK_SECONDS) or DEFAULT_COOK_SECONDS)
+    given = number(recipe.get("Experience"), DEFAULT_EXPERIENCE)
+    perItem.setdefault(name, given / countOf(recipe))
+    perServing.setdefault(name, given)
+    if isPair(recipe.get("Vessel")):
+        vessels.add(recipe["Vessel"][0])
 
 
 def table():

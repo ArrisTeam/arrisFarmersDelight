@@ -5,7 +5,7 @@
 一条配方配得上，当且仅当它有一种"形"和锅里的东西一一对上（JE 的 CookingPotRecipe.matches：RecipeMatcher.findMatches）：
 - Slots 形：每件东西分给一个互不相同、收它的格，格子正好用完（二分图完美匹配，Shared/Rules/PotSlots.py；标签格问 ItemTags）；
 - Recipe 里的每一种旧写法各是一个形：种类和件数正好相同。
-几条配方都配得上时表里靠前的赢；墓碑（Disabled）跳过。索引和记着的答案在 Shared/Rules/PotRecipeTable.py：配方表改过（rebuildIndex：
+几条配方都配得上时表里靠前的赢；墓碑（Disabled）配不上（按成品查容器、时间、经验时没有活配方才退回它）。索引和记着的答案在 Shared/Rules/PotRecipeTable.py：配方表改过（rebuildIndex：
 联动接口、客户端并表）下次用到时重算，标签的答案变了（ItemTags.generation）只清记着的答案——登记一条配方不再整张重建。
 出锅一份：成品 CookCount 个（JE 的配方结果数量，饺子 2 个），吐出 PushItem 加上锅里那几件料剩下的空容器（JE 的
 CookingPotBlockEntity：配料的合成剩余物，再加 INGREDIENT_REMAINDER_OVERRIDES，表在 Shared/Data/Remainders.py——
@@ -123,11 +123,15 @@ def isVessel(itemName):
 
 
 def findRecipeByResult(resultItemName):
-    """按成品名找第一条配方（与旧实现"首个匹配获胜"一致，墓碑跳过）；没有返回 None。"""
+    """按成品名找第一条活配方（与旧实现"首个匹配获胜"一致）；没有活的退回同成品的第一条墓碑：配方删了，锅里已经煮好的那锅
+    照样按它盛（容器、经验；调它的都是"锅里这道菜"：盛菜、站点的锅、汤里的碎料、书的当前页）。都没有返回 None。"""
+    fallback = None
     for recipeDict in CookingPotRecipeList:
-        if isLive(recipeDict) and recipeDict["CookResult"][0] == resultItemName:
-            return recipeDict
-    return None
+        if Table.isDish(recipeDict) and recipeDict["CookResult"][0] == resultItemName:
+            if isLive(recipeDict):
+                return recipeDict
+            fallback = fallback or recipeDict
+    return fallback
 
 
 def vesselOf(resultName):
