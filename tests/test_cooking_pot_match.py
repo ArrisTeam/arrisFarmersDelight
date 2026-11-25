@@ -1,0 +1,208 @@
+# -*- coding: utf-8 -*-
+# runner: both
+"""厨锅的逐格配对（Shared/Rules/CookingPot.py + PotRecipeTable.py）：
+
+- 只有农夫乐事在场（标签按静态词表答）时，和原来"预先展开 + 排好序查表"的索引一个结果：今天的每一种写法配成同一道菜、余料一样，
+  原来配不上的（一到三件料的组合）照旧配不上；站点的候选摆法（candidatesFor）和原来一模一样；
+- 标签格：别的模组的东西进了标签就能用（假的引擎口），口准备好之前不认、准备好的那一刻（ItemTags.generation 变了）记着的答案作废；
+- 表里靠前的赢（格子形和旧写法之间也是）；墓碑（Disabled）哪里都不认；只有 Slots、没有写法的配方也配得上，余料按锅里实际那几件算；
+- rebuildIndex 只是作废，下次用到时重算。
+"""
+from __future__ import print_function
+
+import itertools
+
+import fdtest
+
+Rules = fdtest.load("Shared.Rules.CookingPot")
+Recipes = fdtest.load("Shared.Data.CookingPotRecipes")
+ItemTags = fdtest.load("Shared.Rules.ItemTags")
+TABLE = Recipes.CookingPotRecipeList
+
+
+def _item(name, aux=0, count=1):
+    return {"newItemName": name, "newAuxValue": aux, "count": count}
+
+
+class Port(object):
+    """假的引擎口：准备好以后给出 extra 里的成员（别的模组登记进标签的）。"""
+
+    def __init__(self, extra, ready=True):
+        self.extra, self.isReady = extra, ready
+
+    def ready(self):
+        return self.isReady
+
+    def itemsOf(self, tag):
+        return list(self.extra.get(tag, ()))
+
+    def tagsOf(self, name, aux=0):
+        return [tag for tag, members in self.extra.items() if name in members]
+
+    def blocksOf(self, tag):
+        return []
+
+    def blockTagsOf(self, name):
+        return []
+
+
+class Rows(object):
+    """with Rows(行, ...)：临时往表尾加几行（进去时 rebuildIndex），出来时拿掉。"""
+
+    def __init__(self, *rows):
+        self.rows = rows
+
+    def __enter__(self):
+        TABLE.extend(self.rows)
+        Rules.rebuildIndex()
+        return self
+
+    def __exit__(self, *exc):
+        for row in self.rows:
+            TABLE.remove(row)
+        Rules.rebuildIndex()
+        return False
+
+
+def _oldIndex():
+    """原来的索引（rebuildIndex 预先展开、排好序的写法查表；撞键时靠前的赢）：键 -> (配方序号, 那种写法)。"""
+    index = {}
+    for at, recipe in enumerate(TABLE):
+        for variant in recipe["Recipe"]:
+            index.setdefault(tuple(sorted(variant)), (at, variant))
+    return index
+
+
+def _oldCandidates():
+    found = {}
+    for at, recipe in enumerate(TABLE):
+        for variant in recipe["Recipe"]:
+            parts = {}
+            for entry in variant:
+                parts[entry] = parts.get(entry, 0) + 1
+            found.setdefault(frozenset(parts), []).append((at, parts))
+    return found
+
+
+def testEveryWayOfTodayMatchesTheSameDishAsTheOldIndex():
+    old = _oldIndex()
+    for key, (at, variant) in old.items():
+        slots = [_item(name, aux) for name, aux in reversed(variant)]
+        assert Rules.matchIndex(slots) == at, (variant, Rules.matchIndex(slots), at)
+        result, pushed = Rules.matchRecipe(slots)
+        recipe = TABLE[at]
+        assert (result["newItemName"], result["newAuxValue"]) == recipe["CookResult"] and result["count"] == recipe.get("CookCount", 1)
+        assert pushed == Rules.pushItemsOf(variant, recipe.get("PushItem")), "配上的是旧写法：余料照那种写法算，和原来一样"
+        assert Rules.lookupRecipe(key) == (recipe["CookResult"], pushed)
+
+
+def testWhatTheOldIndexDidNotMatchStillDoesNotMatch():
+    old = _oldIndex()
+    kinds = sorted(set(entry for recipe in TABLE for variant in recipe["Recipe"] for entry in variant))
+    checked = 0
+    for size in (1, 2, 3):
+        for count, combo in enumerate(itertools.combinations_with_replacement(kinds, size)):
+            if size == 3 and count % 7:
+                continue                                  # 三件的组合抽七分之一（全跑太慢），一到两件的全跑
+            expected = old.get(tuple(sorted(combo)))
+            assert Rules.matchIndex([_item(name, aux) for name, aux in combo]) == (expected[0] if expected else None), combo
+            checked += 1
+    assert checked > 3000, checked
+
+
+def testStationCandidatesAreTheSameAsBefore():
+    old = _oldCandidates()
+    for kinds, expected in old.items():
+        assert Rules.candidatesFor(kinds) == expected, sorted(kinds)
+        assert Rules.partsFor(kinds) == [parts for _at, parts in expected]
+    assert Rules.candidatesFor([("test:nothing", 0)]) == []
+
+
+def testATagSlotTakesOtherModsItemsOnceThePortIsReady():
+    steak = ("other:steak", 0)
+    port = Port({"common:raw_beef": ["minecraft:beef", "arris:minced_beef", "other:steak"]}, ready=False)
+    stew = TABLE[next(at for at, recipe in enumerate(TABLE) if recipe["Id"] == "farmersdelight:cooking/beef_stew")]
+    row = {"Id": "test:cooking/steak_stew", "Slots": [["#common:raw_beef"], ["test:onion"]], "Recipe": [],
+           "CookResult": ("test:steak_stew", 0), "PushItem": [], "text": "x"}
+    with Rows(row):
+        ItemTags.setPort("server", port)
+        try:
+            pot = [_item("other:steak"), _item("test:onion")]
+            assert Rules.matchRecipe(pot) == (None, None) and not Rules.isIngredient(steak), "口还没准备好：只认静态表"
+            port.isReady = True
+            result, pushed = Rules.matchRecipe(pot)
+            assert result == {"newItemName": "test:steak_stew", "newAuxValue": 0, "count": 1} and pushed == [], "准备好了：换代，记着的答案作废"
+            assert Rules.isIngredient(steak) and Rules.matchIndex(list(reversed(pot))) == len(TABLE) - 1
+            assert Rules.candidatesFor([steak, ("test:onion", 0)]) == [(len(TABLE) - 1, {steak: 1, ("test:onion", 0): 1})]
+            assert stew["Recipe"] and Rules.matchRecipe([_item("minecraft:beef"), _item("minecraft:carrot"), _item("minecraft:potato")])[0]
+        finally:
+            ItemTags.setPort("server", None)
+
+
+def testTheEarlierRecipeWinsBetweenSlotsAndWays():
+    first = {"Id": "test:cooking/first", "Slots": [["test:a", "test:b"], ["test:c"]], "Recipe": [], "CookResult": ("test:first", 0),
+             "PushItem": [], "text": "1"}
+    second = {"Recipe": [[("test:b", 0), ("test:c", 0)]], "CookResult": ("test:second", 0), "PushItem": [], "text": "2"}
+    third = {"Id": "test:cooking/third", "Slots": [["test:c"], ["test:d"]], "Recipe": [], "CookResult": ("test:third", 0),
+             "PushItem": [], "text": "3"}
+    fourth = {"Recipe": [[("test:d", 0), ("test:c", 0)]], "CookResult": ("test:fourth", 0), "PushItem": [], "text": "4"}
+    with Rows(first, second, third, fourth):
+        assert Rules.matchRecipe([_item("test:c"), _item("test:b")])[0]["newItemName"] == "test:first", "格子形在前"
+        assert Rules.matchRecipe([_item("test:d"), _item("test:c")])[0]["newItemName"] == "test:third"
+    with Rows(second, first):
+        assert Rules.matchRecipe([_item("test:c"), _item("test:b")])[0]["newItemName"] == "test:second", "旧写法在前"
+        assert Rules.matchRecipe([_item("test:a"), _item("test:c")])[0]["newItemName"] == "test:first"
+
+
+def testTombstonesAreSkippedEverywhere():
+    dead = {"Id": "test:cooking/dead", "Slots": [["test:x"]], "Recipe": [[("test:x", 0)]], "CookResult": ("test:dead", 0),
+            "Vessel": ("test:cup", 0), "PushItem": [], "text": "x", "Disabled": True, "CookTime": 3.0}
+    alive = {"Recipe": [[("test:x", 0)]], "CookResult": ("test:dead", 0), "PushItem": [], "text": "y"}
+    with Rows(dead):
+        assert Rules.matchRecipe([_item("test:x")]) == (None, None) and not Rules.isIngredient(("test:x", 0))
+        assert not Rules.isVessel("test:cup") and Rules.findRecipeByResult("test:dead") is None and Rules.vesselOf("test:dead") is None
+        assert Rules.cookSecondsOf("test:dead") == Rules.DEFAULT_COOK_SECONDS
+        assert Rules.candidatesFor([("test:x", 0)]) == []
+        with Rows(alive):
+            assert Rules.matchIndex([_item("test:x")]) == len(TABLE) - 1 and Rules.findRecipeByResult("test:dead") is alive
+
+
+def testASlotsOnlyRecipeGivesBackWhatThePotActuallyHeld():
+    row = {"Id": "test:cooking/milky", "Slots": [["minecraft:milk_bucket", "arris:milk_bottle"], [("minecraft:dye", 4)]], "Recipe": [],
+           "CookResult": ("test:milky", 0), "CookCount": 3, "PushItem": [("test:spoon", 0)], "text": "x"}
+    with Rows(row):
+        result, pushed = Rules.matchRecipe([_item("minecraft:dye", 4), _item("arris:milk_bottle")])
+        assert result["count"] == 3 and pushed == [("test:spoon", 0), ("minecraft:glass_bottle", 0)]
+        assert Rules.matchRecipe([_item("minecraft:dye", 1), _item("arris:milk_bottle")]) == (None, None), "aux 不对"
+        assert Rules.isIngredient(("minecraft:dye", 4)) and not Rules.isIngredient(("minecraft:dye", 1))
+
+
+def testRebuildIndexOnlyInvalidates():
+    before = Rules.revision()
+    row = {"Recipe": [[("test:late", 0)]], "CookResult": ("test:late_dish", 0), "PushItem": [], "text": "x"}
+    assert Rules.matchRecipe([_item("test:late")]) == (None, None)
+    TABLE.append(row)
+    try:
+        assert Rules.matchRecipe([_item("test:late")]) == (None, None), "没调 rebuildIndex：还是记着的答案"
+        Rules.rebuildIndex()
+        assert Rules.revision() == before + 1
+        assert Rules.matchRecipe([_item("test:late")])[0]["newItemName"] == "test:late_dish"
+    finally:
+        TABLE.remove(row)
+        Rules.rebuildIndex()
+
+
+def testBadRowsAreNotRecipes():
+    rows = ({"Recipe": [], "CookResult": ("", 0), "PushItem": [], "text": ""},                      # 表同步占着下标的空行
+            {"Recipe": [[("test:y", "x")], "nope", [("test:y", 0)]], "CookResult": ("test:half", 0), "CookTime": "slow",
+             "Experience": None, "text": "x"},
+            {"Slots": [["bad"]], "Recipe": [], "CookResult": ("test:bad_slots", 0), "text": "x"},
+            "not a dict")
+    with Rows(*rows):
+        assert Rules.matchRecipe([_item("test:y")])[0]["newItemName"] == "test:half", "写坏的写法跳过，好的照用"
+        assert Rules.cookSecondsOf("test:half") == Rules.DEFAULT_COOK_SECONDS and Rules.experienceOf("test:half") == Rules.DEFAULT_EXPERIENCE
+        assert Rules.optionsOf(rows[2]) is None and Rules.matchRecipe([_item("bad")]) == (None, None)
+
+
+if __name__ == "__main__":
+    raise SystemExit(fdtest.run(globals()))
