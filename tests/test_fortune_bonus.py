@@ -112,16 +112,29 @@ def testTheTableIsJavasOwn():
         print("跳过：没有 JE 的源码（.refs/FarmersDelight）")
         return
     je = _je()
-    assert len(je) == len(Fortune.TABLE) == 11
+    assert len(je) == len(Fortune.JE_BLOCKS) == 11 and len(Fortune.TABLE) == 15
     for name, (item, formula, parameters) in je.items():
         block = JE_BLOCKS.get(name, "arris:" + name)
         ours = Fortune.TABLE[block]
         assert ours[0] == JE_ITEMS.get(item, item), (name, item, ours)
         if formula == "minecraft:binomial_with_bonus_count":
-            assert ours[1:3] == (Fortune.BINOMIAL, parameters["probability"]) and parameters["extra"] == 3, name
+            assert ours[1:3] == (Fortune.BINOMIAL, (parameters["probability"], 1)) and parameters["extra"] == 3, name
         else:
             assert formula == "minecraft:uniform_bonus_count" and ours[1:3] == (Fortune.UNIFORM, parameters["bonusMultiplier"]), name
         assert ours[3] == name.startswith(("wild_", "sandy_")), name      # JE 里有剪刀那一支的才看剪刀
+
+
+def testRichSoilVanillaCropsUseTheMeasuredBedrockFortune():
+    # 沃土上的原版作物照基岩原版作物：2026-11-26 实机量的（钻石锄时运 0~III 各 196 株，INGAME-FACTS-1 第三轮），不是 JE 的公式——
+    # 小麦种子、甜菜种子每级多掷 1 次，胡萝卜、土豆每级多掷 2 次，每次约 8/15（时运 III 的土豆 1 + Binomial(9, 8/15)：平均 5.8，最多 10）
+    assert abs(Fortune.BEDROCK_CROP_P - 8.0 / 15) < 1e-6
+    for block, item, perLevel in (("arris:rich_soil_wheat7", "minecraft:wheat_seeds", 1), ("arris:rich_soil_beetroot3", "minecraft:beetroot_seeds", 1),
+                                  ("arris:rich_soil_carrots3", "minecraft:carrot", 2), ("arris:rich_soil_potatoes3", "minecraft:potato", 2)):
+        assert Fortune.TABLE[block] == (item, Fortune.BINOMIAL, (Fortune.BEDROCK_CROP_P, perLevel), False, False), block
+        rng = Rng(randoms=[0.0] * (perLevel * 3))
+        assert Fortune.bonus(block, "minecraft:diamond_hoe", "hoe", 3, [], rng) == (item, perLevel * 3), block      # 时运 III 全中
+        assert rng.randoms == []                                                                               # 正好掷了 n × 3 次
+    assert Fortune.bonus("arris:rich_soil_potatoes3", None, None, 2, [], Rng(randoms=[0.6, 0.6, 0.6, 0.5])) == ("minecraft:potato", 1)
 
 
 # ---- 服务端 ----
