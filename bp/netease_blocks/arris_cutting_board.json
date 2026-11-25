@@ -15,7 +15,7 @@
                 "value": 2.0
             },
             "minecraft:explosion_resistance": {
-                "value": 1.0
+                "value": 2.0
             },
             "netease:connection": {
                 "blocks": []

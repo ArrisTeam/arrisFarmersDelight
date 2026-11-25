@@ -38,10 +38,10 @@
                 "emission": 0
             },
             "minecraft:destroy_time": {
-                "value": 0.8
+                "value": 0.3
             },
             "minecraft:explosion_resistance": {
-                "value": 0.8
+                "value": 0.3
             },
             "netease:face_directional": {
                 "type": "direction"
