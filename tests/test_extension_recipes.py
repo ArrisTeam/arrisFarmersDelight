@@ -108,6 +108,19 @@ def testTheJsonIsTheJavaFormatWithJavaTagNamesMapped():
         assert problem is None and spec["slots"] == [["#common:raw_beef"], ["#common:carrot"], ["#common:potato"]], (problem, spec)
 
 
+def testOnlyItemTagNamesAreTranslated():
+    """JE 标签名的对照只取物品标签（T 复核时指出的：以前把方块标签也算进去了，farmersdelight:heat_sources 会换成 common:heat_source）。
+    合进来的 farmersdelight: 物品分类标签照样认（换成它自己）。"""
+    Tags = fdtest.load("Shared.Data.Tags")
+    items = set(Tags.ITEM_TAGS) | set(Tags.VANILLA_TAGS) | set(Tags.WITHOUT_MEMBERS)
+    assert RecipeJson.ALIASES and all(name in items for name in RecipeJson.ALIASES.values())
+    assert not set(RecipeJson.ALIASES.values()) & set(Tags.BLOCK_TAGS)
+    assert "farmersdelight:heat_sources" not in RecipeJson.ALIASES and "minecraft:campfires" not in RecipeJson.ALIASES
+    assert RecipeJson.ALIASES["forge:raw_beef"] == "common:raw_beef" and RecipeJson.ALIASES["forge:eggs"] == "minecraft:egg"
+    spec, _problem = RecipeJson.parse({"type": "farmersdelight:cooking", "ingredients": [{"tag": "farmersdelight:heat_sources"}], "result": "a:b"})
+    assert spec["slots"] == [["#farmersdelight:heat_sources"]], "认不出的标签名原样用"
+
+
 def testAMissingContainerIsTheResultsCraftingRemainderLikeJava():
     """JE 的 CookingPotRecipe：没写 container 就取成品的合成剩余物（Shared/Data/Remainders.CRAFT 就是那个属性）。.refs 在场时 28 个 JE 文件
     逐个核：成品换成农夫乐事自己那一行的，推出来（或写明）的容器正好是那一行的 Vessel（24 个没写的推出碗 / 玻璃瓶 / 不要，4 个写明的照写）。"""

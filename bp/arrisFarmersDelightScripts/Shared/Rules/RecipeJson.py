@@ -19,7 +19,7 @@ parse(数据, aliases) -> (规整的配方, None) 或 (None, 一句说哪里不�
 import math
 
 from ..Data.Remainders import CRAFT
-from ..Data.Tags import JE_NAMES
+from ..Data.Tags import ITEM_TAGS, JE_NAMES, VANILLA_TAGS, WITHOUT_MEMBERS
 from .TableWire import INT_TYPES
 
 _NUMBER = INT_TYPES + (float,)      # py2 的 long 也算
@@ -187,8 +187,10 @@ def _campfire(data, aliases):
 
 
 def javaAliases():
-    """JE 的标签名 -> 词表的 common: 名（Shared/Data/Tags.JE_NAMES 反过来；测试保证一个 JE 名只对应一个）。"""
-    return dict((javaName, name) for name, javaNames in JE_NAMES.items() for javaName in javaNames)
+    """JE 的物品标签名 -> 词表里的物品标签名（Shared/Data/Tags.JE_NAMES 反过来；测试保证一个 JE 名只对应一个）。只取物品标签：
+    配料、工具都是物品，方块标签（热源、传热、蘑菇菌落长在哪……）的 JE 名换过来反而会把一格写成方块标签。"""
+    items = set(ITEM_TAGS) | set(VANILLA_TAGS) | set(WITHOUT_MEMBERS)
+    return dict((javaName, name) for name, javaNames in JE_NAMES.items() if name in items for javaName in javaNames)
 
 
 ALIASES = javaAliases()
