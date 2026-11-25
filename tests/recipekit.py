@@ -21,7 +21,8 @@ def readText(path):
 
 
 def loadRecipes():
-    """{文件名: (种类 shaped / shapeless / furnace, 配方体)}，一个文件只许一份配方。"""
+    """{文件名: (种类 shaped / shapeless / furnace / transform, 配方体)}，一个文件只许一份配方。
+    transform 是锻造台的 minecraft:recipe_smithing_transform（模板 + 底料 + 添加物 → 成品，成品是一个物品名的字符串）。"""
     found = collections.OrderedDict()
     for name in sorted(os.listdir(RECIPES)):
         if not name.endswith(".json"):
@@ -42,12 +43,16 @@ def resultsOf(body):
     """[(物品名, 个数), ...]，第一个进结果槽。"""
     result = body["result"]
     entries = result if isinstance(result, list) else [result]
-    return [(entry["item"], entry.get("count", 1)) for entry in entries]
+    return [(entry, 1) if not isinstance(entry, dict) else (entry["item"], entry.get("count", 1)) for entry in entries]
 
 
 def ingredientsOf(kind, body):
     """{物品名: 个数}：有序按 pattern 里每个键出现几次，无序把 count 加起来。"""
     counts = collections.Counter()
+    if kind == "transform":
+        for key in ("template", "base", "addition"):
+            counts[body[key]] += 1
+        return counts
     if kind == "shaped":
         for char in "".join(body["pattern"]):
             if char != " ":
