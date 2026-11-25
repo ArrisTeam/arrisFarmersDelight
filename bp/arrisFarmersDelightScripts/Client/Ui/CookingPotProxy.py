@@ -3,6 +3,7 @@
 from ...QuModLibs.Client import Call
 from .. import Texts
 from ..Engine import clientApi, compFactory, levelId, playerId
+from ...Shared.Rules import CookingPotBook
 
 CustomUIScreenProxy = clientApi.GetUIScreenProxyCls()
 ViewBinder = clientApi.GetViewBinderCls()
@@ -71,7 +72,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         recipeList = []
         for index in range(len(self.cookingPotRecipeList)):
             recipeDict = self.cookingPotRecipeList[index]
-            recipeText = recipeDict["text"]
+            recipeText = CookingPotBook.titleOf(recipeDict)
             if text in recipeText:
                 recipeList.append(recipeDict)
         self.RecipeList = recipeList
@@ -186,7 +187,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
             return
         recipeDict = self.RecipeList[index]
         recipeList = recipeDict["Recipe"]
-        recipeText = recipeDict["text"]
+        recipeText = CookingPotBook.titleOf(recipeDict)
         self.foodRecipeList = recipeList
         self.foodRecipeIndex = 0
         self.screenNode.GetBaseUIControl(uiRootPanelPath + "/root_panel/common_panel/bg_image/cookpot_panel/cookbook_bg/stack_panel/button_panel/add_food").SetVisible(True)

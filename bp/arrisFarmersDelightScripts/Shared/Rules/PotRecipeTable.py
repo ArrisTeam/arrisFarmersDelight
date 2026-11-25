@@ -155,12 +155,14 @@ def remembered(name, recipe, compute):
         _derived.clear()
         _derived[None] = stamp
     key = (name, id(recipe))
-    if key not in _derived:
-        value = compute(recipe)
-        if not ItemTags.ready() or len(_derived) > MEMO_LIMIT:
-            return value
-        _derived[key] = value
-    return _derived[key]
+    found = _derived.get(key)
+    if found is not None and found[0] is recipe:
+        return found[1]
+    value = compute(recipe)
+    # 算的中途戳变了（标签口正好变成准备好、表被改了）就不记：这个答案是按旧口径算的，记在新戳下面会一直错到下次换戳
+    if ItemTags.ready() and len(_derived) <= MEMO_LIMIT and (revision(), ItemTags.generation()) == stamp == _derived.get(None):
+        _derived[key] = (recipe, value)        # 留住那一行：地址不会被回收后分给别的行（同一个戳里拿到别人的答案）
+    return value
 
 
 def resolve(key):

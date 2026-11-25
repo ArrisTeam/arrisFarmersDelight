@@ -9,7 +9,11 @@
   营火：legacy:campfire_cooking/<原料的命名空间>/<原料名>；
 - 主包自己的砧板、营火配方（本模块导入时就在表里的，早于任何下游追加）派生成同样写法的 farmersdelight:cutting/...、
   farmersdelight:campfire_cooking/...；主包按标签的砧板配方照 JE 叫 farmersdelight:cutting/tag_<标签名>（JE 的 tag_dough）。
+  这些自带的砧板、营火 ID 是从原料派生的，和原料绑死：用它登记（覆盖、删掉后加回来）时原料必须还是那一样（input_mismatch），
+  不然原来的原料再被旧接口加回来时会派生出同一个 ID。想换原料：删掉自带的那条，用自己的 ID 登记。
 主包的厨锅配方都写着 Id（JE 的 farmersdelight:cooking/<文件名>）。
+砧板派生 ID 的已知重名：(mymod:foo, 2) 和 (mymod:foo_2, 0) 都派生成 legacy:cutting/mymod/foo_2，按 ID 只碰得到排在前面的那条
+（字典表没有稳定的先后，加序号会让 ID 跟着别的键变，所以不改）。
 """
 from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.Cutting import CuttingBoardDict, CuttingTagDict
@@ -18,7 +22,7 @@ HOST = "farmersdelight"
 LEGACY = "legacy"
 TYPES = {"cooking": "cooking", "farmersdelight:cooking": "cooking", "cutting": "cutting", "farmersdelight:cutting": "cutting",
          "campfire_cooking": "campfire_cooking", "minecraft:campfire_cooking": "campfire_cooking"}
-_IDS = set()                 # _builtInIds 第一次用到时填
+_IDS = {}                    # 自带的砧板 / 营火配方 ID -> (类型, 原料的键)：_builtInIds 第一次用到时填
 _BUILT_IN = {"cutting": frozenset(CuttingBoardDict), "tags": frozenset(CuttingTagDict), "campfire_cooking": frozenset(CanCookedFoodDict)}
 
 try:
@@ -51,12 +55,18 @@ def problemOf(recipeId, exists):
 
 
 def _builtInIds():
-    """农夫乐事自带的砧板、营火配方的 ID（模块导入时表里的那些；删掉之后还能用原来的 ID 加回来，和厨锅的墓碑能复活对称）。"""
+    """农夫乐事自带的砧板、营火配方的 ID -> (类型, 原料的键)（模块导入时表里的那些；删掉之后还能用原来的 ID 加回来，和厨锅的墓碑能复活对称）。"""
     if not _IDS:
-        _IDS.update(cuttingIdOf(key) for key in _BUILT_IN["cutting"])
-        _IDS.update(cuttingIdOf(tag) for tag in _BUILT_IN["tags"])
-        _IDS.update(campfireIdOf(name) for name in _BUILT_IN["campfire_cooking"])
+        _IDS.update((cuttingIdOf(key), ("cutting", key)) for key in _BUILT_IN["cutting"])
+        _IDS.update((cuttingIdOf(tag), ("cutting", tag)) for tag in _BUILT_IN["tags"])
+        _IDS.update((campfireIdOf(name), ("campfire_cooking", name)) for name in _BUILT_IN["campfire_cooking"])
     return _IDS
+
+
+def builtInKeyOf(recipeId):
+    """农夫乐事自带的砧板 / 营火配方 ID 派生自的 (类型, 原料的键)：这些 ID 和原料绑死（用它登记时原料必须还是这一样，input_mismatch）；
+    别的 ID 是 None。"""
+    return _builtInIds().get(recipeId)
 
 
 def _itemPath(name, aux=0):
@@ -65,21 +75,29 @@ def _itemPath(name, aux=0):
 
 
 def cookingIds(table):
-    """厨锅配方表每一行的 ID（写着 Id 的用它；没写的派生 legacy:cooking/...，同一成品按先后加 _2、_3；不是配方的行是 None）。
-    同一个 Id 写在好几行上（旧接口追加的行带着从别的行拷来的 "Id"）：第一行用它，后面的当没写、给派生的 ID。"""
-    found, seen, taken = [], {}, set()
-    for row in table:
+    """厨锅配方表每一行的 ID（不是配方的行是 None），按表的先后、结果是确定的：
+    先收明写的 Id（写法对、不是 legacy: 开头；同一个只认第一行——旧接口追加的行可能带着从别的行拷来的 "Id"）；
+    再给没有 ID 的行（含明写 legacy: 或写法不对的）派生 legacy:cooking/<成品的命名空间>/<成品名>，被占了（明写的或先派生的）
+    就接着加 _2、_3……直到没人用（成品 pie、pie、pie_2 三行是 pie、pie_2、pie_2_2）。"""
+    ids, taken = [None] * len(table), set()
+    for index, row in enumerate(table):
+        given = row.get("Id") if isinstance(row, dict) else None
+        parts = split(given) if isinstance(given, _TEXT) else None
+        if parts is not None and parts[0] != LEGACY and given not in taken:
+            taken.add(given)
+            ids[index] = given
+    for index, row in enumerate(table):
         result = row.get("CookResult") if isinstance(row, dict) else None
-        if isinstance(row, dict) and isinstance(row.get("Id"), _TEXT) and row["Id"] not in taken:
-            taken.add(row["Id"])
-            found.append(row["Id"])
-        elif isinstance(result, (tuple, list)) and len(result) == 2 and isinstance(result[0], _TEXT) and result[0]:
-            base = "%s:cooking/%s" % (LEGACY, _itemPath(result[0]))
-            seen[base] = seen.get(base, 0) + 1
-            found.append(base if seen[base] == 1 else "%s_%d" % (base, seen[base]))
-        else:
-            found.append(None)
-    return found
+        if ids[index] is not None or not (isinstance(result, (tuple, list)) and len(result) == 2 and isinstance(result[0], _TEXT) and result[0]):
+            continue
+        base = candidate = "%s:cooking/%s" % (LEGACY, _itemPath(result[0]))
+        count = 1
+        while candidate in taken:
+            count += 1
+            candidate = "%s_%d" % (base, count)
+        taken.add(candidate)
+        ids[index] = candidate
+    return ids
 
 
 def cuttingIdOf(key):

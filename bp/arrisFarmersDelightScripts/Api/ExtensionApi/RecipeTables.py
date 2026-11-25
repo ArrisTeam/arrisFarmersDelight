@@ -130,6 +130,9 @@ def register(spec, recipeId):
     if kind == "cooking":
         return _cooking(spec, recipeId, located)
     key = (spec["input"][1:] if not isinstance(spec["input"], tuple) else spec["input"]) if kind == "cutting" else spec["input"]
+    bound = RecipeIds.builtInKeyOf(recipeId)
+    if bound is not None and bound != (kind, key):
+        return answer(False, "input_mismatch", recipeId)       # 自带的砧板 / 营火 ID 和原料绑死
     if key in _table(kind, key) and idOfKey(kind, key) != recipeId:
         return answer(False, "input_taken", recipeId, by=idOfKey(kind, key))
     if current is not None and current[1] != key:
@@ -164,13 +167,16 @@ def _cooking(spec, recipeId, index):
 
 
 def _text(spec, old):
-    """经典界面食谱格里的名字：给了用给的；覆盖时没给沿用旧行的（农夫乐事的中文名不丢）；新登记的没给用成品的物品名
-    （界面的标题、搜索都读这个键，没有它旧的原生界面会出错，所以不空着）。"""
+    """经典界面食谱格里的名字：给了用给的；覆盖时没给、成品也没变、旧名字又不是旧成品的物品 ID（"没写"的记号）时沿用旧行的
+    （农夫乐事的中文名不丢）；别的情况用成品的物品 ID——就是"没写"，界面显示成品的显示名（CookingPotBook.titleOf）。
+    界面的标题、搜索都读这个键，没有它旧的原生界面会出错，所以不空着。"""
     given = spec.get("text")
     if given:
         return given
     kept = old.get("text") if old is not None else None
-    return kept if isinstance(kept, _TEXT) and kept else spec["result"][0]
+    before = old.get("CookResult") if old is not None else None
+    same = isinstance(before, (tuple, list)) and len(before) == 2 and tuple(before) == tuple(spec["result"])
+    return kept if same and isinstance(kept, _TEXT) and kept and kept != before[0] else spec["result"][0]
 
 
 def _ways(slots, old):

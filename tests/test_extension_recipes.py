@@ -312,6 +312,64 @@ def testListingATypeIsTheSameAsLookingEachOneUp():
         assert listed and listed == [SERVER.getRecipeById(view["id"]) for view in listed], kind
 
 
+def testOverridingWithAnotherResultDoesNotKeepTheOldName():
+    """T 复核 3.1：覆盖时换了成品又没给 text，以前沿用旧行的名字（番茄酱覆盖成 mymod:ketchup 还叫番茄酱，getRecipeById 还多出谁都没给过的
+    text）。现在只在成品没变、旧名字也不是旧成品的物品 ID 时才沿用。"""
+    with Sandbox():
+        assert SERVER.createBuilder("mymod:cooking/x", "cooking").ingredient("minecraft:cookie").output("mymod:x").register()["ok"]
+        assert SERVER.createBuilder("mymod:cooking/x", "cooking").ingredient("minecraft:cookie").output("mymod:y").register()["ok"]
+        row = Pot.CookingPotRecipeList[-1]
+        assert row["text"] == "mymod:y" and "text" not in SERVER.getRecipeById("mymod:cooking/x")
+        sauce = SERVER.getRecipeById("farmersdelight:cooking/tomato_sauce")
+        del sauce["text"]
+        assert SERVER.registerFromJson(dict(sauce, result={"item": "mymod:ketchup"}))["ok"]
+        assert next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")["text"] == "mymod:ketchup"
+
+
+def testAHostCuttingOrCampfireIdStaysWithItsIngredient():
+    """T 复核 3.2：自带的砧板 / 营火 ID 被挪到别的原料上，原来的原料再被旧接口加回来，就是两条配方一个 ID。现在这些 ID 和原料绑死：
+    覆盖时换原料、删掉以后用原 ID 登记别的原料都拒绝（input_mismatch）；原料对得上照旧成功；第三方自己的 ID 照旧能挪原料。"""
+    cabbage = "farmersdelight:cutting/arris/cabbage"
+    with Sandbox():
+        def kelp(recipeId):
+            return SERVER.createBuilder(recipeId, "cutting").ingredient("minecraft:kelp").output("minecraft:dried_kelp").tool("knife").register()
+
+        assert kelp(cabbage)["error"] == "input_mismatch" and ("minecraft:kelp", 0) not in Cutting.CuttingBoardDict
+        assert SERVER.removeRecipe(cabbage)["ok"] and kelp(cabbage)["error"] == "input_mismatch"
+        assert SERVER.createBuilder(cabbage, "cutting").ingredient("arris:cabbage").output("arris:cabbage_leaf", 2).tool("knife").register()["ok"]
+        assert Legacy.ArrisFarmersDelightInterface("CuttingBoardDict", {("minecraft:kelp", 0): {"itemList": [{"itemName": "a:b", "count": 1}],
+                                                                                              "tool": Cutting.knifeList}})
+        ids = [view["id"] for view in SERVER.getRecipesOfType("cutting")]
+        assert len(ids) == len(set(ids)) and ids.count(cabbage) == 1
+        assert SERVER.createBuilder("farmersdelight:campfire_cooking/minecraft/beef", "campfire_cooking").ingredient("minecraft:porkchop") \
+            .output("minecraft:cooked_porkchop").register()["error"] == "input_mismatch"
+        assert kelp("mymod:cutting/greens")["error"] == "input_taken" and SERVER.removeRecipe("legacy:cutting/minecraft/kelp")["ok"]
+        assert kelp("mymod:cutting/greens")["ok"]
+        assert SERVER.createBuilder("mymod:cutting/greens", "cutting").ingredient("minecraft:seagrass").output("a:b").tool("knife").register()["ok"], \
+            "第三方自己的 ID 照旧能挪原料"
+
+
+def testCookingIdsNeverCollide():
+    """T 复核 3.5：明写的 legacy: ID 会和别的行派生的撞；派生规则自己也会撞（成品 pie、pie、pie_2 三行，后两行都是 pie_2）。
+    现在明写的 legacy: 和写法不对的当没写，派生的名字被占了就接着加 _n。"""
+    Ids = fdtest.load("Api.ExtensionApi.RecipeIds")
+
+    def row(result, recipeId=None):
+        found = {"Recipe": [[("a:b", 0)]], "CookResult": (result, 0), "PushItem": [], "text": "x"}
+        if recipeId is not None:
+            found["Id"] = recipeId
+        return found
+
+    table = [row("mymod:pie", "legacy:cooking/mymod/pie"), row("mymod:pie")]
+    assert Ids.cookingIds(table) == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/pie_2"]
+    table = [row("mymod:pie"), row("mymod:pie"), row("mymod:pie_2")]
+    assert Ids.cookingIds(table) == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/pie_2", "legacy:cooking/mymod/pie_2_2"]
+    table = [row("mymod:a", "mymod:cooking/a"), row("mymod:a", "mymod:cooking/a"), row("mymod:b", "bad id"), "not a row"]
+    assert Ids.cookingIds(table) == ["mymod:cooking/a", "legacy:cooking/mymod/a", "legacy:cooking/mymod/b", None]
+    ids = [recipeId for recipeId in Ids.cookingIds(Pot.CookingPotRecipeList) if recipeId]
+    assert len(ids) == len(set(ids))
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

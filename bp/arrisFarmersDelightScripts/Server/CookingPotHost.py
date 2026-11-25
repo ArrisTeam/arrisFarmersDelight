@@ -20,7 +20,8 @@ from ..dolorContainer.Std.Block import Server as Block
 from ..Shared.Menus import CookingPot as PotMenu
 from . import HandCooking, PotServe, PotSupport
 from .CookingPot import COOKING_POT, COOK_SECONDS
-from .Helpers.Engine import GetBlockEntityData
+from .Helpers.Engine import GetBlockEntityData, compFactory, levelId
+from ..Shared.Rules import CookingPotBook
 
 CONTAINER_TYPE = "arris:cooking_pot"
 # 界面的标题：JE 的容器标题键（container.farmersdelight.cooking_pot，英文 Cooking Pot），客户端按玩家的语言查。
@@ -69,3 +70,12 @@ PotMenu.setStateReader(readState)
 PotMenu.setTakenHandler(taken)
 Api.registerContainerType(Api.ContainerType(CONTAINER_TYPE, TITLE, PotMenu.MENU,
                                             host=CookingPotHost((COOKING_POT,))))
+
+
+def _displayName(name, aux):
+    """经典界面里没写 text 的配方显示成品的显示名（Shared/Rules/ItemNames）：服务端的 GetItemBasicInfo（进了世界才都是显示名）。"""
+    info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, aux)
+    return info.get("itemName") if info else None
+
+
+CookingPotBook.setNamePort(_displayName)

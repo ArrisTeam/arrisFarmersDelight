@@ -5,7 +5,8 @@
 1. mcdk_test_ext_api_status()：门面在不在（ready 播了没有、主动导入拿到的是不是同一个）、两端的能力名、版本号、标签的口准备好没有、
    开服时读行为包 farmersdelight_recipes/ 的结果（ExtensionReady.scanReport：state 是 "unavailable" 说明 server_resource 这条路不通）。
    装了草稿目录里的探针包（fdprobe）时还看它的两条配方：ready 里用 Builder 登记的 fdprobe:cooking/builder_stew、
-   它的 farmersdelight_recipes/ 里的 fdprobe:cooking/json_stew（读到了就说明跨包读文件是通的；2026-11-26 实机读到了，能力名 recipe_json_files 因此登记）。
+   它的 farmersdelight_recipes/ 里的 fdprobe:cooking/json_stew（读到了就说明跨包读文件是通的；2026-11-26 实机读到了，能力名 recipe_json_files 因此登记），
+   以及这两条在经典界面的标题（probe_titles：都没写 text，应当是成品的显示名"铁锭"、"金锭"）。
 2. mcdk_test_ext_api_register()：用 ext.recipes 登记一条带标签原料的厨锅配方（fdselftest:cooking/tag_mash：#common:tomato + 泥土 -> 绿宝石），
    拿农夫乐事的番茄、探针包的番茄（只靠它的 netease_tags 进 common:tomato）各配一次，再现在就同步给在线的玩家（syncToClients）。
 3. 客户端：Client/Debug/McdkExtApiTest.mcdk_test_ext_api_client()（表同步过去之后客户端查到的、配出来的）。
@@ -17,7 +18,8 @@ from .. import ExtensionReady
 from ..Helpers.Engine import serverApi
 from ...Api.ExtensionApi import Ready
 from ...Api.ExtensionApi.Facade import getExtensionApi
-from ...Shared.Rules import ItemTags
+from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
+from ...Shared.Rules import CookingPotBook, ItemTags
 
 RECIPE_ID = "fdselftest:cooking/tag_mash"
 PROBE_IDS = ("fdprobe:cooking/builder_stew", "fdprobe:cooking/json_stew")
@@ -34,10 +36,12 @@ def mcdk_test_ext_api_status():
     module = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade")
     imported = module.getExtensionApi("server") if module else None
     probe = dict((recipeId, ext.recipes.getRecipeById(recipeId)) for recipeId in PROBE_IDS)
+    rows = dict((row.get("Id"), row) for row in CookingPotRecipeList if isinstance(row, dict))
+    titles = dict((recipeId, CookingPotBook.titleOf(rows[recipeId])) for recipeId in PROBE_IDS if recipeId in rows)   # 经典界面的标题：铁锭、金锭
     return {"case": "ext_api_status", "ok": Ready.status("server") == Ready.SENT and imported is ext,
             "ready": Ready.status("server"), "imported_is_same": imported is ext, "api": ext.apiVersion, "host": ext.hostVersion,
             "capabilities": sorted(ext.capabilities), "tags_ready": ItemTags.ready(), "tags_generation": ItemTags.generation(),
-            "scan": ExtensionReady.scanReport(), "probe": probe,
+            "scan": ExtensionReady.scanReport(), "probe": probe, "probe_titles": titles,
             "probe_tomato_is_tomato": ItemTags.has(PROBE_TOMATO, "common:tomato")}
 
 

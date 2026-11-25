@@ -235,5 +235,54 @@ def testFramesAreRememberedWhileTheTagsAreReadyUntilTheTableChanges():
         ItemTags.setPort("server", None)
 
 
+def testAnAnswerComputedWhileTheStampChangedIsNotRemembered():
+    """T 复核时复现的：framesOf 先取戳再算，算到一半标签口变成准备好（嵌套的 extraWays 用新代数重打了戳），外层按旧口径算出的答案
+    就记在新戳下面、一直错。现在算完再取一次戳，和开始时一样才记。假的口第 k 次问 ready() 起才答"好了"。"""
+    row = {"Slots": [["#common:test_race"], ["test:x"]], "Recipe": [[("test:old", 0)]], "CookResult": ("test:race", 0),
+           "PushItem": [], "text": "x"}
+
+    class Late(Port):
+        def __init__(self, k):
+            Port.__init__(self, {"common:test_race": ["test:member"]}, ready=False)
+            self.k, self.calls = k, 0
+
+        def ready(self):
+            self.calls += 1
+            return self.calls >= self.k
+
+    try:
+        for k in range(1, 12):
+            ItemTags.setPort("server", Late(k))
+            Rules.framesOf(row)
+            while not ItemTags.ready():
+                pass                                  # 口已经变成准备好（之后戳不再变），再算一份对照
+            fresh = Rules._framesOf(row)
+            assert Rules.framesOf(row) == fresh and Rules.extraWays(row) == Rules._extraWays(row), k
+    finally:
+        ItemTags.setPort("server", None)
+
+
+def testRememberedAnswersHoldOnToTheirRow():
+    """记住的答案按 id(行) 找：存着行本身、命中时核对是同一行，行对象不会被回收、地址不会被另一行重用（主会话指出的）。"""
+    import gc
+    import weakref
+
+    class Row(dict):
+        pass
+
+    row = Row({"Slots": [["test:a"]], "Recipe": [], "CookResult": ("test:b", 0), "PushItem": [], "text": "x"})
+    ItemTags.setPort("server", Port({}, ready=True))
+    try:
+        ref = weakref.ref(row)
+        Rules.framesOf(row)
+        del row
+        gc.collect()
+        assert ref() is not None, "准备好时记住的答案留着那一行"
+        other = Row({"Slots": [["test:c"]], "Recipe": [], "CookResult": ("test:d", 0), "PushItem": [], "text": "y"})
+        assert Rules.framesOf(other) == [[("test:c", 0)]]
+    finally:
+        ItemTags.setPort("server", None)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

@@ -130,6 +130,8 @@ def potCurrent(inputs, meal=None):
     if found is not None:
         return found
     recipe = CookingPot.findRecipeByResult(meal["newItemName"]) if meal else None
+    if recipe is None or not CookingPot.isLive(recipe):
+        return None          # 墓碑（锅里煮好的那道菜被删了）：书里没有这一页，给了找不到页的键会丢掉玩家上次选的页
     for index, candidate in enumerate(CookingPotRecipeList):
         if candidate is recipe:
             return index

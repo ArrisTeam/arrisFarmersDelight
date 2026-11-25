@@ -11,3 +11,14 @@ layouts/cooking_pot.json，编译进 dolorLayouts.py 与 rp/ui/dolor_layout_*.js
 from ..dolorContainer.Std.Block import Client as BlockClient  # noqa: F401
 from ..dolorContainer.Std.Windowed import Client as WindowedClient  # noqa: F401
 from ..Shared.Menus import CookingPot as PotMenu  # noqa: F401
+from ..Shared.Rules import CookingPotBook
+from .Engine import compFactory, levelId
+
+
+def _displayName(name, aux):
+    """经典界面里没写 text 的配方显示成品的显示名（Shared/Rules/ItemNames）：客户端的 GetItemBasicInfo（进了世界才都是显示名）。"""
+    info = compFactory.CreateItem(levelId).GetItemBasicInfo(name, aux)
+    return info.get("itemName") if info else None
+
+
+CookingPotBook.setNamePort(_displayName)
