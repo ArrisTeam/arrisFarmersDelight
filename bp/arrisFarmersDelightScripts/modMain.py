@@ -15,6 +15,8 @@ MOD.Client("Client.ModClient")
 
 # 跨模组联动（对方未安装时静默不做任何事）
 MOD.Server("Compat.Create.CreateRecipes")
+MOD.Server("Compat.Create.PotatoCannonServer")
+MOD.Client("Compat.Create.PotatoCannonClient")
 MOD.Client("Compat.Jei.JeiClient")
 # 沉浸式交互前置（arrisDiegesis）：亲手做菜的站点（Hands-On Delight）。入口只挂 Compat/Diegesis/Presence：找到前置包、接口够新才按步骤表
 # （ServerSteps / ClientSteps）一站一站导入站点模块、联动；前置包没装或太旧时 Compat/Diegesis 里别的模块一个也不导入，HoD 的东西一样也不跑。
