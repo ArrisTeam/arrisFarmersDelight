@@ -11,6 +11,7 @@ CookingPotBlockEntity：配料的合成剩余物，再加 INGREDIENT_REMAINDER_O
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from ..Data.Remainders import potRemainderOf
+from . import ItemTags, PotSlots
 
 DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
 DEFAULT_EXPERIENCE = 1.0     # JE 的厨锅配方缺省经验
@@ -171,6 +172,24 @@ def findRecipeByResult(resultItemName):
         if recipeDict["CookResult"][0] == resultItemName:
             return recipeDict
     return None
+
+
+def _slotsOf(recipe):
+    slots = recipe.get("Slots") if isinstance(recipe, dict) else None
+    return slots if slots and PotSlots.isValid(slots) else None
+
+
+def optionsOf(recipe):
+    """有 Slots 的配方：每格能放的具体物品 [[(物品名, aux), ...], ...]（标签换成它现在的成员）；没有 Slots 或写坏了是 None。"""
+    slots = _slotsOf(recipe)
+    return None if slots is None else [PotSlots.optionsOf(slot, ItemTags.itemsOf) for slot in slots]
+
+
+def extraWays(recipe):
+    """旧写法里格子不收的那几种（契约的 AddCookingPotRecipe 给有 Slots 的配方加的写法）；没有 Slots 的配方就是它的全部写法。"""
+    slots = _slotsOf(recipe)
+    ways = [list(way) for way in (recipe.get("Recipe") or ()) if way]
+    return ways if slots is None else [way for way in ways if not PotSlots.fits(slots, way, ItemTags.has)]
 
 
 def transferAmount(previewCount, resultCount, maxStackSize, vesselCount=None):
