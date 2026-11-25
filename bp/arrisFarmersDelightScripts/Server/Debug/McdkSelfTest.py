@@ -25,7 +25,8 @@ _placed = []
 
 # ServerItemUseOnEvent 的处理函数按执行先后（ModServer.py 模块说明里的优先级表）；加了、删了处理函数要跟着改，
 # tests/test_selftest_registry.py 对着源码里登记的函数名核对这张表有没有漏
-ITEM_USE_ORDER = ["OnUseItemOnPlacedSkillet", "OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnPlaceWildCrop", "OnUseSkilletItem",
+ITEM_USE_ORDER = ["OnUseItemOnPlacedSkillet", "OnServerCuttingBoardItemUse", "OnUseItemOnHarvestable", "OnUseItemOnComposter",
+                  "OnPlaceWildCrop", "OnUseSkilletItem",
                   "OnPlaceItemAsBlock", "OnPlaceRopeOnRope", "OnPlaceFullMat", "OnPlaceHalfMat", "OnServerItemUse", "OnStoveFire",
                   "OnServerStoveItemUse"]
 

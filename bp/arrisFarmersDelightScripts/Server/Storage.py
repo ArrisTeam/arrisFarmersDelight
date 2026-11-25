@@ -27,36 +27,65 @@ def OnOpenCabinet(args):
     ToAllPlayerPlaySound(args["dimensionId"], (args["x"], args["y"], args["z"]), "block.barrel.open")
 
 
-@registerHandler("ServerBlockUseEvent", match=COMPOSTER)
-def OnUseComposter(args):
-    # JE ComposterBlock（基岩原版实测一样）：0 层第一件必成，7 层不收不扣，涨到 7 层后 1 秒变成可取的 8 层（规则在 Shared/Rules/Composter.py）
-    x, y, z = args["x"], args["y"], args["z"]
-    dimensionId = args["dimensionId"]
-    playerId = args["playerId"]
-    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates((x, y, z), dimensionId)
+def _fill(pos, dimensionId):
+    """堆肥桶的方块状态和层数（读不到层数是 None）。"""
+    blockStates = compFactory.CreateBlockState(levelId).GetBlockStates(pos, dimensionId)
+    return blockStates, (blockStates or {}).get(FILL)
+
+
+def _claims(level, itemDict):
+    """这一下归不归堆肥桶：手里是能堆肥的、桶没到 8 层（7 层也归：不收、不扣，但也不让别的处理把东西放下）。
+    JE ComposterBlock.use：不潜行时方块的 use 先于物品；8 层是取骨粉，交给原版。"""
+    return bool(itemDict) and (itemDict["newItemName"], itemDict["newAuxValue"]) in ComposterItemDict and         level is not None and level < Composter.FULL
+
+
+def _compost(playerId, itemDict, pos, dimensionId, blockStates):
+    # 0 层第一件必成，1~6 层按概率涨一层、成不成都扣一件，7 层不收不扣，涨到 7 层后 1 秒变成可取的 8 层（Shared/Rules/Composter.py）
     level = blockStates[FILL]
-    if not Composter.accepts(level):
-        return
-    handItemDict = GetCarriedItem(playerId)
-    if not handItemDict:
-        return
-    item = (handItemDict["newItemName"], handItemDict["newAuxValue"])
-    if item not in ComposterItemDict:
-        return
-    if SetPlayerUsedCD(playerId) is True:
-        return                                         # 按住右键每刻重发：一下只放一件（JE 的右键间隔 4 刻）
+    if not Composter.accepts(level) or SetPlayerUsedCD(playerId) is True:
+        return                                         # 按住右键每刻重发：一下只放一件（JE 的右键间隔 4 刻）；同一下的另一个事件也在这里挡住
+    x, y, z = pos
     center = (x + 0.5, y, z + 0.5)
     ToAllPlayerPlaySound(dimensionId, center, "block.composter.fill")
     ToAllPlayerPlaySound(dimensionId, center, "item.bone_meal.use")
     ToAllPlayerGrowthParticle((x + 0.5, y + 0.8, z + 0.5))
-    SetNotCreateItem(playerId, handItemDict)
+    SetNotCreateItem(playerId, itemDict)
+    item = (itemDict["newItemName"], itemDict["newAuxValue"])
     after = Composter.nextLevel(level, level > 0 and probability(ComposterItemDict[item]))
     if after > level:
         blockStates[FILL] = after
         ToAllPlayerPlaySound(dimensionId, center, "block.composter.fill_success")
-        compFactory.CreateBlockState(levelId).SetBlockStates((x, y, z), blockStates, dimensionId)
+        compFactory.CreateBlockState(levelId).SetBlockStates(pos, blockStates, dimensionId)
         if after == Composter.READY:
-            compFactory.CreateGame(levelId).AddTimer(Composter.READY_SECONDS, _ripen, (x, y, z), dimensionId)
+            compFactory.CreateGame(levelId).AddTimer(Composter.READY_SECONDS, _ripen, pos, dimensionId)
+
+
+# 优先级 100：排在野生作物（99）、物品放成方块（98，派）、种水稻（50）之前，见 Server/ModServer.py 的优先级表——
+# 派、菌落、填馅南瓜这些能堆肥又能放成方块的东西点堆肥桶，不潜行时归堆肥（JE：方块的 use 在先），不放成方块
+@registerHandler("ServerItemUseOnEvent", match=COMPOSTER, priority=100)
+def OnUseItemOnComposter(args):
+    playerId = args["entityId"]
+    if compFactory.CreatePlayer(playerId).isSneaking() is True:
+        return                                         # 潜行：JE 不调方块的 use，照常放方块
+    pos = (args["x"], args["y"], args["z"])
+    blockStates, level = _fill(pos, args["dimensionId"])
+    if not _claims(level, args["itemDict"]):
+        return
+    args["ret"] = True
+    _compost(playerId, args["itemDict"], pos, args["dimensionId"], blockStates)
+    return True
+
+
+@registerHandler("ServerBlockUseEvent", match=COMPOSTER)
+def OnUseComposter(args):
+    playerId = args["playerId"]
+    pos = (args["x"], args["y"], args["z"])
+    blockStates, level = _fill(pos, args["dimensionId"])
+    handItemDict = GetCarriedItem(playerId)
+    if not _claims(level, handItemDict):
+        return
+    args["cancel"] = True                              # 这一下归堆肥（7 层也是：不收，也不放下）
+    _compost(playerId, handItemDict, pos, args["dimensionId"], blockStates)
 
 
 def _ripen(pos, dimensionId):
