@@ -101,5 +101,19 @@ def testHarmfulListStaysTheLinkedContract():
     assert "poison" in Effects.negativeEffect and "speed" not in Effects.negativeEffect
 
 
+def _effectColor(name):
+    import io
+    import json
+    import os
+    with io.open(os.path.join(fdtest.BP, "netease_effects", name + ".json"), encoding="utf-8") as handle:
+        return json.load(handle)["minecraft:effect"]["components"]["minecraft:particle_color"]
+
+
+def testEffectColorsAreJavas():
+    # JE NourishmentEffect：0xF3B300；ComfortEffect：10939391 = 0xA6EBFF
+    assert _effectColor("nourishment") == [0xF3, 0xB3, 0x00]
+    assert _effectColor("comfort") == [0xA6, 0xEB, 0xFF] and 10939391 == 0xA6EBFF
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

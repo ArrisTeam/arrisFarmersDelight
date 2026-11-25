@@ -5,7 +5,7 @@
       "identifier": "arris:comfort"
     },
     "components": {
-      "minecraft:particle_color": [255, 144, 144],
+      "minecraft:particle_color": [166, 235, 255],
       "minecraft:icon": "comfort"
     }
   }
