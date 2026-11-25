@@ -8,6 +8,7 @@ import random
 
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, System, GetCarriedItem
+from .Helpers.Items import GetItemType
 from .Helpers.Player import IsCreative
 from ..Shared.Rules import FortuneBonus
 
@@ -29,7 +30,8 @@ def OnDestroyWithFortune(args):
     level = FortuneBonus.fortuneLevel(held)
     if level <= 0:
         return
-    extra = FortuneBonus.bonus(args["fullName"], held["newItemName"], level, _droppedNames(args.get("dropEntityIds")), random)
+    extra = FortuneBonus.bonus(args["fullName"], held["newItemName"], GetItemType(held), level, _droppedNames(args.get("dropEntityIds")),
+                               random)
     if extra is not None:
         pos = (args["x"] + 0.5, args["y"] + 0.5, args["z"] + 0.5)
         System.CreateEngineItemEntity({"itemName": extra[0], "count": extra[1], "auxValue": 0}, args["dimensionId"], pos)

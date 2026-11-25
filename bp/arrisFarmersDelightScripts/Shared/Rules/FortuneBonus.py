@@ -37,15 +37,20 @@ def fortuneLevel(itemDict):
     return 0
 
 
-def bonus(blockName, toolName, level, droppedNames, rng):
+def isShears(toolName, toolType):
+    """JE 的 can_tool_perform_action(shears_dig)：原版剪刀，或者引擎说物品类型是 shears 的（别的模组的剪刀）。"""
+    return toolName == SHEARS or toolType == "shears"
+
+
+def bonus(blockName, toolName, toolType, level, droppedNames, rng):
     """打掉 blockName 时多掉的 (物品, 个数)，不多掉返回 None。
-    toolName 是手上的物品名（空手 None），level 是时运等级，droppedNames 是战利品表这一下掉出来的物品名，
-    rng 要有 random()（[0, 1)）和 randint(a, b)（两头都含）。"""
+    toolName 是手上的物品名（空手 None），toolType 是引擎给的物品类型（GetItemBasicInfo 的 itemType），level 是时运等级，
+    droppedNames 是战利品表这一下掉出来的物品名，rng 要有 random()（[0, 1)）和 randint(a, b)（两头都含）。"""
     entry = TABLE.get(blockName)
     if entry is None or level <= 0:
         return None
     itemName, formula, parameter, shearsExempt, needsDrop = entry
-    if shearsExempt and toolName == SHEARS:
+    if shearsExempt and isShears(toolName, toolType):
         return None
     if needsDrop and itemName not in droppedNames:
         return None

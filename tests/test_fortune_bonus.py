@@ -46,26 +46,27 @@ class Rng(object):
 
 def testUniformBonusIsZeroToMultiplierTimesLevel():
     rng = Rng(ints=[5])
-    assert Fortune.bonus("arris:wild_carrots", "minecraft:iron_hoe", 3, [], rng) == ("minecraft:carrot", 5)
+    assert Fortune.bonus("arris:wild_carrots", "minecraft:iron_hoe", None, 3, [], rng) == ("minecraft:carrot", 5)
     assert rng.asked == [(0, 6)]                                     # bonusMultiplier 2 × 时运 3
     rng = Rng(ints=[1])
-    assert Fortune.bonus("arris:tomatoes_vine_stage3", None, 2, [], rng) == ("arris:tomato", 1)
+    assert Fortune.bonus("arris:tomatoes_vine_stage3", None, None, 2, [], rng) == ("arris:tomato", 1)
     assert rng.asked == [(0, 2)]                                     # 番茄 bonusMultiplier 1
-    assert Fortune.bonus("arris:wild_onions", None, 1, [], Rng(ints=[0])) is None      # 抽到 0：不多掉
+    assert Fortune.bonus("arris:wild_onions", None, None, 1, [], Rng(ints=[0])) is None      # 抽到 0：不多掉
 
 
 def testBinomialBonusRollsOnlyTheExtraLevels():
     # JE 掷 等级 + 3 次，表里已经有 3 次：补的是"等级"次，每次 p = 0.5714286
-    assert Fortune.bonus("arris:cabbages_stage7", None, 3, [], Rng(randoms=[0.1, 0.9, 0.5])) == ("arris:cabbage_seeds", 2)
-    assert Fortune.bonus("arris:onions_stage3", None, 1, [], Rng(randoms=[0.6])) is None
+    assert Fortune.bonus("arris:cabbages_stage7", None, None, 3, [], Rng(randoms=[0.1, 0.9, 0.5])) == ("arris:cabbage_seeds", 2)
+    assert Fortune.bonus("arris:onions_stage3", None, None, 1, [], Rng(randoms=[0.6])) is None
 
 
 def testNoFortuneShearsAndUnripeGetNothing():
-    assert Fortune.bonus("arris:wild_carrots", None, 0, [], Rng()) is None
-    assert Fortune.bonus("arris:wild_carrots", "minecraft:shears", 3, [], Rng(ints=[4])) is None      # 剪刀：掉的是它自己
-    assert Fortune.bonus("arris:cabbages_stage6", None, 3, [], Rng()) is None                         # 没熟
-    assert Fortune.bonus("arris:sandy_shrub", None, 2, [], Rng(ints=[3])) is None                     # 12.5% 没中：没掉种子不补
-    assert Fortune.bonus("arris:sandy_shrub", None, 2, ["minecraft:beetroot_seeds"], Rng(ints=[3])) == ("minecraft:beetroot_seeds", 3)
+    assert Fortune.bonus("arris:wild_carrots", None, None, 0, [], Rng()) is None
+    assert Fortune.bonus("arris:wild_carrots", "minecraft:shears", None, 3, [], Rng(ints=[4])) is None      # 剪刀：掉的是它自己
+    assert Fortune.bonus("arris:wild_carrots", "othermod:steel_shears", "shears", 3, [], Rng(ints=[4])) is None   # 别的模组的剪刀（itemType）
+    assert Fortune.bonus("arris:cabbages_stage6", None, None, 3, [], Rng()) is None                         # 没熟
+    assert Fortune.bonus("arris:sandy_shrub", None, None, 2, [], Rng(ints=[3])) is None                     # 12.5% 没中：没掉种子不补
+    assert Fortune.bonus("arris:sandy_shrub", None, None, 2, ["minecraft:beetroot_seeds"], Rng(ints=[3])) == ("minecraft:beetroot_seeds", 3)
 
 
 def testFortuneLevelComesFromTheEnchantData():
