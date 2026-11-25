@@ -2,7 +2,8 @@
 # runner: both
 """作物、野生作物、沙地灌木的掉落（bp/loot_tables）与 JE 的战利品表一致（蘑菇菌落见 test_mushroom_colony_loot.py）。
 
-期望值来自 FarmersDelight 1.3.4 的 data/farmersdelight/loot_tables/blocks/*.json（没有时运气 / 爆炸衰减那两项不搬）：
+期望值来自 FarmersDelight 1.3.4 的 data/farmersdelight/loot_tables/blocks/*.json（时运 / 爆炸衰减那两项不在表里：
+时运由 Server/FortuneDrops 在方块被打掉时补，见 test_fortune_bonus.py；爆炸衰减不搬）：
 用 loottest.py 精确算出每件物品每种数量的概率，再和 JE 对账；方块定义里的战利品表路径也对一遍。
 """
 from __future__ import print_function

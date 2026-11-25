@@ -1,0 +1,56 @@
+# -*- coding: utf-8 -*-
+"""FortuneBonus - 农夫乐事的作物、野生作物、沙地灌木被打掉时，时运多掉几个（双端，纯规则）
+
+照 JE 农夫乐事 1.3.4 方块战利品表里的 apply_bonus（附魔 fortune；data/farmersdelight/loot_tables/blocks/*.json 一共 11 张）。
+基岩的战利品表没有时运，bp/loot_tables 只写了不带时运的那一份（tests/test_farm_loot_tables.py 对过），多出来的由脚本补：
+- binomial_with_bonus_count（extra 3、p 0.5714286）：JE 掷 时运等级 + 3 次、每次 p 多一个；表里已经有那 3 次，补的是多出来的 等级 次；
+- uniform_bonus_count（bonusMultiplier n）：JE 多 random.nextInt(n × 等级 + 1) 个，也就是 0 到 n × 等级 均匀取一个。
+补的条件照 JE 那一条：只有熟的作物方块在表里（JE 的条目带 block_state_property）；野生作物、沙地灌木拿剪刀打是掉它自己（JE 的
+can_tool_perform_action 那一支），不补；沙地灌木的甜菜种子本身只有 12.5%，所以只在战利品表真掉了种子时才补。创造模式不补（没有掉落）。
+"""
+FORTUNE = 18                               # 时运的附魔编号（网易 EnchantType.MiningLoot）
+SHEARS = "minecraft:shears"
+BINOMIAL, UNIFORM = "binomial", "uniform"
+BINOMIAL_P = 0.5714286
+
+# 方块 -> (补的物品, 公式, 参数, 剪刀打的不补, 战利品表真掉了这件才补)
+TABLE = {
+    "arris:cabbages_stage7": ("arris:cabbage_seeds", BINOMIAL, BINOMIAL_P, False, False),
+    "arris:onions_stage3": ("arris:onion", BINOMIAL, BINOMIAL_P, False, False),
+    "arris:budding_tomatoes_stage6": ("arris:tomato", UNIFORM, 1, False, False),
+    "arris:tomatoes_vine_stage3": ("arris:tomato", UNIFORM, 1, False, False),
+    "arris:sandy_shrub": ("minecraft:beetroot_seeds", UNIFORM, 2, True, True),
+    "arris:wild_beetroots": ("minecraft:beetroot_seeds", UNIFORM, 2, True, False),
+    "arris:wild_cabbages": ("arris:cabbage_seeds", UNIFORM, 2, True, False),
+    "arris:wild_carrots": ("minecraft:carrot", UNIFORM, 2, True, False),
+    "arris:wild_onions": ("arris:onion", UNIFORM, 2, True, False),
+    "arris:wild_potatoes": ("minecraft:potato", UNIFORM, 2, True, False),
+    "arris:wild_tomatoes": ("arris:tomato_seeds", UNIFORM, 2, True, False),
+}
+
+
+def fortuneLevel(itemDict):
+    """手上物品的时运等级（enchantData：[(附魔编号, 等级)]），没有是 0。"""
+    for entry in (itemDict or {}).get("enchantData") or ():
+        if entry[0] == FORTUNE:
+            return max(0, int(entry[1]))
+    return 0
+
+
+def bonus(blockName, toolName, level, droppedNames, rng):
+    """打掉 blockName 时多掉的 (物品, 个数)，不多掉返回 None。
+    toolName 是手上的物品名（空手 None），level 是时运等级，droppedNames 是战利品表这一下掉出来的物品名，
+    rng 要有 random()（[0, 1)）和 randint(a, b)（两头都含）。"""
+    entry = TABLE.get(blockName)
+    if entry is None or level <= 0:
+        return None
+    itemName, formula, parameter, shearsExempt, needsDrop = entry
+    if shearsExempt and toolName == SHEARS:
+        return None
+    if needsDrop and itemName not in droppedNames:
+        return None
+    if formula == BINOMIAL:
+        count = sum(1 for _ in range(level) if rng.random() < parameter)
+    else:
+        count = rng.randint(0, parameter * level)
+    return (itemName, count) if count > 0 else None
