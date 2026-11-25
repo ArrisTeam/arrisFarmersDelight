@@ -1,0 +1,19 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:snacks",
+  "items": [
+    "arris:barbecue_stick",
+    "arris:egg_sandwich",
+    "arris:chicken_sandwich",
+    "arris:hamburger",
+    "arris:bacon_sandwich",
+    "arris:mutton_wrap",
+    "arris:dumplings",
+    "arris:stuffed_potato",
+    "arris:cabbage_rolls",
+    "arris:salmon_roll",
+    "arris:cod_roll",
+    "arris:kelp_roll",
+    "arris:kelp_roll_slice"
+  ]
+}

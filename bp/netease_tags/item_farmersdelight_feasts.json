@@ -1,0 +1,12 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:feasts",
+  "items": [
+    "arris:roast_chicken_block_stage0",
+    "arris:stuffed_pumpkin_block_stage0",
+    "arris:shepherds_pie_block_stage0",
+    "arris:honey_glazed_ham_block_stage0",
+    "arris:gleaming_salad_block_stage0",
+    "arris:rice_roll_medley_block_stage0"
+  ]
+}

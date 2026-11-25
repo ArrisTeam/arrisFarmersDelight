@@ -46,6 +46,11 @@ MEANINGS = {
     "farmersdelight:unaffected_by_rich_soil": "沃土不催熟的植物",
     "farmersdelight:mushroom_colony_growable_on": "蘑菇菌落在它上面才长",
     "farmersdelight:drops_cake_slice": "拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕）",
+    "farmersdelight:meals": "饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算）", "farmersdelight:snacks": "小吃（三明治、汉堡、卷、饺子……）",
+    "farmersdelight:sweets": "甜食（蛋糕、曲奇、派的切片、冰棍……）", "farmersdelight:drinks": "饮料（瓶装的）",
+    "farmersdelight:feasts": "大餐（放在地上、一份一份盛出来的那几样）", "farmersdelight:pies": "派（原版的南瓜派也算）",
+    "farmersdelight:wild_crops": "野生作物", "farmersdelight:mushroom_colonies": "蘑菇菌落", "farmersdelight:cabinets": "橱柜",
+    "farmersdelight:serving_containers": "盛饭菜的容器（碗、玻璃瓶、桶）",
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",

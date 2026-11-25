@@ -1,0 +1,18 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:sweets",
+  "items": [
+    "minecraft:cake",
+    "minecraft:cookie",
+    "arris:cake_slice",
+    "arris:apple_pie_slice",
+    "arris:sweet_berry_cheesecake_slice",
+    "arris:chocolate_pie_slice",
+    "arris:pumpkin_pie_slice",
+    "arris:sweet_berry_cookie",
+    "arris:honey_cookie",
+    "arris:melon_popsicle",
+    "arris:glow_berry_custard",
+    "arris:fruit_salad"
+  ]
+}

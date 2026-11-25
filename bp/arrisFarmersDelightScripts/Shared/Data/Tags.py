@@ -71,6 +71,18 @@ SEEDS = "common:seeds"
 FLOWERS = "common:flowers"
 # 农夫乐事自己的老标签：linkage.md 让下游给自己的刀挂它（Server/Helpers/Items.IsKnife 认），农夫乐事的五把刀以前没挂
 LEGACY_KNIFE = "arris:knife"
+# JE 农夫乐事自己的分类物品标签，名字照 JE 的 farmersdelight:<路径>：给别的模组认"哪些是饭菜、小吃、甜食……"，农夫乐事自己不读。
+# 成员照 JE 的标签文件（# 展开），换成这边的物品名，原版物品照收
+MEALS = "farmersdelight:meals"
+SNACKS = "farmersdelight:snacks"
+SWEETS = "farmersdelight:sweets"
+DRINKS = "farmersdelight:drinks"
+FEASTS = "farmersdelight:feasts"
+PIES = "farmersdelight:pies"
+WILD_CROPS = "farmersdelight:wild_crops"
+MUSHROOM_COLONIES = "farmersdelight:mushroom_colonies"
+CABINETS = "farmersdelight:cabinets"
+SERVING_CONTAINERS = "farmersdelight:serving_containers"
 
 # ---- 方块标签 ----
 # 热源分两个，因为方块标签不带方块状态：HEAT_SOURCE 是方块名本身就说明在发热的（农夫乐事点着和熄着的炉灶是两个方块名，登记点着的那个）；
@@ -104,6 +116,8 @@ _RAW_COD = ("minecraft:cod", "arris:cod_slice")
 _RAW_SALMON = ("minecraft:salmon", "arris:salmon_slice")
 _COOKED_COD = ("minecraft:cooked_cod", "arris:cooked_cod_slice")
 _COOKED_SALMON = ("minecraft:cooked_salmon", "arris:cooked_salmon_slice")
+_WILD_CROPS = ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
+               "arris:wild_onions", "arris:wild_rice")
 
 # 物品标签 → 农夫乐事登记的成员（照 JE 1.3.4 的 forge / farmersdelight 标签文件，换成这边的物品名）
 ITEM_TAGS = {
@@ -152,8 +166,32 @@ ITEM_TAGS = {
     WATER_BUCKET: ("minecraft:water_bucket",),
     CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato"),
     SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds"),     # JE 的 forge:seeds/rice 就是米
-    FLOWERS: ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
-              "arris:wild_onions", "arris:wild_rice"),                       # JE：前六种在 minecraft:small_flowers，野生稻在 tall_flowers
+    FLOWERS: _WILD_CROPS,                       # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
+    # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
+    # 大餐的物品是第 0 阶段的方块（*_block_stage0）
+    MEALS: ("minecraft:mushroom_stew", "minecraft:beetroot_soup", "minecraft:rabbit_stew", "arris:mixed_salad", "arris:cooked_rice",
+            "arris:bone_broth", "arris:cookbeef_stew", "arris:vegetable_soup", "arris:fish_stew", "arris:chicken_soup", "arris:fried_rice",
+            "arris:pumpkin_soup", "arris:baked_cod_stew", "arris:noodle_soup", "arris:onion_soup", "arris:bacon_and_eggs",
+            "arris:ratatouille", "arris:steak_and_potatoes", "arris:pasta_with_meatballs", "arris:pasta_with_mutton_chop",
+            "arris:mushroom_rice", "arris:roasted_mutton_chops", "arris:vegetable_noodles", "arris:squid_ink_pasta",
+            "arris:grilled_salmon", "arris:roast_chicken", "arris:stuffed_pumpkin", "arris:honey_glazed_ham", "arris:shepherds_pie",
+            "arris:gleaming_salad"),
+    SNACKS: ("arris:barbecue_stick", "arris:egg_sandwich", "arris:chicken_sandwich", "arris:hamburger", "arris:bacon_sandwich",
+             "arris:mutton_wrap", "arris:dumplings", "arris:stuffed_potato", "arris:cabbage_rolls", "arris:salmon_roll", "arris:cod_roll",
+             "arris:kelp_roll", "arris:kelp_roll_slice"),
+    SWEETS: ("minecraft:cake", "minecraft:cookie", "arris:cake_slice", "arris:apple_pie_slice", "arris:sweet_berry_cheesecake_slice",
+             "arris:chocolate_pie_slice", "arris:pumpkin_pie_slice", "arris:sweet_berry_cookie", "arris:honey_cookie",
+             "arris:melon_popsicle", "arris:glow_berry_custard", "arris:fruit_salad"),
+    DRINKS: ("arris:milk_bottle", "arris:apple_cider", "arris:melon_juice", "arris:hot_cocoa"),
+    FEASTS: tuple("arris:%s_block_stage0" % feast for feast in (
+        "roast_chicken", "stuffed_pumpkin", "shepherds_pie", "honey_glazed_ham", "gleaming_salad", "rice_roll_medley")),
+    PIES: ("minecraft:pumpkin_pie", "arris:apple_pie_item", "arris:sweet_berry_cheesecake_item", "arris:chocolate_pie_item"),
+    WILD_CROPS: _WILD_CROPS,
+    MUSHROOM_COLONIES: ("arris:brown_mushroom_colony", "arris:red_mushroom_colony"),
+    # JE：#farmersdelight:cabinets/wooden（展开）
+    CABINETS: tuple("arris:%s_cabinet" % wood for wood in (
+        "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped")),
+    SERVING_CONTAINERS: ("minecraft:bowl", "minecraft:glass_bottle", "minecraft:bucket"),
 }
 
 # 方块标签 → 农夫乐事登记的成员
@@ -235,6 +273,16 @@ JE_NAMES = {
     CROPS: ("forge:crops",),
     SEEDS: ("forge:seeds",),
     FLOWERS: ("minecraft:flowers",),
+    MEALS: (MEALS,),
+    SNACKS: (SNACKS,),
+    SWEETS: (SWEETS,),
+    DRINKS: (DRINKS,),
+    FEASTS: (FEASTS,),
+    PIES: (PIES,),
+    WILD_CROPS: (WILD_CROPS,),
+    MUSHROOM_COLONIES: (MUSHROOM_COLONIES,),
+    CABINETS: (CABINETS,),
+    SERVING_CONTAINERS: (SERVING_CONTAINERS,),
     EGG: ("forge:eggs",),
     HEAT_SOURCE: ("farmersdelight:heat_sources",),
     HEAT_SOURCE_LIT: ("minecraft:campfires",),

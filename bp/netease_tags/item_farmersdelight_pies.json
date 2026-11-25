@@ -1,0 +1,10 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:pies",
+  "items": [
+    "minecraft:pumpkin_pie",
+    "arris:apple_pie_item",
+    "arris:sweet_berry_cheesecake_item",
+    "arris:chocolate_pie_item"
+  ]
+}

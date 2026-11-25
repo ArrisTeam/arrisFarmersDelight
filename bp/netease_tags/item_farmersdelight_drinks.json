@@ -1,0 +1,10 @@
+{
+  "type": "item",
+  "identifier": "farmersdelight:drinks",
+  "items": [
+    "arris:milk_bottle",
+    "arris:apple_cider",
+    "arris:melon_juice",
+    "arris:hot_cocoa"
+  ]
+}

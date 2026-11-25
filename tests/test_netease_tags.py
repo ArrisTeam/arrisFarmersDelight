@@ -247,6 +247,26 @@ def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
     assert optional == ["create:chute"], optional
 
 
+CATEGORIES = ("meals", "snacks", "sweets", "drinks", "feasts", "pies", "wild_crops", "mushroom_colonies", "cabinets", "serving_containers")
+
+
+def testFarmersDelightsCategoryItemTagsAreJavasFiles():
+    """JE 农夫乐事自己的分类物品标签（farmersdelight:meals 等十个，农夫乐事自己不读）：照 JE 的名字，成员就是 JE 标签文件展开、换成这边的名字
+    （炖牛肉 cookbeef_stew、派的物品 *_item、大餐的物品 *_block_stage0；原版物品照收）。上面 testMembersMatchTheJavaTags 逐个比，这里锁住十个都在、都比过。"""
+    own = sorted(tag for tag in Tags.ITEM_TAGS if tag.startswith("farmersdelight:"))
+    assert own == sorted("farmersdelight:" + name for name in CATEGORIES), own
+    for tag in own:
+        assert Tags.JE_NAMES[tag] == (tag,), tag
+    assert Tags.ITEM_TAGS[Tags.WILD_CROPS] == Tags.ITEM_TAGS[Tags.FLOWERS], "野生作物也是花（JE 放在 minecraft:small_flowers / tall_flowers）"
+    if not os.path.isdir(JE_DATA):
+        print("跳过：没有 JE 源码（.refs/FarmersDelight）")
+        return
+    for tag in own:
+        expanded = _jeTag(tag)
+        assert expanded is not None and sorted(expanded) == sorted(Tags.ITEM_TAGS[tag]), (tag, expanded)
+    assert len(Tags.ITEM_TAGS[Tags.CABINETS]) == 11 and "minecraft:pumpkin_pie" in Tags.ITEM_TAGS[Tags.PIES]
+
+
 def testTheHeatTagsAreTodaysHeatSources():
     """两个热源标签合起来 = 现在的热源方块表（CanProvideHeatBlockList 导入时的样子）；营火要看点燃状态，单列。"""
     both = Tags.BLOCK_TAGS[Tags.HEAT_SOURCE] + Tags.BLOCK_TAGS[Tags.HEAT_SOURCE_LIT]
