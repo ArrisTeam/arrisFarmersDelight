@@ -5,19 +5,22 @@
 item_<标签名里的 : 和 / 换成 _>.json、block_<同上>.json。引擎把各模组登记的同名标签（type 和 identifier 都一样）合并去重。
 原版自带的标签（VANILLA_TAGS）不生成文件。目录里不是这里生成的文件也算不一致（--check 失败，生成时删掉），词表是唯一的出处。
 docs/TAGS.md 的词表（两行标记之间）也从词表生成：标签、意思、对应 JE、农夫乐事登记的、农夫乐事在哪里读；"意思"和"在哪里读"写在下面的
-MEANINGS / READS 里（文档的话，不进游戏），词表加了标签这里没写意思时生成失败。
+MEANINGS / READS 里（文档的话，不进游戏），词表加了标签这里没写意思时生成失败。"在哪里读"里配方读的那部分不手写，从配方表里数
+（recipeReaders：厨锅每道菜的 Slots 里写着的 #标签、砧板的 CuttingTagDict）：改了这两张表要重新生成（测试核对文档是最新的）。
 用法：py -3 tools/gen_tags.py            生成 / 更新 bp/netease_tags/ 和 docs/TAGS.md 的词表
       py -3 tools/gen_tags.py --check    只比较，不一致时退出码 1（tests/test_netease_tags.py 也会比）
 """
+import importlib
 import importlib.util
 import io
 import json
 import os
 import sys
 
-sys.dont_write_bytecode = True      # 按路径加载词表时别在包里留 __pycache__
+sys.dont_write_bytecode = True      # 按路径加载词表、导入配方表时别在包里留 __pycache__
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BP = os.path.join(ROOT, "bp")
 OUT = os.path.join(ROOT, "bp", "netease_tags")
 SOURCE = os.path.join(ROOT, "bp", "arrisFarmersDelightScripts", "Shared", "Data", "Tags.py")
 DOC = os.path.join(ROOT, "docs", "TAGS.md")
@@ -95,9 +98,36 @@ def _codes(names):
     return "、".join("`%s`" % name for name in names) if names else "—"
 
 
+def recipeReaders():
+    """{标签: [读它的配方是哪些（一句话）]}，从配方表里数：厨锅每道菜的 Slots 里写着的 #标签（列出是哪几道菜，按表里的先后）、
+    砧板按标签的配方（Shared/Data/Cutting.CuttingTagDict 的键，列出切成什么）。按包导入那两张表（厨锅配方表要相对导入词表）。"""
+    if BP not in sys.path:
+        sys.path.insert(0, BP)
+    recipes = importlib.import_module("arrisFarmersDelightScripts.Shared.Data.CookingPotRecipes")
+    cutting = importlib.import_module("arrisFarmersDelightScripts.Shared.Data.Cutting")
+    dishes = {}
+    for row in recipes.CookingPotRecipeList:
+        for slot in row.get("Slots") or ():
+            for option in slot:
+                if isinstance(option, str) and option.startswith("#"):
+                    names = dishes.setdefault(option[1:], [])
+                    if row["text"] not in names:
+                        names.append(row["text"])
+    found = dict((tag, ["厨锅的格子：%s（Shared/Data/CookingPotRecipes 的 Slots）" % "、".join(names)]) for tag, names in dishes.items())
+    for tag, recipe in sorted(cutting.CuttingTagDict.items()):
+        made = "、".join("`%s`" % entry["itemName"] for entry in recipe["itemList"])
+        found.setdefault(tag, []).append("砧板按标签切成 %s（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf）" % made)
+    return found
+
+
 def docTable(tags=None):
     """docs/TAGS.md 的词表（两行标记之间的内容）。"""
     tags = tags or vocabulary()
+    readers = recipeReaders()
+    known = set(tags.ITEM_TAGS) | set(tags.VANILLA_TAGS) | set(tags.WITHOUT_MEMBERS)
+    unknown = sorted(set(readers) - known)
+    if unknown:
+        raise SystemExit("配方里用了词表里没有的物品标签：%s（加进 Shared/Data/Tags.py，或者改配方）" % "、".join(unknown))
     rows = ["| 标签 | 种类 | 意思 | 对应 JE | 农夫乐事登记的 | 农夫乐事在哪里读 |", "| --- | --- | --- | --- | --- | --- |"]
     groups = (("物品", tags.ITEM_TAGS), ("方块", tags.BLOCK_TAGS), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
               ("物品（农夫乐事没有成员，不生成文件）", dict((tag, ()) for tag in tags.WITHOUT_MEMBERS)))
@@ -105,8 +135,9 @@ def docTable(tags=None):
         for tag, members in table.items():
             if tag not in MEANINGS:
                 raise SystemExit("tools/gen_tags.py 的 MEANINGS 里没写 %s 的意思" % tag)
+            reads = ([READS[tag]] if tag in READS else []) + (readers.get(tag, []) if kind.startswith("物品") else [])
             rows.append("| `%s` | %s | %s | %s | %s | %s |" % (tag, kind, MEANINGS[tag], _codes(tags.JE_NAMES.get(tag, ())),
-                                                             _codes(members), READS.get(tag, "—")))
+                                                             _codes(members), "；".join(reads) or "—"))
     return "\n".join(rows)
 
 

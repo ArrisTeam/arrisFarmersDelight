@@ -66,6 +66,33 @@ def testTheFilesAreCurrent():
     assert result.returncode == 0, result.stdout.decode("utf-8", "replace") + "\n先跑 py -3 tools/gen_tags.py"
 
 
+def _docReads():
+    """docs/TAGS.md 词表里每个标签的"农夫乐事在哪里读"那一格。"""
+    with io.open(os.path.join(fdtest.ROOT, "docs", "TAGS.md"), encoding="utf-8") as handle:
+        text = handle.read()
+    table = text[text.index("<!-- gen_tags: 词表开始"):text.index("<!-- gen_tags: 词表结束")]      # 文档前面另有几张小表，只看生成的词表
+    rows = [line for line in table.splitlines() if line.startswith("| `")]
+    return dict((cells[1].strip("` "), cells[6].strip()) for cells in (row.split("|") for row in rows))
+
+
+def testTheDocSaysWhichRecipesReadEachTag():
+    """词表的最后一列写着哪几道厨锅菜（每行 Slots 里的 #标签）、哪条砧板配方（CuttingTagDict）读这个标签：对着配方表重新数一遍。"""
+    reads = _docReads()
+    used = set()
+    for row in fdtest.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList:
+        for option in (option for slot in row["Slots"] for option in slot):
+            if isinstance(option, str) and option.startswith("#"):
+                used.add(option[1:])
+                assert row["text"] in reads[option[1:]], (option, row["text"], reads[option[1:]])
+    cutting = fdtest.load("Shared.Data.Cutting").CuttingTagDict
+    for tag in cutting:
+        used.add(tag)
+        assert "砧板按标签切成" in reads[tag], reads[tag]
+    assert {"common:tomato", "common:raw_beef", "common:dough", Tags.EGG} <= used and "饺子" in reads[Tags.DOUGH]
+    for tag in set(Tags.ITEM_TAGS) - used:
+        assert "厨锅的格子" not in reads[tag] and "砧板按标签" not in reads[tag], (tag, reads[tag])
+
+
 def testEachFileIsOneWellFormedTag():
     files = _tagFiles()
     assert len(files) == len(Tags.ITEM_TAGS) + len(Tags.BLOCK_TAGS), sorted(files)
