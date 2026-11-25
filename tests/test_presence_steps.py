@@ -15,7 +15,9 @@ import fdtest
 Steps = fdtest.load("Compat.Diegesis.Steps")
 SCRIPTS_DIR = os.path.join(fdtest.BP, fdtest.SCRIPTS)
 TABLES = (("ServerSteps", "ServerLink"), ("ClientSteps", "ClientLink"))
-EXPECTED = ("board", "pot", "pan", "grill", "table")  # 原来两个入口登记站点的顺序：砧板、厨锅、煎锅、炉灶；最后是前置包原版工作台上的登记
+EXPECTED = ("board", "pot", "pan", "grill", "table")  # 原来两个入口登记站点的顺序：砧板、厨锅、煎锅、炉灶；然后是前置包原版工作台上的登记
+CLIENT_ONLY = {"settings": "SETTINGS"}                # 只有客户端有的步骤（排在最后）和它的条件：玩家开关登进前置包的设置界面
+REQUIRES = {"board": None, "pot": None, "pan": None, "grill": "FACING_HOOK", "table": None}     # 两端都有的步骤的条件：炉灶要朝向钩子
 
 
 class Text(object):
@@ -151,7 +153,9 @@ def _definesFunction(path, funcName):
 def testEveryStepTargetExistsAndTheTablesAreWrittenAsPlainData():
     for table, family in TABLES:
         steps = _steps(table)
-        assert [step[0] for step in steps] == list(EXPECTED), "%s：一个站点一步，顺序是原来登记的顺序，最后是 table" % table
+        extra = dict(CLIENT_ONLY) if table == "ClientSteps" else {}
+        assert [step[0] for step in steps] == list(EXPECTED) + sorted(extra), \
+            "%s：一个站点一步，顺序是原来登记的顺序，然后是 table（客户端最后多一步 settings）" % table
         assert len(set(step[0] for step in steps)) == len(steps), "步骤名不重复"
         for entry in steps:
             assert isinstance(entry, tuple) and len(entry) == 3, "(步骤名, 目标, 条件或 None)：%r" % (entry,)
@@ -162,14 +166,16 @@ def testEveryStepTargetExistsAndTheTablesAreWrittenAsPlainData():
             assert os.path.isfile(path), "%s 的目标 %r：找不到模块" % (name, target)
             assert _definesFunction(path, funcName), "%s 的目标 %r：模块里没有顶层函数 %s" % (name, target, funcName)
             assert modulePath.startswith("Compat.Diegesis.") and modulePath.endswith(family), "%s：服务端的表指服务端的步骤模块，客户端的指客户端的" % target
-            assert requires in (None, "FACING_HOOK"), "%s 的条件 %r：本包用到的可选功能旗只有朝向钩子" % (name, requires)
-        assert dict((step[0], step[2]) for step in steps) == {"board": None, "pot": None, "pan": None, "grill": "FACING_HOOK", "table": None}, "炉灶要朝向钩子"
+            assert requires in (None, "FACING_HOOK", "SETTINGS"), "%s 的条件 %r：本包用到的可选功能旗只有朝向钩子、设置" % (name, requires)
+        assert dict((step[0], step[2]) for step in steps) == dict(REQUIRES, **extra), "炉灶要朝向钩子，客户端的 settings 要设置"
         assert not [node for node in ast.walk(_tree(table)) if isinstance(node, (ast.Import, ast.ImportFrom))], "步骤表只放数据，不导入业务模块"
 
 
 def testTheTwoTablesNameTheSameStationsInTheSameOrder():
     server, client = _steps("ServerSteps"), _steps("ClientSteps")
-    assert [(name, requires) for name, _, requires in server] == [(name, requires) for name, _, requires in client], "两端一起有、一起没有"
+    shared = [(name, requires) for name, _, requires in client if name not in CLIENT_ONLY]
+    assert [(name, requires) for name, _, requires in server] == shared, "两端一起有、一起没有（只有客户端的 settings 除外）"
+    assert [name for name, _, _ in client][len(shared):] == sorted(CLIENT_ONLY), "只有客户端的步骤排在最后"
 
 
 if __name__ == "__main__":

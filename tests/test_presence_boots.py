@@ -22,7 +22,13 @@ STATION_LOOK = {"board": "board", "pot": "pot", "pan": "pan", "grill": "stove"}
 DISH_CRAFTS = (L.DIEGESIS + ".DishCrafts", "onCraft")
 SWITCH = {"board": "cutting_board", "pot": "cooking_pot", "pan": "skillet", "grill": "stove"}
 ORDER = ["board", "pot", "pan", "grill"]
-STEPS = ORDER + ["table"]                     # 步骤表：四个站点，最后是前置包原版工作台上的登记
+STEPS = ORDER + ["table"]                     # 步骤表：四个站点，然后是前置包原版工作台上的登记
+CLIENT_ONLY = {"settings": "skipped"}         # 只有客户端有的最后一步（玩家开关）：这里的接口替身没有 SETTINGS，记 skipped（登了什么由 test_settings_link.py 管）
+
+
+def shared(steps):
+    """两端都有的那些步骤的状态（去掉只有客户端有的）。"""
+    return dict((name, status) for name, status in steps.items() if name not in CLIENT_ONLY)
 
 
 class Hooks(object):
@@ -116,7 +122,7 @@ def testTheServerLinksTheFourStationsInTheirOldOrderAndTurnsOnEverythingThatHang
 
 def testTheClientLinksTheFourStationsInTheirOldOrderAndTurnsOnTheScenesTheSoundsAndTheSmokeHandOver():
     calls, steps, scenes, muted = bootClient()
-    assert calls == ORDER and steps == dict((name, "ok") for name in STEPS), (calls, steps)
+    assert calls == ORDER and steps == dict(dict((name, "ok") for name in STEPS), **CLIENT_ONLY), (calls, steps)
     assert scenes == {"pot": True, "pan": True, "stove": True, "board": True}
     assert muted is True, "炉灶站点登记了：灶上东西的烟交给站点"
     assert Mode.mode("client") == Mode.LINKED
@@ -139,7 +145,7 @@ def testASwitchedOffStationIsSkippedOnBothSidesAndTakesOnlyItsOwnExtrasWithIt():
         assert looks == dict((name, name != STATION_LOOK[station]) for name in LOOKS), (station, looks)
         assert dishCrafts is (station != "board"), "工作台拦截跟着砧板站点走"
         calls, steps, scenes, muted = bootClient(off=(station,))
-        assert steps == dict((name, "skipped" if name == station else "ok") for name in STEPS), (station, steps)
+        assert steps == dict(dict((name, "skipped" if name == station else "ok") for name in STEPS), **CLIENT_ONLY), (station, steps)
         assert scenes == dict((name, name != STATION_LOOK[station]) for name in SCENES), (station, scenes)
         assert muted is (station != "grill"), "炉灶站点没登记：灶上东西的烟照放"
         assert calls == ORDER, "关了的也问过它（register 自己说不）：登记顺序不变"
@@ -150,7 +156,7 @@ def testServerAndClientAgreeOnEveryCombinationOfTheStationSwitches():
         off = tuple(station for station, on in zip(ORDER, flags) if not on)
         server = bootServer(off=off)
         client = bootClient(off=off)
-        assert server[1] == client[1], (off, server[1], client[1])
+        assert server[1] == shared(client[1]), (off, server[1], client[1])
         assert [server[2][STATION_LOOK[name]] for name in ORDER] == [client[2][STATION_LOOK[name]] for name in ORDER] == list(flags), off
 
 
