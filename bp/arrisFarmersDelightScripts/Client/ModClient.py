@@ -9,6 +9,7 @@ from ..QuModLibs.Client import Listen
 from .Engine import clientApi, compFactory, levelId
 from ..Shared.Data.GuideBook import uiGuideBookPath, uiGuideBookScreen
 
+from . import Tags  # noqa: F401  标签的引擎口最先装上（Shared/Rules/ItemTags）
 from . import Endpoints  # noqa: F401
 from . import TableSync  # noqa: F401
 from . import BlockEntityRestore  # noqa: F401
