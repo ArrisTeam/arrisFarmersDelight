@@ -19,6 +19,7 @@ from . import SkilletSteam  # noqa: F401
 from . import Input  # noqa: F401
 from . import CookingPotUi  # noqa: F401
 from .Ui import CookingPotScreen  # noqa: F401
+from . import ExtensionReady  # noqa: F401  新联动接口的客户端 ready 事件
 
 # 展示实体的渲染控制器读这两个 query 变量
 _QUERY_VARIABLES = ("query.mod.item_display_mode", "query.mod.item_display_animation")

@@ -16,6 +16,7 @@ from .EventRegistry import dispatch
 
 # 导入即登记（顺序不影响执行顺序，执行顺序只看 priority）
 from . import LegacyApi  # noqa: F401
+from . import ExtensionReady  # noqa: F401
 from . import PlayerSession  # noqa: F401
 from . import TableSync  # noqa: F401
 from . import CraftReturns  # noqa: F401
@@ -228,3 +229,11 @@ def _onPlayerDie(args):
 @Listen("ClientLoadAddonsFinishServerEvent")
 def _onClientLoadAddonsFinish(args):
     dispatch("ClientLoadAddonsFinishServerEvent", args)
+
+
+# ---- 加载 ----
+
+@Listen("LoadServerAddonScriptsAfter")
+def _onLoadServerAddonScriptsAfter(args=None):
+    # 全部 Addon 脚本加载完：新联动接口的服务端 ready 事件（ExtensionReady）
+    dispatch("LoadServerAddonScriptsAfter", args or {})

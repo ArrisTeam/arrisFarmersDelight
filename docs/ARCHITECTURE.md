@@ -69,8 +69,12 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotFill（厨锅界面的"添加食材"：挑写法、找来源、整体搬）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
+  ExtensionApi/         新联动接口（照机械动力的 ready 事件 + 门面 ext）：Events（命名空间 arrisFarmersDelight、系统名 ExtensionApi、两端的 ready 事件、
+                        接口版本、两端的能力名）、Version（主包版本号 HOST_VERSION，tools/version.py 和 manifest 一起改）、Facade（ext：每端一个）、
+                        Ready（每端广播一次，别的模组的处理函数出错不连累农夫乐事）；广播用的系统在 Server/ExtensionSystem、Client/ExtensionSystem
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；34 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ModServer.py          导入全部玩法模块；35 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ExtensionReady        LoadServerAddonScriptsAfter：发新联动接口的服务端 ready 事件（ExtensionSystem 是广播用的系统，要广播时才注册）
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给；PopFromBoard / PopFromPan 读方块朝向往侧面弹）
@@ -106,6 +110,7 @@ Server/                 服务端
   TatamiPairs           榻榻米方块两两配对：放下（EntityPlaceBlockAfterServerEvent）时写两块的方块态，另一半没了拆开；样子全在方块 JSON 的 permutations 里
 Client/                 客户端
   ModClient.py          入口：query 变量、指南书界面
+  ExtensionReady.py     LoadClientAddonScriptsAfter：发新联动接口的客户端 ready 事件（ExtensionSystem.py 是广播用的系统）
   Engine.py             compFactory 等 + unwrap（客户端方块实体数据的 __value__ 解包）
   Endpoints.py          服务端调用的 6 个客户端端点：放声音（可带音量 / 音调）、砧板切一件的碎屑、粒子、方块实体 molang、挥手、提示（OnTip：按玩家的语言查出那一句再弹）
   TableSync.py          客户端端点 OnTableSync：把服务端发来的"下游追加的表内容"并进本端自己的表，重算依赖它的缓存
