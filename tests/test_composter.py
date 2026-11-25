@@ -141,8 +141,9 @@ def testSneakingOrAFullComposterLeavesTheClickAlone():
     assert claimed is False and args["ret"] is False and placed == ["arris:apple_pie_item"] and _level() == 2
     _setUp(8, hand=PIE)
     placed[:] = []
-    args, claimed = _useOn(True)                                            # 8 层：取骨粉交给原版
-    assert claimed is False and placed == ["arris:apple_pie_item"] and _use(True)["cancel"] is False
+    args, claimed = _useOn(True)                                            # 8 层：JE / 原版是取骨粉——认领、不放派，但不置 ret
+    assert claimed is True and args["ret"] is False and placed == [] and world.players["p1"]["hand"]["count"] == 2
+    assert _use(True)["cancel"] is False and _level() == 8                  # 方块那条也不拦：交给原版把骨粉取出来
 
 
 def testEachItemMakesOneSound():

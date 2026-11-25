@@ -67,6 +67,8 @@ def OnUseItemOnComposter(args):
         return                                         # 潜行：JE 不调方块的 use，照常放方块
     pos = (args["x"], args["y"], args["z"])
     blockStates, level = _fill(pos, args["dimensionId"])
+    if level == Composter.FULL:
+        return True                                    # 8 层：JE / 原版这一下是取骨粉——让后面的"放成方块"让开，但不置 ret，交给原版取
     if not _claims(level, args["itemDict"]):
         return
     args["ret"] = True
