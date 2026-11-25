@@ -284,6 +284,19 @@ def OnServerSkilletBlockUse(args):
 - **QuModLibs 的监听对晚导入的模块照常生效**：`@Listen` → `LoaderSystem.REG_STATIC_LISTEN_FUNC` → `nativeStaticListen`，只是把"向引擎挂监听"排进加载器系统的 `_callQueue`，系统每个 tick 的 `Update` 清一遍队列
   （两端相同；`@AllowCall` 是立刻写进 `_QCustomAPI` 的），所以步骤在 `LoadClientAddonScriptsAfter` 里才导入的场景模块，监听最迟下一个 tick 挂上。监听按"模块名.函数名"去重，
   所以 `Presence` 两端的事件处理函数是两个不同名字的函数（`onServerLoaded` / `onClientLoaded`）。
+- **玩家自己的站点开关**（客户端最后一步 `settings`，只有客户端有；`Compat/Diegesis/SettingsClientLink.py`，规则 `Shared/Rules/StationSwitches.py`，条件是接口的 `SETTINGS`）：
+  往前置包的设置界面（站点上的齿轮）和网易"通用设置"页里登一组 `farmersdelight`（页签"农夫乐事"）：总开关"全部厨具" + 这一端登记成功的站点各一项（厨锅、砧板、煎锅、炉灶；
+  配置里关了的、没登上的不出现，四个都没登上不登、记 `skipped`），每项管着那个站点登记用的站点 id（各站点 `*Station.STATION_ID`）。关了的站点内核在右键时说不开站、不取消，
+  方块照农夫乐事原样用（厨锅是经典界面）；开关存在这个玩家的客户端，服务端不知道。字是 `rp/texts` 两份语言文件里的 `arris_fd.settings.*`。
+  老的前置包没有 `SETTINGS`：这一步 `skipped`，什么都不登、不报，一切照旧。
+- **砧板那一项要告诉服务端**：联动着、`remove_crafting_recipes` 开着时，工作台上的砧板菜对所有人否决（`DishCrafts`、`TableHooksLink.dishVeto`），前置包工作台的配方书里也藏掉
+  （`TableClientLink`）；关了砧板（或总开关）的玩家开不了砧板站点，这些菜就没处做。照 HoD 的"没有砧板站点就不拿掉合成"（`HandsOnOptions.removeCraftingRecipes`）按玩家延伸：
+  "砧板站点对我开不开" = 总开关 and 砧板那一项（`StationSwitches.boardOn`）。客户端登记完自己算一遍、报一次（登记时内核不调 `onChange`；设置存在本机、哪个存档都一样，
+  所以每次进世界都报），之后总开关或砧板那一项改了再报，本地玩家进了世界（`OnLocalPlayerStopLoading`）再报一次同样的值；同一个值管书里藏不藏（`TableClientLink.hidden` 现读）。
+  服务端 `Compat/Diegesis/BoardSwitch.py`：端点 `BoardSwitchReport`（`@AllowCall` + `@InjectHttpPlayerId`，值只当布尔用），按玩家只记关着的（`StationSwitches.Choices`），
+  缺省开着（刚进服还没报到、前置包太旧没有设置时否决照旧），玩家下线清掉（`DelServerPlayerEvent`，`ModServer` 为它多挂了这一个监听）；跟着否决在 `board` 那一步开（`BoardSwitch.enable`），
+  没登否决时不收。已知的一瞬间：拨开关那一下客户端已经不藏、服务端还没收到，这时点"照配方做"会被否决一次。
+  测试：`tests/test_station_switches.py`（规则、两份语言文件）、`test_settings_link.py`（客户端登了什么、什么时候报）、`test_board_switch.py`（服务端两处否决、下线）、`test_settings_kernel.py`（放进前置包真的设置表：内核拦的和报给服务端的是同一个答案）。
 
 ## 厨锅界面（dolorContainer）
 
