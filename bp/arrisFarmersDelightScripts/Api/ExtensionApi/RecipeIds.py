@@ -76,14 +76,16 @@ def _itemPath(name, aux=0):
 
 def cookingIds(table):
     """厨锅配方表每一行的 ID（不是配方的行是 None），按表的先后、结果是确定的：
-    先收明写的 Id（写法对、不是 legacy: 开头；同一个只认第一行——旧接口追加的行可能带着从别的行拷来的 "Id"）；
-    再给没有 ID 的行（含明写 legacy: 或写法不对的）派生 legacy:cooking/<成品的命名空间>/<成品名>，被占了（明写的或先派生的）
-    就接着加 _2、_3……直到没人用（成品 pie、pie、pie_2 三行是 pie、pie_2、pie_2_2）。"""
+    先收明写的 Id（写法对、不是 legacy: 开头、不是农夫乐事自带的砧板 / 营火配方的 ID；同一个只认第一行——旧接口追加的行可能带着
+    从别的行拷来的 "Id"）；再给没有 ID 的行（含明写 legacy:、写法不对、自带砧板 / 营火 ID 的）派生 legacy:cooking/<成品的命名空间>/<成品名>，
+    被占了（明写的或先派生的）就接着加 _2、_3……直到没人用（成品 pie、pie、pie_2 三行是 pie、pie_2、pie_2_2）。
+    自带砧板 / 营火的 ID 不收：厨锅的 ID 先查（RecipeTables.find），一行厨锅配方写着它，那条切法 / 营火配方就按 ID 找不到、删不掉，
+    墓碑还会一直占着它。"""
     ids, taken = [None] * len(table), set()
     for index, row in enumerate(table):
         given = row.get("Id") if isinstance(row, dict) else None
         parts = split(given) if isinstance(given, _TEXT) else None
-        if parts is not None and parts[0] != LEGACY and given not in taken:
+        if parts is not None and parts[0] != LEGACY and given not in taken and builtInKeyOf(given) is None:
             taken.add(given)
             ids[index] = given
     for index, row in enumerate(table):

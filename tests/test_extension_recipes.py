@@ -403,6 +403,24 @@ def testCookingIdsNeverCollide():
     assert len(ids) == len(set(ids))
 
 
+def testACookingRowCannotTakeAHostCuttingOrCampfireId():
+    """主会话定的 B3（T 复核时复现的）：兼容入口追加的厨锅行明写了农夫乐事自带的砧板 ID，两张列表里都有这个 ID，按 ID 查、删都落到厨锅那行，
+    删了以后墓碑还占着它，卷心菜那条切法再也不能用自己的 ID 覆盖。现在这样的 Id 当没写，派生 legacy: 的。"""
+    Ids = fdtest.load("Api.ExtensionApi.RecipeIds")
+    cabbage, beef = "farmersdelight:cutting/arris/cabbage", "farmersdelight:campfire_cooking/minecraft/beef"
+    with Sandbox():
+        for recipeId, result in ((cabbage, "mymod:pie"), (beef, "mymod:steak_pie")):
+            assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", {"Id": recipeId, "Recipe": [[("minecraft:apple", 0)]],
+                                                                                "CookResult": (result, 0), "PushItem": [], "text": "pie"})
+        assert Ids.cookingIds(Pot.CookingPotRecipeList)[-2:] == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/steak_pie"]
+        ids = [view["id"] for kind in ("cooking", "cutting", "campfire_cooking") for view in SERVER.getRecipesOfType(kind)]
+        assert len(ids) == len(set(ids)) and ids.count(cabbage) == ids.count(beef) == 1
+        assert SERVER.getRecipeById(cabbage)["type"] == "farmersdelight:cutting"
+        assert SERVER.getRecipeById(beef)["type"] == "minecraft:campfire_cooking"
+        assert SERVER.removeRecipe(cabbage)["ok"] and ("arris:cabbage", 0) not in Cutting.CuttingBoardDict, "删掉的是那条切法"
+        assert SERVER.createBuilder(cabbage, "cutting").ingredient("arris:cabbage").output("arris:cabbage_leaf", 2).tool("knife").register()["ok"]
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
