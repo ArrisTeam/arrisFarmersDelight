@@ -77,6 +77,9 @@ LEGACY_KNIFE = "arris:knife"
 # HEAT_SOURCE_LIT 是要看点燃状态的（营火的 extinguished；别的模组一个方块 + lit 状态的炉灶）
 HEAT_SOURCE = "common:heat_source"
 HEAT_SOURCE_LIT = "common:heat_source_lit"
+# 农夫乐事自己的方块标签，名字照 JE 的 farmersdelight:<路径>。读的地方是"名单 ∪ 标签"：原来的名单原样留着，不在名单里的再看标签；
+# 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
+HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -152,6 +155,7 @@ ITEM_TAGS = {
 BLOCK_TAGS = {
     HEAT_SOURCE: ("minecraft:fire", "minecraft:soul_fire", "minecraft:lava", "minecraft:flowing_lava", "minecraft:magma", "arris:stove"),
     HEAT_SOURCE_LIT: ("minecraft:campfire", "minecraft:soul_campfire"),
+    HEAT_CONDUCTORS: ("minecraft:hopper",),               # JE 还有可选的 create:chute：别的模组的名字不写，机械动力那边登记
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -208,6 +212,7 @@ JE_NAMES = {
     EGG: ("forge:eggs",),
     HEAT_SOURCE: ("farmersdelight:heat_sources",),
     HEAT_SOURCE_LIT: ("minecraft:campfires",),
+    HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

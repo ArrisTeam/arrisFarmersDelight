@@ -9,10 +9,11 @@ JE：方块标签 farmersdelight:heat_sources（HeatableBlockEntity.isHeated：�
 - 锅 / 煎锅下面的热源（服务端，读得到方块状态）：名单里的照旧；不在名单里的问 sourceByTag。
 - 手持煎锅"身边有没有热源"（JE 的 isPlayerNearHeatSource 只看方块标签、不看点没点着；服务端 SkilletHand、客户端 Input 同一条规则）：
   名单 ∪ 两个标签，不看状态（nearHeat / NEAR）——和名单里的营火现在的算法一样（营火在名单里，熄了也算）。
-托盘（Server/Helpers/Heat.ShelfBlockSet）和传热方块（HeatConductorList）不归这里。
+- 传热方块（conducts：JE 的 farmersdelight:heat_conductors）：名单 HeatConductorList ∪ 这个方块标签；锅 / 煎锅下面是它时看再下面一格。
+托盘（Server/Helpers/Heat.ShelfBlockSet ∪ farmersdelight:tray_heat_sources）在 Heat.py 里并。
 """
 from ..Data import Tags
-from ..Data.Cooking import CanProvideHeatBlockList
+from ..Data.Cooking import CanProvideHeatBlockList, HeatConductorList
 from . import ItemTags
 
 _TRUE = (True, 1, "true", "True")
@@ -43,6 +44,11 @@ def nearHeat(blockName):
         return False
     return blockName in CanProvideHeatBlockList or ItemTags.blockHas(blockName, Tags.HEAT_SOURCE) \
         or ItemTags.blockHas(blockName, Tags.HEAT_SOURCE_LIT)
+
+
+def conducts(blockName):
+    """把热传给上面一格的方块（HeatableBlockEntity.isHeated 的 heat_conductors）：名单里的，或带 farmersdelight:heat_conductors 的。"""
+    return ItemTags.blockListed(blockName, HeatConductorList, Tags.HEAT_CONDUCTORS)
 
 
 class _Near(object):

@@ -1,0 +1,7 @@
+{
+  "type": "block",
+  "identifier": "farmersdelight:heat_conductors",
+  "items": [
+    "minecraft:hopper"
+  ]
+}

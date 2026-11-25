@@ -7,6 +7,7 @@
   2. 名单（CanProvideHeatBlockList）里的照旧（营火看 extinguished、熄着的炉灶不热）；不在名单里的：带 common:heat_source 就热，
      带 common:heat_source_lit 要点着（别的模组的营火式、lit 状态式炉灶）；什么标签都不带的不热
   3. 手持煎锅身边的热源：名单 ∪ 两个标签，不看点没点着（JE 的 isPlayerNearHeatSource；名单里的营火熄了也算，标签里的一样）
+  4. 传热方块（farmersdelight:heat_conductors）：漏斗（名单）照旧，带这个标签的也把再下面一格的热传上来
 引擎是 fakeengine.py 里的假的，标签由假口答。
 """
 from __future__ import print_function
@@ -86,6 +87,25 @@ def testTheListStillDecidesForItsOwnBlocks():
     _reset()
     assert _hot("minecraft:magma") and _hot("arris:stove") and _hot("minecraft:campfire", {"extinguished": False})
     assert not _hot("minecraft:campfire", {"extinguished": True}) and not _hot("arris:stove_extinguish") and not _hot("minecraft:stone")
+    _reset()
+
+
+def testATaggedConductorPassesTheHeatUpLikeAHopper():
+    _reset()
+    under = (BELOW[0], BELOW[1] - 1, BELOW[2])
+
+    def heated(conductor):
+        world.reset()
+        skilletkit.EngineData()
+        world.setBlock(BELOW[0], BELOW[1], BELOW[2], conductor)
+        world.setBlock(under[0], under[1], under[2], "minecraft:fire")
+        return Heat.IsHeated(BELOW, 0)
+
+    assert heated("minecraft:hopper") and not heated("create:chute"), "名单里只有漏斗"
+    assert HeatSources.conducts("minecraft:hopper") and not HeatSources.conducts("create:chute") and not HeatSources.conducts(None)
+    ItemTags.setPort("server", BlockTagPort(members={Tags.HEAT_CONDUCTORS: ["create:chute"]}))
+    assert heated("create:chute") and HeatSources.conducts("create:chute"), "机械动力把溜槽登记进 farmersdelight:heat_conductors 就传热"
+    assert not heated("minecraft:stone")
     _reset()
 
 

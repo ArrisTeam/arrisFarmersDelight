@@ -213,3 +213,8 @@ def blockHas(blockName, tag):
         return False
     port, ok = _sync()
     return blockName in _blocksOf(port if ok else None, tag) or tag in _blockTagsOf(port, ok, blockName)
+
+
+def blockListed(blockName, names, tag):
+    """名单 ∪ 方块标签：在 names（原来的名单，原样留着）里，或者带 tag 这个方块标签。"""
+    return bool(blockName) and (blockName in names or blockHas(blockName, tag))

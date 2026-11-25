@@ -12,7 +12,7 @@
 """
 from .Engine import compFactory, levelId, GetBlockEntityData, GetBlockName
 from .Fx import ToAllPlayerBlockMolang
-from ...Shared.Data.Cooking import CanProvideHeatBlockList, HeatConductorList
+from ...Shared.Data.Cooking import CanProvideHeatBlockList
 from ...Shared.Rules import HeatSources, PotSupport
 
 # 厨锅 / 煎锅放在这些方块上时显示支架模型
@@ -48,12 +48,13 @@ def IsHeatSource(blockPos, dimensionId, blockName=None):
 
 
 def IsHeated(belowPos, dimensionId, belowName=None):
-    """HeatableBlockEntity.isHeated：belowPos 是锅 / 煎锅正下方那一格；它是热源就热，它是传热方块（漏斗）就看再下面一格是不是热源。"""
+    """HeatableBlockEntity.isHeated：belowPos 是锅 / 煎锅正下方那一格；它是热源就热，它是传热方块（漏斗，或带 farmersdelight:heat_conductors
+    的，HeatSources.conducts）就看再下面一格是不是热源。"""
     if belowName is None:
         belowName = GetBlockName(belowPos, dimensionId)
     if IsHeatSource(belowPos, dimensionId, belowName):
         return True
-    return belowName in HeatConductorList and IsHeatSource((belowPos[0], belowPos[1] - 1, belowPos[2]), dimensionId)
+    return HeatSources.conducts(belowName) and IsHeatSource((belowPos[0], belowPos[1] - 1, belowPos[2]), dimensionId)
 
 
 def SupportOf(blockEntityData):
