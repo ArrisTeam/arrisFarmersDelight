@@ -7,7 +7,7 @@
 ServerItemUseOnEvent 是唯一靠执行顺序区分处理者的事件（同一次点击可能同时满足几个模块的条件，
 由共用的交互冷却决定谁认领）。各处理函数的 priority 按旧版模块加载顺序给出：
     100 放下的煎锅 / 砧板 / 成熟作物取消物品使用（煎锅、砧板不潜行时：JE 的 use 吃掉这一下）    99 野生作物放置检查    98.5 煎锅物品（只有潜行才放，ItemToBlock 看不到它）
-     98 物品放成方块（派）、长 / 短榻榻米垫
+     98 物品放成方块（派）、拿绳子点绳子往下接、长 / 短榻榻米垫
      50 种水稻 / 骨粉 / 蘑菇菌落        11 炉灶点火 / 灭火（用上了认领，不再往下走）    10 炉灶放食物
 DamageEvent 同理：100 展示实体删除器、60 爬绳免摔、0 背刺魔咒加伤害（不认领，后面的照常）。
 """
@@ -183,6 +183,12 @@ def _onContainerFillLoottable(args):
 @Listen("PlayerAttackEntityEvent")
 def _onPlayerAttackEntity(args):
     dispatch("PlayerAttackEntityEvent", args)
+
+
+@Listen("ProjectileDoHitEffectEvent")
+def _onProjectileDoHitEffect(args):
+    # 抛射物砸中东西；处理函数自己看 args["id"] 是什么抛射物
+    dispatch("ProjectileDoHitEffectEvent", args)
 
 
 @Listen("PlayerInteractServerEvent")

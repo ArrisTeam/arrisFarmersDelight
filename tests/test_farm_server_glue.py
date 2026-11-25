@@ -397,5 +397,33 @@ def testTomatoHarvestAddsFivePercentRottenTomato():
     assert level.nameAt((0, 1, 0)) == "arris:tomatoes_vine_stage0"
 
 
+def testBoneMealOnARipeTomatoStillPicksIt():
+    # JE TomatoBlock.use：熟了右键就是摘，拿着骨粉也一样（方块的 use 先于骨粉）；潜行拿着东西时 JE 不调方块的 use，才轮到骨粉
+    ripe = "arris:budding_tomatoes_stage6"
+    applied = []
+    realApply = Crops.ApplyBoneMeal
+    Crops.ApplyBoneMeal = lambda playerId, item, name, pos, dim: applied.append(name) or True
+    Crops.probability = lambda percent: False
+    try:
+        for sneaking in (False, True):
+            level = _fresh().put((0, 1, 0), ripe)
+            if sneaking:
+                level.sneaking.add("p1")
+            _hold(level, "p1", "minecraft:bone_meal")
+            useOn = {"itemDict": dict(level.hands["p1"]), "blockName": ripe, "x": 0, "y": 1, "z": 0, "face": 1,
+                     "dimensionId": 0, "entityId": "p1", "ret": False}
+            Registry.dispatch("ServerItemUseOnEvent", useOn, ripe)
+            args = _use(ripe, (0, 1, 0))
+            assert useOn["ret"] is True                             # 引擎自己的骨粉一律不要
+            if sneaking:
+                assert applied == [ripe] and level.nameAt((0, 1, 0)) == ripe and "cancel" not in args
+            else:
+                assert applied == [] and level.nameAt((0, 1, 0)) == "arris:budding_tomatoes_stage3" and args["cancel"] is True
+                assert [item[0]["itemName"] for item in level.entities] == ["arris:tomato"]
+            applied[:] = []
+    finally:
+        Crops.ApplyBoneMeal = realApply
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

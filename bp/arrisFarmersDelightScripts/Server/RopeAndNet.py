@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-"""RopeAndNet - 绳子攀爬、敲钟、卷绳子，安全网弹跳，爬绳时免摔落伤害与不踩坏耕地（服务端）
+"""RopeAndNet - 绳子攀爬、敲钟、卷绳子、拿绳子点绳子往下接，安全网弹跳，爬绳时免摔落伤害与不踩坏耕地（服务端）
 
-绳子与安全网照 JE 的 RopeBlock / SafetyNetBlock，规则在 Shared/Rules/RopeReel.py、NetBounce.py。
+绳子与安全网照 JE 的 RopeBlock / RopeItem / SafetyNetBlock，规则在 Shared/Rules/RopeReel.py、RopeExtend.py、NetBounce.py。
 """
 from ..QuModLibs.Server import AllowCall, InjectHttpPlayerId
 from .EventRegistry import registerHandler
 from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, GetEngineTypeStr, IsLiving
 from .Helpers.Fx import ToAllPlayerPlaySound
-from .Helpers.Player import SetPlayerUsedCD, IsCreative
+from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, IsCreative
 from ..Shared.Data import Blocks
 from ..Shared.Data.Blocks import canClimbList
-from ..Shared.Rules import NetBounce, RopeReel
+from ..Shared.Rules import NetBounce, RopeExtend, RopeReel
+from ..Shared.Rules.TatamiMat import usesTheClick
 import math
 
 ROPE = "arris:rope"
@@ -24,6 +25,22 @@ def _blockAt(pos, dimensionId):
     """实体浮点坐标所在方块的名字（负坐标也向下取整）。"""
     floored = (int(math.floor(pos[0])), int(math.floor(pos[1])), int(math.floor(pos[2])))
     return GetBlockName(floored, dimensionId)
+
+
+def _nameAt(pos, dimensionId):
+    """这一格的方块名；没加载的格子 None。"""
+    info = compFactory.CreateBlockInfo(levelId).GetBlockNew(pos, dimensionId)
+    return info["name"] if info else None
+
+
+def _mayBuild(playerId):
+    # JE 的 mayBuild：冒险、旁观和没有建造权限的玩家不行
+    abilities = compFactory.CreatePlayer(playerId).GetPlayerAbilities()
+    return bool(abilities and abilities.get("build"))
+
+
+def _itemName(args):
+    return args["itemDict"]["newItemName"]
 
 
 @AllowCall
@@ -79,8 +96,7 @@ def _reelRope(args):
     # 潜行：这根绳子最下面的一节收回背包（JE：destroyBlock(pos, false)，不掉落；背包放不下什么都不做）
     playerId = args["playerId"]
     dimensionId = args["dimensionId"]
-    abilities = compFactory.CreatePlayer(playerId).GetPlayerAbilities()
-    if not (abilities and abilities.get("build")):
+    if not _mayBuild(playerId):
         return
     target = RopeReel.lowestRope((args["x"], args["y"], args["z"]), lambda pos: GetBlockName(pos, dimensionId) == ROPE)
     ropeItem = {"itemName": ROPE, "count": 1, "auxValue": 0}
@@ -109,6 +125,30 @@ def OnUseRope(args):
     index = names.index("minecraft:bell")
     if names[0:index].count(ROPE) == index:
         System.CreateEngineEntityByTypeStr("arris:toll_entity", (x + 0.5, y + index + 0.6, z + 0.5), (0, 0), dimensionId)
+
+
+# 优先级 98：和物品放成方块（ItemToBlock、榻榻米垫）同一档，见 Server/ModServer.py 的优先级表
+@registerHandler("ServerItemUseOnEvent", match=ROPE, keyOf=_itemName, priority=98)
+def OnPlaceRopeOnRope(args):
+    # JE RopeItem：拿着绳子点绳子（或者点在挂着绳子的那一面上），不潜行往下接到第一格能放的地方，潜行照点到的面放
+    dimensionId = args["dimensionId"]
+    clicked = (args["x"], args["y"], args["z"])
+    start = RopeExtend.startRope(clicked, args["face"], lambda pos: _nameAt(pos, dimensionId))
+    if start is None:
+        return                                         # 和绳子无关：引擎照常放
+    playerId = args["entityId"]
+    sneaking = compFactory.CreatePlayer(playerId).isSneaking() is True
+    if start != clicked and usesTheClick(args["blockName"]) and not sneaking:
+        return                                         # 点到的方块自己会处理右键（JE：方块的 use 优先）
+    args["ret"] = True                                 # 引擎自己放的那一格（点到的面外侧）不要，放不放都由这里定
+    if SetPlayerUsedCD(playerId) is True or not _mayBuild(playerId):
+        return True
+    target = RopeExtend.placeAt(start, args["face"], sneaking, lambda pos: _nameAt(pos, dimensionId))
+    if target is None or not compFactory.CreateBlockInfo(levelId).SetBlockNew(target, {"name": ROPE}, 0, dimensionId):
+        return True
+    ToAllPlayerPlaySound(dimensionId, (target[0] + 0.5, target[1] + 0.5, target[2] + 0.5), "dig.cloth")
+    SetNotCreateItem(playerId, args["itemDict"])
+    return True
 
 
 # 优先级 60：DamageEvent 里排在展示实体（100）与食物效果（70）之后，与旧版模块加载顺序一致

@@ -101,5 +101,28 @@ def testHarmfulListStaysTheLinkedContract():
     assert "poison" in Effects.negativeEffect and "speed" not in Effects.negativeEffect
 
 
+def _effectColor(name):
+    import io
+    import json
+    import os
+    with io.open(os.path.join(fdtest.BP, "netease_effects", name + ".json"), encoding="utf-8") as handle:
+        return json.load(handle)["minecraft:effect"]["components"]["minecraft:particle_color"]
+
+
+def testEffectColorsAreJavas():
+    # JE NourishmentEffect：0xF3B300；ComfortEffect：10939391 = 0xA6EBFF
+    assert _effectColor("nourishment") == [0xF3, 0xB3, 0x00]
+    assert _effectColor("comfort") == [0xA6, 0xEB, 0xFF] and 10939391 == 0xA6EBFF
+
+
+def testComfortHealsLikeJava():
+    # JE 1.3.4 ComfortEffect.applyEffectTick：有生命恢复不管；玩家还有饱和度不管；没满血回 1；每 80 刻一次
+    assert Rules.COMFORT_SECONDS == 80 / 20.0 and Rules.COMFORT_HEAL == 1.0
+    assert Rules.comfortHeals(False, 0.0, 10.0, 20.0)
+    assert not Rules.comfortHeals(True, 0.0, 10.0, 20.0)
+    assert not Rules.comfortHeals(False, 0.5, 10.0, 20.0)
+    assert not Rules.comfortHeals(False, 0.0, 20.0, 20.0)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))
