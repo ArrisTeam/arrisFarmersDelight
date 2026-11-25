@@ -266,6 +266,18 @@ def testOneResultHasOneContainerTimeAndExperience():
         assert CookingPot.vesselOf("mymod:soup") == ("minecraft:bowl", 0) and CookingPot.cookSecondsOf("mymod:soup") == 5.0
 
 
+def testACopiedIdOnALegacyRowGetsADerivedId():
+    """T 复核时指出的：旧接口追加的行带着拷贝来的 "Id"，ID 就重复了，只认得第一行。后出现的同 ID 改给派生的 legacy: ID。"""
+    with Sandbox():
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        copy = dict(stew, Recipe=[[("minecraft:dirt", 0)]], Slots=None)
+        del copy["Slots"]
+        assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", copy)
+        assert SERVER.getRecipeById("farmersdelight:cooking/beef_stew")["ingredients"][0] == {"tag": "common:raw_beef"}, "第一行照旧"
+        assert SERVER.getRecipeById("legacy:cooking/arris/cookbeef_stew")["ingredients"] == [{"item": "minecraft:dirt"}], "拷来的那行给派生 ID"
+        assert SERVER.removeRecipe("legacy:cooking/arris/cookbeef_stew")["ok"] and Pot.CookingPotRecipeList[-1].get("Disabled") is True
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

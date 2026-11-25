@@ -55,11 +55,13 @@ def _itemPath(name, aux=0):
 
 
 def cookingIds(table):
-    """厨锅配方表每一行的 ID（写着 Id 的用它；没写的派生 legacy:cooking/...，同一成品按先后加 _2、_3；不是配方的行是 None）。"""
-    found, seen = [], {}
+    """厨锅配方表每一行的 ID（写着 Id 的用它；没写的派生 legacy:cooking/...，同一成品按先后加 _2、_3；不是配方的行是 None）。
+    同一个 Id 写在好几行上（旧接口追加的行带着从别的行拷来的 "Id"）：第一行用它，后面的当没写、给派生的 ID。"""
+    found, seen, taken = [], {}, set()
     for row in table:
         result = row.get("CookResult") if isinstance(row, dict) else None
-        if isinstance(row, dict) and isinstance(row.get("Id"), _TEXT):
+        if isinstance(row, dict) and isinstance(row.get("Id"), _TEXT) and row["Id"] not in taken:
+            taken.add(row["Id"])
             found.append(row["Id"])
         elif isinstance(result, (tuple, list)) and len(result) == 2 and isinstance(result[0], _TEXT) and result[0]:
             base = "%s:cooking/%s" % (LEGACY, _itemPath(result[0]))
