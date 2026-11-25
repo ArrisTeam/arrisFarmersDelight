@@ -219,5 +219,21 @@ def testBadRowsAreNotRecipes():
         assert Rules.optionsOf(rows[2]) is None and Rules.matchRecipe([_item("bad")]) == (None, None)
 
 
+def testFramesAreRememberedWhileTheTagsAreReadyUntilTheTableChanges():
+    """T 复核时指出的性能：framesOf / extraWays 每次都把旧写法过一遍格子配对。现在按 (配方表的版本, 标签代数) 记住；
+    引擎口没准备好时不记（照 ItemTags 的规矩），配方表改过（rebuildIndex）就重算。"""
+    stew = TABLE[next(at for at, recipe in enumerate(TABLE) if recipe["Id"] == "farmersdelight:cooking/beef_stew")]
+    assert Rules.framesOf(stew) is not Rules.framesOf(stew), "没有口：不记"
+    ItemTags.setPort("server", Port({}, ready=True))
+    try:
+        first = Rules.framesOf(stew)
+        assert Rules.framesOf(stew) is first and Rules.extraWays(stew) is Rules.extraWays(stew)
+        Rules.rebuildIndex()
+        again = Rules.framesOf(stew)
+        assert again is not first and again == first
+    finally:
+        ItemTags.setPort("server", None)
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

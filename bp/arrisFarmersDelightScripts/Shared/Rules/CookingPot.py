@@ -176,6 +176,10 @@ def optionsOf(recipe):
 
 def extraWays(recipe):
     """旧写法里格子不收的那几种（契约的 AddCookingPotRecipe 给有 Slots 的配方加的写法）；没有 Slots 的配方就是它的全部写法。"""
+    return Table.remembered("extra", recipe, _extraWays)
+
+
+def _extraWays(recipe):
     slots = Table.slotsOf(recipe)
     ways = Table.waysOf(recipe)
     return ways if slots is None else [way for way in ways if not PotSlots.fits(slots, way, ItemTags.has)]
@@ -184,6 +188,10 @@ def extraWays(recipe):
 def framesOf(recipe):
     """画这道菜的配料时轮换的几帧 [[(物品名, aux), ...], ...]：有 Slots 的每格轮换自己的选项（第 n 帧每格取第 n % 这格选项数 种，
     帧数是选项最多那一格的个数），格子不收的旧写法各占一帧接在后面；没有 Slots 的就是它的各种写法。某格一个成员都没有时格子那一段不画。"""
+    return Table.remembered("frames", recipe, _framesOf)
+
+
+def _framesOf(recipe):
     options = optionsOf(recipe)
     if options is None:
         return Table.waysOf(recipe)

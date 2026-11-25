@@ -38,8 +38,11 @@ def _number(value, default=None):
 def view(recipeId):
     """这个 ID 的配方写成 JE 配方 JSON 的样子（加上 "id"），能原样交回 registerFromJson；没有是 None。"""
     found = find(recipeId)
-    if found is None:
-        return None
+    return None if found is None else viewAt(found, recipeId)
+
+
+def viewAt(found, recipeId):
+    """已经找到的配方（RecipeTables.find / entriesOf 给的 (类型, 下标或键)）写成 JE 配方 JSON 的样子。"""
     kind, key = found
     if kind == "campfire_cooking":
         return {"id": recipeId, "type": "minecraft:campfire_cooking", "ingredient": {"item": key}, "result": CanCookedFoodDict[key]}

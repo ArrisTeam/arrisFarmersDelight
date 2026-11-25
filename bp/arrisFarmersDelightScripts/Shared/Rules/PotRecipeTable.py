@@ -145,6 +145,24 @@ def _remember(store, key, value):
     return value
 
 
+_derived = {}      # (哪个函数, id(行)) -> 答案（None 键记着戳）：配方表改过、标签换代时清掉；引擎口没准备好时不记
+
+
+def remembered(name, recipe, compute):
+    """CookingPot.framesOf / extraWays 记住的答案（经典界面每次刷新要算两遍、JEI 一页一页地要）。调用的人只读不改。"""
+    stamp = (revision(), ItemTags.generation())
+    if _derived.get(None) != stamp:
+        _derived.clear()
+        _derived[None] = stamp
+    key = (name, id(recipe))
+    if key not in _derived:
+        value = compute(recipe)
+        if not ItemTags.ready() or len(_derived) > MEMO_LIMIT:
+            return value
+        _derived[key] = value
+    return _derived[key]
+
+
 def resolve(key):
     """排好序的输入 -> (配方序号, 配上的那种旧写法或 None)：表里靠前的赢；配不上是 MISS。先调过 table()。"""
     found = _memo.get(key)

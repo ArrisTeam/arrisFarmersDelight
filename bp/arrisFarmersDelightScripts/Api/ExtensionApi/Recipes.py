@@ -110,7 +110,7 @@ class Recipes(object):
     def getRecipesOfType(self, recipeType):
         """这一类的全部配方（同上的样子）；类型不认识是 []。"""
         kind = RecipeIds.typeOf(recipeType)
-        return [RecipeViews.view(recipeId) for recipeId in RecipeTables.idsOf(kind)] if kind else []
+        return [RecipeViews.viewAt(found, recipeId) for recipeId, found in RecipeTables.entriesOf(kind)] if kind else []
 
     def removeRecipe(self, recipeId):
         return self._refused(recipeId) or RecipeTables.remove(recipeId)

@@ -305,6 +305,13 @@ def testARemovedHostCuttingOrCampfireRecipeCanComeBackUnderItsId():
             .tool("knife").register()["error"] == "reserved_namespace"
 
 
+def testListingATypeIsTheSameAsLookingEachOneUp():
+    """getRecipesOfType 一次算完（T 复核时指出以前是一个个按 ID 找，O(n²)），给的和按 ID 一个个查的一样。"""
+    for kind in ("cooking", "cutting", "campfire_cooking"):
+        listed = SERVER.getRecipesOfType(kind)
+        assert listed and listed == [SERVER.getRecipeById(view["id"]) for view in listed], kind
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

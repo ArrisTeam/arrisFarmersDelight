@@ -85,12 +85,18 @@ def find(recipeId):
     return None
 
 
-def idsOf(kind):
-    """这一类现在的全部配方 ID（按表的先后；砧板先物品后标签，各按键排）。"""
+def entriesOf(kind):
+    """这一类现在的全部配方 [(ID, (类型, 下标或键))]，按表的先后（砧板先物品后标签，各按键排）：一次算完，不用一个个按 ID 找。"""
     if kind == "cooking":
-        return [recipeId for recipeId, row in zip(RecipeIds.cookingIds(CookingPotRecipeList), CookingPotRecipeList) if CookingPot.isLive(row)]
+        ids = RecipeIds.cookingIds(CookingPotRecipeList)
+        return [(ids[index], ("cooking", index)) for index, row in enumerate(CookingPotRecipeList) if CookingPot.isLive(row)]
     keys = sorted(CanCookedFoodDict) if kind == "campfire_cooking" else sorted(CuttingBoardDict) + sorted(CuttingTagDict)
-    return [idOfKey(kind, key) for key in keys]
+    return [(idOfKey(kind, key), (kind, key)) for key in keys]
+
+
+def idsOf(kind):
+    """这一类现在的全部配方 ID（entriesOf 的先后）。"""
+    return [recipeId for recipeId, _found in entriesOf(kind)]
 
 
 def _remember(kind, recipeId, key):
