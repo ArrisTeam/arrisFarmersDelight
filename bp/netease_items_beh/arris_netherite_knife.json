@@ -8,7 +8,7 @@
                 "value": true
             },
             "netease:weapon": {
-                "attack_damage": 6,
+                "attack_damage": 5,
                 "enchantment": 15,
                 "level": 3,
                 "type": "sword"

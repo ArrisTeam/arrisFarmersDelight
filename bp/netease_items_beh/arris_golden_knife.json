@@ -5,7 +5,7 @@
             "minecraft:max_damage": 32,
             "minecraft:max_stack_size": 1,
             "netease:weapon": {
-                "attack_damage": 2,
+                "attack_damage": 1,
                 "enchantment": 22,
                 "level": 0,
                 "type": "sword"

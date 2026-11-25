@@ -578,7 +578,8 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
 
 - 物品 JSON（`netease_items_beh/arris_skillet_item.json`）：`custom_item_type: weapon` 才会读 `netease:weapon`（以前没写，攻击 / 附魔能力 / 修复都没生效），
   `max_damage` 250（基岩版"损伤 > 最大耐久才坏"，与小刀、原版基岩工具同一个约定，不再减一）、`enchantment` 14、`level` 2（网易文档：铁砧用铁锭修）、
-  `attack_damage` 7（取 JE 的修饰符，按"加在玩家基础 1 上"理解，实际 8，待实机核）、提示改成 JE 的"潜行可放置"
+  `attack_damage` 7（`netease:weapon.attack_damage` 加在玩家基础 1 点之上，实际 8 = JE；2026-11-26 实机：铁刀写 4 时打猪掉 5 点、空手掉 1 点，
+  五把刀因此各减 1：燧石 2、铁 3、金 1、钻石 4、下界合金 5，总伤害是 JE 2.5 / 3.5 / 1.5 / 4.5 / 5.5 向上取整，`tests/test_knife_values.py` 钉着）、提示改成 JE 的"潜行可放置"
   （`netease:customtips` 是整段悬停文字的格式串，所以后面补了 `%enchanting%%attack_damage%`，不然附魔和攻击伤害两行可能被盖掉）。
 - 放置：`SkilletItem.OnUseSkilletItem`（`ServerItemUseOnEvent`，优先级 98.5）只有潜行才放，不潜行直接拦下（不让 ItemToBlock 当普通方块物品放，也不取消引擎的 `ret`，
   右键箱子照样开箱）。放置本身仍调 `ItemToBlock.OnPlaceItemAsBlock`；放好后把那件煎锅（`SkilletRules.storeItem`：名字、附加值、耐久、附魔、提示、额外 ID、用户数据，
@@ -879,7 +880,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
 - 原版汤 / 南瓜派的提示（滋养时长、"可放置"）：附加包改不了原版物品的提示；六种盛宴的物品是方块物品，没有物品 JSON 可写 `netease:customtips`。
-- 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
+- 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int，加在玩家基础 1 点之上：总伤害取 JE 的向上取整）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
 
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
