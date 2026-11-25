@@ -46,11 +46,12 @@ def _pair(value):
 
 
 def _wellFormed(recipe):
-    """食谱字典的形状对不对：成品 (物品名, aux)、至少一个变体、每个变体是非空的 (物品名, aux) 列表、容器可以没有。"""
-    if not isinstance(recipe, dict) or not _pair(recipe.get("CookResult")):
+    """食谱字典的形状对不对：不是墓碑（Disabled）、成品 (物品名, aux)、每个变体是非空的 (物品名, aux) 列表、容器可以没有；
+    至少一个变体，或者有写对了的格子（Slots：新接口登记的配方，标签格一个成员都没有时展开出来的写法是空的）。"""
+    if not isinstance(recipe, dict) or recipe.get("Disabled") or not _pair(recipe.get("CookResult")):
         return False
     rows = recipe.get("Recipe")
-    if not isinstance(rows, (tuple, list)) or not rows:
+    if not isinstance(rows, (tuple, list)) or not (rows or PotRules.optionsOf(recipe) is not None):
         return False
     if not all(isinstance(row, (tuple, list)) and row and all(_pair(item) for item in row) for row in rows):
         return False
@@ -122,14 +123,14 @@ def titleOf(recipe):
 
 
 def variantCount(recipe):
-    """食谱有几个变体（可替换的写法）。"""
-    return max(1, len(recipe["Recipe"]))
+    """详情的食材格轮换几帧：有格子（Slots）的每格轮换自己的选项（标签是它现在的成员），没有的一种写法一帧（PotRules.framesOf）。"""
+    return max(1, len(PotRules.framesOf(recipe)))
 
 
 def variantOf(recipe, variant):
-    """食谱的第 variant 个变体（超出个数时取模）：[(物品名, aux), ...]。"""
-    rows = recipe["Recipe"]
-    return list(rows[variant % len(rows)]) if rows else []
+    """详情的第 variant 帧（超出帧数时取模）：[(物品名, aux), ...]。"""
+    frames = PotRules.framesOf(recipe)
+    return list(frames[variant % len(frames)]) if frames else []
 
 
 def shownVariant(count, since, now, period=VARIANT_SECONDS):
@@ -152,14 +153,19 @@ def ingredientNames():
     return frozenset(item[0] for recipe in _recipes() for row in recipe["Recipe"] for item in row)
 
 
+def _isIngredientName(name):
+    """这个物品名是不是某个食谱的食材：某种写法里出现过，或者配方认它（某格写着它、某个标签格收它，PotRules.isIngredient）。"""
+    return name in ingredientNames() or PotRules.isIngredient((name, 0))
+
+
 def isPureVessel(name):
     """只当容器用的东西（碗、玻璃瓶）：Shift 点击只往容器格放，不往食材格放，不然会混进食材把配方搅乱。"""
-    return name in vesselNames() and name not in ingredientNames()
+    return name in vesselNames() and not _isIngredientName(name)
 
 
 def isAmbiguous(name):
     """既是某个食谱的容器、又是别的食谱的食材（卷心菜叶）：Shift 点击当食材放，只有容器格里已经是它时才续上。"""
-    return name in vesselNames() and name in ingredientNames()
+    return name in vesselNames() and _isIngredientName(name)
 
 
 def bookCells(recipe, variant):
@@ -193,9 +199,13 @@ def presentCount(variant, slotKeys):
     return count
 
 
-def fillOrder(recipe, slotKeys):
-    """添加食材时试写法的先后：锅里已经放着的件数从多到少，一样多的照表里的先后（排序是稳定的）。"""
-    rows = [variantOf(recipe, index) for index in range(variantCount(recipe))]
+def fillOrder(recipe, slotKeys, stock=()):
+    """添加食材时试写法的先后：锅里已经放着的件数从多到少，一样多的照表里的先后（排序是稳定的）。
+    有格子（Slots）的食谱，写法是旧写法加上格子按锅里和背包里有的料（stock：背包各格的 (物品名, aux)）具体化出来的（PotRules.waysWith）。"""
+    if PotRules.optionsOf(recipe) is None:
+        rows = [variantOf(recipe, index) for index in range(variantCount(recipe))]
+    else:
+        rows = PotRules.waysWith(recipe, [key for key in list(slotKeys) + list(stock) if key is not None])
     return sorted(rows, key=lambda row: -presentCount(row, slotKeys))
 
 

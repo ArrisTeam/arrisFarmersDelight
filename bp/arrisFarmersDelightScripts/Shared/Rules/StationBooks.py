@@ -102,7 +102,7 @@ def _potWays(recipe):
 def potPages():
     pages = []
     for index, recipe in enumerate(CookingPotRecipeList):
-        result = recipe.get("CookResult") if isinstance(recipe, dict) else None
+        result = recipe.get("CookResult") if CookingPot.isLive(recipe) else None
         ways = _potWays(recipe) if _pair(result) else []
         if not ways:
             continue
@@ -114,17 +114,20 @@ def potPages():
 
 
 def potRecipe(key):
-    """键 -> 配方字典；不认识返回 None。"""
+    """键 -> 配方字典；不认识、或那一行已经被移除（墓碑）返回 None。"""
     if isinstance(key, int) and not isinstance(key, bool) and 0 <= key < len(CookingPotRecipeList):
-        return CookingPotRecipeList[key]
+        recipe = CookingPotRecipeList[key]
+        return recipe if CookingPot.isLive(recipe) else None
     return None
 
 
 def potCurrent(inputs, meal=None):
-    """锅里的料正在做的那道菜的键；料做不成菜时是锅里已经煮好的那锅（meal）的菜（PotBook.current）；都没有返回 None。"""
-    cooking, _pushed = CookingPot.matchRecipe([item for item in inputs or () if item])
-    made = cooking or meal
-    recipe = CookingPot.findRecipeByResult(made["newItemName"]) if made else None
+    """锅里的料正在做的那道菜的键：锅读成的那条配方（同一成品有几条配方时不会指错）；料做不成菜时是锅里已经煮好的那锅（meal）
+    的菜（PotBook.current）；都没有返回 None。"""
+    found = CookingPot.matchIndex([item for item in inputs or () if item])
+    if found is not None:
+        return found
+    recipe = CookingPot.findRecipeByResult(meal["newItemName"]) if meal else None
     for index, candidate in enumerate(CookingPotRecipeList):
         if candidate is recipe:
             return index

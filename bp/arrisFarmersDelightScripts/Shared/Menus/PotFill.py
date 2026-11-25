@@ -2,7 +2,8 @@
 """PotFill - 厨锅经典界面的"添加食材"：挑一种写法、给每件食材在玩家背包里找来源、整体搬进食材格（双端，纯规则）
 
 旧界面依次试每种写法、用第一种凑得齐的；这里先照锅里已经放着的料排先后，已经照某种写法放了一半的锅接着补那一种：
-- 写法按"锅里 6 个食材格已经放着的、这种写法要的件数"从多到少试，一样多的照表里的先后（Book.fillOrder）；
+- 写法按"锅里 6 个食材格已经放着的、这种写法要的件数"从多到少试，一样多的照表里的先后（Book.fillOrder）；有格子（Slots，
+  标签格）的食谱另把格子按锅里和背包里有的料具体化成写法一起试，别的模组进了标签的料也能补；
 - 空格不够放的跳过，必须放进空格的食材在背包里找不齐的跳过，第一种排得出来的就用它；
 - 它一件都挪不了（锅里已经齐了、背包里也没有可再加的）就拒绝 nothing、不再往后试：不把另一种写法的料混进锅；
 - 全都排不出来时：有因为缺食材跳过的拒绝 missing，否则 no_room；
@@ -52,8 +53,9 @@ def plan(ws, recipe, slots):
     一种都排不出来时抛 Refused（missing / no_room）。
     """
     keys = [Book.keyOf(ws.get((slots, index))) for index in range(Book.INPUT_SLOTS)]
+    stock = [Book.keyOf(ws.get((COMBINED, index))) for index in range(PLAYER_SIZE)]      # 格子（标签格）按背包里有的料具体化成写法
     missing = False
-    for variant in Book.fillOrder(recipe, keys):
+    for variant in Book.fillOrder(recipe, keys, stock):
         fill = Book.planFill(variant, keys)
         if fill is None:
             continue

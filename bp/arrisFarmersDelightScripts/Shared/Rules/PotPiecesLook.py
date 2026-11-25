@@ -13,7 +13,7 @@ TURN_STEPS 档（转角才能回卷）；缩走是从最后一块起一块接一
 """
 import math
 
-from . import CookingPot
+from . import CookingPot, ItemTags
 from .HandsOn import PotPiecesKinds as Kinds
 from .HandsOn.PotColors import FALLBACK, isGreen
 from .HandsOn.PotPiecesPiece import APPEAR_HALF_LIFE, GOLDEN_ANGLE, OUTWARD_STEP, REACH, RISE_TIME
@@ -88,11 +88,17 @@ def slotsOf(items, colorOf=None):
 
 
 def dishSlots(mealName):
-    """这道菜的配料槽：配方（第一种做法）里会留下碎料的配料——用掉会留下容器的、倒进去的、化掉的、煮完拣出来的不算，
-    生的换成它烧熟的样子（CookedPieces.ingredients）。没有配方或没有这样的配料是 EMPTY：汤里不浮东西。"""
+    """这道菜的配料槽：配方（第一种做法：每格的第一个选项，没有格子的是第一种写法，CookingPot.framesOf）里会留下碎料的配料——
+    用掉会留下容器的、倒进去的、化掉的、煮完拣出来的不算，生的换成它烧熟的样子（CookedPieces.ingredients）。
+    没有配方、写法是空的（新接口登记的配方标签格还没有成员）或没有这样的配料是 EMPTY：汤里不浮东西。"""
+    stamp = (CookingPot.revision(), ItemTags.generation())       # 配方表改了、标签的答案变了：重新看第一种做法
+    if _dishes.get(None) != stamp:
+        _dishes.clear()
+        _dishes[None] = stamp
     if mealName not in _dishes:
         recipe = CookingPot.findRecipeByResult(mealName)
-        names = [entry[0] for entry in recipe["Recipe"][0]] if recipe and recipe.get("Recipe") else []
+        frames = CookingPot.framesOf(recipe) if recipe else []
+        names = [entry[0] for entry in frames[0]] if frames else []
         gone = set(name for name, _ in PotSunk.POURED + PotSunk.DISSOLVES) | PotPieceTraits.STRAINED
         items = Kinds.ingredientsOf(names, lambda name: Remainders.potRemainderOf(name) is not None, lambda name: name in gone,
                                     lambda name: CookedForms.get(name, name))
