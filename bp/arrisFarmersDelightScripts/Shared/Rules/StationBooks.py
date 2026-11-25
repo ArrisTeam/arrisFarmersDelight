@@ -165,7 +165,7 @@ def boardPages():
             pages.append(page)
         page["ways"].append(dishWay(dish))
     cuts = [(_cutKey(key), [key], recipe) for key, recipe in sorted(CuttingBoardDict.items())]
-    cuts += [(_cutKey(tag), [(name, 0) for name in ItemTags.itemsOf(tag)], recipe) for tag, recipe in sorted(CuttingTagDict.items())]
+    cuts += [(_cutKey(tag), tagInputs(tag), recipe) for tag, recipe in sorted(CuttingTagDict.items())]
     for key, inputs, recipe in cuts:
         outputs = [stack(entry["itemName"], entry.get("auxValue", 0), entry.get("count", 1)) for entry in recipe["itemList"]]
         tools = [(tool, 0) for tool in recipe.get("tool") or ()]
@@ -174,6 +174,12 @@ def boardPages():
         pages.append({"key": key, "item": outputs[0], "ways": [[inputs, tools]], "foot": outputs if len(outputs) > 1 else [], "note": "",
                       "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
     return pages
+
+
+def tagInputs(tag):
+    """按标签的砧板配方那一页（JEI 那一条）列哪些原料：标签现在的成员，有自己精确配方的不列（切的时候先认精确的那条，
+    它自己有一页；不然农夫乐事的面团会出两页）。"""
+    return [(name, 0) for name in ItemTags.itemsOf(tag) if (name, 0) not in CuttingBoardDict]
 
 
 def _cutKey(found):
