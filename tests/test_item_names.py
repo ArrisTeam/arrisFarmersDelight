@@ -7,6 +7,7 @@ JE 的配方 JSON 没有 text：别的模组照 RECIPE-JSON.md 搬来的配方�
 - 标题是口给的名字；口给 None、语言键（item.xxx.name / tile.xxx.name）、空、不是文字、抛异常时是物品 ID；没装口时也是物品 ID；
 - 按显示名搜得到；先要不到、后来要到了，同一个搜索词的答案跟着变（真去问了、没要到时不记那次的结果，隔 RETRY_EVERY 次再问引擎）；
   永远要不到的名字不让搜索的记忆失效（隔着没问的不算 misses：第二次起记住，食谱格给同一个字典）；
+- 装着几个口时挨个问，第一个给出名字的算数（单机时两端的口都在这一份模块里，各自只在自己那一端的线程里答得出），装的先后都一样；
 - 农夫乐事自带的 28 行（都写了 text）标题一个字不变、不问口；py2 里口给 utf-8 字节串，搜索词是 unicode 也比得上。
 """
 from __future__ import print_function
@@ -111,6 +112,33 @@ def testANameThatNeverComesDoesNotDefeatTheSearchMemo():
             Book.titleOf(ROW)
         assert Book.titleOf(ROW) == "铁锭" and index in Book.visibleRecipes(u"铁锭"), "后来要到了名字：签名变了、按显示名搜得到"
         assert index not in Book.visibleRecipes("iron"), "记着的那次搜索跟着重算"
+
+
+def testSeveralPortsAreAskedInTurn():
+    """主会话实机查出来的（2026-11-26，单机）：两端共用这一份模块，以前只有一个口、后装的算数——装着的是客户端的口，可引擎的
+    GetItemBasicInfo 只在自己那一端的线程里答得出（服务端线程里客户端的口给 None），探针包两条配方的标题还是物品 ID。
+    现在能装几个口，真去问时挨个问，第一个给出名字的算数，装的先后都一样；同一个口不重复装；都要不到时照旧隔一阵再问。"""
+    for order in ("silent first", "named first", "raising first"):
+        silent = Port({INGOT: RuntimeError("wrong thread")}) if order == "raising first" else Port({})
+        named = Port({INGOT: "铁锭"})
+        with Rows(None):
+            for port in ((named, silent) if order == "named first" else (silent, named)) + (silent,):
+                Book.setNamePort(port)
+            assert Book.titleOf(ROW) == "铁锭", order
+            assert len(named.asked) == 1 and len(silent.asked) == (0 if order == "named first" else 1), "同一个口不重复装、问到就停"
+    with Rows(None):
+        first, second = Port({}), Port({INGOT: "item.minecraft:iron_ingot.name"})
+        Book.setNamePort(first)
+        Book.setNamePort(second)
+        assert Book.titleOf(ROW) == "minecraft:iron_ingot" and len(first.asked) == len(second.asked) == 1
+        for _turn in range(Names.RETRY_EVERY):
+            Book.titleOf(ROW)
+        assert len(first.asked) == len(second.asked) == 1, "要不到：隔着没问"
+        second.names[INGOT] = "铁锭"
+        assert Book.titleOf(ROW) == "铁锭" and len(first.asked) == len(second.asked) == 2, "隔一阵再挨个问一次"
+        Names.removePort(second)
+        Names.forget()
+        assert Book.titleOf(ROW) == "minecraft:iron_ingot", "卸下一个口"
 
 
 def testTheBuiltInRowsKeepTheirTitlesAndDoNotAsk():
