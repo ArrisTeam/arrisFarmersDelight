@@ -33,6 +33,8 @@
 
 变更：
 
+- 兼容入口的 `CookingPotRecipeList`：被新接口删掉的配方留一个墓碑（行里多 `"Disabled": True`，`Recipe` / `Slots` 原样留着），遍历这张表的下游包要跳过它；
+  新接口登记的配方 `Recipe` 可能是空列表。见 linkage.md、[COMPATIBILITY.md](COMPATIBILITY.md) §2。
 - 农夫乐事自带的 28 道厨锅菜按 JE 还原了标签格（厨锅配方行多了 `Id`、`Slots` 两个键；`Recipe` 里的写法和原来一样）：别的模组的番茄、米、面团、生肉……
   登记进同名的 `netease_tags` 就能进这些菜。鸡蛋的格子收普通、蓝色、棕色三种蛋。
 - 兼容入口的字典表（`CuttingBoardDict`、`CanCookedFoodDict`……）删掉的键也会同步给客户端（以前只同步新增和改动）。

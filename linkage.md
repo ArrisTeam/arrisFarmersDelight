@@ -190,4 +190,10 @@ def FarmersDelight(self, args):
 | `StoveList`               | `list`   | 会烤食物的炉灶方块（点燃状态）         |
 | `knifeList`               | `list`   | 小刀列表（砧板配方的刀具条目引用它）   |
 
+读 `CookingPotRecipeList` 的请注意两件事（2026-11 起，新接口带来的）：
+
+- **遍历这张表时跳过带 `"Disabled": True` 的行**：那是被删掉的配方（新接口的 `removeRecipe`），行留在表里只是为了不挪动别的行的位置，
+  它的 `Recipe` 原样留着，不跳过就会把删掉的配方当成还在。
+- **新接口登记的配方 `Recipe` 可能是空列表**（只写了格子 `Slots`、展开不出具体写法的），读的时候别假定至少有一种写法。
+
 各配置项的详细格式请查看 `bp/arrisFarmersDelightScripts/Shared/Data/` 下对应的文件（`Cooking.py`、`Cutting.py`、`Farming.py`、`CookingPotRecipes.py` 等）。
