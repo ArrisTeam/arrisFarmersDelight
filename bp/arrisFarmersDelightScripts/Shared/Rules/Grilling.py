@@ -4,14 +4,16 @@
 JE 的煎锅、炉灶、手持煎锅读的是原版的营火烹饪配方（RecipeType.CAMPFIRE_COOKING：SkilletBlockEntity、AbstractStoveBlockEntity、SkilletItem），
 不是一张表。这边原来只有一张表（Shared/Data/Cooking.CanCookedFoodDict：JE 的 16 条营火配方，联动契约，下游追加、两端同步）。现在：
 - 表照旧是第一来源，契约不变（下游追加的马上生效）；
-- 表里没有的再问引擎的营火配方：CreateRecipe(levelId).GetRecipesByInput(名字, "campfire", aux, 1)（两端都有；官方备注"需要遍历较多数据，
-  不建议频繁调用"：按 (名字, aux) 缓存，没有配方也记着）。别的模组给自己的生肉写了营火配方（配方 JSON 的 tags 带 campfire），
-  放到煎锅 / 炉灶上就能煎，煎成它配方里的东西。
+- 表里没有的再问引擎的营火配方：CreateRecipe(levelId).GetRecipesByInput(名字, "campfire", aux, 1)（两端都有，3.10 实机两端都能用；
+  官方备注"需要遍历较多数据，不建议频繁调用"：按 (名字, aux) 缓存，没有配方也记着）。别的模组给自己的生肉写了营火配方（配方 JSON 的
+  tags 带 campfire），放到煎锅 / 炉灶上就能煎，煎成它配方里的东西。
 引擎口两端各装一个（setPort，和 ItemTags 一样；口就是 TagPort.EnginePort，两个都在用服务端的）：port.campfireRecipes(名字, aux) -> 配方列表或 None。
 没有口（离线、沙箱）或者口还没准备好（客户端进世界之前：配方随进世界才到，和标签同一个时候）时只认表，和以前一样；准备好的那一刻缓存清空。
-返回值的形状没有实机记录（官方文档只说熔炉配方"输出数量为 1 时 output 是物品名及附加值的字符串，大于 1 时是 dict"）：
-解析写得宽容（output / result；字符串 "名字" / "名字:aux"；dict 的 item / itemName / newItemName / fullItemName / name；列表取第一个），
-认不出来就当没有这条配方，不抛。产物只取名字（aux 照各处原来的写法）。
+返回值的形状（3.10 实机，2026-11-26，两端一样）：一个列表，每条是带 input / output 两个字符串键的 dict，output 是产物名——
+GetRecipesByInput("minecraft:beef", "campfire", 0, 1) → [{'input': 'minecraft:beef', 'output': 'minecraft:cooked_beef'}]；牛肉末 → arris:beef_patty，
+三种蛋 → arris:fried_egg。解析照旧写得宽容，留给别的版本（官方文档说熔炉配方输出数量大于 1 时 output 是 dict）：output / result；
+字符串 "名字" / "名字:aux"；dict 的 item / itemName / newItemName / fullItemName / name；列表取第一个。认不出来就当没有这条配方，不抛。
+产物只取名字（aux 照各处原来的写法）。
 食谱书、JEI 里"列出全部能煎烤的东西"的地方照旧只列表里的（StationBooks、Compat/Jei）。
 """
 from ..Data.Cooking import CanCookedFoodDict
