@@ -254,6 +254,20 @@ def testOverridingAHostDishKeepsTheWaysOtherModsAddedThroughTheLegacyEntry():
         assert SERVER.registerFromJson(dict(view, cookingtime=120))["ok"] and stew["Recipe"].count([("minecraft:dirt", 0)]) == 1, "不重复接"
 
 
+def testOverridingWithAnotherResultDropsTheWaysAddedForTheOldDish():
+    """主会话定的 B2（T 复核时复现的）：番茄酱被别的模组用 AddCookingPotRecipe 加了"甜菜根 x2"，之后被覆盖成别的成品，甜菜根 x2 就煮出
+    新成品了。AddCookingPotRecipe 是按成品名加的，那几种写法属于原来那道菜：成品换了就不接过去（成品不变时照旧接，见上一条）。"""
+    beet = [{"newItemName": "minecraft:beetroot", "newAuxValue": 0, "count": 1}] * 2
+    with Sandbox():
+        assert Legacy.AddCookingPotRecipe("arris:tomato_sauce", [("minecraft:beetroot", 0)] * 2)
+        assert CookingPot.matchRecipe(beet)[0]["newItemName"] == "arris:tomato_sauce"
+        view = SERVER.getRecipeById("farmersdelight:cooking/tomato_sauce")
+        assert SERVER.registerFromJson(dict(view, result={"item": "mymod:ketchup"}))["ok"]
+        sauce = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")
+        assert sauce["CookResult"] == ("mymod:ketchup", 0) and [("minecraft:beetroot", 0)] * 2 not in sauce["Recipe"]
+        assert CookingPot.matchRecipe(beet)[0] is None, "加给番茄酱的写法不会做出 ketchup"
+
+
 def testOneResultHasOneContainerTimeAndExperience():
     """锅只记得成品：同一成品的容器、时间、经验跟着表里第一条活配方（T 复核时指出 matchCooking 以前报的是配上那一行的，和锅实际不一致）。"""
     with Sandbox():
