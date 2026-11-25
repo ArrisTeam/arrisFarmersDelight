@@ -3,7 +3,8 @@
 """种植的几张名单并上 JE 农夫乐事自己的方块标签（名单原样留着，不在名单里的再看标签；Shared/Rules/ItemTags.blockListed）。
 
 锁的事：名单里的照旧；不在名单里、带了标签的方块也算——
-  farmersdelight:compost_activators   有机肥周围的催化剂（Server/OrganicCompost）
+  farmersdelight:compost_activators        有机肥周围的催化剂（Server/OrganicCompost）
+  farmersdelight:unaffected_by_rich_soil   沃土不催熟的植物（Server/BoneMeal.BoostPlant）
 对着假引擎跑（tests/farmengine.py），标签由假口答；概率的数和 test_farm_server_glue 里的同一套。
 """
 from __future__ import print_function
@@ -17,6 +18,8 @@ farmengine.install(LEVEL)
 
 Registry = fdtest.load("Server.EventRegistry")
 OrganicCompost = fdtest.load("Server.OrganicCompost")
+BoneMeal = fdtest.load("Server.BoneMeal")
+RichSoil = fdtest.load("Server.RichSoil")
 Tags = fdtest.load("Shared.Data.Tags")
 ItemTags = fdtest.load("Shared.Rules.ItemTags")
 
@@ -77,6 +80,19 @@ def testATaggedBlockActivatesTheCompost():
         _random(0.12, OrganicCompost)
         _tick("arris:organic_compost_stage3", (0, 1, 0))
         assert (level.nameAt((0, 1, 0)) == "arris:rich_soil") == advances, tagged
+    _reset()
+
+
+def testRichSoilLeavesATaggedPlantAlone():
+    """JE：沃土 / 沃土耕地不催熟 unaffected_by_rich_soil 里的植物。湿的沃土耕地上的卷心菜平时会被催熟，登记进这个标签就不会。"""
+    for tagged in (False, True):
+        level = _fresh().put((0, 0, 0), "arris:rich_soil_farmland_moist").put((0, 1, 0), "arris:cabbages_stage0")
+        level.water = set([(0, 1, 0, 0)])
+        if tagged:
+            _tagged(Tags.UNAFFECTED_BY_RICH_SOIL, "arris:cabbages_stage0")
+        _random(0.0, RichSoil, BoneMeal, ints=[2])
+        _tick("arris:rich_soil_farmland_moist", (0, 0, 0))
+        assert (level.nameAt((0, 1, 0)) == "arris:cabbages_stage0") == tagged, tagged
     _reset()
 
 

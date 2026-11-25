@@ -82,6 +82,7 @@ HEAT_SOURCE_LIT = "common:heat_source_lit"
 HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
+UNAFFECTED_BY_RICH_SOIL = "farmersdelight:unaffected_by_rich_soil"     # 沃土不催熟的植物：Farming.UNAFFECTED_BY_RICH_SOIL
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -166,6 +167,15 @@ BLOCK_TAGS = {
                          "arris:organic_compost_stage0", "arris:organic_compost_stage1", "arris:organic_compost_stage2",
                          "arris:organic_compost_stage3", "arris:rich_soil", "arris:rich_soil_farmland", "arris:rich_soil_farmland_moist",
                          "arris:brown_mushroom_colony", "arris:red_mushroom_colony"),
+    # JE：草方块、苔藓块、两种菌岩、草（基岩版 short_grass）、蕨、缠怨藤、大垂滴叶、粉红花簇、沙地灌木、两种菌落、#wild_crops、
+    # #minecraft:tall_flowers（展开）；这边的名单另外多了高草丛、大型蕨
+    UNAFFECTED_BY_RICH_SOIL: ("minecraft:grass_block", "minecraft:moss_block", "minecraft:crimson_nylium", "minecraft:warped_nylium",
+                              "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern",
+                              "minecraft:twisting_vines", "minecraft:big_dripleaf", "minecraft:pink_petals",
+                              "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:pitcher_plant",
+                              "arris:sandy_shrub", "arris:brown_mushroom_colony", "arris:red_mushroom_colony",
+                              "arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages",
+                              "arris:wild_tomatoes", "arris:wild_onions", "arris:wild_rice"),
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -225,6 +235,7 @@ JE_NAMES = {
     HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
     COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),
+    UNAFFECTED_BY_RICH_SOIL: (UNAFFECTED_BY_RICH_SOIL,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

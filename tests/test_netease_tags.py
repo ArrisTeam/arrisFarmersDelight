@@ -221,6 +221,7 @@ LISTED = {
     Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
     Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
     Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
+    Tags.UNAFFECTED_BY_RICH_SOIL: lambda: fdtest.load("Shared.Data.Farming").UNAFFECTED_BY_RICH_SOIL,
 }
 
 

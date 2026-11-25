@@ -43,6 +43,7 @@ MEANINGS = {
     "farmersdelight:heat_conductors": "把热传给上面一格的方块",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅放在上面要画托盘的方块",
     "farmersdelight:compost_activators": "有机肥周围的催化剂",
+    "farmersdelight:unaffected_by_rich_soil": "沃土不催熟的植物",
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
@@ -50,6 +51,7 @@ READS = {
     "farmersdelight:heat_conductors": "锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts）",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat）",
     "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
+    "farmersdelight:unaffected_by_rich_soil": "沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant）",
 }
 
 
