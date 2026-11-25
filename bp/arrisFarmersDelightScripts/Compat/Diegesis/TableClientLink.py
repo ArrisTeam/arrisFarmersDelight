@@ -9,7 +9,7 @@ remove_crafting_recipes 开着）。书在客户端，不知道服务端拦了�
 前置包没有这个登记口（太旧、没装内容包）：skipped，和服务端 table 一步接口不在时一样；登记口在、条件不满足：什么都不登（书照旧全列），记 ok。
 拒绝时给玩家看的话（带本包语言文件的键）在服务端那条否决里，前置包的客户端自己按玩家的语言查。
 """
-from . import Steps
+from . import SettingsClientLink, Steps
 from ...QuModLibs.Client import clientApi
 from ...Shared.Rules import DishStation
 from ...Shared.Rules import HandsOnOptions as Options
@@ -25,7 +25,10 @@ def hooks():
 
 
 def hidden(product, ingredients):
-    """书里不列：这条配方是砧板菜（ingredients 是每格能放的几种 [(物品名, aux 或 None)]）。"""
+    """书里不列：这条配方是砧板菜（ingredients 是每格能放的几种 [(物品名, aux 或 None)]）。
+    这个玩家在设置里关了砧板（或总开关）时照列：他开不了砧板站点，服务端收到他报的值也不否决（SettingsClientLink，每次现读）。"""
+    if not SettingsClientLink.boardOnForMe():
+        return False
     return DishStation.isDishRecipe((product or {}).get("newItemName"), ingredients)
 
 
