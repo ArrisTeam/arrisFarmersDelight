@@ -7,7 +7,10 @@
 每张表记着自己的消息最近一次变成现在这样是第几版，已经收过第 N 版的人补发时只要版本比 N 新的那几张表。
 - ITEMS：基线里没有的名字，按表里的顺序；MAP：键不在基线里，或值和基线不一样的条目（{"k": 键, "v": 值}）；
   ROWS：下标不在基线里，或那一行和基线不一样的行（{"at": 下标, "v": 行}，消息里带基线的行数 base）；
-- 只同步新增和改动，不同步删除（联动契约只有追加）；
+- 字典表（MAP）的删除也同步：基线里有的、或者曾经发出去过的键现在没有了，发 {"k": 键, "gone": true}——第三方后加的键不在基线里，
+  玩家进服时已经发过去了，光看"现在 - 基线"它删了只是从差异里消失，客户端不会知道；删了又加回来的照常再发（哪怕和基线一样：客户端已经删了它）。
+  名字列表（ITEMS）照旧只加不删；厨锅配方（ROWS，下标是身份）删配方是打墓碑（Disabled），走的是"一行变了"。
+  PROTOCOL 不用升：两端总是同一版包；旧的并表碰到 gone 条目取不到 "v"，只记一行跳过，不会把它读成追加；
 - 值编不了的条目（自定义对象、键不是 str 的嵌套字典……）跳过并记进 problems；ROWS 里新增的那一行编不了时放一个空行占着下标
   （书页的键就是下标，后面几行的下标不能错位）；
 - 变没变先拿"上次算差异时各表的深拷贝"在 C 层比（changed，一次定时检查不到一毫秒），变了才重新编码；
@@ -36,6 +39,8 @@ class Syncer(object):
         self._revs = {}              # 表名 -> 这张表的消息最近一次变成现在这样是第几版
         self._holes = dict((name, self.codec.encode(SyncTables.HOLES.get(name, _HOLE))) for name, kind, _ in self.tables if kind == SyncTables.ROWS)
         self._base = dict((name, self._baseline(kind, container)) for name, kind, container in self.tables)
+        self._sent = dict((name, set()) for name, kind, _ in self.tables if kind == SyncTables.MAP)     # 字典表里发出去过的键
+        self._gone = dict((name, set()) for name, kind, _ in self.tables if kind == SyncTables.MAP)     # 发过"删了"的键：加回来要再发
         self._seen = self._copies()
         self._messages = None        # {表名: [消息]}（没有差异的表不在里面）；None：还没算过
 
@@ -126,15 +131,22 @@ class Syncer(object):
         return ops
 
     def _diffMap(self, name, container, problems):
-        base, ops = self._base[name], []
+        base, sent, gone, ops = self._base[name], self._sent[name], self._gone[name], []
         for key, value in container.items():
             try:
                 wireKey, wireValue = self.codec.encode(key), self.codec.encode(value)
             except WireError as error:
                 problems.append("%s 的条目 %r 传不了，已跳过：%s" % (name, key, error))
                 continue
-            if key not in base or base[key] != wireValue:
+            if key not in base or base[key] != wireValue or key in gone:
                 ops.append({"k": wireKey, "v": wireValue})
+                sent.add(key)
+        for key in (set(base) | sent) - set(container):
+            try:
+                ops.append({"k": self.codec.encode(key), "gone": True})
+            except WireError:
+                continue
+            gone.add(key)
         ops.sort(key=lambda op: repr(op["k"]))     # 字典的遍历次序会变，消息的次序不能跟着变（不然没变也算新的一版）
         return ops
 

@@ -17,6 +17,7 @@ from .EventRegistry import dispatch
 # 导入即登记（顺序不影响执行顺序，执行顺序只看 priority）
 from .Helpers import Tags  # noqa: F401  标签的引擎口最先装上（Shared/Rules/ItemTags）：后面的模块导入时按标签建东西也问得到引擎
 from . import LegacyApi  # noqa: F401
+from . import ExtensionReady  # noqa: F401
 from . import PlayerSession  # noqa: F401
 from . import TableSync  # noqa: F401
 from . import CraftReturns  # noqa: F401
@@ -240,3 +241,8 @@ def _onClientLoadAddonsFinish(args):
 @Listen("DelServerPlayerEvent")
 def _onDelServerPlayer(args):
     dispatch("DelServerPlayerEvent", args)
+
+
+@Listen("LoadServerAddonScriptsAfter")            # 全部 Addon 脚本加载完：新联动接口的服务端 ready 事件（ExtensionReady）
+def _onLoadServerAddonScriptsAfter(args=None):
+    dispatch("LoadServerAddonScriptsAfter", args or {})

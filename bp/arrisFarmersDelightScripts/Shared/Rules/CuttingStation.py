@@ -12,7 +12,8 @@ HoD 的切法规则在 HandsOn/Cutting.py；这里只做农夫乐事配方表（
 """
 import random
 
-from ..Data.Cutting import knifeList
+from ..Data.Cutting import CuttingBoardDict, CuttingTagDict, knifeList
+from . import ItemTags
 from .HandsOn import Cutting
 
 STATION_ID = "arris:cutting_board"
@@ -25,6 +26,28 @@ FORTUNE_BONUS = 0.1              # JE 配置 cuttingBoardFortuneBonus：每级�
 _WEDGE_WORDS = frozenset(("pie", "cake", "cheesecake", "pizza", "tart", "quiche", "pumpkin", "melon"))
 _STRIP_WORDS = frozenset(("dough",))
 _STRAIGHT_WORDS = frozenset(("roll",))
+
+
+def recipeKeyOf(key):
+    """板上这件东西（key 是 (物品名, aux)）按哪条砧板配方切：CuttingBoardDict 里精确的那条的键；没有就是 CuttingTagDict 里收它的标签名
+    （按标签名的顺序，第一个；别的模组登记进 common:dough 的面团也切得了）；都没有是 None。"""
+    if not key or not key[0]:
+        return None
+    key = (key[0], key[1])
+    if key in CuttingBoardDict:
+        return key
+    for tag in sorted(CuttingTagDict):
+        if ItemTags.has(key[0], tag):
+            return tag
+    return None
+
+
+def recipeOf(key):
+    """板上这件东西（(物品名, aux)）的砧板配方：精确的先，再看按标签的；切不了是 None。经典玩法、站点两端、食谱书都问它。"""
+    found = recipeKeyOf(key)
+    if found is None:
+        return None
+    return CuttingBoardDict.get(found) if isinstance(found, tuple) else CuttingTagDict.get(found)
 
 
 def _words(itemName):

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from .Registry import GetJeiApiModule, SetHoverText
 from ...Client import Texts
-from ...Shared.Data.Cutting import CuttingBoardDict
+from ...Shared.Data.Cutting import CuttingBoardDict, CuttingTagDict
+from ...Shared.Rules import ItemTags
 
 TITLE = ("jei.farmersdelight.cutting", "砧板")      # 分类名：JE 的键（英文 Cutting Board），客户端按玩家的语言查，语言文件里没有时用中文
 
@@ -21,25 +22,27 @@ def RegisterCuttingBoardRecipes():
 
     cuttingBoardRecipesByResultDict = {}
     cuttingBoardRecipesByInputDict = {}
-    for inputItem, data in CuttingBoardDict.items():
-        registry.setRecipeByInput(recipeTag, inputItem, [{"recipe": {"output": data, "input": inputItem}}])
+    for inputs, data in records():
+        record = {"recipe": {"output": data, "input": inputs[0], "inputs": inputs}}
+        for inputItem in inputs:
+            cuttingBoardRecipesByInputDict.setdefault(inputItem, []).append(record)
         for tool in data.get("tool", []):
-            toolItem = (tool, 0)
-            if toolItem in cuttingBoardRecipesByInputDict:
-                cuttingBoardRecipesByInputDict[toolItem].append({"recipe": {"output": data, "input": inputItem}})
-            else:
-                cuttingBoardRecipesByInputDict[toolItem] = [{"recipe": {"output": data, "input": inputItem}}]
-
+            cuttingBoardRecipesByInputDict.setdefault((tool, 0), []).append(record)
         for outputItemData in data["itemList"]:
             outputItem = (outputItemData.get("itemName", ""), outputItemData.get("itemAux", 0))
-            if outputItem in cuttingBoardRecipesByResultDict:
-                cuttingBoardRecipesByResultDict[outputItem].append({"recipe": {"output": data, "input": inputItem}})
-            else:
-                cuttingBoardRecipesByResultDict[outputItem] = [{"recipe": {"output": data, "input": inputItem}}]
+            cuttingBoardRecipesByResultDict.setdefault(outputItem, []).append(record)
     for outputItem, recipeList in cuttingBoardRecipesByResultDict.items():
         registry.setRecipeByResult(recipeTag, outputItem, recipeList)
     for inputItem, recipeList in cuttingBoardRecipesByInputDict.items():
         registry.setRecipeByInput(recipeTag, inputItem, recipeList)
+
+def records():
+    """每条砧板配方一条记录 [(原料 [(物品名, aux)], 配方)]：精确的那些原料就是键；按标签的（CuttingTagDict）原料是标签现在的成员
+    （界面就绪时客户端的标签已经全了），配方页上轮换着画，按其中任何一样查用途都查得到。一个成员都没有的标签配方不登。"""
+    found = [([inputItem], data) for inputItem, data in CuttingBoardDict.items()]
+    found += [([(name, 0) for name in ItemTags.itemsOf(tag)], data) for tag, data in sorted(CuttingTagDict.items())]
+    return [(inputs, data) for inputs, data in found if inputs]
+
 
 class CuttingBoardRecipe:
     def __init__(self, screenNode, recipeControl, recipeData, recipeIndex, itemData):
@@ -105,6 +108,13 @@ class CuttingBoardRecipe:
     
     def OnInterval(self):
         self.indexTurns += 1
+        inputs = self.recipeData["recipe"].get("inputs") or ()
+        if len(inputs) > 1:                      # 按标签的配方：原料在标签的成员里轮换
+            self.inputTurns = (getattr(self, "inputTurns", 0) + 1) % len(inputs)
+            inputItem = inputs[self.inputTurns]
+            path = "/bg/stack_panel/cutting_board_panel/cutting_board_bg/jeiInputFoodRender"
+            self.recipeControl.GetChildByPath(path + "/item_cell/item/item_renderer").asItemRenderer().SetUiItem(inputItem[0], inputItem[1])
+            SetHoverText(self.recipeControl, path, inputItem[0], inputItem[1])
         data = self.recipeData["recipe"]["output"]
         tool = data["tool"]
         if self.indexTurns >= len(tool):

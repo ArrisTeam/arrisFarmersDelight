@@ -1,38 +1,43 @@
 # -*- coding: utf-8 -*-
 """CookingPot - 厨锅配方匹配与出料结算（双端，纯规则）
 
-配方匹配：一锅里每个非空输入格算一件食材（同一格叠了多个也只算一件，与 Java 版一致）。
-把各格的 (物品名, aux) 排序后作为键查索引，O(1)；CookingPotRecipeList 被修改后要调用 rebuildIndex()。
-出锅一份：成品 CookCount 个（JE 的配方结果数量，饺子 2 个），吐出 PushItem 加上用掉的料剩下的空容器（JE 的
+配方表一行的写法见 Shared/Data/CookingPotRecipes.py。一锅里每个非空输入格算一件食材（同一格叠了多个也只算一件，与 JE 一致）。
+一条配方配得上，当且仅当它有一种"形"和锅里的东西一一对上（JE 的 CookingPotRecipe.matches：RecipeMatcher.findMatches）：
+- Slots 形：每件东西分给一个互不相同、收它的格，格子正好用完（二分图完美匹配，Shared/Rules/PotSlots.py；标签格问 ItemTags）；
+- Recipe 里的每一种旧写法各是一个形：种类和件数正好相同。
+几条配方都配得上时表里靠前的赢；墓碑（Disabled）跳过。索引和记着的答案在 Shared/Rules/PotRecipeTable.py：配方表改过（rebuildIndex：
+联动接口、客户端并表）下次用到时重算，标签的答案变了（ItemTags.generation）只清记着的答案——登记一条配方不再整张重建。
+出锅一份：成品 CookCount 个（JE 的配方结果数量，饺子 2 个），吐出 PushItem 加上锅里那几件料剩下的空容器（JE 的
 CookingPotBlockEntity：配料的合成剩余物，再加 INGREDIENT_REMAINDER_OVERRIDES，表在 Shared/Data/Remainders.py——
 奶桶剩桶、奶瓶剩玻璃瓶、番茄酱剩碗……；配方的 PushItem 里已经写了的不重复给）。
-另有几份给厨锅站点用的索引（Shared/Rules/PotStation.py、PotLayout.py）：每种写法各种料占几格（候选，带配方序号）、哪些物品是食材、
+另有几样给厨锅站点用（Shared/Rules/PotStation.py、PotLayout.py）：一锅种类的各种摆法（候选，带配方序号）、哪些物品是食材、
 哪些物品是盛菜的容器、一份煮出来给多少经验（锅里记着煮了几份，盛出时一并给，见 Server/Helpers/PotContainer.py）。
 """
 from ..Data.CookingPotRecipes import CookingPotRecipeList
 from ..Data.Remainders import potRemainderOf
+from . import ItemTags, PotSlots
+from . import PotRecipeTable as Table
 
-DEFAULT_COOK_SECONDS = 10.0  # JE 的厨锅配方缺省 200 刻
-DEFAULT_EXPERIENCE = 1.0     # JE 的厨锅配方缺省经验
-_recipeIndex = {}
-_cookSeconds = {}            # 成品名 -> 一份煮多久（秒），按配方表顺序先到先得
-_experience = {}             # 成品名 -> 盛出一个给多少经验（JE 按煮了几份给，一份出几个时平分到每个）
-_partsIndex = {}             # frozenset(种类) -> [{种类: 占几格}, ...]（按配方表顺序）
-_candidates = {}             # frozenset(种类) -> [(配方序号, {种类: 占几格}), ...]（按配方表顺序，一个写法一条）
-_recipeOfKey = {}            # 查表键 -> 第一个有这种写法的配方序号（站点选菜时的"锅按现在的摆法读成哪道菜"）
-_servingExperience = {}      # 成品名 -> 煮出一份给多少经验（JE 的 Experience，不除以一份出几个）
-_ingredients = set()
-_vessels = set()             # 盛菜用的容器的物品名（配方的 Vessel）
-_revision = [0]              # 重建过几次索引：别处按配方表缓存的东西（经典界面食谱格的搜索结果）拿它认表改过没有
+DEFAULT_COOK_SECONDS = Table.DEFAULT_COOK_SECONDS     # JE 的厨锅配方缺省 200 刻
+DEFAULT_EXPERIENCE = Table.DEFAULT_EXPERIENCE         # 旧格式没写 Experience 时给的经验（新接口登记的把经验明写进行里，JE 的缺省是 0）
+WAYS_CAP = 64                                         # 按手头的料具体化出来的写法最多几种
+isLive = Table.isLive                                 # 这一行是不是一条配方（不是墓碑、不是坏行）
+slotsOf = Table.slotsOf                               # 这一行写对了的 Slots（没有是 None）
+waysOf = Table.waysOf                                 # 这一行写对了的旧写法
 
 
 def revision():
-    """索引重建过几次（配方表改过都要 rebuildIndex：联动接口、客户端并表）；按表缓存的东西和它一起比，变了就重算。"""
-    return _revision[0]
+    """配方表改过几次（rebuildIndex：联动接口、客户端并表都要调）；按表缓存的东西和它一起比，变了就重算。"""
+    return Table.revision()
+
+
+def rebuildIndex():
+    """配方表改过之后调：下次用到时重算索引，记着的答案作废（不再当场整张重建）。"""
+    Table.touch()
 
 
 def pushItemsOf(variant, declared):
-    """这种写法出锅一份吐出什么：配方写的 PushItem，再加上料剩下的空容器（PushItem 里已有的那件不重复）。"""
+    """锅里这几件料出锅一份吐出什么：配方写的 PushItem，再加上料剩下的空容器（PushItem 里已有的那件不重复）。"""
     pushed = list(declared or [])
     spare = list(pushed)
     for entry in variant:
@@ -47,54 +52,108 @@ def pushItemsOf(variant, declared):
     return pushed
 
 
-def rebuildIndex():
-    """重建配方索引。键冲突时保留先插入的那条，与旧实现"首个匹配获胜"一致。"""
-    _revision[0] += 1
-    _recipeIndex.clear()
-    _cookSeconds.clear()
-    _experience.clear()
-    _partsIndex.clear()
-    _candidates.clear()
-    _recipeOfKey.clear()
-    _servingExperience.clear()
-    _ingredients.clear()
-    _vessels.clear()
-    for index, recipeDict in enumerate(CookingPotRecipeList):
-        cookResult = recipeDict["CookResult"]
-        count = max(1, int(recipeDict.get("CookCount") or 1))
-        _cookSeconds.setdefault(cookResult[0], float(recipeDict.get("CookTime") or DEFAULT_COOK_SECONDS))
-        experience = DEFAULT_EXPERIENCE if recipeDict.get("Experience") is None else float(recipeDict["Experience"])
-        _experience.setdefault(cookResult[0], experience / count)
-        _servingExperience.setdefault(cookResult[0], experience)
-        if recipeDict.get("Vessel"):
-            _vessels.add(recipeDict["Vessel"][0])
-        for variant in recipeDict["Recipe"]:
-            key = tuple(sorted(variant))
-            if key not in _recipeIndex:
-                _recipeIndex[key] = (cookResult, pushItemsOf(variant, recipeDict.get("PushItem")), count)
-            _recipeOfKey.setdefault(key, index)
-            parts = {}
-            for entry in variant:
-                kind = (entry[0], entry[1])
-                parts[kind] = parts.get(kind, 0) + 1
-                _ingredients.add(kind)
-            _partsIndex.setdefault(frozenset(parts), []).append(parts)
-            _candidates.setdefault(frozenset(parts), []).append((index, parts))
+def _entries(itemDicts):
+    return [(itemDict["newItemName"], itemDict.get("newAuxValue") or 0) for itemDict in itemDicts or () if itemDict]
+
+
+def inputKeyOf(itemDicts):
+    """输入格物品列表（空格为 {} 或 None）→ 查表键（排好序的 (物品名, aux)）；全空返回 None。"""
+    entries = _entries(itemDicts)
+    return tuple(sorted(entries)) if entries else None
+
+
+def _hit(entries):
+    """锅里的料（按格子的先后）-> (配方序号, 余料按哪几件算)；配不上 (None, None)。配上的是旧写法时余料照那种写法算（和原来一样）。"""
+    if not entries:
+        return Table.MISS
+    Table.table()
+    index, variant = Table.resolve(tuple(sorted(entries)))
+    return (index, variant if variant is not None else entries) if index is not None else Table.MISS
+
+
+def matchRecipe(itemDicts):
+    """返回 (成品 itemDict（count 是一份出几个）, 余料列表)；没有匹配的配方返回 (None, None)。"""
+    index, used = _hit(_entries(itemDicts))
+    if index is None:
+        return None, None
+    recipe = CookingPotRecipeList[index]
+    result = recipe["CookResult"]
+    return ({"newItemName": result[0], "newAuxValue": result[1], "count": Table.countOf(recipe)},
+            pushItemsOf(used, recipe.get("PushItem")))
+
+
+def matchIndex(itemDicts):
+    """格子里的料按现在的摆法被读成哪个配方（配方表里的序号）；读不成返回 None。"""
+    return _hit(_entries(itemDicts))[0]
+
+
+def lookupRecipe(inputKey):
+    """inputKey 为 tuple(sorted([(name, aux), ...]))；返回 (成品 (name, aux), 余料列表) 或 None。"""
+    index, used = _hit([(entry[0], entry[1]) for entry in inputKey or ()])
+    if index is None:
+        return None
+    recipe = CookingPotRecipeList[index]
+    return recipe["CookResult"], pushItemsOf(used, recipe.get("PushItem"))
+
+
+def candidatesFor(kinds):
+    """种类集合正好是 kinds 的各种摆法：[(配方序号, {种类: 占几格}), ...]，按配方表顺序（站点选菜用，PotLayout.choose）。
+    旧写法照原来一种写法一条；Slots 形给出它能摆的全部（重复的不要）。不看每种有几件：够不够由 choose 判。"""
+    Table.table()
+    return Table.candidates(kinds)
+
+
+def partsFor(kinds):
+    """种类集合正好是 kinds 的各种摆法：[{种类: 占几格}, ...]。"""
+    return [parts for _index, parts in candidatesFor(kinds)]
+
+
+def isIngredient(kind):
+    """(物品名, aux) 是不是某个配方的食材：某种写法里有它、某格写着它，或者某个标签格收它。"""
+    if not kind:
+        return False
+    found = Table.table()
+    kind = (kind[0], kind[1])
+    return kind in found["exact"] or (bool(found["tags"]) and Table.tagged(kind))
+
+
+def isVessel(itemName):
+    """这个物品是不是某道菜盛菜用的容器（只比物品名，和锅自己装碗一致）。"""
+    return itemName in Table.table()["vessels"]
+
+
+def findRecipeByResult(resultItemName):
+    """按成品名找第一条配方（与旧实现"首个匹配获胜"一致，墓碑跳过）；没有返回 None。"""
+    for recipeDict in CookingPotRecipeList:
+        if isLive(recipeDict) and recipeDict["CookResult"][0] == resultItemName:
+            return recipeDict
+    return None
+
+
+def vesselOf(resultName):
+    """盛这道菜要的容器 (物品名, aux)，不要容器的菜返回 None。"""
+    recipe = findRecipeByResult(resultName)
+    return recipe.get("Vessel") if recipe else None
+
+
+def resultNameOf(index):
+    """配方表里第 index 条的成品名（锅记着的上一条配方的成品，见 PotRecipeMemory）。"""
+    return CookingPotRecipeList[index]["CookResult"][0]
 
 
 def cookSecondsOf(resultName):
     """这道菜一份煮多久（秒）：配方表里的 CookTime，没写就是 10 秒（JE 的 200 刻）。"""
-    return _cookSeconds.get(resultName, DEFAULT_COOK_SECONDS)
+    return Table.table()["seconds"].get(resultName, DEFAULT_COOK_SECONDS)
 
 
 def experienceOf(resultName):
-    """盛出一个这道菜给多少经验：配方表里一份的 Experience（没写就是 1，JE 的缺省）除以一份出几个。"""
-    return _experience.get(resultName, DEFAULT_EXPERIENCE)
+    """盛出一个这道菜给多少经验：配方表里一份的 Experience（旧格式没写就是 1）除以一份出几个。"""
+    return Table.table()["perItem"].get(resultName, DEFAULT_EXPERIENCE)
 
 
 def servingExperienceOf(resultName):
     """煮出一份这道菜给多少经验（JE 的 Experience；盛出时按煮了几份算，见 experienceOrb）。"""
-    return _servingExperience.get(resultName, DEFAULT_EXPERIENCE)
+    return Table.table()["perServing"].get(resultName, DEFAULT_EXPERIENCE)
 
 
 def experienceOrb(experience, count, roll):
@@ -104,73 +163,57 @@ def experienceOrb(experience, count, roll):
     return whole + (1 if roll < total - whole else 0)
 
 
-def partsFor(kinds):
-    """种类集合正好是 kinds 的各个配方写法：[{种类: 占几格}, ...]。"""
-    return _partsIndex.get(frozenset(kinds), ())
+def optionsOf(recipe):
+    """有 Slots 的配方：每格能放的具体物品 [[(物品名, aux), ...], ...]（标签换成它现在的成员）；没有 Slots 或写坏了是 None。
+    站点书、经典界面、JEI 一格一格轮换着画它。"""
+    slots = Table.slotsOf(recipe)
+    return None if slots is None else [PotSlots.optionsOf(slot, ItemTags.itemsOf) for slot in slots]
 
 
-def candidatesFor(kinds):
-    """种类集合正好是 kinds 的各个配方写法：[(配方序号, {种类: 占几格}), ...]，按配方表顺序（站点选菜用）。"""
-    return _candidates.get(frozenset(kinds), ())
+def extraWays(recipe):
+    """旧写法里格子不收的那几种（契约的 AddCookingPotRecipe 给有 Slots 的配方加的写法）；没有 Slots 的配方就是它的全部写法。"""
+    slots = Table.slotsOf(recipe)
+    ways = Table.waysOf(recipe)
+    return ways if slots is None else [way for way in ways if not PotSlots.fits(slots, way, ItemTags.has)]
 
 
-def isIngredient(kind):
-    """(物品名, aux) 是不是某个配方的食材。"""
-    return kind in _ingredients
+def framesOf(recipe):
+    """画这道菜的配料时轮换的几帧 [[(物品名, aux), ...], ...]：有 Slots 的每格轮换自己的选项（第 n 帧每格取第 n % 这格选项数 种，
+    帧数是选项最多那一格的个数），格子不收的旧写法各占一帧接在后面；没有 Slots 的就是它的各种写法。某格一个成员都没有时格子那一段不画。"""
+    options = optionsOf(recipe)
+    if options is None:
+        return Table.waysOf(recipe)
+    frames = []
+    if options and all(options):
+        frames = [[cell[n % len(cell)] for cell in options] for n in range(max(len(cell) for cell in options))]
+    return frames + extraWays(recipe)
 
 
-def isVessel(itemName):
-    """这个物品是不是某道菜盛菜用的容器（只比物品名，和锅自己装碗一致）。"""
-    return itemName in _vessels
+def usesOf(recipe):
+    """这条配方用到的每一样 [(物品名, aux)]（JEI 按用途查它时用）：格子的全部选项（标签换成它现在的成员）、旧写法里的物品、盛菜的容器；
+    去重，按先后。"""
+    found = []
+    for kinds in (optionsOf(recipe) or []) + Table.waysOf(recipe):
+        found += [kind for kind in kinds if kind not in found]
+    vessel = recipe.get("Vessel") if isinstance(recipe, dict) else None
+    if Table.isPair(vessel) and (vessel[0], vessel[1]) not in found:
+        found.append((vessel[0], vessel[1]))
+    return found
 
 
-def vesselOf(resultName):
-    """盛这道菜要的容器 (物品名, aux)，不要容器的菜返回 None。"""
-    recipe = findRecipeByResult(resultName)
-    return recipe.get("Vessel") if recipe else None
-
-
-def lookupRecipe(inputKey):
-    """inputKey 为 tuple(sorted([(name, aux), ...]))；返回 (成品 (name, aux), 余料列表) 或 None。"""
-    hit = _recipeIndex.get(inputKey)
-    return hit[:2] if hit else None
-
-
-def inputKeyOf(itemDicts):
-    """输入格物品列表（空格为 {} 或 None）→ 查表键；全空返回 None。"""
-    entries = [(itemDict["newItemName"], itemDict["newAuxValue"]) for itemDict in itemDicts if itemDict]
-    if not entries:
-        return None
-    return tuple(sorted(entries))
-
-
-def matchRecipe(itemDicts):
-    """返回 (成品 itemDict（count 是一份出几个）, 余料列表)；没有匹配的配方返回 (None, None)。"""
-    key = inputKeyOf(itemDicts)
-    hit = _recipeIndex.get(key) if key else None
-    if not hit:
-        return None, None
-    cookResult, pushItemList, count = hit
-    return {"newItemName": cookResult[0], "newAuxValue": cookResult[1], "count": count}, list(pushItemList)
-
-
-def matchIndex(itemDicts):
-    """格子里的料按现在的摆法被读成哪个配方（配方表里的序号）；读不成返回 None。"""
-    key = inputKeyOf(itemDicts)
-    return _recipeOfKey.get(key) if key else None
-
-
-def resultNameOf(index):
-    """配方表里第 index 条的成品名（锅记着的上一条配方的成品，见 PotRecipeMemory）。"""
-    return CookingPotRecipeList[index]["CookResult"][0]
-
-
-def findRecipeByResult(resultItemName):
-    """按成品名找第一条配方（与旧实现"首个匹配获胜"一致）；没有返回 None。"""
-    for recipeDict in CookingPotRecipeList:
-        if recipeDict["CookResult"][0] == resultItemName:
-            return recipeDict
-    return None
+def waysWith(recipe, available):
+    """这道菜用手头有的种类（available：(物品名, aux) 的序列，锅里的在前）能凑出的写法：旧写法 + 格子按手头的料具体化出来的
+    （重复的不要，最多 WAYS_CAP 种）。站点书里放料（PotLayout.planFill）、经典界面添加食材（CookingPotBook.fillOrder）用。"""
+    ways = Table.waysOf(recipe)
+    slots = Table.slotsOf(recipe)
+    if slots is not None:
+        seen = set(tuple(sorted(way)) for way in ways)
+        for way in PotSlots.concretize(slots, list(available), ItemTags.has, WAYS_CAP):
+            key = tuple(sorted(way))
+            if key not in seen:
+                seen.add(key)
+                ways.append(way)
+    return ways
 
 
 def transferAmount(previewCount, resultCount, maxStackSize, vesselCount=None):
@@ -182,6 +225,3 @@ def transferAmount(previewCount, resultCount, maxStackSize, vesselCount=None):
     if vesselCount is not None:
         amount = min(amount, vesselCount)
     return max(0, amount)
-
-
-rebuildIndex()

@@ -8,9 +8,10 @@ client/BoardBehavior.usable（1502-1505）。放上板的判定树在 HandsOn/Bo
 自定义动作 place，免得内核按自己的猜法把整叠挪进去（和 JE 一样，HoD 还有个接住放下的叠的 hand 槽，我们的内核没有 drop_zone，用不上）。
 物品是 (物品名, aux)；这里的物品字典是引擎的 {"newItemName", "newAuxValue", "count", ...}。
 """
-from ..Data.Cutting import CuttingBoardDict, axeList, knifeList
+from ..Data.Cutting import CuttingBoardDict, CuttingTagDict, axeList, knifeList
 from ..Data.FlatBlockItems import FlatBlockItems, ShownAs
 from . import DishStation
+from . import CuttingStation
 from .CuttingStation import BOARD_BLOCKS, STATION_ID, fitsTool  # noqa: F401 - 站点和测试从这里取
 from .HandsOn.Assembly import BATCH, MOST_LAYERS  # noqa: F401 - 一批 16、最多 9 层
 from .HandsOn import ItemData
@@ -37,11 +38,12 @@ def invalidate():
 
 def _tools():
     """所有配方的工具名和要求的物品类型；下游往配方表里加了配方、往刀 / 斧列表里追加了名字（配方的 tool 引用的就是这两个列表）时重算。"""
-    stamp = (len(CuttingBoardDict), len(knifeList), len(axeList))
+    stamp = (len(CuttingBoardDict), len(CuttingTagDict), len(knifeList), len(axeList))
     if _cache["stamp"] != stamp:
         _cache["stamp"] = stamp
-        _cache["tools"] = frozenset(name for recipe in CuttingBoardDict.values() for name in recipe.get("tool") or ())
-        _cache["types"] = frozenset(recipe["item_type"] for recipe in CuttingBoardDict.values() if recipe.get("item_type"))
+        recipes = list(CuttingBoardDict.values()) + list(CuttingTagDict.values())
+        _cache["tools"] = frozenset(name for recipe in recipes for name in recipe.get("tool") or ())
+        _cache["types"] = frozenset(recipe["item_type"] for recipe in recipes if recipe.get("item_type"))
     return _cache["tools"], _cache["types"]
 
 
@@ -82,9 +84,8 @@ class Env(object):
     # ---------------------------------------------------------------- 切
 
     def recipeOf(self, item):
-        """切这件东西的配方；切不了是 None。"""
-        key = keyOf(item)
-        return CuttingBoardDict.get(key) if key is not None else None
+        """切这件东西的配方（精确的先，再看按标签的，CuttingStation.recipeOf）；切不了是 None。"""
+        return CuttingStation.recipeOf(keyOf(item))
 
     def cuttable(self, item):
         return self.recipeOf(item) is not None

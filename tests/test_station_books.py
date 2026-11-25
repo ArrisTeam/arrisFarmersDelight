@@ -104,6 +104,29 @@ def testCookingBooksListWhatThePanAndStoveTake():
     assert next(page for page in grill if page["key"] == "minecraft:beef")["note"] == "20 秒", "两面各 10 秒"
 
 
+def testTheThreeEggsShareOnePage():
+    """基岩版的三种蛋都煎成煎蛋（都在原版的 minecraft:egg 标签里）：煎锅的书一页，原料那一格三种轮换；锅上放哪种蛋都翻到这一页。
+    成品不同的、不在这个标签里的照旧一件一页；JEI 的煎锅 / 炉灶页用同一个分组（Compat/Jei/CookPages）。"""
+    Cooking = fdtest.load("Shared.Data.Cooking")
+    pan = Books.panPages()
+    eggs = [page for page in pan if page["item"]["newItemName"] == "arris:fried_egg"]
+    assert len(eggs) == 1 and eggs[0]["key"] == "minecraft:egg", eggs
+    assert eggs[0]["ways"] == [[[("minecraft:egg", 0), ("minecraft:blue_egg", 0), ("minecraft:brown_egg", 0)]]]
+    assert all(len(page["ways"][0][0]) == 1 for page in pan if page is not eggs[0]), "别的一件一页"
+    assert len(pan) == len(Cooking.CanCookedFoodDict) - 2
+    for name in ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"):
+        assert Books.cookCurrent([_item("arris:fried_egg"), _item(name)]) == "minecraft:egg", name
+    assert ([("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg")] ==
+            [tuple(raws) for raws, result in Books.cookGroups() if result == "arris:fried_egg"])
+    Cooking.CanCookedFoodDict["minecraft:brown_egg"] = "test:brown_omelette"
+    try:
+        groups = dict((tuple(raws), result) for raws, result in Books.cookGroups())
+        assert groups[("minecraft:egg", "minecraft:blue_egg")] == "arris:fried_egg" and groups[("minecraft:brown_egg",)] == "test:brown_omelette"
+        assert Books.cookCurrent([_item("minecraft:brown_egg")]) == "minecraft:brown_egg", "成品不同：自己一页"
+    finally:
+        Cooking.CanCookedFoodDict["minecraft:brown_egg"] = "arris:fried_egg"
+
+
 def testAOneSidedFoodIsWrittenWithTheTimeOfBothSidesInEitherBook():
     """HoD 的 SkilletBook（31 行）、StoveBook（36 行）都写 2 * sideTicks、不看 one_sided：只煎一面的从下往上煎透，用的也是两面的时间。
     缺省（OneSidedList 只有蛋，蛋上不了烤架）两本书都看不出；往 OneSidedList 里临时加一件烤架收的（马铃薯，测完删掉），炉灶书上它照样是两面的 20 秒，

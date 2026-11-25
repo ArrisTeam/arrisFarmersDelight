@@ -74,7 +74,7 @@ def render(data, layout):
 
 
 class Sandbox(object):
-    """临时目录里的一份仓库：两个工具、release.json、配置里的 manifest。用完 close()。"""
+    """临时目录里的一份仓库：两个工具、release.json、配置里的 manifest、版本号工具一起改的脚本常量文件。用完 close()。"""
 
     def __init__(self):
         self.root = tempfile.mkdtemp(prefix="fdrelease")
@@ -84,7 +84,8 @@ class Sandbox(object):
         shutil.copy(CONFIG, self.root)
         with io.open(CONFIG, encoding="utf-8") as handle:
             self.manifests = json.load(handle)["manifests"]
-        for rel in self.manifests:
+        self.constants = versionConstants()
+        for rel in self.manifests + [rel for rel, _name in self.constants]:
             os.makedirs(os.path.dirname(self.path(rel)), exist_ok=True)
             shutil.copy(os.path.join(ROOT, *rel.split("/")), self.path(rel))
 
@@ -113,6 +114,11 @@ class Sandbox(object):
 def currentVersion():
     with io.open(os.path.join(ROOT, "bp", "manifest.json"), encoding="utf-8-sig") as handle:
         return "%d.%d.%d" % tuple(json.load(handle)["header"]["version"])
+
+
+def versionConstants():
+    """版本号工具和 manifest 一起改的脚本常量（它的 PYTHON_CONSTANTS）：[(相对仓库根的路径, 常量名)]。"""
+    return list(loadTool(VERSION_TOOL, "fd_version_constants").PYTHON_CONSTANTS)
 
 
 def onlyNumbersChanged(before, after):
@@ -239,6 +245,43 @@ def testTheTagMustBeVXYZAndEqualTheVersion():
         assert code == 1 and "vX.Y.Z" in out, (bad, out)
     code, out = run(VERSION_TOOL, "check", "--tag", "v99.0.0", env=toolEnv(GITHUB_ACTIONS="true"))
     assert code == 1 and out.startswith("::error::tag v99.0.0"), "在 GitHub Actions 里报错成为注解：" + out
+
+
+def testTheHostVersionConstantMovesWithTheManifests():
+    """脚本读不到 manifest，主包版本号在 Api/ExtensionApi/Version.py 另有一份（HOST_VERSION，新联动接口的 ext.hostVersion）：本仓库里它等于
+    manifest、show 列出它；set / bump 一起改写，只动那三个数、换行符照旧；它和 manifest 不一致时 check / show / bump 报出它那一处；
+    文件里没有它或者有两处时 set 一个文件也不写。"""
+    constants = versionConstants()
+    assert constants == [("bp/arrisFarmersDelightScripts/Api/ExtensionApi/Version.py", "HOST_VERSION")], constants
+    rel, name = constants[0]
+    code, out = run(VERSION_TOOL, "show")
+    assert code == 0 and re.search(r"^  %s %s\s+%s$" % (re.escape(rel), name, re.escape(currentVersion())), out, re.M), out
+
+    def swap(raw, triple):
+        return re.sub(br"HOST_VERSION = \(\d+, \d+, \d+\)", ("HOST_VERSION = (%d, %d, %d)" % triple).encode("ascii"), raw)
+
+    box = Sandbox()
+    try:
+        crlf = box.read(rel).replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        box.write(rel, crlf)                                    # CI 上检出的是 LF，本机可能是 CRLF：改写后照原样
+        code, out = box.version("set", "2.3.4")
+        assert code == 0, out
+        assert box.read(rel) == swap(crlf, (2, 3, 4)), "只动那三个数"
+        code, out = box.version("bump")
+        assert code == 0 and "2.3.5" in out, out
+        assert box.read(rel) == swap(crlf, (2, 3, 5))
+        box.write(rel, swap(crlf, (2, 3, 0)))
+        for command in ("check", "show", "bump"):
+            code, out = box.version(command)
+            assert code == 1 and "  %s %s = 2.3.0" % (rel, name) in out and "tools/version.py set" in out, (command, out)
+        manifests = dict((path, box.read(path)) for path in box.manifests)
+        for broken in (b"# -*- coding: utf-8 -*-\n", swap(crlf, (2, 3, 0)) + b"HOST_VERSION = (9, 9, 9)\n"):
+            box.write(rel, broken)
+            code, out = box.version("set", "3.0.0")
+            assert code == 1 and "%s 里 %s = (x, y, z) 要正好一处" % (rel, name) in out, out
+            assert box.read(rel) == broken and dict((path, box.read(path)) for path in box.manifests) == manifests, "查出问题就一个文件也不写"
+    finally:
+        box.close()
 
 
 # ---------------------------------------------------------------- 更新说明

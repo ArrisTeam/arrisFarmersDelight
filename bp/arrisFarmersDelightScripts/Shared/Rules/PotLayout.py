@@ -3,9 +3,8 @@
 
 移植自 Hands-On Delight 的 station/StationRecipes.java（choose / rank / lay / servings / fits / kept / leftOver / fill）。
 Java 的锅一格一件地读配方：同种的料扔进去会叠在一格，所以站点要在玩家放完之后把料按"锅读得懂的样子"摆开。
-本包的配方是展开过标签的"写法"（Shared/Data/CookingPotRecipes.py）：每个写法是几个 (物品名, aux)，一件占一格。
-所以 Java 里"每个配料挑一种料"的搜索这里只剩查表：锅里料的种类集合正好等于某个写法的种类集合时，这个写法就是候选，
-它的 parts（每种料占几格）是这种料在写法里出现几次（CookingPot.candidatesFor）。
+候选摆法由 CookingPot.candidatesFor 给（每种料占几格的 parts，带配方序号）：配方的格子（Slots，标签格）给出锅里这几种料摆进格子的
+全部摆法（HoD 的 StationRecipes.parts），旧写法（几个 (物品名, aux)，一件占一格）是种类集合正好相同时的那一种。
 
 食材格是 6 项的列表，每项是物品字典（newItemName / newAuxValue / count）或空（None / {}）；种类是 (物品名, aux)。
 """
@@ -157,6 +156,12 @@ def layout(slots, maxStackOf, wanted=None, found=None, overflow=True):
     if not rest and [(keyOf(c), countOf(c)) for c in out] == [(keyOf(c), countOf(c)) for c in cells]:
         return None
     return out, rest
+
+
+def planFillFor(recipe, held, pool, sets, maxStackOf):
+    """照书放料的计划，按书里点的那道菜（配方表的一行）：写法是它的旧写法，加上格子（Slots，标签格）按锅里（held）和背包里（pool）
+    有的料具体化出来的（CookingPot.waysWith），别的模组进了标签的料也放得进去。返回值同 planFill。"""
+    return planFill(CookingPot.waysWith(recipe, list(held) + sorted(pool)), held, pool, sets, maxStackOf)
 
 
 def planFill(variants, held, pool, sets, maxStackOf):
