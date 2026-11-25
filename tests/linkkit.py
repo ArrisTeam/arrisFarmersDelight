@@ -20,6 +20,7 @@ import fdtest
 
 PACKAGE = fdtest.SCRIPTS
 DIEGESIS = PACKAGE + ".Compat.Diegesis"
+TABLE_HOOKS = "arrisDiegesisScripts.Vanilla.Server.TableHooks"      # 前置包的原版工作台接口（Compat/Diegesis/TableHooksLink 问它）
 ENTRY = ("ServerBoot", "ClientBoot", "Presence", "Steps", "ServerSteps", "ClientSteps")      # 没联动时也会导入的：入口、判定、步骤表
 Mode = fdtest.load("Shared.Rules.HandsOnMode")
 
@@ -121,6 +122,8 @@ class _Api(object):
 
     def ImportModule(self, name):
         self.env.asked[self.side].append(name)
+        if name == TABLE_HOOKS:                       # 前置包的原版工作台接口（Compat/Diegesis/TableHooksLink）：另给，缺省没有
+            return self.env.tableHooks.get(self.side)
         api = self.env.apis[self.side]
         if isinstance(api, Exception):
             raise api
@@ -161,6 +164,7 @@ class Env(object):
 
     def __init__(self):
         self.apis = {}
+        self.tableHooks = {}
         self.asked = {}
         self.listened = {}
         self.endpoints = {}
@@ -184,6 +188,7 @@ class Env(object):
         """每个用例开头：记账清零、前置包都当没装、联动状态回到还没判定、Compat/Diegesis 的模块清掉。"""
         for side in Mode.SIDES:
             self.apis[side], self.asked[side], self.listened[side], self.endpoints[side] = None, [], [], []
+        self.tableHooks.clear()
         del self.notices[:]
         del self.timers[:]
         self.afterLoad = {}

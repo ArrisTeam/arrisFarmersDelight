@@ -22,6 +22,22 @@ STATION_LOOK = {"board": "board", "pot": "pot", "pan": "pan", "grill": "stove"}
 DISH_CRAFTS = (L.DIEGESIS + ".DishCrafts", "onCraft")
 SWITCH = {"board": "cutting_board", "pot": "cooking_pot", "pan": "skillet", "grill": "stove"}
 ORDER = ["board", "pot", "pan", "grill"]
+STEPS = ORDER + ["table"]                     # 步骤表：四个站点，最后是前置包原版工作台上的登记
+
+
+class Hooks(object):
+    """前置包的原版工作台接口（Vanilla/Server/TableHooks）的替身：记下登了什么。"""
+
+    API_VERSION = 1
+
+    def __init__(self):
+        self.vetoes, self.remainders = [], []
+
+    def addVeto(self, fn):
+        self.vetoes.append(fn)
+
+    def addRemainder(self, fn):
+        self.remainders.append(fn)
 
 
 def apiOf(version=3, **flags):
@@ -41,7 +57,7 @@ def clientScenes():
     return dict((name, mod(module).enabled()) for name, module in SCENES.items())
 
 
-def bootServer(api=apiOf(FACING_HOOK=True), off=(), fresh=True, **config):
+def bootServer(api=apiOf(FACING_HOOK=True), off=(), fresh=True, hooks=True, **config):
     """服务端启动一次：返回 (登记的站点按顺序, 每一步的状态, 世界外观广播开了哪些, 工作台拦截登记了没有)。fresh 为假时不清另一端的状态。"""
     if fresh:
         env.reset()
@@ -50,6 +66,8 @@ def bootServer(api=apiOf(FACING_HOOK=True), off=(), fresh=True, **config):
         fdtest.load("Server." + module).enable(False)
     calls = []
     env.apis["server"] = api
+    if hooks:
+        env.tableHooks["server"] = Hooks() if hooks is True else hooks
     env.stubRegisters("server", calls, off)
     with Config(**config):
         env.boot("server")
@@ -76,7 +94,7 @@ def bootClient(api=apiOf(FACING_HOOK=True), off=(), fresh=True, **config):
 
 def testTheServerLinksTheFourStationsInTheirOldOrderAndTurnsOnEverythingThatHangsOnThem():
     calls, steps, looks, dishCrafts = bootServer()
-    assert calls == ORDER and steps == dict((name, "ok") for name in ORDER), (calls, steps)
+    assert calls == ORDER and steps == dict((name, "ok") for name in STEPS), (calls, steps)
     assert looks == {"pot": True, "pan": True, "stove": True, "board": True}
     assert dishCrafts is True, "工作台拦截登记了"
     assert Mode.mode("server") == Mode.LINKED
@@ -84,7 +102,7 @@ def testTheServerLinksTheFourStationsInTheirOldOrderAndTurnsOnEverythingThatHang
 
 def testTheClientLinksTheFourStationsInTheirOldOrderAndTurnsOnTheScenesTheSoundsAndTheSmokeHandOver():
     calls, steps, scenes, muted = bootClient()
-    assert calls == ORDER and steps == dict((name, "ok") for name in ORDER), (calls, steps)
+    assert calls == ORDER and steps == dict((name, "ok") for name in STEPS), (calls, steps)
     assert scenes == {"pot": True, "pan": True, "stove": True, "board": True}
     assert muted is True, "炉灶站点登记了：灶上东西的烟交给站点"
     assert Mode.mode("client") == Mode.LINKED
@@ -103,11 +121,11 @@ def testTheStepsGetTheSameApiObjectTheBootFound():
 def testASwitchedOffStationIsSkippedOnBothSidesAndTakesOnlyItsOwnExtrasWithIt():
     for station in ORDER:
         calls, steps, looks, dishCrafts = bootServer(off=(station,))
-        assert steps == dict((name, "skipped" if name == station else "ok") for name in ORDER), (station, steps)
+        assert steps == dict((name, "skipped" if name == station else "ok") for name in STEPS), (station, steps)
         assert looks == dict((name, name != STATION_LOOK[station]) for name in LOOKS), (station, looks)
         assert dishCrafts is (station != "board"), "工作台拦截跟着砧板站点走"
         calls, steps, scenes, muted = bootClient(off=(station,))
-        assert steps == dict((name, "skipped" if name == station else "ok") for name in ORDER), (station, steps)
+        assert steps == dict((name, "skipped" if name == station else "ok") for name in STEPS), (station, steps)
         assert scenes == dict((name, name != STATION_LOOK[station]) for name in SCENES), (station, scenes)
         assert muted is (station != "grill"), "炉灶站点没登记：灶上东西的烟照放"
         assert calls == ORDER, "关了的也问过它（register 自己说不）：登记顺序不变"
@@ -124,7 +142,7 @@ def testServerAndClientAgreeOnEveryCombinationOfTheStationSwitches():
 
 def testTheCraftingGridSwitchOnlyTakesTheTableInterceptionAway():
     calls, steps, looks, dishCrafts = bootServer(remove_crafting_recipes=False)
-    assert steps == dict((name, "ok") for name in ORDER) and looks["board"] is True, "站点都在，砧板的旁观声音也开着"
+    assert steps == dict((name, "ok") for name in STEPS) and looks["board"] is True, "站点都在，砧板的旁观声音也开着"
     assert dishCrafts is False, "工作台照旧出这些菜"
     assert bootServer()[3] is True
 
@@ -132,7 +150,7 @@ def testTheCraftingGridSwitchOnlyTakesTheTableInterceptionAway():
 def testTheGrillStepNeedsTheFacingHookOnTheApiOnBothSides():
     server = bootServer(api=apiOf(3))
     assert server[0] == ["board", "pot", "pan"], "炉灶的 register 没被调"
-    assert server[1] == {"board": "ok", "pot": "ok", "pan": "ok", "grill": "skipped"} and server[2]["stove"] is False
+    assert server[1] == {"board": "ok", "pot": "ok", "pan": "ok", "grill": "skipped", "table": "ok"} and server[2]["stove"] is False
     client = bootClient(api=apiOf(3))
     assert client[0] == ["board", "pot", "pan"] and client[1]["grill"] == "skipped"
     assert client[2]["stove"] is False and client[3] is False, "炉灶站点没登记：灶上东西的烟照放"
@@ -146,6 +164,24 @@ def testAnApiBelowTheRequiredVersionRunsNoStepOnEitherSide():
         assert server[:2] == ([], {}) and client[:2] == ([], {}), (version, server, client)
         assert server[2] == dict((name, False) for name in LOOKS) and server[3] is False
         assert client[2] == dict((name, False) for name in SCENES) and client[3] is False
+
+
+def testTheTableStepRegistersTheReturnsAndTheBoardStepTheDishVeto():
+    """前置包的原版工作台（Vanilla/Server/TableHooks）：table 一步登还容器，砧板菜的否决跟着砧板站点和 remove_crafting_recipes 在 board 那一步登；
+    接口不在（前置包太旧、没装它的内容包）：table 记成 skipped、什么都不登。"""
+    TableHooksLink = lambda: mod("TableHooksLink")      # noqa: E731 - 每次开机后模块是新导入的
+    hooks = Hooks()
+    calls, steps, looks, dishCrafts = bootServer(hooks=hooks)
+    assert steps["table"] == "ok" and hooks.remainders == [TableHooksLink().returns] and hooks.vetoes == [TableHooksLink().dishVeto]
+    hooks = Hooks()
+    bootServer(hooks=hooks, remove_crafting_recipes=False)
+    assert hooks.remainders and hooks.vetoes == [], "配置里关了 remove_crafting_recipes：工作台照旧出砧板菜"
+    hooks = Hooks()
+    bootServer(hooks=hooks, off=("board",))
+    assert hooks.remainders and hooks.vetoes == [], "砧板站点没登上：不拦"
+    calls, steps, looks, dishCrafts = bootServer(hooks=False)
+    assert steps["table"] == "skipped" and dishCrafts is True, "接口不在：table 跳过；原版合成格的拦截照旧"
+    assert bootClient()[1]["table"] == "ok", "客户端这一步没有东西要做"
 
 
 if __name__ == "__main__":

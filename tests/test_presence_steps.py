@@ -15,7 +15,7 @@ import fdtest
 Steps = fdtest.load("Compat.Diegesis.Steps")
 SCRIPTS_DIR = os.path.join(fdtest.BP, fdtest.SCRIPTS)
 TABLES = (("ServerSteps", "ServerLink"), ("ClientSteps", "ClientLink"))
-EXPECTED = ("board", "pot", "pan", "grill")           # 原来两个入口登记站点的顺序：砧板、厨锅、煎锅、炉灶
+EXPECTED = ("board", "pot", "pan", "grill", "table")  # 原来两个入口登记站点的顺序：砧板、厨锅、煎锅、炉灶；最后是前置包原版工作台上的登记
 
 
 class Text(object):
@@ -151,7 +151,7 @@ def _definesFunction(path, funcName):
 def testEveryStepTargetExistsAndTheTablesAreWrittenAsPlainData():
     for table, family in TABLES:
         steps = _steps(table)
-        assert [step[0] for step in steps] == list(EXPECTED), "%s：一个站点一步，顺序是原来登记的顺序" % table
+        assert [step[0] for step in steps] == list(EXPECTED), "%s：一个站点一步，顺序是原来登记的顺序，最后是 table" % table
         assert len(set(step[0] for step in steps)) == len(steps), "步骤名不重复"
         for entry in steps:
             assert isinstance(entry, tuple) and len(entry) == 3, "(步骤名, 目标, 条件或 None)：%r" % (entry,)
@@ -163,7 +163,7 @@ def testEveryStepTargetExistsAndTheTablesAreWrittenAsPlainData():
             assert _definesFunction(path, funcName), "%s 的目标 %r：模块里没有顶层函数 %s" % (name, target, funcName)
             assert modulePath.startswith("Compat.Diegesis.") and modulePath.endswith(family), "%s：服务端的表指服务端的步骤模块，客户端的指客户端的" % target
             assert requires in (None, "FACING_HOOK"), "%s 的条件 %r：本包用到的可选功能旗只有朝向钩子" % (name, requires)
-        assert dict((step[0], step[2]) for step in steps) == {"board": None, "pot": None, "pan": None, "grill": "FACING_HOOK"}, "炉灶要朝向钩子"
+        assert dict((step[0], step[2]) for step in steps) == {"board": None, "pot": None, "pan": None, "grill": "FACING_HOOK", "table": None}, "炉灶要朝向钩子"
         assert not [node for node in ast.walk(_tree(table)) if isinstance(node, (ast.Import, ast.ImportFrom))], "步骤表只放数据，不导入业务模块"
 
 

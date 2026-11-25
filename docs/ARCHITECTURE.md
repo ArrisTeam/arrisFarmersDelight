@@ -137,6 +137,7 @@ Compat/
                         热浪蒸汽和该翻了的烟、声音）= 炉灶站点，世界外观由 Server/StoveLook 广播；
                         FryTints（客户端，两个场景共用：朝上那面半熟的件上叠一颗熟色粒子，见「煎锅 / 炉灶上东西朝上那面的熟色」）；
                         DishCrafts（工作台摆出砧板菜的配方时拦下）；三个站点照 JE 的做法见 docs/diegesis/DESIGN.md §11；
+                        TableHooksLink（服务端，前置包的原版工作台站点上登本包的补还剩余物和砧板菜否决，table / board 两步调它）+ TableServerLink / TableClientLink（table 步骤）；
                         TouchFeel（客户端，四个站点共用：触屏的轻震、双击间隔、点选的东西飞上站点，问前置包的 view.buzz / view.doubleSeconds / view.flyIn，老版本没有就算了，
                         docs/diegesis/DESIGN.md §9；砧板、煎锅、炉灶在发 place 的地方调 flyIn，只在照客户端的状态放得上去时调，厨锅走内核自己的点击）；
                         FlatSprites（客户端，纯逻辑，四个站点的表现类共用：答前置包的可选钩子 flatSprite，手上拿着的方块物品里哪些引擎画成一张平面图——查 Shared/Data/FlatBlockItems；
@@ -262,7 +263,8 @@ def OnServerSkilletBlockUse(args):
     `LoadClientAddonScriptsAfter` 里找（前置包的客户端接口会带进它自己的 QuModLibs，更早导入不安全）；最后一次还没有就是 `standalone`；
   - 接口模块导入出错（装坏了、版本混了）记一条日志、当它没装；判定只做一次，步骤也只跑一次。
 - **步骤表**（`ServerSteps.py` / `ClientSteps.py`，只放数据，`Steps.py` 执行）：一项 `(步骤名, "相对脚本根的模块路径:函数名", 条件或 None)`，一个站点一步，顺序是原来登记的顺序
-  （砧板 `board`、厨锅 `pot`、煎锅 `pan`、炉灶 `grill`）；条件是接口上的可选功能旗（炉灶要 `FACING_HOOK`），接口没有这一步就 `skipped`、连模块都不导入。步骤函数（`BoardServerLink.link(ctx)` 这一类）
+  （砧板 `board`、厨锅 `pot`、煎锅 `pan`、炉灶 `grill`），最后一步 `table` 不是本包的站点（见“合成与合成剩余物”最后一段：前置包的原版工作台站点上登记本包的规则）；
+  条件是接口上的可选功能旗（炉灶要 `FACING_HOOK`），接口没有这一步就 `skipped`、连模块都不导入。步骤函数（`BoardServerLink.link(ctx)` 这一类）
   做原来入口里这个站点做的全部：调站点自己的 `register(ctx.api)`，返回 `None`（配置里关了这个站点）就返回 `False`、这一步记成 `skipped`，登记上了再开连带的东西——`pot` 开 `PotLook`、`pan` 开 `PanLook`、
   `grill` 开 `StoveLook`（客户端还让出灶上东西的烟）、`board` 开 `BoardLook`（客户端 `BoardWatch`）并在 `remove_crafting_recipes` 开着时登记 `DishCrafts`；客户端的步骤同时开场景
   （`PotScenes` / `PanScenes` / `StoveScenes`）。步骤抛异常记成 `failed`、打印 traceback，别的步骤照常跑。`ctx`（`Steps.Context`）有 `side`、握过手的前置包接口 `api`、它的 `apiVersion`。
@@ -455,6 +457,15 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 
 前置包在场时工作台不再出砧板菜（`Compat/Diegesis/DishCrafts.py`）：拦的是"配方"不是"成品"——取结果时读合成格，格子里的原料正好是这道菜在砧板上的某条配方才取消
 （`DishStation.isDishCraft`）。切片拼回整个派（一种原料）、原版自己的南瓜派配方、创造模式从物品栏拿东西（合成格对不上）都不拦。
+
+前置包的原版工作台站点（它的内容包 `Vanilla/`：桌上摆料、脚本合成）不发引擎的合成事件，上面两条（补还剩余物、拦砧板菜）挂不上去，所以登到它的接口上
+（`Compat/Diegesis/TableHooksLink.py`，`serverApi.ImportModule("arrisDiegesisScripts.Vanilla.Server.TableHooks")`，接口说明在前置包的那个模块里，`API_VERSION` 1）：
+- `table` 步骤（`TableServerLink`）登 `addRemainder(returns)`：成品对上 `Shared/Data/CraftReturns.py` 的无序配方就按 `Crafting.entryFor / returnsOf` 每份每格还一件、放回原格
+  （前置包那边放不回进背包、再掉脚下），下游包在 `Food.shapedRecipeContainerDict` 登记的成品每份还一个（进背包）；客户端的 `table` 步骤没有东西要做（`TableClientLink` 只为两张表对上）。
+- `board` 步骤在登 `DishCrafts` 的同一个条件下（砧板站点登上了、`remove_crafting_recipes` 开着）登 `addVeto(dishVeto)`：九格是砧板菜的某条配方就拒，
+  给玩家看的话是 `Tips.DISH_ON_BOARD`（语言键 + 中文，前置包的客户端按玩家的语言查本包语言文件里的键）。
+- 接口不在（前置包太旧、没装它的内容包）或版本不够：两样都不登，`table` 记成 `skipped`。九格是前置包给的配方朝向的物品字典或 `None`，这两条规则只看有哪些原料。
+  测试：`tests/test_table_hooks_link.py`（规则）、`tests/test_presence_boots.py`（哪一步登什么）。
 
 实机核对过的引擎事实（3.10，`Server/Debug/McdkCraftTest.py`）：
 - `CraftItemOutputChangeServerEvent` 一次合成请求只发一次，这时 `GetPlayerUIItem` 读到的还是合成前的格子；下一刻每格已经扣掉。

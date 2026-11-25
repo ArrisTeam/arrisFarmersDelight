@@ -73,7 +73,8 @@ def testTheClientDoesNotEvenAskForTheApiBeforeTheEvent():
     assert env.asked["client"] == [], "客户端的接口模块会带进前置包自己的 QuModLibs：事件之前不碰它"
     assert Mode.mode("client") == Mode.PENDING and calls["client"] == []
     assert not set(L.names()) & CLIENT_STATION_MODULES
-    assert env.asked["server"] == ["arrisDiegesisScripts.Api.Server"], "服务端导入时先找了一次"
+    assert env.asked["server"][0] == "arrisDiegesisScripts.Api.Server", "服务端导入时先找了一次"
+    assert set(env.asked["server"][1:]) <= {L.TABLE_HOOKS}, "之后只有 table 那一步（和 board 那一步的否决）找前置包的原版工作台接口"
     assert Mode.mode("server") == Mode.LINKED and len(calls["server"]) == 4, "服务端导入时前置包的接口就在：马上联动"
     env.fire("client")
     assert env.asked["client"] == ["arrisDiegesisScripts.Api.Client"] and Mode.mode("client") == Mode.LINKED

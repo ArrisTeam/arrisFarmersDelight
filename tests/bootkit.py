@@ -30,11 +30,14 @@ ABSENT = object()                     # bootServer / bootClient 的参数：没�
 
 
 class _ServerApi(object):
-    """serverApi 的替身：ImportModule 回答 api（前置包的服务端接口，没装是 None）。"""
+    """serverApi 的替身：ImportModule 回答 api（前置包的服务端接口，没装是 None）；问前置包的原版工作台接口（Compat/Diegesis/TableHooksLink）时
+    前置包在场就给它真的那个模块（Vanilla/Server/TableHooks），不在是 None。"""
     api = None
 
     @classmethod
     def ImportModule(cls, name):
+        if name == linkkit.TABLE_HOOKS:
+            return TableHooks if cls.api is not None else None
         return cls.api
 
 
@@ -74,6 +77,7 @@ PotStation, PanStation, GrillStation, BoardStation = (fdtest.load("Shared.Rules.
 ServerRegistry = dgtest.load("Server.Registry")
 ClientRegistry = dgtest.load("Client.Registry")
 ServerApi = dgtest.load("Api.Server")
+TableHooks = dgtest.load("Vanilla.Server.TableHooks")
 Geometry = dgtest.load("Shared.Geometry")
 Schema = dgtest.load("Shared.Schema")
 
@@ -85,14 +89,16 @@ DISH_CRAFTS = (PACKAGE + ".Compat.Diegesis.DishCrafts", "onCraft")
 
 class Booted(object):
     """一次启动之后：stations 是登记的站点编号（按登记顺序），looks 是世界外观广播 / 场景开没开，dishCrafts 是工作台拦截登记了没有，
-    mode 是这一端的运行模式（Shared/Rules/HandsOnMode），steps 是每一步的状态 {步骤名: ok / skipped / failed}。"""
+    mode 是这一端的运行模式（Shared/Rules/HandsOnMode），steps 是每一步的状态 {步骤名: ok / skipped / failed}，
+    tableHooks 是前置包真的原版工作台接口上登了什么 {"vetoes": 个数, "remainders": 个数}（客户端是 None）。"""
 
-    def __init__(self, stations, looks, dishCrafts, mode=None, steps=None):
+    def __init__(self, stations, looks, dishCrafts, mode=None, steps=None, tableHooks=None):
         self.stations = stations
         self.looks = looks                # {"pot": 世界外观广播开没开……}（服务端是 PotLook 这些，客户端是 PotScenes 这些）
         self.dishCrafts = dishCrafts
         self.mode = mode
         self.steps = steps or {}
+        self.tableHooks = tableHooks
 
     def has(self, stationId):
         return stationId in self.stations
@@ -110,6 +116,7 @@ def bootServer(api=None):
     """ServerBoot 重新启动一次：入口重新导入（前置包的服务端 Api 是 api，缺省真的那份，ABSENT 是没装），再发 LoadServerAddonScriptsAfter。"""
     ServerRegistry.clearAll()
     EventRegistry.clearAll()
+    TableHooks.clear()
     for look in (PotLook, PanLook, StoveLook, BoardLook):
         look.enable(False)
     linkkit.unlink("server")
@@ -117,8 +124,9 @@ def bootServer(api=None):
     reload(ServerBoot)
     Presence.onServerLoaded()
     looks = {"pot": PotLook.enabled(), "pan": PanLook.enabled(), "stove": StoveLook.enabled(), "board": BoardLook.enabled()}
+    hooks = {"vetoes": len(TableHooks._vetoes), "remainders": len(TableHooks._remainders)}
     return Booted(ServerRegistry.stationIds(), looks, DISH_CRAFTS in EventRegistry.handlerNames("CraftItemOutputChangeServerEvent"),
-                  Mode.mode("server"), _stepsOf("server"))
+                  Mode.mode("server"), _stepsOf("server"), hooks)
 
 
 class ClientApi(object):
