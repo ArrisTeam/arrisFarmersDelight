@@ -16,6 +16,7 @@ from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
 from ...Shared.Data.Cutting import CuttingBoardDict, CuttingTagDict, axeList, hoeList, knifeList, pickaxeList, shearsList, shovelList
 from ...Shared.Rules import BoardStation, CookingPot, ItemTags, PotSlots
+from ...Shared.Rules.TableWire import toStr
 
 try:
     _TEXT = (str, unicode)  # noqa: F821 - py2
@@ -152,7 +153,7 @@ def _option(option):
 def _cooking(spec, recipeId, index):
     slots = [[_option(option) for option in slot] for slot in spec["slots"]]
     old = CookingPotRecipeList[index] if index is not None and isinstance(CookingPotRecipeList[index], dict) else None
-    row = {"Id": recipeId, "Slots": slots, "Recipe": _ways(slots, old),
+    row = {"Id": recipeId, "Slots": slots, "Recipe": _ways(slots, old, spec["result"]),
            "CookResult": tuple(spec["result"]), "CookCount": spec["count"], "PushItem": [], "text": _text(spec, old),
            "CookTime": spec["cookingTime"] / 20.0, "Experience": float(spec["experience"])}
     if spec.get("container"):
@@ -178,14 +179,17 @@ def _text(spec, old):
     kept = old.get("text") if old is not None else None
     before = old.get("CookResult") if old is not None else None
     same = isinstance(before, (tuple, list)) and len(before) == 2 and tuple(before) == tuple(spec["result"])
-    return kept if same and isinstance(kept, _TEXT) and kept and kept != before[0] else spec["result"][0]
+    return kept if same and isinstance(kept, _TEXT) and kept and toStr(kept) != toStr(before[0]) else spec["result"][0]   # py2 换成同一种再比
 
 
-def _ways(slots, old):
-    """新行的 Recipe：按登记那一刻标签的成员展开的快照，再接上旧行里别的模组用旧接口（AddCookingPotRecipe）加的写法
-    （旧行的 extraWays：格子不收的那几种），覆盖时不丢，和谁先加载无关。"""
+def _ways(slots, old, result):
+    """新行的 Recipe：按登记那一刻标签的成员展开的快照；覆盖时成品的物品名没变，再接上旧行里别的模组用旧接口（AddCookingPotRecipe）
+    加的写法（旧行的 extraWays：格子不收的那几种），覆盖时不丢，和谁先加载无关。成品换了就不接：AddCookingPotRecipe 是按成品名加的
+    （只比物品名），那几种写法属于原来那道菜，接过来就成了做新成品的写法。"""
     ways = [[tuple(entry) for entry in way] for way in PotSlots.expand(slots, ItemTags.itemsOf, SNAPSHOT_WAYS)]
-    for way in (CookingPot.extraWays(old) if old is not None else ()):
+    before = old.get("CookResult") if old is not None else None
+    same = isinstance(before, (tuple, list)) and len(before) == 2 and before[0] == result[0]
+    for way in (CookingPot.extraWays(old) if same else ()):
         way = [tuple(entry) for entry in way]
         if way not in ways:
             ways.append(way)

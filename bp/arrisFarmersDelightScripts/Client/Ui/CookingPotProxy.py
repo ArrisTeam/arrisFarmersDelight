@@ -72,8 +72,7 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         recipeList = []
         for index in range(len(self.cookingPotRecipeList)):
             recipeDict = self.cookingPotRecipeList[index]
-            recipeText = CookingPotBook.titleOf(recipeDict)
-            if text in recipeText:
+            if CookingPotBook.matchesSearch(recipeDict, text):         # 按行里的 text 搜，和新界面一个口径（标题才用显示名）
                 recipeList.append(recipeDict)
         self.RecipeList = recipeList
         self.screenNode.UpdateScreen(True)

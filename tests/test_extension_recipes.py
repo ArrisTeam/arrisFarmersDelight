@@ -15,6 +15,7 @@ import io
 import json
 import os
 import sys
+import warnings
 
 import fdtest
 
@@ -254,6 +255,20 @@ def testOverridingAHostDishKeepsTheWaysOtherModsAddedThroughTheLegacyEntry():
         assert SERVER.registerFromJson(dict(view, cookingtime=120))["ok"] and stew["Recipe"].count([("minecraft:dirt", 0)]) == 1, "不重复接"
 
 
+def testOverridingWithAnotherResultDropsTheWaysAddedForTheOldDish():
+    """主会话定的 B2（T 复核时复现的）：番茄酱被别的模组用 AddCookingPotRecipe 加了"甜菜根 x2"，之后被覆盖成别的成品，甜菜根 x2 就煮出
+    新成品了。AddCookingPotRecipe 是按成品名加的，那几种写法属于原来那道菜：成品换了就不接过去（成品不变时照旧接，见上一条）。"""
+    beet = [{"newItemName": "minecraft:beetroot", "newAuxValue": 0, "count": 1}] * 2
+    with Sandbox():
+        assert Legacy.AddCookingPotRecipe("arris:tomato_sauce", [("minecraft:beetroot", 0)] * 2)
+        assert CookingPot.matchRecipe(beet)[0]["newItemName"] == "arris:tomato_sauce"
+        view = SERVER.getRecipeById("farmersdelight:cooking/tomato_sauce")
+        assert SERVER.registerFromJson(dict(view, result={"item": "mymod:ketchup"}))["ok"]
+        sauce = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")
+        assert sauce["CookResult"] == ("mymod:ketchup", 0) and [("minecraft:beetroot", 0)] * 2 not in sauce["Recipe"]
+        assert CookingPot.matchRecipe(beet)[0] is None, "加给番茄酱的写法不会做出 ketchup"
+
+
 def testOneResultHasOneContainerTimeAndExperience():
     """锅只记得成品：同一成品的容器、时间、经验跟着表里第一条活配方（T 复核时指出 matchCooking 以前报的是配上那一行的，和锅实际不一致）。"""
     with Sandbox():
@@ -326,6 +341,24 @@ def testOverridingWithAnotherResultDoesNotKeepTheOldName():
         assert next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")["text"] == "mymod:ketchup"
 
 
+def testComparingTextWithTheResultDoesNotWarnUnderPython2():
+    """主会话定的 B4（T 复核时 py2 复现的）：覆盖时"旧名字是不是旧成品的物品 ID"（RecipeTables._text）、给样子时"text 是不是成品的
+    物品 ID"（RecipeViews.viewAt），text 是非 ASCII 的字节串、成品名是 unicode（旧接口追加的行可能这样写）时在 py2 里出
+    UnicodeWarning；现在先换成同一种再比。py2 下把警告当错误跑，py3 下照样过。"""
+    Views = fdtest.load("Api.ExtensionApi.RecipeViews")
+    old = {"text": "浓汤", "CookResult": (u"mymod:soup", 0)}
+    for module in (Tables, Views):
+        getattr(module, "__warningregistry__", {}).clear()     # py2：同一处警告过一次之后 registry 会挡住后面的
+    with Sandbox():
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert Tables._text({"result": ("mymod:soup", 0), "text": None}, old) == "浓汤", "成品没变：沿用"
+            assert Tables._text({"result": ("mymod:other", 0), "text": None}, old) == "mymod:other", "换了成品：不沿用"
+            assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", {"Recipe": [[("minecraft:apple", 0)]], "CookResult": (u"mymod:soup", 0),
+                                                                                "PushItem": [], "text": "浓汤"})
+            assert SERVER.getRecipeById("legacy:cooking/mymod/soup")["text"] == "浓汤"
+
+
 def testAHostCuttingOrCampfireIdStaysWithItsIngredient():
     """T 复核 3.2：自带的砧板 / 营火 ID 被挪到别的原料上，原来的原料再被旧接口加回来，就是两条配方一个 ID。现在这些 ID 和原料绑死：
     覆盖时换原料、删掉以后用原 ID 登记别的原料都拒绝（input_mismatch）；原料对得上照旧成功；第三方自己的 ID 照旧能挪原料。"""
@@ -387,6 +420,24 @@ def testCookingIdsNeverCollide():
     assert Ids.cookingIds(table) == ["mymod:cooking/a", "legacy:cooking/mymod/a", "legacy:cooking/mymod/b", None]
     ids = [recipeId for recipeId in Ids.cookingIds(Pot.CookingPotRecipeList) if recipeId]
     assert len(ids) == len(set(ids))
+
+
+def testACookingRowCannotTakeAHostCuttingOrCampfireId():
+    """主会话定的 B3（T 复核时复现的）：兼容入口追加的厨锅行明写了农夫乐事自带的砧板 ID，两张列表里都有这个 ID，按 ID 查、删都落到厨锅那行，
+    删了以后墓碑还占着它，卷心菜那条切法再也不能用自己的 ID 覆盖。现在这样的 Id 当没写，派生 legacy: 的。"""
+    Ids = fdtest.load("Api.ExtensionApi.RecipeIds")
+    cabbage, beef = "farmersdelight:cutting/arris/cabbage", "farmersdelight:campfire_cooking/minecraft/beef"
+    with Sandbox():
+        for recipeId, result in ((cabbage, "mymod:pie"), (beef, "mymod:steak_pie")):
+            assert Legacy.ArrisFarmersDelightInterface("CookingPotRecipeList", {"Id": recipeId, "Recipe": [[("minecraft:apple", 0)]],
+                                                                                "CookResult": (result, 0), "PushItem": [], "text": "pie"})
+        assert Ids.cookingIds(Pot.CookingPotRecipeList)[-2:] == ["legacy:cooking/mymod/pie", "legacy:cooking/mymod/steak_pie"]
+        ids = [view["id"] for kind in ("cooking", "cutting", "campfire_cooking") for view in SERVER.getRecipesOfType(kind)]
+        assert len(ids) == len(set(ids)) and ids.count(cabbage) == ids.count(beef) == 1
+        assert SERVER.getRecipeById(cabbage)["type"] == "farmersdelight:cutting"
+        assert SERVER.getRecipeById(beef)["type"] == "minecraft:campfire_cooking"
+        assert SERVER.removeRecipe(cabbage)["ok"] and ("arris:cabbage", 0) not in Cutting.CuttingBoardDict, "删掉的是那条切法"
+        assert SERVER.createBuilder(cabbage, "cutting").ingredient("arris:cabbage").output("arris:cabbage_leaf", 2).tool("knife").register()["ok"]
 
 
 def testTheClientReadsButDoesNotRegister():

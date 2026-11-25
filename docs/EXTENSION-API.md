@@ -254,7 +254,9 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
   砧板 `farmersdelight:cutting/<物品的命名空间>/<物品名>`（aux 不是 0 时后面加 `_<aux>`），按标签的那条照 JE 叫 `farmersdelight:cutting/tag_dough`；
   营火 `farmersdelight:campfire_cooking/<物品的命名空间>/<物品名>`。不确定就 `getRecipesOfType` 列出来看。
 - `legacy:` 是兼容入口追加的配方的派生 ID，只读：能查、能删，不能用来登记。
-  厨锅 `legacy:cooking/<成品的命名空间>/<成品名>`，同一个成品的第 2、3 条按表里的先后加 `_2`、`_3`；
+  厨锅 `legacy:cooking/<成品的命名空间>/<成品名>`，同一个成品的第 2、3 条按表里的先后加 `_2`、`_3`；派生的名字被占了（明写的 ID
+  或先派生的）就接着加 `_n` 直到没人用（成品 pie、pie、pie_2 三行是 `…/pie`、`…/pie_2`、`…/pie_2_2`）；兼容入口的行里明写的 `Id`
+  是 `legacy:` 开头的、写法不对的、或者是农夫乐事自带的砧板 / 营火配方的 ID，都当没写、照样派生；
   砧板 `legacy:cutting/<原料的命名空间>/<原料名>`（aux 不是 0 加 `_<aux>`），按标签的 `legacy:cutting/tag/<标签的命名空间>/<标签名>`；
   营火 `legacy:campfire_cooking/<原料的命名空间>/<原料名>`。派生 ID 跟着表里的东西走：下游包加载的先后变了，`_2`、`_3` 可能对调。
 - 农夫乐事自带的砧板、营火配方 ID 是从原料派生的，**和原料绑死**：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，
@@ -292,7 +294,7 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |
-| `text(名字)` | 厨锅 | 经典厨锅界面食谱格里的名字。不写时界面显示成品物品的显示名（界面所在那一端的语言；物品没有名字时显示物品 ID），搜索也按它搜；覆盖已有配方时不写则沿用原来的名字。`getRecipeById` 给的样子里只有写了的 `text` |
+| `text(名字)` | 厨锅 | 经典厨锅界面食谱格里的名字，搜索框按它搜。不写时：标题显示成品物品的显示名（界面所在那一端的语言；要不到时显示物品 ID），搜索框只能按物品 ID 搜到——想让玩家按名字搜到就写上 `text`。覆盖已有配方时不写：成品没变才沿用原来的名字，换了成品就当没写。`getRecipeById` 给的样子里只有写了的 `text` |
 | `toJson()` | | 写成 JE 配方 JSON 的样子（带 `"id"`），可以存成 `farmersdelight_recipes/` 下的文件 |
 | `register()` | | 查格式、登记，返回 §4 的字典 |
 
@@ -441,7 +443,8 @@ def register(ext):
 **问：我用兼容入口（旧接口）加的配方，新接口查得到吗？** 查得到，ID 是 `legacy:` 开头的派生 ID（§5.2），也能删。
 
 **问：怎么改农夫乐事自带的一道菜？** 用它的 `farmersdelight:` ID 覆盖：`getRecipeById` 拿到 JSON，改了交回 `registerFromJson`。
-别的模组用兼容入口（`AddCookingPotRecipe`）给这道菜加的写法，覆盖之后照样留着（接在新行的 `Recipe` 后面），和谁先加载无关。
+别的模组用兼容入口（`AddCookingPotRecipe`）给这道菜加的写法，覆盖之后照样留着（接在新行的 `Recipe` 后面），和谁先加载无关；
+覆盖时换了成品就不接：那几种写法是按成品名加给原来那道菜的，接过来就成了做新成品的写法。
 
 **问：一个标签里没有成员会怎样？** 那一格什么都不收，这条配方配不上；不报错。等有模组登记了成员（或玩家装了那个模组）就能配。
 
