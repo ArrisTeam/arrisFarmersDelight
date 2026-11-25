@@ -40,6 +40,10 @@ def _below(args):
     return (args["posX"], args["posY"] - 1, args["posZ"])
 
 
+def _sneaking(playerId):
+    return compFactory.CreatePlayer(playerId).isSneaking() is True
+
+
 def _setBlock(pos, name, dimensionId, handling=0):
     if handling:
         compFactory.CreateBlockInfo(levelId).SetBlockNew(pos, {"name": name}, handling, dimensionId)
@@ -120,6 +124,8 @@ def OnServerItemUse(args):
             return
         _plantRice(playerId, itemDict, blockName, face, (x, y, z), dimensionId)
     elif itemName == "minecraft:bone_meal":
+        if blockName in _HARVESTABLE and not _sneaking(playerId):
+            return                       # JE TomatoBlock.use：熟了的番茄右键是摘（方块的 use 先于骨粉），交给 OnTomatoUse
         if SetPlayerUsedCD(playerId) is True:
             return
         ApplyBoneMeal(playerId, itemDict, blockName, (x, y, z), dimensionId)
@@ -153,20 +159,19 @@ def OnTomatoUse(args):
     blockName = args["blockName"]
     dimensionId = args["dimensionId"]
     playerId = args["playerId"]
+    # JE TomatoBlock.use：熟了就摘，手里拿着骨粉也一样；只有潜行拿着东西时 JE 不调方块的 use，骨粉走 OnServerItemUse
+    carriedDict = GetCarriedItem(playerId) or {}
+    if carriedDict.get("newItemName") == "minecraft:bone_meal" and _sneaking(playerId):
+        return
     if SetPlayerUsedCD(playerId) is True:
         return
-    carriedDict = GetCarriedItem(playerId) or {}
-    if carriedDict.get("newItemName") == "minecraft:bone_meal":
-        # 和 ServerItemUseOnEvent 那条路径共用：谁先触发谁处理（冷却挡住另一条）
-        ApplyBoneMeal(playerId, carriedDict, blockName, (x, y, z), dimensionId)
-    else:
-        dropPos = (x + 0.5, y, z + 0.5)
-        System.CreateEngineItemEntity({"itemName": "arris:tomato", "count": random.randint(1, 2)}, dimensionId, dropPos)
-        if probability(ROTTEN_TOMATO_PERCENT):
-            System.CreateEngineItemEntity({"itemName": "arris:rotten_tomato", "count": 1}, dimensionId, dropPos)
-        ToAllPlayerPlaySound(dimensionId, dropPos, "block.sweet_berry_bush.pick")
-        nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
-        _setBlock((x, y, z), nextName, dimensionId)
+    dropPos = (x + 0.5, y, z + 0.5)
+    System.CreateEngineItemEntity({"itemName": "arris:tomato", "count": random.randint(1, 2)}, dimensionId, dropPos)
+    if probability(ROTTEN_TOMATO_PERCENT):
+        System.CreateEngineItemEntity({"itemName": "arris:rotten_tomato", "count": 1}, dimensionId, dropPos)
+    ToAllPlayerPlaySound(dimensionId, dropPos, "block.sweet_berry_bush.pick")
+    nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
+    _setBlock((x, y, z), nextName, dimensionId)
     # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
     args["cancel"] = True
 
