@@ -177,7 +177,7 @@ class BoardLogicMixin(object):
         """板上换了东西（或刚开站）：重新查配方、重布刀口，并同步给使用者（restart，652-702）。"""
         item = self.boardItem()
         self.itemKey = keyOf(item)
-        self.recipe = CuttingBoardDict.get(self.itemKey) if item else None
+        self.recipe = CuttingStation.recipeOf(self.itemKey) if item else None
         if self.recipe is not None and not self.layers():
             self.cut.restart(CuttingStation.planFor(item["newItemName"], self.recipe))
         else:

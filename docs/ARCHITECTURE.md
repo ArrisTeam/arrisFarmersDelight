@@ -202,6 +202,8 @@ def OnServerSkilletBlockUse(args):
 **联动契约原有的 21 个名字一个字没动**（`tests/test_legacy_modattr_contract.py` 锁着；同步登记的容器必须就是契约交出去的那个对象，`tests/test_table_sync.py` 逐个核对）。
 2026-11-19 往白名单里加了三个给站点用的名字（只加不改，`tests/test_contract_station_tables.py`）：`DishList`、`OneSidedList`、`NotOnGrillList`——HoD 里后两样是物品标签（`KitchenTags.ONE_SIDED / NOT_ON_GRILL`）、
 摆盘的菜是配方，数据包都能加；我们这边原来是规则里写死的 frozenset 和不在白名单里的生成表，下游够不着。
+2026-11-26 又加了一个（只加不改）：`CuttingTagDict`，原料是一个物品标签的砧板配方（`{标签名: 和 CuttingBoardDict 一样的值}`，JE 的 `cutting/tag_dough` 还原在这里）；
+契约表里不放 `#` 开头的假物品名，所以单开一张。查配方一律经 `Shared/Rules/CuttingStation.recipeOf`（精确的先，再按标签名的顺序看标签）。
 同步是旁路：服务端在模块导入时记下各张表的样子，下游追加完之后把"现在 - 基线"发给客户端，客户端并进它自己的表。
 
 **同步哪些表**（表名即契约的变量名，`Shared/Rules/SyncTables.py` 登记；客户端真有地方读的才同步，`OneSidedList` 例外，见它那一行）：
@@ -209,6 +211,7 @@ def OnServerSkilletBlockUse(args):
 | 表 | 下游怎么改 | 客户端哪里读 |
 |---|---|---|
 | `CuttingBoardDict`（键 `(物品名, aux)`） | 追加键；`tool` 引用 `knifeList` / `axeList` | 砧板 `BoardStation.Env` 的 `recipeOf / cuttable / cutsWith / isToolItem / usable / shiftPlaces`（托盘亮不亮、借哪把刀、Shift 放不放、点板是落刀还是敲一声，`BoardView.py:68-101,125-130,179`）、`BoardDraw.kindOf`（问 `Env.isCarving`：板上是不是插着的工具，没开站时 `Client/BlockItems` 问同一个）、`StationBooks.boardPages / boardCurrent`（食谱书"切"的页） |
+| `CuttingTagDict`（键是标签名） | 追加键 | 同上：`CuttingStation.recipeOf` 在精确的查不到时看它；食谱书的 `c:#标签名` 那一页、JEI 按标签的成员登记 |
 | `knifeList`、`axeList` | 追加名字（`append`） | `Client/BlockItems.isKnife`（站点和没开站时的展示都问它）、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
 | `CanCookedFoodDict` | 追加键 | 煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、`StationBooks.panPages / grillPages`、手持煎锅"煎还是吃"（`Client/Input.py:42`） |
 | `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |

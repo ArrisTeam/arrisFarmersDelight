@@ -12,8 +12,8 @@
 """
 from ..Data.Cooking import CanCookedFoodDict
 from ..Data.CookingPotRecipes import CookingPotRecipeList
-from ..Data.Cutting import CuttingBoardDict
-from . import CookingPot, CuttingStation, DishStation, GrillStation, PanStation
+from ..Data.Cutting import CuttingBoardDict, CuttingTagDict
+from . import CookingPot, CuttingStation, DishStation, GrillStation, ItemTags, PanStation
 from .HandsOn import PotCooking
 from .HandsOn.Mth import roundInt
 
@@ -162,14 +162,21 @@ def boardPages():
             byResult[name] = page
             pages.append(page)
         page["ways"].append(dishWay(dish))
-    for (name, aux), recipe in sorted(CuttingBoardDict.items()):
+    cuts = [(_cutKey(key), [key], recipe) for key, recipe in sorted(CuttingBoardDict.items())]
+    cuts += [(_cutKey(tag), [(name, 0) for name in ItemTags.itemsOf(tag)], recipe) for tag, recipe in sorted(CuttingTagDict.items())]
+    for key, inputs, recipe in cuts:
         outputs = [stack(entry["itemName"], entry.get("auxValue", 0), entry.get("count", 1)) for entry in recipe["itemList"]]
         tools = [(tool, 0) for tool in recipe.get("tool") or ()]
-        if not outputs or not tools:
+        if not outputs or not tools or not inputs:
             continue
-        pages.append({"key": "%s%s:%d" % (CUT_PREFIX, name, aux), "item": outputs[0], "ways": [[[(name, aux)], tools]],
-                      "foot": outputs if len(outputs) > 1 else [], "note": "", "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
+        pages.append({"key": key, "item": outputs[0], "ways": [[inputs, tools]], "foot": outputs if len(outputs) > 1 else [], "note": "",
+                      "kind": "knife" if CuttingStation.isKnifeRecipe(recipe) else "tools"})
     return pages
+
+
+def _cutKey(found):
+    """切的那一页的键：精确的配方 "c:物品名:aux"，按标签的 "c:#标签名"（一格是标签的全部成员，轮换着画）。"""
+    return "%s#%s" % (CUT_PREFIX, found) if not isinstance(found, tuple) else "%s%s:%d" % (CUT_PREFIX, found[0], found[1])
 
 
 def dishOf(key):
@@ -185,9 +192,8 @@ def boardCurrent(layers, item):
     target = DishStation.targetOf(kinds) if kinds else None
     if target is not None:
         return DISH_PREFIX + target["result"][0]
-    if item and item.get("newItemName") and (item["newItemName"], item.get("newAuxValue") or 0) in CuttingBoardDict:
-        return "%s%s:%d" % (CUT_PREFIX, item["newItemName"], item.get("newAuxValue") or 0)
-    return None
+    found = CuttingStation.recipeKeyOf((item["newItemName"], item.get("newAuxValue") or 0)) if item and item.get("newItemName") else None
+    return _cutKey(found) if found is not None else None
 
 
 # ---------------------------------------------------------------- 煎锅、炉灶
