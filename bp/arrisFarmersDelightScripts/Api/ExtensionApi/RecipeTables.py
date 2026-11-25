@@ -130,6 +130,9 @@ def register(spec, recipeId):
     if kind == "cooking":
         return _cooking(spec, recipeId, located)
     key = (spec["input"][1:] if not isinstance(spec["input"], tuple) else spec["input"]) if kind == "cutting" else spec["input"]
+    bound = RecipeIds.builtInKeyOf(recipeId)
+    if bound is not None and bound != (kind, key):
+        return answer(False, "input_mismatch", recipeId)       # 自带的砧板 / 营火 ID 和原料绑死
     if key in _table(kind, key) and idOfKey(kind, key) != recipeId:
         return answer(False, "input_taken", recipeId, by=idOfKey(kind, key))
     if current is not None and current[1] != key:

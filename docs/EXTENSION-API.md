@@ -213,6 +213,7 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `invalid_recipe` | 配方的格式不对 | `message`：哪里不对 |
 | `invalid_json` | `registerFromJson` 给的文本不是 JSON | `message` |
 | `type_mismatch` | 用已有的 ID 登记了另一类配方 | `current`：那个 ID 现在的类型 |
+| `input_mismatch` | 用农夫乐事自带的砧板 / 营火配方的 ID 登记（覆盖，或删掉以后加回来）时，原料不是这个 ID 原来的那一样 | |
 | `input_taken` | 砧板 / 营火：这样原料已经有一条别的 ID 的配方（一样原料只有一条） | `by`：占着它的配方 ID |
 | `not_found` | 删除时没有这个 ID（或者已经删了） | |
 | `invalid_handler` | `onRecipesChanged` 给的不是函数 | |
@@ -256,6 +257,8 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
   厨锅 `legacy:cooking/<成品的命名空间>/<成品名>`，同一个成品的第 2、3 条按表里的先后加 `_2`、`_3`；
   砧板 `legacy:cutting/<原料的命名空间>/<原料名>`（aux 不是 0 加 `_<aux>`），按标签的 `legacy:cutting/tag/<标签的命名空间>/<标签名>`；
   营火 `legacy:campfire_cooking/<原料的命名空间>/<原料名>`。派生 ID 跟着表里的东西走：下游包加载的先后变了，`_2`、`_3` 可能对调。
+- 农夫乐事自带的砧板、营火配方 ID 是从原料派生的，**和原料绑死**：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，
+  否则 `input_mismatch`。想"不切卷心菜、改切海带"：删掉自带的那条，再用你自己的 ID 登记海带。
 - 砧板、营火一样原料只有一条配方。要换掉别人占着的那条：用它的 ID 覆盖，或者先 `removeRecipe` 它再登记你的。
 
 ### 5.3 Builder

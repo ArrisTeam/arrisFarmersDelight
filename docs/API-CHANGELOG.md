@@ -33,6 +33,7 @@
 
 变更：
 
+- 农夫乐事自带的砧板 / 营火配方 ID 和原料绑死：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，否则新的错误码 `input_mismatch`（EXTENSION-API.md §4、§5.2）。
 - 兼容入口的 `CookingPotRecipeList`：被新接口删掉的配方留一个墓碑（行里多 `"Disabled": True`，`Recipe` / `Slots` 原样留着），遍历这张表的下游包要跳过它；
   新接口登记的配方 `Recipe` 可能是空列表。见 linkage.md、[COMPATIBILITY.md](COMPATIBILITY.md) §2。
 - 农夫乐事自带的 28 道厨锅菜按 JE 还原了标签格（厨锅配方行多了 `Id`、`Slots` 两个键；`Recipe` 里的写法和原来一样）：别的模组的番茄、米、面团、生肉……
