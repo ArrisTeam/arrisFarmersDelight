@@ -15,7 +15,8 @@ from .TatamiMat import isReplaceable
 ROPE = "arris:rope"
 DOWN = 0                                   # 引擎的面：0 下 1 上 2 北 3 南 4 西 5 东
 LAVA = ("minecraft:lava", "minecraft:flowing_lava")
-# 最低的维度（主世界）从 -64 起；下界、末地更高的那几格交给放方块失败（SetBlockNew 返回 False）
+# 往下走的底线：所有维度里最低的是主世界的 -64。下界、末地从 0 起：走到 0 以下那几格读出来是什么没核实（多半是空气），
+# 就算算出一个 0 以下的落点，RopeAndNet 用 SetBlockNew 放不上去（返回 False）时不扣绳子、什么都不放——和 JE 走到世界底不放一样
 BOTTOM = -64
 
 
