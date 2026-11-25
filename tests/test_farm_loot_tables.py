@@ -209,14 +209,39 @@ def testEveryReferencedLootTableExists():
                 assert os.path.isfile(os.path.join(fdtest.BP, table)), (name, table)
 
 
-def testRichSoilPotatoesAlwaysDropPotatoesAndThePoisonousOneIsAnExtraTwoPercent():
-    # 沃土上的原版土豆（arris:rich_soil_potatoes3）：原版土豆的毒土豆是另外一池的 2%（不顶掉土豆）。土豆的个数这一波不动（等实机量基岩原版的分布）
-    drops = _drops("crops/potato_riped.json")
-    _near(L.prob(drops["minecraft:potato"], 0), 0.0)
-    for count in (2, 3, 4):
-        _near(L.prob(drops["minecraft:potato"], count), 1.0 / 3)
-    _near(L.prob(drops["minecraft:poisonous_potato"], 1), 0.02)
-    assert sorted(drops) == ["minecraft:poisonous_potato", "minecraft:potato"]
+# 沃土上的原版作物（成熟的 arris:rich_soil_wheat7 / carrots3 / potatoes3 / beetroot3）照基岩原版作物掉：数据来自 2026-11-26 的实机测量（INGAME-FACTS-1 §3，不带工具打掉成熟作物，
+# 每种 196~980 株）。额外的 0~3 个合起来 p = 0.529 ± 0.008，按 Binomial(3, 8/15) 写（权重 343 : 1176 : 1344 : 512）——是按数据推的模型，
+# 不是读到的源码；土豆另有独立的 2% 毒马铃薯（有毒马铃薯的那几次土豆照掉）；甜菜根 1 或 2 个各一半
+B815 = [343.0 / 3375, 1176.0 / 3375, 1344.0 / 3375, 512.0 / 3375]
+
+
+def _binomial815(dist, base):
+    for extra, probability in enumerate(B815):
+        _near(L.prob(dist, base + extra), probability, 1e-6)
+    assert L.spread(dist) == (base, base + 3)
+
+
+def testRichSoilVanillaCropsDropLikeBedrockVanillaCrops():
+    wheat = _drops("crops/wheat_riped.json")
+    _exactly(wheat["minecraft:wheat"], 1)
+    _binomial815(wheat["minecraft:wheat_seeds"], 0)
+    carrots = _drops("crops/carrot_riped.json")
+    _binomial815(carrots["minecraft:carrot"], 1)
+    potatoes = _drops("crops/potato_riped.json")
+    _binomial815(potatoes["minecraft:potato"], 1)
+    _near(L.prob(potatoes["minecraft:poisonous_potato"], 1), 0.02)
+    beetroots = _drops("crops/beetroot_riped.json")
+    _near(L.prob(beetroots["minecraft:beetroot"], 1), 0.5)
+    _near(L.prob(beetroots["minecraft:beetroot"], 2), 0.5)
+    _binomial815(beetroots["minecraft:beetroot_seeds"], 0)
+    assert sorted(wheat) == ["minecraft:wheat", "minecraft:wheat_seeds"] and list(carrots) == ["minecraft:carrot"]
+    assert sorted(potatoes) == ["minecraft:poisonous_potato", "minecraft:potato"]
+    assert sorted(beetroots) == ["minecraft:beetroot", "minecraft:beetroot_seeds"]
+
+
+def testRichSoilRipeCropsUseThoseTables():
+    for crop, table in (("wheat7", "wheat"), ("carrots3", "carrot"), ("potatoes3", "potato"), ("beetroot3", "beetroot")):
+        assert _lootOf("arris:rich_soil_" + crop) == "loot_tables/crops/%s_riped.json" % table, crop
 
 
 if __name__ == "__main__":
