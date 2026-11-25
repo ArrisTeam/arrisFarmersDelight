@@ -125,8 +125,39 @@ def testEveryModItemTheOverridesMentionExists():
     for relPath in ("trading/economy_trades/farmer_trades.json", "trading/economy_trades/wandering_trader_trades.json"):
         used.update(name for name in _tradeItems(_read(relPath)) if name.startswith("arris:"))
     used.update(SLICES)
+    used.update(gen.CHICKEN_FOOD + gen.PIG_FOOD + gen.RABBIT_FOOD + gen.PARROT_FOOD + tuple(gen.WOLF_MEATS))
     missing = sorted(name for name in used if name not in items)
     assert not missing, "物品 JSON 里找不到: %s" % missing
+
+
+def _lists(entity, path):
+    node = _read("entities/%s.json" % entity)["minecraft:entity"]
+    for key in path:
+        node = node[key]
+    return [entry["item"] if isinstance(entry, dict) else entry for entry in node]
+
+
+def testAnimalsKnowJavasFarmersDelightFood():
+    # JE：Chicken.FOOD_ITEMS += 卷心菜种子、番茄种子、稻米；Pig.FOOD_ITEMS += 卷心菜、番茄；Parrot.TAME_FOOD += 三种种子；
+    # 兔子 isFood 认卷心菜（crops/cabbage 标签）；狼吃 isMeat 的食物（FD 的十种肉，狗粮另由 Livestock 接管）
+    seeds = ["arris:cabbage_seeds", "arris:tomato_seeds", "arris:rice"]
+    groups = "component_groups"
+    for entity, adult, baby, food in (("chicken", "minecraft:chicken_adult", "minecraft:chicken_baby", seeds),
+                                      ("pig", "minecraft:pig_adult", "minecraft:pig_baby", ["arris:cabbage", "arris:tomato"]),
+                                      ("rabbit", "adult", "baby", ["arris:cabbage", "arris:cabbage_leaf"]),
+                                      ("wolf", "minecraft:wolf_adult", "minecraft:wolf_baby", list(gen.WOLF_MEATS))):
+        assert _lists(entity, (groups, adult, "minecraft:breedable", "breed_items"))[-len(food):] == food, entity
+        assert _lists(entity, (groups, baby, "minecraft:ageable", "feed_items"))[-len(food):] == food, entity
+    assert _lists("chicken", ("components", "minecraft:behavior.tempt", "items"))[-3:] == seeds
+    assert _lists("pig", ("components", "minecraft:behavior.tempt", "items"))[-2:] == ["arris:cabbage", "arris:tomato"]
+    assert _lists("parrot", (groups, "minecraft:parrot_wild", "minecraft:tameable", "tame_items"))[-3:] == seeds
+    heal = _read("entities/wolf.json")["minecraft:entity"]["components"]["minecraft:healable"]["items"][-10:]
+    assert [(entry["item"], entry["heal_amount"]) for entry in heal] == [(name, food * 2) for name, food in gen.WOLF_MEATS.items()]
+    import jefood
+    for name, food in gen.WOLF_MEATS.items():
+        assert jefood.FOODS[name.split(":")[1]][0] == food, name                # JE FoodValues 的饱食度（tests/jefood.py 抄的那份）
+    beg = json.loads(fdtest.load("Shared.Data.Mobs").wolfComponentsDict["minecraft:behavior.beg"])["items"]
+    assert beg[-10:] == list(gen.WOLF_MEATS) and "arris:dog_food" in beg
 
 
 # ---- 与本机原版逐字比对 ----
@@ -137,7 +168,7 @@ def testLivestockComponentsAreVanillaPlusOurItems():
     if vanilla is None:
         print("跳过：找不到本机原版行为包（FD_VANILLA_BP 可以指定）")
         return
-    extras = {"arris:horse_feed", "arris:dog_food", "arris:cabbage", "arris:cabbage_leaf"}
+    extras = {"arris:horse_feed", "arris:dog_food", "arris:cabbage", "arris:cabbage_leaf"} | set(gen.WOLF_MEATS)
     Mobs = fdtest.load("Shared.Data.Mobs")
     checked = 0
     for entity, table in sorted(Mobs.livestockComponents.items()):

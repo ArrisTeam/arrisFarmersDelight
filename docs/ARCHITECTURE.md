@@ -507,8 +507,13 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 - 喂食（马饲料、狗粮）：`Livestock.py` 在 `PlayerInteractServerEvent` 里直接处理并取消（JE 同样用右键事件）。官方文档说这个事件在玩家"可以与实体交互"时才来，
   也就是目标对手里的物品有交互时；所以马和狼身上加了 `minecraft:bribeable` 记号（原版只有海豚用，没有自带行为，见 `Shared/Data/Mobs.py` 开头），
   否则马饲料触发不了事件、能吃的狗粮会被玩家吃掉。野生的目标也由这里接管取消，什么都不发生。
-- 覆盖原版文件（猫、农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
+- 覆盖原版文件（猫、鸡、猪、兔子、鹦鹉、狼，农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
   由 `tools/gen_vanilla_overrides.py` 生成；`tests/test_vanilla_overrides.py` 找得到本机原版行为包时逐字比对，游戏升级后原版变了就失败，重新生成即可。
+  动物认农夫乐事的东西（JE `CommonSetup` / `RabbitsEatCabbageMixin` / 狼吃 isMeat）：鸡（两种种子、稻米）、猪（卷心菜、番茄）的吸引 / 繁殖 / 喂小崽，
+  兔子（卷心菜、卷心菜叶）的繁殖 / 喂小崽，鹦鹉（三种种子）的驯服，狼（十种肉）的繁殖 / 喂小崽 / 治疗（治疗量照原版狼 = 饱食度 × 2）。
+  繁殖、喂小崽、驯服在成年 / 幼年 / 野生组件组里，用 `AddActorComponent` 加会被组的切换盖掉，所以走覆盖文件；兔子的吸引、狼的讨食
+  （基础组件）仍由 `Shared/Data/Mobs.py` 在实体出现时加。村民没做：拾取（`shareables`）是数据，但要整份覆盖很大的 `villager_v2.json`，
+  JE 的 `FOOD_POINTS`（作物算几点繁殖食物）在基岩没找到对应的数据。
 - 战利品箱：JE 的 `add_loot_table` 在基岩版没有对应物，同路径文件又是整份替换，所以 `ChestLoot.py` 在 `OnContainerFillLoottableServerEvent` 里追加；
   表名是基岩版原版文件名（`shipwrecksupply` 不是 `shipwreck_supply`）。JE 里菜刀和煎锅的 `set_damage` 没搬（掉出来是满耐久）。
 - 离线测试服务端模块：`tests/fakeengine.py` 把 `Server/Helpers/Engine.py` 换成假的，真正的 Helpers 和玩法模块跑在它上面。

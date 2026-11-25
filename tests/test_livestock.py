@@ -77,7 +77,10 @@ def testTemptComponentsKeepTheVanillaItemsAndAddOurs():
     assert rabbit["priority"] == 3 and rabbit["speed_multiplier"] == 1
     assert rabbit["items"] == ["golden_carrot", "carrot", "dandelion", "arris:cabbage", "arris:cabbage_leaf"]
     beg = _json(Mobs.wolfComponentsDict["minecraft:behavior.beg"])
-    assert beg["items"][0] == "arris:dog_food" and "bone" in beg["items"] and len(beg["items"]) == 13
+    assert beg["items"][0] == "arris:dog_food" and "bone" in beg["items"] and len(beg["items"]) == 23
+    # JE 的狼对所有 isMeat 的食物讨食：农夫乐事的十种肉接在原版的后面
+    assert beg["items"][-10:] == ["arris:minced_beef", "arris:beef_patty", "arris:chicken_cuts", "arris:cooked_chicken_cuts", "arris:bacon",
+                                  "arris:cooked_bacon", "arris:mutton_chops", "arris:cooked_mutton_chops", "arris:ham", "arris:smoked_ham"]
 
 
 def testLinkageContractTablesStayNonEmptyJsonStrings():
