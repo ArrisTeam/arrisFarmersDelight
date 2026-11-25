@@ -18,7 +18,9 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
                         Tips（服务端提示说的每一句：(语言文件的键, 中文)，客户端按玩家的语言查，见「砧板和站点的几处补齐」）
-  Rules/                纯规则：CookingPot（配方匹配 / 出料结算） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
+  Rules/                纯规则：CookingPot（厨锅配方匹配 / 出料结算，公共函数都在这里） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
+                        PotSlots（厨锅配方的格子：选项的写法、逐格配对、种类的各种摆法、展开成写法）  PotRecipeTable（厨锅配方表的索引和记着的答案，只有 CookingPot 用）
+                        RecipeJson（JE 写法的配方 JSON 读成规整的配方：厨锅、砧板、营火烹饪；新联动接口和行为包配方 JSON 共用）
                         CookingPotBook（厨锅经典界面的食谱：容器格号、搜索与食谱格（按搜索词记着，表变了重算）、详情格与写法轮换、补食材的计划与试写法的先后）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
@@ -69,17 +71,23 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotFill（厨锅界面的"添加食材"：挑写法、找来源、整体搬）
 Api/
   LegacyModAttr.py      对外联动契约 v1（linkage.md 的三个函数，显式白名单）
-  ExtensionApi/         新联动接口（照机械动力的 ready 事件 + 门面 ext）：Events（命名空间 arrisFarmersDelight、系统名 ExtensionApi、两端的 ready 事件、
-                        接口版本、两端的能力名）、Version（主包版本号 HOST_VERSION，tools/version.py 和 manifest 一起改）、Facade（ext：每端一个）、
-                        Ready（每端广播一次，别的模组的处理函数出错不连累农夫乐事）；广播用的系统在 Server/ExtensionSystem、Client/ExtensionSystem
+  ExtensionApi/         新联动接口（照机械动力的 ready 事件 + 门面 ext；对外文档 docs/EXTENSION-API.md，内部见「新联动接口与配方的登记」）：
+                        Events（命名空间 arrisFarmersDelight、系统名 ExtensionApi、两端的 ready 事件、接口版本、两端的能力名）、
+                        Version（主包版本号 HOST_VERSION，tools/version.py 和 manifest 一起改）、Facade（ext：每端一个）、
+                        Ready（每端广播一次，别的模组的处理函数出错不连累农夫乐事）；广播用的系统在 Server/ExtensionSystem、Client/ExtensionSystem；
+                        Recipes（ext.recipes）+ RecipeBuilder（一句一句写成 JE 写法的 JSON）+ RecipeTables（配方存进那几张契约表、覆盖、删、写成 JE 写法）+
+                        RecipeIds（配方 ID 的规矩、旧接口追加的配方的 legacy: 派生 ID）+ RecipeFiles（行为包里 farmersdelight_recipes/ 的文件定 ID、登记）；
+                        Registries（registerKnife / HeatSource / Stove / Compostable 和 ext.tags）
 Server/                 服务端
-  ModServer.py          导入全部玩法模块；35 个引擎事件各只挂一次 @Listen，转给 EventRegistry
-  ExtensionReady        LoadServerAddonScriptsAfter：发新联动接口的服务端 ready 事件（ExtensionSystem 是广播用的系统，要广播时才注册）
+  ModServer.py          导入全部玩法模块；36 个引擎事件各只挂一次 @Listen，转给 EventRegistry
+  ExtensionReady        LoadServerAddonScriptsAfter：发新联动接口的服务端 ready 事件（ExtensionSystem 是广播用的系统，要广播时才注册），
+                        再读全部行为包里的 farmersdelight_recipes/（Helpers/PackJson 跨包读文件），最后调一次 onRecipesChanged 的处理函数
   EventRegistry.py      registerHandler / dispatch：按方块 / 物品名匹配、优先级、短路、异常隔离
   Helpers/              Engine（引擎入口唯一出处）Player Fx Heat Items Placement BlockItems（方块上的物品：广播 + 清理旧展示实体）
                         Drops（东西从方块里掉出来 / 弹出去：位置照 JE 的 dropItemStack，初速经 SetMotion 给；PopFromBoard / PopFromPan 读方块朝向往侧面弹）
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
+                        PackJson（读全部行为包里某个目录下的 JSON：引擎内部的 server_resource，经 traceback.sys.modules 取，只在这里碰它；游戏里还没核过）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
@@ -122,7 +130,8 @@ Client/                 客户端
   CookingPotUi.py       厨锅的 dolor 界面：登记界面模型、导入方块宿主的客户端一半和食谱格的控件（按行回收的 scroll_grid）
   Ui/                   GuideBook；CookingPotProxy + CookingPotScreen 是厨锅的旧原生界面（只在 DOLOR_SCREEN 关掉时用）
 Compat/
-  Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来
+  Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来；
+                        CookPages = 煎锅、炉灶两个分类共用的分页（StationBooks.cookGroups：三种蛋一页）和配方页；厨锅、砧板的配方页轮换标签格的成员
   Create/               机械动力配方（未安装则不做任何事）
   Diegesis/             沉浸式交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
                         ServerSteps / ClientSteps 是步骤表（只放数据）、每个站点一步，步骤的实现是 BoardServerLink / PotServerLink / PanServerLink / GrillServerLink 和
@@ -213,7 +222,7 @@ def OnServerSkilletBlockUse(args):
 | `CuttingBoardDict`（键 `(物品名, aux)`） | 追加键；`tool` 引用 `knifeList` / `axeList` | 砧板 `BoardStation.Env` 的 `recipeOf / cuttable / cutsWith / isToolItem / usable / shiftPlaces`（托盘亮不亮、借哪把刀、Shift 放不放、点板是落刀还是敲一声，`BoardView.py:68-101,125-130,179`）、`BoardDraw.kindOf`（问 `Env.isCarving`：板上是不是插着的工具，没开站时 `Client/BlockItems` 问同一个）、`StationBooks.boardPages / boardCurrent`（食谱书"切"的页） |
 | `CuttingTagDict`（键是标签名） | 追加键 | 同上：`CuttingStation.recipeOf` 在精确的查不到时看它；食谱书的 `c:#标签名` 那一页、JEI 按标签的成员登记 |
 | `knifeList`、`axeList` | 追加名字（`append`） | `Client/BlockItems.isKnife`（站点和没开站时的展示都问它）、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
-| `CanCookedFoodDict` | 追加键 | 煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、`StationBooks.panPages / grillPages`、手持煎锅"煎还是吃"（`Client/Input.py:42`） |
+| `CanCookedFoodDict` | 追加键 | 都经 `Shared/Rules/Grilling`（先查这张表，查不到问引擎的营火配方）：煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、手持煎锅"煎还是吃"（`Client/Input.py:42`）；`StationBooks.panPages / grillPages`（`cookGroups`：三种蛋一页）和 JEI 的煎锅 / 炉灶页只列这张表 |
 | `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 经典界面的食谱格与它的客户端预测（`CookingPotBook` 按搜索词记着过滤结果，表的长度或 `CookingPot.revision`（重建索引的次数）变了就重算：并表之后的 `rebuildIndex` 让它跟上） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
@@ -246,9 +255,71 @@ def OnServerSkilletBlockUse(args):
   也不会再有进服事件，调试时用 `TableSync.step(everyone=True)`（游戏内自检的追加函数里就是它）。
 - 客户端端点 `OnTableSync`（`Client/TableSync.py`；`status()` 给调试看收了几条、改了几张、跳过几个）。
 
-**限制**：名字列表（刀、炉灶……）只同步新增，下游从列表里删的名字客户端留着（多认一个不会坏事）；只靠 `arris:knife` 物品标签认的刀（不在 `knifeList` 里），客户端只在读得到 `GetItemTags` 时才认（`Client/BlockItems.isKnife`，
-没实机核对客户端有没有这个接口）；JEI 联动（`Compat/Jei`，界面就绪时一次性登记）读的是登记那一刻的客户端表，晚到的下游内容不在 JEI 里；站点开着时表又变了，托盘亮不亮等下次开站才按新表算
+**限制**：名字列表（刀、炉灶……）只同步新增，下游从列表里删的名字客户端留着（多认一个不会坏事）；只靠标签认的刀（`arris:knife` / `common:knife`，不在 `knifeList` 里），
+客户端经 ItemTags 问客户端的口（`Client/BlockItems.isKnife` → `Shared/Rules/Knives`，见「标签（netease_tags）」）；JEI 联动（`Compat/Jei`，界面就绪时一次性登记）读的是登记那一刻的客户端表，晚到的下游内容不在 JEI 里；站点开着时表又变了，托盘亮不亮等下次开站才按新表算
 （`BoardView._usable` 每次开站建一份）；已经加载好的下游炉灶方块，场景要等下次加载 / 广播才建。
+
+## 标签（netease_tags）
+
+网易 3.10 的 `netease_tags`：农夫乐事登记一套 `common:` 词表，别的模组往同名的标签里放自己的东西，双方就认得对方的番茄、刀、热源（对外文档 docs/TAGS.md）。
+
+- **词表**：`Shared/Data/Tags.py` 一张表说了算（标签名常量、`ITEM_TAGS` / `BLOCK_TAGS` 的成员、原版自带的 `VANILLA_TAGS`、JE 标签名的对照 `JE_NAMES`）；
+  `py -3 tools/gen_tags.py` 从它生成 `bp/netease_tags/`（一个标签一个文件）和 docs/TAGS.md 里的词表，`tests/test_netease_tags.py` 核对是不是最新。
+- **查询**一律经 `Shared/Rules/ItemTags`（`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `refresh`），不直接调引擎。
+  引擎口是 `Shared/Rules/TagPort.EnginePort`，两端的 `Tags` 模块（`Server/Helpers/Tags.py`、`Client/Tags.py`）装上它，由两端入口最先导入；
+  单机时两端在一个进程里，两个口都在用服务端的。
+- **准备好之前**（客户端进世界之前读不全）：枚举（`itemsOf` / `blocksOf`）只给静态表；按单件问的（`tagsOf`、`has` 里按物品问的那一半）照样问引擎、
+  并上静态表，但不缓存。**准备好**（有反查接口时，反查 `common:raw_beef` 里出现了原版的 `minecraft:beef`；3.10 以前按物品问得出原版物品的标签）之后：
+  静态表 ∪ 引擎的答案，按标签 / 物品缓存；准备好的那一刻、装卸口、`refresh()` 时换代（`generation` 加一），按标签建了索引的地方据此重建
+  （厨锅的 `PotRecipeTable` 准备好之前一个答案都不记，见下一节）。
+- **判断点**：`Shared/Rules/Knives`（是不是刀：`knifeList` ∪ `arris:knife` ∪ `common:knife`）、`HeatSources`（热源方块：`CanProvideHeatBlockList` ∪
+  `common:heat_source` ∪ 点着的 `common:heat_source_lit`）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
+  厨锅的标签格、砧板按标签的配方也问 `ItemTags`（见下一节）。
+- **自检**：两端的 `McdkTagsTest`（`Server/Debug`、`Client/Debug`：口准备好没有、词表每个标签引擎反查到的成员和静态表比、刀、营火配方的原始返回值和解析、
+  热源标签；怎么调写在文件头）。
+
+## 新联动接口与配方的登记
+
+对外文档：docs/EXTENSION-API.md（接口）、docs/RECIPE-JSON.md（配方 JSON）、docs/COMPATIBILITY.md（兼容承诺）、docs/API-CHANGELOG.md（变更记录）。
+兼容入口（linkage.md 的 ModAttr 三个函数，`Api/LegacyModAttr.py`）照旧，新接口和它读写同一份数据。
+
+**ready 和门面**（`Api/ExtensionApi/`）：服务端 `Server/ExtensionReady.py` 在 `LoadServerAddonScriptsAfter`（经 ModServer → EventRegistry）、客户端
+`Client/ExtensionReady.py` 在 `LoadClientAddonScriptsAfter` 调 `Ready.publish(side, 系统)`：每端只播一次，载荷 `{"extension": ext, "side", "apiVersion"}`，
+广播用的系统 `("arrisFarmersDelight", "ExtensionApi")` 到要广播时才注册（`Server/ExtensionSystem.py`、`Client/ExtensionSystem.py`），拿不到系统只打日志、
+别的模组的处理函数抛了异常接住打一次调用栈。门面 `Facade.getExtensionApi(side)` 每端一个；能力名在 `Events.SERVER_CAPABILITIES / CLIENT_CAPABILITIES`
+（`tests/test_extension_docs.py` 核对和 EXTENSION-API.md §3 的表一样）。`Api/` 只导入 `Shared/`：服务端要做的引擎的事（`syncToClients` 时现在就同步）
+由 `Server/ExtensionReady` 在广播之前经 `Recipes.provide(syncNow=…)` 交进去。服务端广播之后接着读行为包里的 `farmersdelight_recipes/**.json`
+（`Api/ExtensionApi/RecipeFiles.py` 定 ID、登记；跨包读文件的 `Server/Helpers/PackJson.py` 用引擎内部的 `server_resource`，经 `traceback.sys.modules` 取，
+**游戏里还没核过**，所以能力名 `recipe_json_files` 先不登记：`Events.RECIPE_JSON_FILES_VERIFIED`），再调一次 `onRecipesChanged` 的处理函数；
+`ExtensionReady.scanReport()` 给自检读这一次读了什么。
+
+**配方存在哪**：不另起存储，还是联动契约的那几张表（表同步、六个下游包、十几个读表的地方都建在上面），只加可选的键：
+- 厨锅：`CookingPotRecipeList` 的一行多 `Id`（配方 ID）、`Slots`（每格的选项：`"ns:name"`、`(名, aux)`、`"#标签"`）、`Disabled`（墓碑）。
+  农夫乐事自己的 28 道照 JE 写 `Id`（`farmersdelight:cooking/<JE 文件名>`）和 `Slots`（JE 的 forge: 标签换成词表名，`tests/test_cooking_pot_data.py`
+  在 `.refs` 在场时逐格核对），`Recipe` 照旧是原来那 170 种写法（`CookingPotRecipes._dish` 由同一份格子展开：标签按词表里农夫乐事登记的成员，蛋只展开普通鸡蛋）。
+  新接口登记的那一行，`Recipe` 是按登记那一刻标签的成员展开的快照（最多 64 种，`RecipeTables.SNAPSHOT_WAYS`），只给只认物品写法的旧读者看。
+  下标是身份（书页的键、`PotRecipeMemory`、站点），所以同 ID 覆盖是原地换内容、删除是打墓碑，都不挪下标。
+- 砧板：原料是物品的在 `CuttingBoardDict`，是一个标签的在 `CuttingTagDict`（键是标签名，不带 `#`；联动契约白名单第 25 个名字）；查配方一律经
+  `CuttingStation.recipeOf / recipeKeyOf`（精确的先，再按标签名排序看 `ItemTags.has`）。新接口登记的条目多一个 `"id"`（随表同步，两端按 ID 查到的一样）。
+- 营火：`CanCookedFoodDict[原料] = 成品名`，值的形状不变；登记用的 ID 只在服务端的 `RecipeTables._ids / _keys` 里，客户端查到的是派生 ID。
+- 配方 ID 的规矩和旧接口追加的配方的派生 ID（`legacy:…`，厨锅同一成品按表的先后加 `_2`、`_3`）在 `RecipeIds.py`；
+  JE 写法的 JSON → 规整的配方在 `Shared/Rules/RecipeJson.py`（Builder 写出来的就是同一份 JSON，`registerFromJson` 和 `register()` 走同一条路）。
+
+**厨锅怎么配**（`Shared/Rules/CookingPot.py` 是公共函数，索引和记着的答案在 `PotRecipeTable.py`，格子在 `PotSlots.py`）：照 JE 的 `RecipeMatcher.findMatches`，
+一条配方有 `Slots` 形（锅里每件东西分给一个收它的格、格子正好用完：二分图完美匹配，最多 6 格）和 `Recipe` 里每种旧写法（多重集合相等）两种形，
+几条都配得上时表里靠前的赢；墓碑和坏行哪里都不认。配上的是旧写法时余料照那种写法算（和原来一样）。按排好序的输入记答案；`rebuildIndex()` 只作废、
+下次用到时重算（登记一条不再整张重建），`ItemTags.generation()` 变了清掉记着的答案，引擎口准备好之前不记。站点的候选摆法 `candidatesFor` /
+`partsFor` 在旧写法之外加上格子能给的摆法（`PotSlots.partsOf`）。读格子的地方：经典界面的详情轮换（`CookingPot.framesOf`）、"添加食材"
+（`waysWith`：按锅里和背包里有的料把格子具体化成写法）、站点的食谱书（`optionsOf`）、JEI（`usesOf`）、汤里漂的碎料（第一帧）。
+
+**表同步**：新键都是 `str` / `list` / `tuple` / `dict`，照常过线（`tests/test_table_sync.py` 核对并表后 `Slots` 还在）；字典表删掉的键也同步
+（见上面「联动契约与客户端的表」），所以新接口删砧板、营火配方客户端跟着删；厨锅删配方是墓碑（一行变了）。
+不冻结：表一直是活的，ready 之后再登记照样生效、5 秒内同步，`syncToClients()` 现在就发（`TableSync.step()`）。
+
+**测试**：`test_extension_api`（协议、门面、ready、接线）、`test_extension_recipes`（三类配方、ID、覆盖、删除、客户端）、`test_extension_registries`、
+`test_recipe_files`（行为包 JSON、PackJson、先广播再读再通知）、`test_extension_docs`（能力名和文档一致）、`test_pot_slots`、`test_cooking_pot_data`、
+`test_cooking_pot_match`（和原来的索引逐种写法同一结果）、`test_pot_slot_readers`、`test_cutting_tags`、`test_table_sync_deletions`。
+游戏内自检 `Server/Debug/McdkExtApiTest.py`（文件头写着怎么调）。
 
 ## 联动（沉浸式交互前置）
 
