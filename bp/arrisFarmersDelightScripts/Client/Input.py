@@ -5,7 +5,8 @@ import time
 from ..QuModLibs.Client import Listen, Call
 from .Engine import clientApi, compFactory, levelId, playerId
 from ..Shared.Data import Food
-from ..Shared.Data.Cooking import CanCookedFoodDict, CanProvideHeatBlockList
+from ..Shared.Data.Cooking import CanCookedFoodDict
+from ..Shared.Rules import HeatSources
 from ..Shared.Rules.Placement import eatsPumpkinPie
 from ..Shared.Rules.SkilletHandRules import HoldReporter, cooksInsteadOfEating, skilletHand
 from ..Shared.Rules.SkilletRules import SKILLET_ITEM, nearHeat
@@ -50,12 +51,13 @@ def _offhandName():
 
 
 def _nearHeat():
-    """身边 3x3x3 里有没有热源方块（和服务端同一条规则；客户端读不到"着火"，那种情况只由服务端认）。"""
+    """身边 3x3x3 里有没有热源方块（和服务端同一条规则 HeatSources.nearHeat：名单或两个热源标签，不看点没点着——客户端本来也读不到方块状态；
+    客户端读不到"着火"，那种情况只由服务端认）。"""
     footPos = compFactory.CreatePos(playerId).GetFootPos()
     if not footPos:
         return False
     blockInfo = compFactory.CreateBlockInfo(levelId)
-    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], CanProvideHeatBlockList)
+    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], HeatSources.NEAR)
 
 
 def _carryingSkillet():
