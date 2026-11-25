@@ -96,6 +96,12 @@ class FarmersDelightClientLink(ClientSystem):
 
 服务端、客户端的系统分两个文件写：服务端的文件不要导入客户端的接口，反过来也一样。
 
+这一节是对着 QuModLibs 的源码写的（农夫乐事带的那份，arrisCreate 的 kit），**还没在游戏里跑过**（2026-11-26 实机核的是 §1.1 原生系统的写法）。
+源码里看得到的：`regNativePyServer(命名空间, 系统名, 路径)` 只是记下来，路径前面拼上你的脚本目录名（`EasyMod` 的 `_modDirName`）；
+QuMod 在自己的 `InitServer` 里对记下的每一个调 `serverApi.RegisterSystem`（引擎当场构造系统，`__init__` 里的监听在这时就登记了），
+这早于引擎发 `LoadServerAddonScriptsAfter`，所以赶得上农夫乐事的广播；客户端的 `regNativePyClient` 同理（`InitClient`）。
+别的版本的 QuModLibs 没核过：用之前看一眼它的 `QuMod.py` 里有没有 `regNativePyServer`。
+
 ### 1.3 什么时候监听、先后顺序
 
 - **在系统的 `__init__` 里监听**（或者 QuModLibs 的原生小系统，1.2）。不要在你自己的 `LoadServerAddonScriptsAfter` 处理函数里才监听：
