@@ -710,7 +710,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 拿绳子点绳子（`RopeAndNet.OnPlaceRopeOnRope`，`Shared/Rules/RopeExtend.py`，ServerItemUseOnEvent 优先级 98），照 RopeItem.updatePlacementContext：
   点到的格子（点到绳子就是它；点到实心方块是外侧那一格，草、水这些能顶替的就是它自己、和绳子无关）是绳子时，不潜行一律顺着绳子往下，
   第一格能顶替的（空气、水、草）放下，碰到岩浆或实心方块不放；潜行照点到的面放一格（朝下的面也顺着往下走，别的方向碰到绳子不放）。
-  引擎自己那一格（点到的面外侧）一律取消；点到的方块自己会处理右键（`TatamiMat.usesTheClick`：砧板、厨锅、炉灶……）时不潜行让给它；放下响 `dig.cloth`。
+  "点到实心方块、外侧那一格是绳子"只在潜行时认：JE 不潜行时先调点到的方块的 `use`（箱子、门、按钮……），这边没有"哪些方块自己会处理右键"的表，
+  不潜行就照引擎原样；潜行时 JE 本来就不调方块的 `use`。认了的时候引擎自己那一格（点到的面外侧）一律取消；放下响 `dig.cloth`。
 - 绳上的番茄藤（`Crops.OnCropNeighborChanged` / `OnVineRemoved`，`Shared/Rules/TomatoVine.py`），照 HangingTomatoBlock：下面是地上那株第 3 级起或另一节藤才撑得住；
   藤没了在原地放回绳子——四个藤方块带 `netease:listen_block_remove`，`BlockRemoveServerEvent` 来了下一刻看那一格，空气 / 水才放（长一级、摘果子是换成另一节藤，不放）。
   JE 的亮度条件（亮度 ≥ 8 或看得见天）没做。

@@ -11,7 +11,6 @@ from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem, IsCreative
 from ..Shared.Data import Blocks
 from ..Shared.Data.Blocks import canClimbList
 from ..Shared.Rules import NetBounce, RopeExtend, RopeReel
-from ..Shared.Rules.TatamiMat import usesTheClick
 import math
 
 ROPE = "arris:rope"
@@ -130,16 +129,13 @@ def OnUseRope(args):
 # 优先级 98：和物品放成方块（ItemToBlock、榻榻米垫）同一档，见 Server/ModServer.py 的优先级表
 @registerHandler("ServerItemUseOnEvent", match=ROPE, keyOf=_itemName, priority=98)
 def OnPlaceRopeOnRope(args):
-    # JE RopeItem：拿着绳子点绳子（或者点在挂着绳子的那一面上），不潜行往下接到第一格能放的地方，潜行照点到的面放
+    # JE RopeItem：拿着绳子点绳子（潜行时也认挂着绳子的那一面），不潜行往下接到第一格能放的地方，潜行照点到的面放
     dimensionId = args["dimensionId"]
-    clicked = (args["x"], args["y"], args["z"])
-    start = RopeExtend.startRope(clicked, args["face"], lambda pos: _nameAt(pos, dimensionId))
-    if start is None:
-        return                                         # 和绳子无关：引擎照常放
     playerId = args["entityId"]
     sneaking = compFactory.CreatePlayer(playerId).isSneaking() is True
-    if start != clicked and usesTheClick(args["blockName"]) and not sneaking:
-        return                                         # 点到的方块自己会处理右键（JE：方块的 use 优先）
+    start = RopeExtend.startRope((args["x"], args["y"], args["z"]), args["face"], sneaking, lambda pos: _nameAt(pos, dimensionId))
+    if start is None:
+        return                                         # 和绳子无关（或者不潜行点在绳子旁边的方块上）：引擎照常
     args["ret"] = True                                 # 引擎自己放的那一格（点到的面外侧）不要，放不放都由这里定
     if SetPlayerUsedCD(playerId) is True or not _mayBuild(playerId):
         return True
