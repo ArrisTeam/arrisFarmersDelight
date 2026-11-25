@@ -254,7 +254,9 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
   砧板 `farmersdelight:cutting/<物品的命名空间>/<物品名>`（aux 不是 0 时后面加 `_<aux>`），按标签的那条照 JE 叫 `farmersdelight:cutting/tag_dough`；
   营火 `farmersdelight:campfire_cooking/<物品的命名空间>/<物品名>`。不确定就 `getRecipesOfType` 列出来看。
 - `legacy:` 是兼容入口追加的配方的派生 ID，只读：能查、能删，不能用来登记。
-  厨锅 `legacy:cooking/<成品的命名空间>/<成品名>`，同一个成品的第 2、3 条按表里的先后加 `_2`、`_3`；
+  厨锅 `legacy:cooking/<成品的命名空间>/<成品名>`，同一个成品的第 2、3 条按表里的先后加 `_2`、`_3`；派生的名字被占了（明写的 ID
+  或先派生的）就接着加 `_n` 直到没人用（成品 pie、pie、pie_2 三行是 `…/pie`、`…/pie_2`、`…/pie_2_2`）；兼容入口的行里明写的 `Id`
+  是 `legacy:` 开头的、写法不对的、或者是农夫乐事自带的砧板 / 营火配方的 ID，都当没写、照样派生；
   砧板 `legacy:cutting/<原料的命名空间>/<原料名>`（aux 不是 0 加 `_<aux>`），按标签的 `legacy:cutting/tag/<标签的命名空间>/<标签名>`；
   营火 `legacy:campfire_cooking/<原料的命名空间>/<原料名>`。派生 ID 跟着表里的东西走：下游包加载的先后变了，`_2`、`_3` 可能对调。
 - 农夫乐事自带的砧板、营火配方 ID 是从原料派生的，**和原料绑死**：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，

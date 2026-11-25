@@ -5,11 +5,14 @@
 - farmersdelight: 留给主包：只能用它覆盖主包已有的配方（同 ID 再登记 = 覆盖），不能新加；
 - legacy: 是旧格式（联动契约 ModAttr）追加进来的配方的派生 ID，只读：能查、能删，不能用它登记。
   厨锅：legacy:cooking/<成品的命名空间>/<成品名>，同一成品的第 2、3 条按表的先后加 _2、_3（不用表里的序号：序号跟着下游包的加载顺序走）；
+  派生的名字被占了（明写的或先派生的）就接着加 _n 直到没人用（成品 pie、pie、pie_2 三行是 pie、pie_2、pie_2_2）；旧接口追加的行里
+  明写的 Id 是 legacy: 开头的、写法不对的、或者是主包自带的砧板 / 营火配方的 ID，都当没写、照样派生（cookingIds）；
   砧板：legacy:cutting/<原料的命名空间>/<原料名>（aux 不是 0 时加 _aux），按标签的 legacy:cutting/tag/<标签的命名空间>/<标签名>；
   营火：legacy:campfire_cooking/<原料的命名空间>/<原料名>；
 - 主包自己的砧板、营火配方（本模块导入时就在表里的，早于任何下游追加）派生成同样写法的 farmersdelight:cutting/...、
   farmersdelight:campfire_cooking/...；主包按标签的砧板配方照 JE 叫 farmersdelight:cutting/tag_<标签名>（JE 的 tag_dough）。
-  这些自带的砧板、营火 ID 是从原料派生的，和原料绑死：用它登记（覆盖、删掉后加回来）时原料必须还是那一样（input_mismatch），
+  这些自带的砧板、营火 ID 是从原料派生的，和原料绑死：用它登记（覆盖、删掉后加回来）时原料必须还是那一样（input_mismatch）、
+  也只能登记回原来那一类配方（type_mismatch），
   不然原来的原料再被旧接口加回来时会派生出同一个 ID。想换原料：删掉自带的那条，用自己的 ID 登记。
 主包的厨锅配方都写着 Id（JE 的 farmersdelight:cooking/<文件名>）。
 砧板派生 ID 的已知重名：(mymod:foo, 2) 和 (mymod:foo_2, 0) 都派生成 legacy:cutting/mymod/foo_2，按 ID 只碰得到排在前面的那条
