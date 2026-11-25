@@ -227,6 +227,20 @@ def testTheLegacyAddSkipsRemovedDishes():
             == "arris:cookbeef_stew"
 
 
+def testOverridingAHostDishKeepsTheWaysOtherModsAddedThroughTheLegacyEntry():
+    """T 复核时指出的：覆盖农夫乐事的菜整行换掉，别的模组用旧接口 AddCookingPotRecipe 加的写法就丢了（看谁先加载）。
+    现在覆盖时把旧行里格子不收的那几种写法接进新行；先加后覆盖、先覆盖后加都配得上。"""
+    dirt = [{"newItemName": "minecraft:dirt", "newAuxValue": 0, "count": 1}]
+    with Sandbox():
+        assert Legacy.AddCookingPotRecipe("arris:cookbeef_stew", [("minecraft:dirt", 0)])
+        view = SERVER.getRecipeById("farmersdelight:cooking/beef_stew")
+        assert SERVER.registerFromJson(dict(view, cookingtime=100))["ok"]
+        stew = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/beef_stew")
+        assert [("minecraft:dirt", 0)] in stew["Recipe"] and stew["CookTime"] == 5.0
+        assert CookingPot.matchRecipe(dirt)[0]["newItemName"] == "arris:cookbeef_stew", "先加后覆盖：照样配得上"
+        assert SERVER.registerFromJson(dict(view, cookingtime=120))["ok"] and stew["Recipe"].count([("minecraft:dirt", 0)]) == 1, "不重复接"
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]
