@@ -241,6 +241,18 @@ def testOverridingAHostDishKeepsTheWaysOtherModsAddedThroughTheLegacyEntry():
         assert SERVER.registerFromJson(dict(view, cookingtime=120))["ok"] and stew["Recipe"].count([("minecraft:dirt", 0)]) == 1, "不重复接"
 
 
+def testOneResultHasOneContainerTimeAndExperience():
+    """锅只记得成品：同一成品的容器、时间、经验跟着表里第一条活配方（T 复核时指出 matchCooking 以前报的是配上那一行的，和锅实际不一致）。"""
+    with Sandbox():
+        assert SERVER.createBuilder("mymod:cooking/soup_a", "cooking").ingredient("minecraft:cookie").output("mymod:soup") \
+            .container("minecraft:bowl").cookingTime(100).register()["ok"]
+        assert SERVER.createBuilder("mymod:cooking/soup_b", "cooking").ingredient("minecraft:apple").output("mymod:soup") \
+            .container("minecraft:bucket").cookingTime(300).register()["ok"]
+        matched = SERVER.matchCooking(["minecraft:apple"])
+        assert matched["id"] == "mymod:cooking/soup_b" and matched["container"] == ("minecraft:bowl", 0), matched
+        assert CookingPot.vesselOf("mymod:soup") == ("minecraft:bowl", 0) and CookingPot.cookSecondsOf("mymod:soup") == 5.0
+
+
 def testTheClientReadsButDoesNotRegister():
     with Sandbox():
         assert _stew().register()["ok"]

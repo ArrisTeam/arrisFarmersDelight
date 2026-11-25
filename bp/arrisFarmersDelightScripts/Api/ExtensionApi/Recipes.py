@@ -121,9 +121,9 @@ class Recipes(object):
             return None
         meal, pushed = CookingPot.matchRecipe(dicts)
         index = int(index)                   # 上面已经排除了 None（机审的 pylint 推不出来）
-        row = CookingPotRecipeList[index]
+        vessel = CookingPot.vesselOf(meal["newItemName"])     # 锅实际会用的：这个成品的第一条活配方的容器（锅只记得成品）
         return {"id": RecipeIds.cookingIds(CookingPotRecipeList)[index], "result": meal,
-                "container": tuple(row["Vessel"]) if row.get("Vessel") else None, "pushItems": pushed}
+                "container": tuple(vessel) if vessel else None, "pushItems": pushed}
 
     def onRecipesChanged(self, handler):
         refused = self._refused()

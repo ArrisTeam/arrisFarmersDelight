@@ -232,6 +232,9 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `cutting` | `"cutting"`、`"farmersdelight:cutting"` | 砧板：一样原料（物品或一个标签）、一种工具、1 到 4 个产物（可以带概率） | 真删 |
 | `campfire_cooking` | `"campfire_cooking"`、`"minecraft:campfire_cooking"` | 煎锅、炉灶、手持煎锅"能煎烤什么"：一样物品 -> 一样物品 | 真删 |
 
+**同一个成品只有一套容器、时间、经验**：锅只记得煮的是哪个成品，盛的时候按表里这个成品的**第一条活配方**要容器、算时间和经验。
+再登记一条同成品、容器不同的配方，锅里实际照第一条来（`matchCooking` 报的也是这一套）；要换掉自带那道菜的容器，就用它的 ID 覆盖它。
+
 配方存在农夫乐事原来那几张表里（和兼容入口同一份数据：`CookingPotRecipeList`、`CuttingBoardDict` / `CuttingTagDict`、`CanCookedFoodDict`），
 所以两种接口登记的配方是一回事：旧接口追加的新接口查得到，新接口登记的旧读者（下游包、表同步）也看得到。
 玩家进服时客户端由表同步拿到这些表（服务端改了之后 5 秒内补发，或者调 `syncToClients` 现在就发）。
