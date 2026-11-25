@@ -4,7 +4,8 @@
 对应 Hands-On Delight：station/StoveStation.java 的 SCHEMA 与 opens、station/StoveCooking.java 的 sideTicks / takes / canGrill / isDone；
 每个烤位的两面进度在 HandsOn/Grill.py，烤位的位置和画法在 HandsOn/StoveLayout.py 等。
 炉灶一件 30 秒（和 JE 一样按营火配方的 600 刻，Server/Stove.py），手放的一件按 Grill.sideSeconds 算一面：30 / 1.5 / 2 = 10 秒；不看批量。
-能烤什么和煎锅同一张表（PanStation），但炉灶不收蛋（HoD 的 NOT_ON_GRILL：蛋会从烤架的缝里漏下去，煎锅才收；农夫乐事自己的右键仍然能放）。
+能烤什么和煎锅同一个判断（PanStation.canFry → Grilling：CanCookedFoodDict，表里没有的问引擎的营火配方），但炉灶不收蛋
+（HoD 的 NOT_ON_GRILL：蛋会从烤架的缝里漏下去，煎锅才收；农夫乐事自己的右键仍然能放）。
 烤位的位置不在这里：HoD 场景里的像素坐标（HandsOn/StoveLayout，炉灶朝北那一份）就是站点空间，站点朝炉灶的正面（StoveFacing）；
 世界里的展示用同一份换成方块内的比例（BlockDisplay.STOVE_SLOTS）。
 """
