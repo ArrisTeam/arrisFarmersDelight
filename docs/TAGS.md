@@ -1,6 +1,7 @@
 # 农夫乐事的标签（netease_tags）
 
-农夫乐事（arrisFarmersDelight）用网易 3.10 的 `netease_tags` 把自己的物品、方块和用到的原版物品、方块登记进一套 `common:` 标签。
+农夫乐事（arrisFarmersDelight）用网易 3.10 的 `netease_tags` 把自己的物品、方块和用到的原版物品、方块登记进一套 `common:` 标签，
+JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 标签。
 别的模组往同名的标签里放自己的东西，引擎会把成员合并，农夫乐事和其他模组就能认出对方的番茄、米、刀、热源。
 
 词表以代码为准：`bp/arrisFarmersDelightScripts/Shared/Data/Tags.py`。`bp/netease_tags/` 下的文件和本文的词表都由 `py -3 tools/gen_tags.py` 从它生成，
@@ -54,6 +55,31 @@
 基岩版的三种蛋（鸡蛋、蓝色鸡蛋、棕色鸡蛋，原版标签 `minecraft:egg` 的成员）一视同仁：都能在煎锅上煎成煎蛋，只煎一面，炉灶站点的烤架不收，
 熔炉、烟熏炉、营火也收（JE 只有一种蛋）。工作台配方里的蛋还只认鸡蛋。
 
+## JE 农夫乐事自己的标签（farmersdelight:）
+
+JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字，`#` 引用展开写全；
+只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
+
+方块标签有六个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
+这六张名单不在 `linkage.md` 的接口里，别的模组要加进来就用标签。
+
+| 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
+| --- | --- | --- |
+| `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
+| `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
+| `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
+| `farmersdelight:unaffected_by_rich_soil` | 长在沃土、沃土耕地上也不被催熟 | 草方块、草、蕨、高花、野生作物、蘑菇菌落等 |
+| `farmersdelight:mushroom_colony_growable_on` | 蘑菇菌落在它上面才会长 | 沃土 |
+| `farmersdelight:drops_cake_slice` | 拿刀右键：变成少一片的蛋糕，掉一片蛋糕 | 插蜡烛的蛋糕（17 种） |
+
+`drops_cake_slice` 里别的模组的方块被切时不掉蜡烛，也不掉它自己战利品表里的东西（JE 会掉）。
+
+物品标签有十个，农夫乐事自己不读，给别的模组认农夫乐事的东西：`farmersdelight:meals`（饭菜）、`snacks`（小吃）、`sweets`（甜食）、
+`drinks`（饮料）、`feasts`（大餐）、`pies`（派）、`wild_crops`（野生作物）、`mushroom_colonies`（蘑菇菌落）、`cabinets`（橱柜）、
+`serving_containers`（盛饭菜的容器）。成员见下面的词表，原版的蘑菇煲、蛋糕、南瓜派、碗这些也在里面。
+JE 里 `feasts`、`pies`、`wild_crops`、`mushroom_colonies`、`cabinets` 还各有一个同名的方块标签，这边没有登记。
+JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，不另登记。
+
 ## 词表
 
 标签名是 `common:` 加小写、下划线连接的单数名词，对应 JE 的 `forge:` / `c:` 标签；物品名本身就是复数的照物品名（`tomato_seeds`、`mutton_chops`）。
@@ -62,6 +88,7 @@
 - `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
 - 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。
+- `farmersdelight:` 开头的是 JE 农夫乐事自己定义的标签，名字照 JE（见上一节），不按上面的单数规矩改。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 
 <!-- gen_tags: 词表开始（tools/gen_tags.py 从 Shared/Data/Tags.py 生成，别手改） -->
@@ -147,3 +174,5 @@
   名字真写错了的，这条日志会一直出现。
 - 营火配方的返回值没有在游戏里核对过形状，农夫乐事解析得比较宽松；认不出来的就当没有这条配方。
 - 方块的状态只有服务端读得到：客户端判断热源时不看点没点着。
+- 原版方块要先登记右键事件，拿刀右键时才切得到。农夫乐事只登记了蛋糕和插蜡烛的蛋糕，所以 `farmersdelight:drops_cake_slice`
+  里再加原版方块不起作用；别的模组的自定义方块不用登记。
