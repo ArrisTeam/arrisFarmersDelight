@@ -41,6 +41,12 @@ def stripComments(text):
     return _TOKENS.sub(_strip, text)
 
 
+def _decoded(raw):
+    """文件的字节 -> 文字：UTF-8，开头带 BOM 的也收（Windows 的记事本存出来常带；json 不认 BOM）。"""
+    found = raw.decode("utf-8-sig") if isinstance(raw, bytes) else raw
+    return found[1:] if found[:1] == u"\ufeff" else found
+
+
 def _resource():
     module = traceback.sys.modules.get("server_resource")
     if module is None or not hasattr(module, "list_server_directory") or not hasattr(module, "load_server_file"):
@@ -70,7 +76,7 @@ def files(baseDir):
     for path in paths:
         try:
             raw = resource.load_server_file(path)
-            found.append((path, stripComments(raw.decode("utf-8") if isinstance(raw, bytes) else raw)))
+            found.append((path, stripComments(_decoded(raw))))
         except Exception:  # noqa: BLE001 - 一个文件读不了不耽误别的
             print("[arrisFarmersDelight] 读行为包里的 %s 出错，跳过" % (_str(path),))
             traceback.print_exc()

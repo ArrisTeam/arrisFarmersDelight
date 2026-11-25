@@ -211,11 +211,12 @@ def testPackJsonReadsEveryPackThroughTheEnginesInternalModule():
     commented = u'{\n  // 番茄泥\n  "type": "farmersdelight:cooking", /* 两格\n */ "text": "a//b /* c */"\n}'
     resource = _Resource(["farmersdelight_recipes/b.json", "farmersdelight_recipes/a.json", "farmersdelight_recipes/readme.txt",
                           "farmersdelight_recipes/a.json", "farmersdelight_recipes/gone.json", None],
-                         {"farmersdelight_recipes/a.json": commented.encode("utf-8"), "farmersdelight_recipes/b.json": b'{"x": 1}'},
+                         {"farmersdelight_recipes/a.json": commented.encode("utf-8"), "farmersdelight_recipes/b.json": b'\xef\xbb\xbf{"x": 1}'},
                          raises=("farmersdelight_recipes/gone.json",))
     found, printed = _withResource(resource, lambda: PackJson.files("farmersdelight_recipes"))
     assert [path for path, _text in found] == ["farmersdelight_recipes/a.json", "farmersdelight_recipes/b.json"], found
     assert json.loads(found[0][1]) == {"type": "farmersdelight:cooking", "text": "a//b /* c */"}, "注释剥掉，字符串里的不动"
+    assert json.loads(found[1][1]) == {"x": 1}, "开头带 BOM 的 UTF-8 也读得进来（T 复核时复现的：以前 json 读不了）"
     assert found[0][1].count("\n") == commented.count("\n"), "块注释里的换行留着（报错的行号对得上）"
     assert resource.asked == ["farmersdelight_recipes"] and "gone.json" in printed, "读不了的那个跳过、记一行"
     assert _withResource(None, lambda: PackJson.files("farmersdelight_recipes"))[0] is None, "没有这个模块"
