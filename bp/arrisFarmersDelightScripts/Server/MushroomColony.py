@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """MushroomColony - 蘑菇菌落：在沃土上随机刻生长，沃土把放着的蘑菇变成菌落（服务端）
 
-年龄 / 状态的对应与概率见 Shared/Rules/ColonyRules.py（JE 年龄 0-3，每次随机刻 25%，只在沃土上长）。
+年龄 / 状态的对应与概率见 Shared/Rules/ColonyRules.py（JE 年龄 0-3，每次随机刻 25%，只在沃土上长：名单 GROWABLE_ON ∪ 方块标签
+farmersdelight:mushroom_colony_growable_on）。
 掉落（年龄 0-3 掉 2/3/4/5 个蘑菇，剪刀剪满龄的菌落掉菌落本身）写在 loot_tables/arris_*_mushroom_colony*.json 里。
 右键收获照 MushroomColonyBlock.use：剪刀剪一个蘑菇、年龄 -1；刀割下全部蘑菇、年龄清零。
 """
@@ -13,7 +14,8 @@ from .Helpers.Engine import GetCarriedItem
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import IsKnife
 from .Helpers.Player import SetPlayerUsedCD, SetCarriedDurability
-from ..Shared.Rules import ColonyRules, FarmEdits
+from ..Shared.Data import Tags
+from ..Shared.Rules import ColonyRules, FarmEdits, ItemTags
 
 SHEARS = "minecraft:shears"
 
@@ -28,7 +30,7 @@ def PlaceColony(world, pos, colonyName):
 def OnMushroomColonyRandomTick(args):
     pos = (args["posX"], args["posY"], args["posZ"])
     world = FarmWorld(args["dimensionId"])
-    if world.nameAt(FarmEdits.below(pos)) not in ColonyRules.GROWABLE_ON:
+    if not ItemTags.blockListed(world.nameAt(FarmEdits.below(pos)), ColonyRules.GROWABLE_ON, Tags.MUSHROOM_COLONY_GROWABLE_ON):
         return
     growth = ColonyRules.tickGrowth(world.growthAt(pos), random)
     if growth is not None:

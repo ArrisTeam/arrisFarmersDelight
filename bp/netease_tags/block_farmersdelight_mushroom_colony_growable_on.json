@@ -1,0 +1,7 @@
+{
+  "type": "block",
+  "identifier": "farmersdelight:mushroom_colony_growable_on",
+  "items": [
+    "arris:rich_soil"
+  ]
+}

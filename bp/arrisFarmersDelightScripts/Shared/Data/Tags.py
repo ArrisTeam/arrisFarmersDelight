@@ -83,6 +83,7 @@ HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面�
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
 UNAFFECTED_BY_RICH_SOIL = "farmersdelight:unaffected_by_rich_soil"     # 沃土不催熟的植物：Farming.UNAFFECTED_BY_RICH_SOIL
+MUSHROOM_COLONY_GROWABLE_ON = "farmersdelight:mushroom_colony_growable_on"     # 蘑菇菌落在上面才长：ColonyRules.GROWABLE_ON
 
 # ---- 原版自带的标签（不生成文件）----
 EGG = "minecraft:egg"
@@ -176,6 +177,7 @@ BLOCK_TAGS = {
                               "arris:sandy_shrub", "arris:brown_mushroom_colony", "arris:red_mushroom_colony",
                               "arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages",
                               "arris:wild_tomatoes", "arris:wild_onions", "arris:wild_rice"),
+    MUSHROOM_COLONY_GROWABLE_ON: ("arris:rich_soil",),
 }
 
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
@@ -236,6 +238,7 @@ JE_NAMES = {
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
     COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),
     UNAFFECTED_BY_RICH_SOIL: (UNAFFECTED_BY_RICH_SOIL,),
+    MUSHROOM_COLONY_GROWABLE_ON: (MUSHROOM_COLONY_GROWABLE_ON,),
 }
 
 # 引擎口什么时候算"准备好"（Shared/Rules/TagPort）：反查这个物品标签，里面出现了这件原版物品——农夫乐事自己登记的原版成员到了，

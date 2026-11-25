@@ -5,6 +5,7 @@
 锁的事：名单里的照旧；不在名单里、带了标签的方块也算——
   farmersdelight:compost_activators        有机肥周围的催化剂（Server/OrganicCompost）
   farmersdelight:unaffected_by_rich_soil   沃土不催熟的植物（Server/BoneMeal.BoostPlant）
+  farmersdelight:mushroom_colony_growable_on   蘑菇菌落在上面才长（Server/MushroomColony）
 对着假引擎跑（tests/farmengine.py），标签由假口答；概率的数和 test_farm_server_glue 里的同一套。
 """
 from __future__ import print_function
@@ -20,6 +21,7 @@ Registry = fdtest.load("Server.EventRegistry")
 OrganicCompost = fdtest.load("Server.OrganicCompost")
 BoneMeal = fdtest.load("Server.BoneMeal")
 RichSoil = fdtest.load("Server.RichSoil")
+MushroomColony = fdtest.load("Server.MushroomColony")
 Tags = fdtest.load("Shared.Data.Tags")
 ItemTags = fdtest.load("Shared.Rules.ItemTags")
 
@@ -93,6 +95,18 @@ def testRichSoilLeavesATaggedPlantAlone():
         _random(0.0, RichSoil, BoneMeal, ints=[2])
         _tick("arris:rich_soil_farmland_moist", (0, 0, 0))
         assert (level.nameAt((0, 1, 0)) == "arris:cabbages_stage0") == tagged, tagged
+    _reset()
+
+
+def testAColonyGrowsOnATaggedGround():
+    """JE：菌落只在 mushroom_colony_growable_on 上长（这边的名单只有沃土）。菌丝登记进这个标签，菌丝上的菌落也长（25% × 3 = 0.75）。"""
+    for tagged in (False, True):
+        level = _fresh().put((0, 0, 0), "minecraft:mycelium").put((0, 1, 0), "arris:brown_mushroom_colony", **{"arris:growth": 2})
+        if tagged:
+            _tagged(Tags.MUSHROOM_COLONY_GROWABLE_ON, "minecraft:mycelium")
+        _random(0.74, MushroomColony)
+        _tick("arris:brown_mushroom_colony", (0, 1, 0))
+        assert level.statesAt((0, 1, 0))["arris:growth"] == (4 if tagged else 2), tagged
     _reset()
 
 
