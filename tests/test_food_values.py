@@ -11,6 +11,7 @@ from __future__ import print_function, unicode_literals
 import io
 import json
 import os
+import re
 
 import fdtest
 import jefood
@@ -119,16 +120,54 @@ def testCustomEffectsAreRegistered():
     assert "arris:comfort" in identifiers, "舒适保留注册"
 
 
+# JE 只有 ConsumableItem（hasFoodEffectTooltip 为真）显示吃下去的效果：小麦面团、生意面、鸡块是普通 Item，
+# 下界沙拉是 ConsumableItem(…, false)——有效果也没有提示
+NO_EFFECT_TOOLTIP = frozenset(("wheat_dough", "raw_pasta", "chicken_cuts", "nether_salad"))
+JE_ITEMS = os.path.join(fdtest.ROOT, ".refs", "FarmersDelight", "src", "main", "java", "vectorwing", "farmersdelight", "common",
+                        "registry", "ModItems.java")
+
+
 def testTooltipsAgreeWithTheEffectTable():
     for short in sorted(set(FOODS) | set(DRINKS) | set(["horse_feed"])):
         tips = jefood.beh(short).get("netease:customtips")
         if short in jefood.CUSTOM_TIPS:
             assert tips and tips["value"], "%s 保留自己的说明" % short
-        elif short in jefood.EFFECTS:
+        elif short in jefood.EFFECTS and short not in NO_EFFECT_TOOLTIP:
             assert tips is not None, "%s 有效果但没有提示" % short
             assert tips["value"] == jefood.tooltipOf(jefood.EFFECTS[short]), "%s 的提示和效果不一致: %r" % (short, tips["value"])
         else:
-            assert tips is None, "%s 没有效果，不该有效果提示: %r" % (short, tips)
+            assert tips is None, "%s 在 JE 里不显示效果提示: %r" % (short, tips)
+
+
+def testFoodsWithoutJavasEffectTooltipAreJavasOwn():
+    if not os.path.isfile(JE_ITEMS):
+        print("跳过：没有 JE 的源码（.refs/FarmersDelight）")
+        return
+    source = io.open(JE_ITEMS, encoding="utf-8").read()
+    silent = set()
+    for short in jefood.EFFECTS:
+        found = re.search(r'register\w*\("%s",\s*\(\) -> new (\w+)\((.*?)\)\);' % short, source, re.S)
+        if found is None:
+            continue
+        kind, body = found.groups()
+        args, depth, part = [], 0, ""
+        for char in body:                                      # 按最外层的逗号分参数（第二个是 hasFoodEffectTooltip）
+            depth += {"(": 1, ")": -1}.get(char, 0)
+            if char == "," and depth == 0:
+                args.append(part.strip())
+                part = ""
+            else:
+                part += char
+        args.append(part.strip())
+        if kind == "Item" or (len(args) > 1 and args[1] == "false"):
+            silent.add(short)
+    assert silent == NO_EFFECT_TOOLTIP, sorted(silent ^ NO_EFFECT_TOOLTIP)
+
+
+def testPiesSayTheyArePlaceableLikeJava():
+    # JE PlaceableItem：一行"可放置"（tooltip.farmersdelight.placeable，深灰、斜体）
+    for short in ("apple_pie_item", "sweet_berry_cheesecake_item", "chocolate_pie_item"):
+        assert jefood.beh(short)["netease:customtips"]["value"] == "§8§o可放置", short
 
 
 if __name__ == "__main__":
