@@ -22,6 +22,7 @@ import fdtest
 import recipekit
 
 CraftReturns = fdtest.load("Shared.Data.CraftReturns").CraftReturns
+GAME_REMAINDERS = fdtest.load("Shared.Data.Remainders")         # 游戏里还剩余物用的表（和下面按 JE 推的 REMAINDER 对账）
 
 # JE 标签 -> 基岩版物品（FD 的换成 arris:）：forge:cooked_chicken / cooked_mutton / cooked_beef / cooked_fishes/salmon /
 # salad_ingredients（= crops/cabbage）/ berries / vegetables / milk，另有配方里直接写的候选 hay（干草块或稻草块）
@@ -187,9 +188,10 @@ def returnedContainers(name, kind, body):
     for entry in CraftReturns.get(results[0][0], ()):
         if entry["source"] == name:
             assert entry["count"] == results[0][1], name
-            for item in entry["ingredients"]:
-                if item in entry["returns"]:
-                    back[entry["returns"][item]] += 1
+            for item in entry["slots"]:
+                left = item if item in entry["keeps"] else GAME_REMAINDERS.craftRemainderOf(item)
+                if left:
+                    back[left] += 1
     return back
 
 
@@ -249,9 +251,9 @@ def testJavasShapelessRecipesAreShapelessHere():
 
 def testDoughFromWaterKeepsTheBucketLikeJava():
     # JE 的 DoughRecipe：一格小麦 + 一格水桶，摆哪都行（就是无序配方），水桶原样留下——表里它的剩余物是它自己
-    water = [entry for entry in CraftReturns["arris:wheat_dough"] if "minecraft:water_bucket" in entry["ingredients"]]
-    assert len(water) == 1 and water[0]["ingredients"] == ("minecraft:water_bucket", "minecraft:wheat")
-    assert water[0]["count"] == 1 and water[0]["returns"] == {"minecraft:water_bucket": "minecraft:water_bucket"}
+    water = [entry for entry in CraftReturns["arris:wheat_dough"] if "minecraft:water_bucket" in entry["slots"]]
+    assert len(water) == 1 and sorted(water[0]["slots"]) == ["minecraft:water_bucket", "minecraft:wheat"]
+    assert water[0]["count"] == 1 and water[0]["keeps"] == ("minecraft:water_bucket",)
 
 
 if __name__ == "__main__":

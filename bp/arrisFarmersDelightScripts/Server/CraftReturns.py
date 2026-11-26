@@ -3,8 +3,9 @@
 
 JE 里原料自带合成剩余物（奶桶剩空桶、奶瓶剩玻璃瓶、米饭剩碗，面团配方的水桶原样留下……）：做完一份放回原来那格，
 那格没空就进背包（ResultSlot.onTake）。基岩版有序配方把剩余物写进 result 数组由引擎给；无序配方的 result 数组只出第一项，
-这里补：取结果时记下合成格，对上本包的无序配方（Shared/Data/CraftReturns.py，tools/gen_crafts.py 生成），下一刻再读一遍格子，
-按每格真的少了几件算做了几份（被取消、请求被拒都是 0 份），照 Shared/Rules/Crafting.py 放回格子或给玩家。
+这里补：取结果时记下合成格，对上本包的无序配方（Shared/Data/CraftReturns.py，tools/gen_crafts.py 生成；标签格按标签认，
+别的模组并进标签的东西也认，Shared/Rules/Crafting.entryFor），下一刻再读一遍格子，按每格真的少了几件算做了几份（被取消、请求被拒都是 0 份），
+按格子里实际放的物品查剩余物（Remainders 里没有的不还），照 Shared/Rules/Crafting.py 放回格子或给玩家。认不出是哪条配方时什么都不还。
 实机核对过（3.10）：CraftItemOutputChangeServerEvent 一次请求只发一次，这时读到的还是合成前的格子；
 潜行一次做多份时 itemDict 的 count 是总数（做 3 份、一份 1 个就是 3）。
 下游包往 Food.shapedRecipeContainerDict 里登记的成品（生成的表里没有的）仍按成品名还容器（旧契约：分不出是哪条配方，一份还一个）。

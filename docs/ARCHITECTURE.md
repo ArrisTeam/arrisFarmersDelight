@@ -536,9 +536,12 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
   否则进背包，背包满了掉在脚下。
   - 有序配方把剩余物写进 `result` 数组，引擎自己给（原版蛋糕就是这样还桶的）。
   - 无序配方的 `result` 数组引擎只认第一项，由脚本补：`CraftItemOutputChangeServerEvent` 时读合成格（`GetPlayerUIItem`，2×2 是槽位 28..31、3×3 是 32..40），
-    对上 `Shared/Data/CraftReturns.py`（`tools/gen_crafts.py` 从 `bp/recipes` 生成：成品 -> 原料名、一份几个、哪种原料剩什么），下一刻再读一遍格子，
-    按每格真的少了几件算做了几份（`Shared/Rules/Crafting.craftsDone`：被取消、请求被拒都是 0 份；同一刻玩家又挪走别的格子也不会多算，上限是取出个数 ÷ 一份个数）。
-  - JE 的面团配方（`DoughRecipe`）把水桶原样留下：表里它的剩余物是水桶自己，做完水桶回到原来那格。
+    对上 `Shared/Data/CraftReturns.py`（`tools/gen_crafts.py` 从 `bp/recipes` 生成：成品 -> 每格的选项（物品名或 `#标签`）、一份几个、原样留下的选项；
+    只收做完可能还东西的无序配方），下一刻再读一遍格子，按每格真的少了几件算做了几份（`Shared/Rules/Crafting.craftsDone`：被取消、请求被拒都是 0 份；
+    同一刻玩家又挪走别的格子也不会多算，上限是取出个数 ÷ 一份个数）。认配方时标签格按标签现问（`Crafting.entryFor`，`ItemTags`：别的模组并进标签的东西也认），
+    还什么按格子里**实际放的物品**查 `Remainders`（和 JE 一样按物品算；别的模组并进来的、表里没有的物品不留东西）。两条不变式：每格每份最多还一次；
+    认不出是哪条配方（一条都对不上，或者对上了不止一条）什么都不还。
+  - JE 的面团配方（`DoughRecipe`）把水桶原样留下：表里它的 `keeps` 是水桶，做完水桶回到原来那格。
   - `Food.shapedRecipeContainerDict` 是 linkage 的旧接口（下游包按成品名登记"还一个容器"），生成的表里没有的成品才走它；表不能清空——
     `Interface` / `Obtain` 对空容器返回 `False`。本包留在里面的条目由 `tests/test_recipe_rules.py` 核对和生成的表一致。
 - **砧板摆盘**（前置包在场）：`tools/gen_dishes.py` 给每道菜算 `extras`（换成了别的东西的容器）和 `keeps`（原样留下的配料，即面团的水桶）。

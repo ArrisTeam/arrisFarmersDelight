@@ -190,7 +190,8 @@ def testTheBoardMakesItOnABowlOutOfTheNineJavaIngredients():
     # 蜂蜜瓶的玻璃瓶还给厨师（JE 的合成剩余物；工作台上由 Server/CraftReturns.py 按生成的表补还）
     assert dishes[0]["extras"] == [("minecraft:glass_bottle", 0, 1)] and dishes[0]["keeps"] == []
     returns = fdtest.load("Shared.Data.CraftReturns").CraftReturns[_name("stage0")]
-    assert len(returns) == 1 and returns[0]["returns"] == {"minecraft:honey_bottle": "minecraft:glass_bottle"}
+    assert len(returns) == 1 and "minecraft:honey_bottle" in returns[0]["slots"] and returns[0]["keeps"] == ()
+    assert fdtest.load("Shared.Data.Remainders").craftRemainderOf("minecraft:honey_bottle") == "minecraft:glass_bottle"
 
 
 # ---- 盛菜 ----

@@ -2,6 +2,8 @@
 """recipejson - 开发工具共用：读行为包的合成配方 JSON，按 JE 的规则算一份配方的剩余物（py -3，给 gen_dishes / gen_crafts 用）
 
 剩余物表就是游戏里用的 bp/.../Shared/Data/Remainders.py（纯数据，按路径加载）；JE 的面团配方（DoughRecipe）把水桶原样留下。
+原料写标签（{"tag": X}）的格子读成 "#X"；membersOf 按词表 Shared/Data/Tags.py 的静态成员展开（原版标签 minecraft:egg 也在词表里，
+别的原版标签用 VANILLA 里抄的成员），expand 把一份配方按格展开成全部具体的写法（砧板摆盘、测试用）。
 """
 import glob
 import importlib.util
@@ -25,9 +27,37 @@ def _remainders():
 Remainders = _remainders()
 
 
+def _tags():
+    spec = importlib.util.spec_from_file_location("Tags", os.path.join(SCRIPTS, "Shared", "Data", "Tags.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+Tags = _tags()
+# 配方里用到、词表里没有的原版标签：成员照基岩版 3.10 原版的（minecraft:planks 是 11 种木板）
+VANILLA = {
+    "minecraft:planks": tuple("minecraft:%s_planks" % wood for wood in (
+        "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped")),
+}
+
+
+def membersOf(option):
+    """一格的选项 -> 能放的具体物品名：物品名就是它自己；"#标签" 是词表（或 VANILLA）里的静态成员，认不出的标签抛 KeyError。"""
+    if not option.startswith("#"):
+        return (option,)
+    tag = option[1:]
+    for table in (Tags.ITEM_TAGS, Tags.VANILLA_TAGS, VANILLA):
+        if tag in table:
+            return tuple(table[tag])
+    raise KeyError("配方里的标签 %s 词表里没有（Shared/Data/Tags.py）" % tag)
+
+
 def _item(entry):
+    if isinstance(entry, dict) and entry.get("tag"):
+        return ("#" + entry["tag"], 0)
     if isinstance(entry, dict):
-        return (entry.get("item") or entry.get("tag"), int(entry.get("data", 0) or 0))
+        return (entry.get("item"), int(entry.get("data", 0) or 0))
     return (entry, 0)
 
 
@@ -79,6 +109,33 @@ def returnsOf(result, names):
         elif Remainders.craftRemainderOf(name):
             returns[name] = Remainders.craftRemainderOf(name)
     return returns
+
+
+def keepsOf(result, options):
+    """这份配方做完原样留下的格子选项（JE 的面团配方 DoughRecipe：水桶）：排好序、去重。"""
+    if result != DOUGH:
+        return ()
+    return tuple(sorted(set(option for option in options if WATER in membersOf(option))))
+
+
+def mayLeave(result, options):
+    """这份配方做完可能还东西：某一格的某个成员带合成剩余物，或者有原样留下的格子。"""
+    return bool(keepsOf(result, options)) or any(Remainders.craftRemainderOf(member) for option in options for member in membersOf(option))
+
+
+def expand(recipe):
+    """一份配方按格展开成全部具体的写法 [[(物品名, aux), ...], ...]：标签格换成词表里的每个成员（格子的先后不变，前面的格变得慢）；
+    多重集合相同的写法只留第一种。"""
+    ways = [[]]
+    for name, aux in recipe["ingredients"]:
+        ways = [way + [(member, aux)] for way in ways for member in membersOf(name)]
+    unique, seen = [], set()
+    for way in ways:
+        key = tuple(sorted(way))
+        if key not in seen:
+            seen.add(key)
+            unique.append(way)
+    return unique
 
 
 def remaindersOf(result, names):

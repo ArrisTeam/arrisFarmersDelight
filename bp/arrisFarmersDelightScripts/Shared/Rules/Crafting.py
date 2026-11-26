@@ -4,10 +4,17 @@
 JE 的 ResultSlot.onTake：做完一份，每格原料用掉一件，再按配方的 getRemainingItems（原料自带的合成剩余物，
 Shared/Data/Remainders.py；面团配方把水桶原样留下）放回去——那格空了放回那格，同一种就叠上去，否则进背包，背包满了掉地上。
 基岩版有序配方把剩余物写进 result 数组由引擎给；无序配方的 result 数组只出第一项，由服务端补：取结果时（CraftItemOutputChange
-ServerEvent）记下格子，下一刻再读一遍，按每格真的少了几件算做了几份（取消了、请求被拒都是 0 份），再按本包配方的剩余物表
-（tools/gen_crafts.py 生成的 Shared/Data/CraftReturns.py）放回格子 / 给玩家。
+ServerEvent）记下格子，下一刻再读一遍，按每格真的少了几件算做了几份（取消了、请求被拒都是 0 份），再按本包的无序配方表
+（tools/gen_crafts.py 生成的 Shared/Data/CraftReturns.py）认出是哪条、放回格子 / 给玩家。
+表里每条配方一格一个选项（物品名，或 "#标签"：按 Shared/Rules/ItemTags 现问，别的模组并进标签的东西也认）；还什么按格子里**实际放的物品**
+查 Remainders（和 JE 一样按物品算；别的模组并进来的、表里没有的物品不留东西），keeps 里的选项原样留下（面团的水桶）。
+两条不变式：一次合成每格最多还一次（crafts 份就还 crafts 件，不和别的路叠）；认不出是哪条配方（没有一条对得上，或者对上了不止一条）
+时什么都不还。
 格子是 {槽位: (物品名, 个数)}；槽位是 PlayerUISlot：2×2 是 28..31，3×3 是 32..40。
 """
+from ..Data import Remainders
+from . import ItemTags
+
 GRID_SLOTS = tuple(range(28, 41))
 
 
@@ -16,13 +23,43 @@ def namesOf(grid):
     return tuple(sorted(name for name, _count in grid.values()))
 
 
+def fits(name, option):
+    """这件物品算不算这一格的选项：物品名一样，或者选项是 "#标签" 而它带这个标签。"""
+    if not name or not option:
+        return False
+    if option.startswith("#"):
+        return ItemTags.has(name, option[1:])
+    return name == option
+
+
+def _assign(names, slots):
+    """格子里的物品（一格一件）能不能一一对上配方的各格（无序配方：哪件放哪格不管）：回溯找一种对法。"""
+    if not names:
+        return not slots
+    first, rest = names[0], names[1:]
+    tried = set()
+    for index, option in enumerate(slots):
+        if option in tried or not fits(first, option):
+            continue
+        tried.add(option)
+        if _assign(rest, slots[:index] + slots[index + 1:]):
+            return True
+    return False
+
+
 def entryFor(entries, grid):
-    """这个成品的配方条目里，原料正好是格子里这些的那条；没有返回 None。"""
+    """这个成品的配方条目里，格子里的东西正好一一对得上的那条（标签格按标签认）；没有、或者不止一条对得上，返回 None。"""
     names = namesOf(grid)
-    for entry in entries or ():
-        if tuple(entry["ingredients"]) == names:
-            return entry
-    return None
+    found = [entry for entry in entries or () if len(entry["slots"]) == len(names) and _assign(names, tuple(entry["slots"]))]
+    return found[0] if len(found) == 1 else None
+
+
+def leftOf(entry, name):
+    """这件原料做完一份剩下什么：keeps 里的选项原样留下，否则查 Remainders（没有是 None）。"""
+    for option in entry.get("keeps") or ():
+        if fits(name, option):
+            return name
+    return Remainders.craftRemainderOf(name)
 
 
 def craftsDone(before, after, most=None):
@@ -47,13 +84,12 @@ def mostCrafts(taken, perCraft):
 
 
 def returnsOf(entry, before, crafts):
-    """要还的剩余物：[(槽位, 剩余物名, 个数)]，按槽位排序；crafts 份，每份每格还一件。"""
-    if crafts <= 0:
+    """要还的剩余物：[(槽位, 剩余物名, 个数)]，按槽位排序；crafts 份，每份每格还一件（按那格实际放的物品算）。"""
+    if crafts <= 0 or entry is None:
         return []
-    returns = entry.get("returns") or {}
     plan = []
     for slot in sorted(before):
-        left = returns.get(before[slot][0])
+        left = leftOf(entry, before[slot][0])
         if left:
             plan.append((slot, left, crafts))
     return plan
