@@ -18,11 +18,17 @@
    两个口（Grilling 装着的，单机时两个都在）各自的原始答案、缓存里调之前 / 之后记着什么；没装探针包时跳过。先在客户端线程调
    Client/Debug/McdkTagsTest 的同名函数，再调这个：两边都该是 minecraft:iron_nugget（GetRecipesByInput 只在自己那一端的线程里答得出，
    2026-11-26 实机：以前客户端线程先问时把 None 记进了缓存，服务端读到的也是它）。
+7. mcdk_test_tags_standard()：团队烹饪原料标签规范的 18 个标签（Tags.COOKING_STANDARD，森罗物语厨房定的）引擎里现在的成员——带着森罗物语厨房
+   进游戏看两边并没并上：tags 里每个标签的 members（引擎反查到的全部）、missing（农夫乐事登记了引擎却没有）、extra（别的包登记的，森罗的东西在这里）；
+   nestedLost：农夫乐事用 # 嵌的细标签，引擎里的成员（含别的包登记进细标签的）有没有漏出粗标签；meatLost：有人登记了 common:meat 时（森罗的文件
+   用 # 引了牛、鸡、羊、猪），农夫乐事登记进那四个的肉有没有并进去（没人登记是 None）。装了森罗时 kaleidoscope 再报：它服务端模糊配方认料用的
+   item_matches_ingredient 认不认农夫乐事登记进去的每件东西（refused 是不认的）、反例（火腿当猪肉、河豚当鱼）认没认（acceptedWrongly）、
+   它按标签名缓存的成员（第一次问时建、之后不再问引擎）调之前有哪些、和引擎现在的对不上的（stale）。客户端另有同名函数报客户端引擎和森罗 JEI 的缓存。
     from arrisFarmersDelightScripts.Server.Debug import McdkTagsTest as T
     return T.mcdk_test_tags_members()
 """
 from ..Helpers import Tags as EngineTags
-from ..Helpers.Engine import compFactory, levelId
+from ..Helpers.Engine import compFactory, levelId, serverApi
 from ..Helpers.Items import IsKnife
 from ...Shared.Data import Tags
 from ...Shared.Data.Cutting import knifeList
@@ -31,6 +37,9 @@ from ...Shared.Rules import Grilling
 RECIPE_PROBES = ("minecraft:beef", "arris:minced_beef", "minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg")
 PROBE_GRILL = ("fdprobe:tomato", "minecraft:iron_nugget")    # 探针包的番茄、它的营火配方的产物（同客户端那份，两端互不导入，各写一份）
 BLOCK_PROBES = ("arris:stove", "arris:stove_extinguish", "minecraft:magma", "minecraft:campfire", "minecraft:fire", "minecraft:lava")
+KC_MATCHER = "kcookery_scripts.server.register.recipes.cooking_tags"   # 森罗物语厨房服务端认料的模块（它的模糊配方经 item_matches_ingredient 认）
+MEAT_PARTS = (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK)           # 森罗的 common:meat 用 # 引的四个（它的 netease_tags/meat.json）
+NOT_THEIRS = (("arris:ham", Tags.PORK), ("arris:smoked_ham", Tags.PORK), ("minecraft:pufferfish", Tags.FISH))    # 不该认的
 
 
 def _diff(static, engine):
@@ -113,3 +122,59 @@ def mcdk_test_tags_probe_grill():
     result = Grilling.resultOf(name, 0)
     return {"case": "tags_probe_grill", "thread": "server", "ok": result == expected, "result": result, "expected": expected,
             "raw": raw, "cachedBefore": before, "cachedAfter": repr(Grilling._cache.get((name, 0), "<没记>"))}
+
+
+def _standardRows(port):
+    """规范的 18 个标签：引擎反查到的全部成员（members）、农夫乐事登记了引擎却没有的（missing）、别的包登记的（extra）。"""
+    rows = {}
+    for tag in Tags.COOKING_STANDARD:
+        engine = port.itemsOf(tag)
+        row = _diff(Tags.ITEM_TAGS.get(tag, ()), engine)
+        row["members"] = sorted(engine) if engine is not None else None
+        rows[tag] = row
+    return rows
+
+
+def _nestedLost(port):
+    """农夫乐事在规范标签里用 # 嵌的细标签：细标签引擎里的成员有没有都进了粗标签。{"粗 <- #细": [漏掉的]}"""
+    lost = {}
+    for tag in Tags.COOKING_STANDARD:
+        outer = set(port.itemsOf(tag) or ())
+        for ref in (name[1:] for name in Tags.ITEM_TAG_FILES.get(tag, ()) if name.startswith("#")):
+            missing = sorted(set(port.itemsOf(ref) or ()) - outer)
+            if missing:
+                lost["%s <- #%s" % (tag, ref)] = missing
+    return lost
+
+
+def _kaleidoscope(port):
+    """装了森罗物语厨房时：它的 item_matches_ingredient 认不认农夫乐事登记进去的东西、反例认没认、它的标签缓存（调之前的）过没过时；没装 None。"""
+    try:
+        module = serverApi.ImportModule(KC_MATCHER)
+    except Exception:  # noqa: BLE001 - 导入不了（给 None 或者抛异常）都当没装
+        module = None
+    if module is None or not hasattr(module, "item_matches_ingredient"):
+        return None
+    cache = getattr(module, "_TAG_ITEMS_CACHE", None) or {}
+    before = sorted(cache)
+    stale = sorted(tag for tag in before if tag in Tags.COOKING_STANDARD and set(cache[tag]) != set(port.itemsOf(tag) or ()))
+    cases = [(name, tag) for tag in Tags.COOKING_STANDARD for name in Tags.ITEM_TAGS.get(tag, ())]
+    cases += [(name, "common:meat") for tag in MEAT_PARTS for name in Tags.ITEM_TAGS[tag]]
+    refused = sorted("%s %s" % case for case in cases if not module.item_matches_ingredient(case[0], "#" + case[1]))
+    wrong = sorted("%s %s" % case for case in NOT_THEIRS if module.item_matches_ingredient(case[0], "#" + case[1]))
+    return {"asked": len(cases), "refused": refused, "acceptedWrongly": wrong, "cachedBefore": before, "stale": stale}
+
+
+def mcdk_test_tags_standard():
+    """测试函数：团队规范的 18 个标签引擎里现在的成员、# 嵌套并没并上；装了森罗物语厨房时它的模糊配方认不认农夫乐事的东西。"""
+    port = EngineTags.PORT
+    rows = _standardRows(port)
+    nested = _nestedLost(port)
+    meat = set(port.itemsOf("common:meat") or ())
+    meatLost = sorted(set(name for tag in MEAT_PARTS for name in Tags.ITEM_TAGS[tag]) - meat) if meat else None
+    kc = _kaleidoscope(port)
+    missing = sorted(tag for tag, row in rows.items() if row["missing"])
+    ok = bool(port.ready()) and not missing and not nested and not meatLost and \
+        (kc is None or not (kc["refused"] or kc["acceptedWrongly"] or kc["stale"]))
+    return {"case": "tags_standard", "ok": ok, "ready": port.ready(), "missing": missing, "nestedLost": nested, "meatLost": meatLost,
+            "kaleidoscope": kc if kc is not None else "没装森罗物语厨房（%s 导入不了）" % KC_MATCHER, "tags": rows}

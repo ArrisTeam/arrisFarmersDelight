@@ -20,7 +20,7 @@ ServerPort = fdtest.load("Server.Helpers.Tags")
 
 def _loadClient():
     engine = types.ModuleType(fdtest.SCRIPTS + ".Client.Engine")
-    engine.compFactory, engine.levelId = object(), "level"
+    engine.compFactory, engine.levelId, engine.clientApi = object(), "level", object()
     saved = sys.modules.get(engine.__name__)
     sys.modules[engine.__name__] = engine
     try:
@@ -167,6 +167,104 @@ def testTheProbeGrillSelfTestOnBothThreads():
         assert second["ok"] and second["result"] == product and second["cachedBefore"] == repr(product), second
     finally:
         ServerTest.compFactory, ClientTest.compFactory = saved
+        _reset()
+
+
+class ModuleApi(object):
+    """serverApi / clientApi 的替身：ImportModule(名字) 给 modules 里的（没有给 None），记下问过的名字。"""
+
+    def __init__(self, modules=None):
+        self.modules, self.asked = dict(modules or {}), []
+
+    def ImportModule(self, name):
+        self.asked.append(name)
+        return self.modules.get(name)
+
+
+# 装了森罗物语厨房时引擎里的样子：规范的粗标签多了森罗自己的东西，common:meat 是它用 # 引的四种肉（农夫乐事登记进去的也在）加兔肉
+THEIRS = {Tags.BEEF: ("kaleidoscope_cookery:raw_cow_offal",), Tags.FISH: ("kaleidoscope_cookery:sashimi",)}
+
+
+class StandardPort(FullPort):
+    """规范标签的引擎口：答静态表（# 都展开了）。kc 为真是装着森罗：粗标签多了它的东西，有 common:meat；lose = (标签, 成员) 时少答那一件，
+    extra = {标签: 多答的}（别的包登记进细标签、却没并进粗标签时用）。"""
+
+    def __init__(self, kc=True, lose=None, extra=None):
+        FullPort.__init__(self)
+        self.kc, self.lose, self.extra = kc, lose, extra or {}
+
+    def itemsOf(self, tag):
+        if tag == "common:meat":
+            parts = (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK) if self.kc else ()
+            found = (("minecraft:rabbit",) if self.kc else ()) + tuple(name for part in parts for name in self.itemsOf(part))
+        else:
+            found = tuple(Tags.ITEM_TAGS.get(tag) or Tags.VANILLA_TAGS.get(tag) or ()) + (THEIRS.get(tag, ()) if self.kc else ()) \
+                + self.extra.get(tag, ())
+        return tuple(name for name in found if (tag, name) != self.lose)
+
+
+class KaleidoscopeMatcher(object):
+    """森罗服务端认料模块的替身：item_matches_ingredient 照引擎口答，_TAG_ITEMS_CACHE 是它问过的标签（cache 给了就用它）。"""
+
+    def __init__(self, port, cache=None):
+        self.port = port
+        self._TAG_ITEMS_CACHE = dict(cache or {})
+
+    def item_matches_ingredient(self, itemName, ingredient):
+        tag = ingredient[1:]
+        self._TAG_ITEMS_CACHE.setdefault(tag, list(self.port.itemsOf(tag)))
+        return itemName in self._TAG_ITEMS_CACHE[tag]
+
+
+def testTheStandardSelfTestReportsBothPacks():
+    """mcdk_test_tags_standard（服务端）：规范的 18 个标签引擎里的成员；没装森罗时只看农夫乐事这边；装着时它的认料函数认农夫乐事登记进去的
+    每件东西（common:meat 认四种肉）、不认火腿和河豚，它的标签缓存没过时；少并一件、# 漏了、缓存过时都报出来、ok 是假。"""
+    saved = ServerPort.PORT, ServerTest.serverApi
+    try:
+        ServerPort.PORT, ServerTest.serverApi = StandardPort(kc=False), ModuleApi()
+        alone = ServerTest.mcdk_test_tags_standard()
+        assert alone["ok"] and alone["meatLost"] is None and "没装" in alone["kaleidoscope"], alone
+        assert sorted(alone["tags"]) == sorted(Tags.COOKING_STANDARD) and alone["tags"]["common:chili"]["engine"] == 0
+        assert ServerTest.serverApi.asked == [ServerTest.KC_MATCHER]
+        port = StandardPort()
+        ServerPort.PORT = port
+        ServerTest.serverApi = ModuleApi({ServerTest.KC_MATCHER: KaleidoscopeMatcher(port, {Tags.BEEF: list(port.itemsOf(Tags.BEEF))})})
+        both = ServerTest.mcdk_test_tags_standard()
+        assert both["ok"] and both["meatLost"] == [] and both["nestedLost"] == {}, both
+        assert both["tags"][Tags.BEEF]["extra"] == ["kaleidoscope_cookery:raw_cow_offal"]
+        kc = both["kaleidoscope"]
+        assert kc["refused"] == [] and kc["acceptedWrongly"] == [] and kc["stale"] == [] and kc["cachedBefore"] == [Tags.BEEF], kc
+        assert kc["asked"] > 40
+        port = StandardPort(lose=("common:meat", "arris:minced_beef"), extra={Tags.RAW_BEEF: ("mymod:steak",)})
+        ServerPort.PORT = port
+        ServerTest.serverApi = ModuleApi({ServerTest.KC_MATCHER: KaleidoscopeMatcher(port, {Tags.FISH: ["minecraft:cod"]})})
+        broken = ServerTest.mcdk_test_tags_standard()
+        assert not broken["ok"] and broken["meatLost"] == ["arris:minced_beef"], broken["meatLost"]
+        assert broken["nestedLost"] == {"common:beef <- #common:raw_beef": ["mymod:steak"]}, broken["nestedLost"]
+        refused = broken["kaleidoscope"]["refused"]
+        assert broken["kaleidoscope"]["stale"] == [Tags.FISH] and "arris:minced_beef common:meat" in refused, broken["kaleidoscope"]
+        assert "arris:cod_slice common:fish" in refused and "minecraft:cod common:fish" not in refused, "缓存过时：鱼片它不认了"
+    finally:
+        ServerPort.PORT, ServerTest.serverApi = saved
+        _reset()
+
+
+def testTheClientStandardSelfTestReadsTheJeiCacheOnly():
+    """mcdk_test_tags_standard（客户端）：客户端引擎里的成员；装了森罗时只读它 JEI 的标签缓存（不替它问），记着的和引擎现在的不一样就是过时。"""
+    saved = ClientPort.PORT, ClientTest.clientApi
+    try:
+        ClientPort.PORT, ClientTest.clientApi = StandardPort(kc=False), ModuleApi()
+        alone = ClientTest.mcdk_test_tags_standard()
+        assert alone["ok"] and "没装" in alone["kaleidoscopeJei"] and sorted(alone["tags"]) == sorted(Tags.COOKING_STANDARD)
+        jei = types.ModuleType("kc_jei")
+        jei._ITEM_TAG_CACHE = {Tags.TOMATO: ["arris:tomato"], Tags.RICE: ["arris:rice"]}       # 番茄记早了：没有别的包的那一件
+        ClientPort.PORT = StandardPort(kc=False, extra={Tags.TOMATO: ("mymod:tomato",)})
+        ClientTest.clientApi = ModuleApi({ClientTest.KC_JEI: jei})
+        result = ClientTest.mcdk_test_tags_standard()
+        assert not result["ok"] and result["kaleidoscopeJei"] == {"cached": [Tags.RICE, Tags.TOMATO], "stale": [Tags.TOMATO]}, result
+        assert sorted(jei._ITEM_TAG_CACHE) == [Tags.RICE, Tags.TOMATO], "只读，不替它问"
+    finally:
+        ClientPort.PORT, ClientTest.clientApi = saved
         _reset()
 
 

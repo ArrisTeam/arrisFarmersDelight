@@ -11,13 +11,17 @@
 mcdk_test_tags_probe_grill()：探针包的番茄（fdprobe:tomato，表里没有，只靠探针包的营火配方烤成铁粒）在客户端线程里 Grilling.resultOf 给什么、
 两个口（Grilling 装着的，单机时两个都在）各自的原始答案、缓存里调之前 / 之后记着什么；没装探针包时跳过。先在客户端线程调这个，再在服务端线程调
 Server/Debug/McdkTagsTest 的同名函数：两边都该是 minecraft:iron_nugget（GetRecipesByInput 只在自己那一端的线程里答得出，2026-11-26 实机）。
+mcdk_test_tags_standard()：团队烹饪原料标签规范的 18 个标签（Tags.COOKING_STANDARD）客户端引擎里现在的成员（members / missing / extra，
+同服务端的同名函数）；装了森罗物语厨房时报它客户端 JEI 按标签名缓存的成员（第一次问时建、之后不再问引擎）调之前有哪些、和客户端引擎现在的
+对不上的（stale：客户端的标签进世界后才全，太早问过的会一直缺东西）。只读它的缓存，不替它问。
 """
 from .. import Tags as EngineTags
-from ..Engine import compFactory, levelId
+from ..Engine import clientApi, compFactory, levelId
 from ...Shared.Data import Tags
 from ...Shared.Rules import Grilling, Knives
 
 PROBE_GRILL = ("fdprobe:tomato", "minecraft:iron_nugget")    # 探针包的番茄、它的营火配方的产物（同服务端那份，两端互不导入，各写一份）
+KC_JEI = "kcookery_scripts.client.compat.jei.jei"           # 森罗物语厨房客户端 JEI 的模块：_ITEM_TAG_CACHE 是它按标签名记的成员
 
 
 def _diff(static, engine):
@@ -56,3 +60,32 @@ def mcdk_test_tags_probe_grill():
     result = Grilling.resultOf(name, 0)
     return {"case": "tags_probe_grill", "thread": "client", "ok": result == expected, "result": result, "expected": expected,
             "raw": raw, "cachedBefore": before, "cachedAfter": repr(Grilling._cache.get((name, 0), "<没记>"))}
+
+
+def _kaleidoscopeJei(port):
+    """森罗物语厨房客户端 JEI 的标签缓存：记着哪些标签、哪些和客户端引擎现在的对不上；没装（导入不了、没有这个缓存）是 None。"""
+    try:
+        module = clientApi.ImportModule(KC_JEI)
+    except Exception:  # noqa: BLE001 - 导入不了（给 None 或者抛异常）都当没装
+        module = None
+    cache = getattr(module, "_ITEM_TAG_CACHE", None) if module is not None else None
+    if cache is None:
+        return None
+    stale = sorted(tag for tag in cache if tag in Tags.COOKING_STANDARD and set(cache[tag]) != set(port.itemsOf(tag) or ()))
+    return {"cached": sorted(cache), "stale": stale}
+
+
+def mcdk_test_tags_standard():
+    """测试函数：团队规范的 18 个标签客户端引擎里的成员；装了森罗物语厨房时它 JEI 的标签缓存过没过时。"""
+    port = EngineTags.PORT
+    rows = {}
+    for tag in Tags.COOKING_STANDARD:
+        engine = port.itemsOf(tag)
+        row = _diff(Tags.ITEM_TAGS.get(tag, ()), engine)
+        row["members"] = sorted(engine) if engine is not None else None
+        rows[tag] = row
+    jei = _kaleidoscopeJei(port)
+    missing = sorted(tag for tag, row in rows.items() if row["missing"])
+    ok = bool(port.ready()) and not missing and not (jei and jei["stale"])
+    return {"case": "tags_standard_client", "ok": ok, "ready": port.ready(), "missing": missing,
+            "kaleidoscopeJei": jei if jei is not None else "没装森罗物语厨房（%s 导入不了）" % KC_JEI, "tags": rows}
