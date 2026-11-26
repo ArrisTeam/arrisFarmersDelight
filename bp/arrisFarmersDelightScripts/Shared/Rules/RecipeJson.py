@@ -29,7 +29,7 @@ TYPES = {"cooking": "cooking", "farmersdelight:cooking": "cooking", "cutting": "
 # JE 的工具（tool_action / 标签）-> 工具种类：Shared/Data/Cutting.py 的工具表加物品类型
 TOOL_ACTIONS = {"knife_dig": "knife", "axe_dig": "axe", "axe_strip": "axe", "pickaxe_dig": "pickaxe", "shovel_dig": "shovel",
                 "hoe_dig": "hoe", "shears_dig": "shears"}
-TOOL_TAGS = {"forge:tools/knives": "knife", "farmersdelight:tools/knives": "knife", "common:knife": "knife", "arris:knife": "knife",
+TOOL_TAGS = {"forge:tools/knives": "knife", "farmersdelight:tools/knives": "knife", "common:knife": "knife", "arris:knife": "knife", "c:tools/knife": "knife",
              "minecraft:axes": "axe", "minecraft:pickaxes": "pickaxe", "minecraft:shovels": "shovel", "minecraft:hoes": "hoe",
              "forge:shears": "shears"}
 MOST_SLOTS = 6

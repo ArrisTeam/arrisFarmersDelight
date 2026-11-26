@@ -49,6 +49,10 @@ VEGETABLE = "common:vegetable"
 CABBAGE = "common:cabbage"
 MILK = "common:milk"
 MUSHROOMS = "common:mushrooms"
+# JE 1.21 才有名字、主会话 2026-11-26 定了补上的：熟肉（c:foods/cooked_meat，烤串那一格：JE 1.20.1 写的是熟牛 / 猪 / 鸡 / 羊 / 鱼 / 熟兔肉任一）；
+# 沙拉用的叶菜（c:foods/leafy_green = JE 1.20.1 的 forge:salad_ingredients：三明治、沙拉、四道汤读它，和卷心菜卷、饺子读的"卷心菜"分开）
+COOKED_MEAT = "common:cooked_meat"
+LEAFY_GREEN = "common:leafy_green"
 # JE 农夫乐事的配方（厨锅、工作台、砧板）实际用到的标签，同一条命名规则补的
 ONION = "common:onion"
 CARROT = "common:carrot"
@@ -68,7 +72,8 @@ RAW_BACON = "common:raw_bacon"
 COOKED_BACON = "common:cooked_bacon"
 CABBAGE_SEEDS = "common:cabbage_seeds"
 WATER_BUCKET = "common:water_bucket"
-# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去；
+# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去，
+# 原版的那部分（JE 里是 Forge 自己给的：甜菜根、胡萝卜、地狱疣、土豆、小麦；四种原版种子）也登记，农夫乐事单独在场时这两个标签也是全的；
 # common:flowers 在它那里是"所有的花"（照 JE 的 minecraft:flowers：小花、高花、开花的杜鹃……），JE 把七种野生作物放在
 # minecraft:small_flowers / tall_flowers 里，所以野生作物登记进 common:flowers
 CROPS = "common:crops"
@@ -144,9 +149,12 @@ ITEM_TAGS = {
     COOKED_PORK: ("minecraft:cooked_porkchop", "arris:cooked_bacon"),
     COOKED_CHICKEN: ("minecraft:cooked_chicken", "arris:cooked_chicken_cuts"),
     COOKED_MUTTON: ("minecraft:cooked_mutton", "arris:cooked_mutton_chops"),
+    COOKED_MEAT: ("minecraft:cooked_rabbit", "minecraft:cooked_beef", "arris:beef_patty", "minecraft:cooked_chicken", "arris:cooked_chicken_cuts",
+                  "minecraft:cooked_porkchop", "arris:cooked_bacon", "minecraft:cooked_mutton", "arris:cooked_mutton_chops"),
     RAW_FISH: _RAW_COD + _RAW_SALMON + ("minecraft:tropical_fish",),          # JE 的 forge:raw_fishes：不含河豚
     VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
     CABBAGE: ("arris:cabbage", "arris:cabbage_leaf"),                           # JE 不把卷心菜算进 forge:vegetables，单列
+    LEAFY_GREEN: ("arris:cabbage", "arris:cabbage_leaf"),
     MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
     MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
     ONION: ("arris:onion",),
@@ -167,8 +175,10 @@ ITEM_TAGS = {
     COOKED_BACON: ("arris:cooked_bacon",),
     CABBAGE_SEEDS: ("arris:cabbage_seeds",),
     WATER_BUCKET: ("minecraft:water_bucket",),
-    CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato"),
-    SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds"),     # JE 的 forge:seeds/rice 就是米
+    CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato",
+            "minecraft:beetroot", "minecraft:carrot", "minecraft:nether_wart", "minecraft:potato", "minecraft:wheat"),
+    SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds",     # JE 的 forge:seeds/rice 就是米
+            "minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
     FLOWERS: _WILD_CROPS,                       # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
     # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
     # 大餐的物品是第 0 阶段的方块（*_block_stage0）
@@ -231,50 +241,54 @@ VANILLA_TAGS = {
     EGG: ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"),
 }
 
-# 每个标签对应的 JE 标签名（docs/TAGS.md 用；也是"JE 配方里的标签名 → 这里的名字"的别名表：一个 JE 物品标签名只对应这里的一个物品标签）。
-# JE 1.20 的农夫乐事用 forge:；cooked_rice 是 JE 森罗厨房定义的（它把两边的米饭都放进去）
+# 每个标签对应的 JE 标签名（docs/TAGS.md 分两列：forge: 是 1.20.1 的，c: 是 1.21 的，别的命名空间两边一样）；也是"JE 配方里的标签名 → 这里的名字"
+# 的别名表（Shared/Rules/RecipeJson：行为包里照 JE 写的配方 JSON 用这两种名字都认）：一个 JE 物品标签名只对应这里的一个物品标签。
+# cooked_rice 是 JE 森罗厨房（1.20.1）和它的兼容包（1.21）定义的；c:foods/raw_fish 在 1.21 含河豚，这边的 raw_fish 不含（= c:foods/safe_raw_fish），
+# 照 JE 写的配方里写 raw_fish 的也换成它；cooked_meat、leafy_green 照 1.21 的名字补的（1.20.1 的烤串那一格、forge:salad_ingredients）
 JE_NAMES = {
-    TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato"),
+    TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato", "c:crops/tomato", "c:foods/tomato"),
     TOMATO_SEEDS: ("forge:seeds/tomato",),
-    RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice"),
-    COOKED_RICE: ("forge:cooked_rice",),
-    DOUGH: ("forge:dough", "forge:dough/wheat"),
-    COOKED_EGG: ("forge:cooked_eggs",),
-    KNIFE: ("forge:tools/knives", "farmersdelight:tools/knives"),
-    RAW_BEEF: ("forge:raw_beef",),
-    RAW_PORK: ("forge:raw_pork",),
-    RAW_CHICKEN: ("forge:raw_chicken",),
-    RAW_MUTTON: ("forge:raw_mutton",),
-    RAW_MEAT: ("forge:raw_meat",),
-    COOKED_BEEF: ("forge:cooked_beef",),
-    COOKED_PORK: ("forge:cooked_pork",),
-    COOKED_CHICKEN: ("forge:cooked_chicken",),
-    COOKED_MUTTON: ("forge:cooked_mutton",),
-    RAW_FISH: ("forge:raw_fishes",),
-    VEGETABLE: ("forge:vegetables",),
-    CABBAGE: ("forge:crops/cabbage", "forge:salad_ingredients", "forge:salad_ingredients/cabbage"),
-    MILK: ("forge:milk",),
-    MUSHROOMS: ("forge:mushrooms",),
-    ONION: ("forge:crops/onion", "forge:vegetables/onion"),
-    CARROT: ("forge:crops/carrot", "forge:vegetables/carrot"),
-    POTATO: ("forge:crops/potato", "forge:vegetables/potato"),
-    BEETROOT: ("forge:crops/beetroot", "forge:vegetables/beetroot"),
-    WHEAT: ("forge:crops/wheat", "forge:grain/wheat"),
-    BREAD: ("forge:bread", "forge:bread/wheat"),
-    PASTA: ("forge:pasta", "forge:pasta/raw_pasta"),
-    BERRY: ("forge:berries",),
-    BONES: ("forge:bones",),
-    RAW_COD: ("forge:raw_fishes/cod",),
-    RAW_SALMON: ("forge:raw_fishes/salmon",),
-    COOKED_FISH: ("forge:cooked_fishes",),
-    COOKED_COD: ("forge:cooked_fishes/cod",),
-    COOKED_SALMON: ("forge:cooked_fishes/salmon",),
-    RAW_BACON: ("forge:raw_bacon",),
-    COOKED_BACON: ("forge:cooked_bacon",),
+    RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice", "c:crops/rice"),
+    COOKED_RICE: ("forge:cooked_rice", "c:foods/cooked_rice"),
+    DOUGH: ("forge:dough", "forge:dough/wheat", "c:foods/dough", "c:foods/dough/wheat"),
+    COOKED_EGG: ("forge:cooked_eggs", "c:foods/cooked_egg"),
+    KNIFE: ("forge:tools/knives", "farmersdelight:tools/knives", "c:tools/knife"),
+    RAW_BEEF: ("forge:raw_beef", "c:foods/raw_beef"),
+    RAW_PORK: ("forge:raw_pork", "c:foods/raw_pork"),
+    RAW_CHICKEN: ("forge:raw_chicken", "c:foods/raw_chicken"),
+    RAW_MUTTON: ("forge:raw_mutton", "c:foods/raw_mutton"),
+    RAW_MEAT: ("forge:raw_meat", "c:foods/raw_meat"),
+    COOKED_BEEF: ("forge:cooked_beef", "c:foods/cooked_beef"),
+    COOKED_PORK: ("forge:cooked_pork", "c:foods/cooked_pork"),
+    COOKED_CHICKEN: ("forge:cooked_chicken", "c:foods/cooked_chicken"),
+    COOKED_MUTTON: ("forge:cooked_mutton", "c:foods/cooked_mutton"),
+    COOKED_MEAT: ("c:foods/cooked_meat",),
+    RAW_FISH: ("forge:raw_fishes", "c:foods/safe_raw_fish", "c:foods/raw_fish"),
+    VEGETABLE: ("forge:vegetables", "c:foods/vegetable"),
+    CABBAGE: ("forge:crops/cabbage", "c:crops/cabbage", "c:foods/cabbage"),
+    LEAFY_GREEN: ("forge:salad_ingredients", "forge:salad_ingredients/cabbage", "c:foods/leafy_green"),
+    MILK: ("forge:milk", "c:drinks/milk"),
+    MUSHROOMS: ("forge:mushrooms", "c:mushrooms"),
+    ONION: ("forge:crops/onion", "forge:vegetables/onion", "c:crops/onion", "c:foods/onion"),
+    CARROT: ("forge:crops/carrot", "forge:vegetables/carrot", "c:crops/carrot"),
+    POTATO: ("forge:crops/potato", "forge:vegetables/potato", "c:crops/potato"),
+    BEETROOT: ("forge:crops/beetroot", "forge:vegetables/beetroot", "c:crops/beetroot"),
+    WHEAT: ("forge:crops/wheat", "forge:grain/wheat", "c:crops/wheat"),
+    BREAD: ("forge:bread", "forge:bread/wheat", "c:foods/bread"),
+    PASTA: ("forge:pasta", "forge:pasta/raw_pasta", "c:foods/pasta"),
+    BERRY: ("forge:berries", "c:foods/berry"),
+    BONES: ("forge:bones", "c:bones"),
+    RAW_COD: ("forge:raw_fishes/cod", "c:foods/raw_cod"),
+    RAW_SALMON: ("forge:raw_fishes/salmon", "c:foods/raw_salmon"),
+    COOKED_FISH: ("forge:cooked_fishes", "c:foods/cooked_fish"),
+    COOKED_COD: ("forge:cooked_fishes/cod", "c:foods/cooked_cod"),
+    COOKED_SALMON: ("forge:cooked_fishes/salmon", "c:foods/cooked_salmon"),
+    RAW_BACON: ("forge:raw_bacon", "c:foods/raw_bacon"),
+    COOKED_BACON: ("forge:cooked_bacon", "c:foods/cooked_bacon"),
     CABBAGE_SEEDS: ("forge:seeds/cabbage",),
-    WATER_BUCKET: ("forge:buckets/water",),
-    CROPS: ("forge:crops",),
-    SEEDS: ("forge:seeds",),
+    WATER_BUCKET: ("forge:buckets/water", "c:buckets/water"),
+    CROPS: ("forge:crops", "c:crops"),
+    SEEDS: ("forge:seeds", "c:seeds"),
     FLOWERS: ("minecraft:flowers",),
     MEALS: (MEALS,),
     SNACKS: (SNACKS,),
@@ -286,7 +300,7 @@ JE_NAMES = {
     MUSHROOM_COLONIES: (MUSHROOM_COLONIES,),
     CABINETS: (CABINETS,),
     SERVING_CONTAINERS: (SERVING_CONTAINERS,),
-    EGG: ("forge:eggs",),
+    EGG: ("forge:eggs", "c:eggs"),
     HEAT_SOURCES: (HEAT_SOURCES,),
     HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),

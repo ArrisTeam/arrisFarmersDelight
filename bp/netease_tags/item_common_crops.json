@@ -6,6 +6,11 @@
     "arris:cabbage_leaf",
     "arris:onion",
     "arris:rice",
-    "arris:tomato"
+    "arris:tomato",
+    "minecraft:beetroot",
+    "minecraft:carrot",
+    "minecraft:nether_wart",
+    "minecraft:potato",
+    "minecraft:wheat"
   ]
 }

@@ -4,6 +4,10 @@
   "items": [
     "arris:cabbage_seeds",
     "arris:rice",
-    "arris:tomato_seeds"
+    "arris:tomato_seeds",
+    "minecraft:beetroot_seeds",
+    "minecraft:melon_seeds",
+    "minecraft:pumpkin_seeds",
+    "minecraft:wheat_seeds"
   ]
 }

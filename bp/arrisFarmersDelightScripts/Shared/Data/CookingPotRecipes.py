@@ -64,6 +64,7 @@ _TOMATO, _ONION, _CARROT, _POTATO, _BEETROOT = (_tag(Tags.TOMATO), _tag(Tags.ONI
 _RICE, _PASTA, _DOUGH, _BREAD, _BONE, _EGG = (_tag(Tags.RICE), _tag(Tags.PASTA), _tag(Tags.DOUGH), _tag(Tags.BREAD), _tag(Tags.BONES),
                                               _tag(Tags.EGG))
 _MUSHROOMS = ["minecraft:brown_mushroom", "minecraft:red_mushroom"]      # JE 在这两格写的是物品，不是 #forge:mushrooms
+_LEAFY = _tag(Tags.LEAFY_GREEN)          # JE 的 forge:salad_ingredients（鸡肉汤、蔬菜汤、南瓜汤、蔬菜面）；卷心菜卷、饺子写的是 forge:crops/cabbage
 
 _BOWL = ("minecraft:bowl", 0)
 _BOTTLE = ("minecraft:glass_bottle", 0)
@@ -90,7 +91,7 @@ CookingPotRecipeList = [
           CookResult=("arris:pasta_with_mutton_chop", 0), Vessel=_BOWL, PushItem=[], text="羊排意面"),
     _dish("mushroom_rice", ["minecraft:brown_mushroom", "minecraft:red_mushroom", _RICE, ["minecraft:carrot", "minecraft:potato"]],
           CookResult=("arris:mushroom_rice", 0), Vessel=_BOWL, PushItem=[], text="蘑菇饭"),
-    _dish("vegetable_noodles", [_CARROT, _MUSHROOM, _PASTA, _CABBAGE, _VEGETABLE],
+    _dish("vegetable_noodles", [_CARROT, _MUSHROOM, _PASTA, _LEAFY, _VEGETABLE],
           CookResult=("arris:vegetable_noodles", 0), Vessel=_BOWL, PushItem=[], text="蔬菜面"),
     _dish("ratatouille", [_TOMATO, _ONION, _BEETROOT, _VEGETABLE],
           CookResult=("arris:ratatouille", 0), Vessel=_BOWL, PushItem=[], text="蔬菜杂烩"),
@@ -105,13 +106,13 @@ CookingPotRecipeList = [
           CookResult=("arris:bone_broth", 0), Vessel=_BOWL, PushItem=[], text="大骨汤", Experience=0.35),
     _dish("beef_stew", [_BEEF, _CARROT, _POTATO],
           CookResult=("arris:cookbeef_stew", 0), Vessel=_BOWL, PushItem=[], text="牛肉炖"),
-    _dish("chicken_soup", [_CHICKEN, _CARROT, _CABBAGE, _VEGETABLE],
+    _dish("chicken_soup", [_CHICKEN, _CARROT, _LEAFY, _VEGETABLE],
           CookResult=("arris:chicken_soup", 0), Vessel=_BOWL, PushItem=[], text="鸡肉汤"),
-    _dish("vegetable_soup", [_CARROT, _POTATO, _BEETROOT, _CABBAGE],
+    _dish("vegetable_soup", [_CARROT, _POTATO, _BEETROOT, _LEAFY],
           CookResult=("arris:vegetable_soup", 0), Vessel=_BOWL, PushItem=[], text="蔬菜汤"),
     _dish("fish_stew", [_FISH, "arris:tomato_sauce", _ONION],
           CookResult=("arris:fish_stew", 0), Vessel=_BOWL, PushItem=[], text="鱼肉炖"),
-    _dish("pumpkin_soup", ["arris:pumpkin_slice", _CABBAGE, _PORK, _MILK],
+    _dish("pumpkin_soup", ["arris:pumpkin_slice", _LEAFY, _PORK, _MILK],
           CookResult=("arris:pumpkin_soup", 0), Vessel=_BOWL, PushItem=[], text="南瓜汤"),
     _dish("onion_soup", [_ONION, _ONION, _BREAD, _MILK],
           CookResult=("arris:onion_soup", 0), Vessel=_BOWL, PushItem=[], text="洋葱汤"),

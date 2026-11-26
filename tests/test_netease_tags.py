@@ -72,7 +72,7 @@ def _docReads():
         text = handle.read()
     table = text[text.index("<!-- gen_tags: 词表开始"):text.index("<!-- gen_tags: 词表结束")]      # 文档前面另有几张小表，只看生成的词表
     rows = [line for line in table.splitlines() if line.startswith("| `")]
-    return dict((cells[1].strip("` "), cells[6].strip()) for cells in (row.split("|") for row in rows))
+    return dict((cells[1].strip("` "), cells[-2].strip()) for cells in (row.split("|") for row in rows))   # 最后一列
 
 
 def testTheDocSaysWhichRecipesReadEachTag():
@@ -163,8 +163,12 @@ JE_BLOCKS = {
     "farmersdelight:organic_compost": tuple("arris:organic_compost_stage%d" % stage for stage in range(4)),
     "farmersdelight:rich_soil_farmland": ("arris:rich_soil_farmland", "arris:rich_soil_farmland_moist"),
 }
-# JE 原版自己的方块标签：.refs 里只有农夫乐事往里加的那几个，原版的成员照 1.20.1 换成基岩版的名字抄在这里
+# JE 原版自己的方块标签：.refs 里只有农夫乐事往里加的那几个，原版的成员照 1.20.1 换成基岩版的名字抄在这里；
+# Forge 1.20.1 自己的物品标签里的原版部分（Forge 仓库 src/generated/resources/data/forge/tags/items/crops.json、seeds.json，
+# 引的 crops/* / seeds/* 展开）：JE 里 forge:crops / forge:seeds = Forge 给的这些 + 农夫乐事文件里的
 JE_VANILLA = {
+    ("items", "forge:crops"): ("minecraft:beetroot", "minecraft:carrot", "minecraft:nether_wart", "minecraft:potato", "minecraft:wheat"),
+    ("items", "forge:seeds"): ("minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
     ("blocks", "minecraft:campfires"): ("minecraft:campfire", "minecraft:soul_campfire"),
     ("blocks", "minecraft:fire"): ("minecraft:fire", "minecraft:soul_fire"),
     ("blocks", "minecraft:tall_flowers"): ("minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:pitcher_plant"),

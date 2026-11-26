@@ -32,7 +32,8 @@ MEANINGS = {
     "common:cooked_rice": "米饭", "common:dough": "面团", "common:cooked_egg": "做熟的蛋（煎蛋）", "common:mutton_chops": "生羊排",
     "common:cooked_mutton_chops": "熟羊排", "common:knife": "刀", "arris:knife": "刀（农夫乐事的老标签，照旧有效）",
     "common:raw_beef": "生牛肉（含牛肉末）", "common:raw_pork": "生猪肉（含培根）", "common:raw_chicken": "生鸡肉（含鸡块）",
-    "common:raw_mutton": "生羊肉（含羊排）", "common:raw_meat": "生肉：上面四种和生兔肉", "common:cooked_beef": "熟牛肉（含牛肉饼）",
+    "common:raw_mutton": "生羊肉（含羊排）", "common:raw_meat": "生肉：上面四种和生兔肉",
+    "common:cooked_meat": "熟肉：四种熟肉和熟兔肉", "common:leafy_green": "沙拉用的叶菜（JE 的 salad_ingredients）", "common:cooked_beef": "熟牛肉（含牛肉饼）",
     "common:cooked_pork": "熟猪肉（含熟培根）", "common:cooked_chicken": "熟鸡肉（含熟鸡块）", "common:cooked_mutton": "熟羊肉（含熟羊排）",
     "common:raw_fish": "生鱼（含鱼片，不含河豚）", "common:vegetable": "蔬菜（不含卷心菜）", "common:cabbage": "卷心菜（含卷心菜叶）",
     "common:milk": "奶（奶桶、奶瓶）", "common:mushrooms": "能吃的蘑菇", "common:onion": "洋葱", "common:carrot": "胡萝卜",
@@ -40,7 +41,8 @@ MEANINGS = {
     "common:berry": "浆果", "common:bones": "骨头", "common:raw_cod": "生鳕鱼（含鱼片）", "common:raw_salmon": "生鲑鱼（含鱼片）",
     "common:cooked_fish": "熟鱼（含熟鱼片）", "common:cooked_cod": "熟鳕鱼（含熟鱼片）", "common:cooked_salmon": "熟鲑鱼（含熟鱼片）",
     "common:raw_bacon": "生培根", "common:cooked_bacon": "熟培根", "common:cabbage_seeds": "卷心菜种子", "common:water_bucket": "水桶",
-    "common:crops": "作物（团队已有的名字）", "common:seeds": "种子（团队已有的名字）", "common:flowers": "花（团队已有的名字）",
+    "common:crops": "作物（团队已有的名字；原版的那部分 JE 里是 Forge 给的，这边也登记）",
+    "common:seeds": "种子（团队已有的名字；同上）", "common:flowers": "花（团队已有的名字）",
     "farmersdelight:heat_sources": "热源：给上面的锅 / 煎锅加热（有点燃状态的要点着）",
     "minecraft:egg": "蛋（原版自带的标签）", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
     "farmersdelight:heat_conductors": "把热传给上面一格的方块",
@@ -98,6 +100,12 @@ def _codes(names):
     return "、".join("`%s`" % name for name in names) if names else "—"
 
 
+def _jeNames(names, version):
+    """JE_NAMES 里的名字分两列：forge: 是 1.20.1 的，c: 是 1.21 的，别的命名空间（farmersdelight:、minecraft:）两个版本一样。"""
+    other = "c:" if version == "1.20.1" else "forge:"
+    return [name for name in names if not name.startswith(other)]
+
+
 def recipeReaders():
     """{标签: [读它的配方是哪些（一句话）]}，从配方表里数：厨锅每道菜的 Slots 里写着的 #标签（列出是哪几道菜，按表里的先后）、
     砧板按标签的配方（Shared/Data/Cutting.CuttingTagDict 的键，列出切成什么）。按包导入那两张表（厨锅配方表要相对导入词表）。"""
@@ -128,7 +136,8 @@ def docTable(tags=None):
     unknown = sorted(set(readers) - known)
     if unknown:
         raise SystemExit("配方里用了词表里没有的物品标签：%s（加进 Shared/Data/Tags.py，或者改配方）" % "、".join(unknown))
-    rows = ["| 标签 | 种类 | 意思 | 对应 JE | 农夫乐事登记的 | 农夫乐事在哪里读 |", "| --- | --- | --- | --- | --- | --- |"]
+    rows = ["| 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |",
+            "| --- | --- | --- | --- | --- | --- | --- |"]
     groups = (("物品", tags.ITEM_TAGS), ("方块", tags.BLOCK_TAGS), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
               ("物品（农夫乐事没有成员，不生成文件）", dict((tag, ()) for tag in tags.WITHOUT_MEMBERS)))
     for kind, table in groups:
@@ -136,8 +145,9 @@ def docTable(tags=None):
             if tag not in MEANINGS:
                 raise SystemExit("tools/gen_tags.py 的 MEANINGS 里没写 %s 的意思" % tag)
             reads = ([READS[tag]] if tag in READS else []) + (readers.get(tag, []) if kind.startswith("物品") else [])
-            rows.append("| `%s` | %s | %s | %s | %s | %s |" % (tag, kind, MEANINGS[tag], _codes(tags.JE_NAMES.get(tag, ())),
-                                                             _codes(members), "；".join(reads) or "—"))
+            names = tags.JE_NAMES.get(tag, ())
+            rows.append("| `%s` | %s | %s | %s | %s | %s | %s |" % (tag, kind, MEANINGS[tag], _codes(_jeNames(names, "1.20.1")),
+                                                                  _codes(_jeNames(names, "1.21")), _codes(members), "；".join(reads) or "—"))
     return "\n".join(rows)
 
 
