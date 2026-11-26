@@ -155,6 +155,24 @@ def testMixedStringKindsDoNotWarnUnderPython2():
     assert titles[0] == "浓汤" and titles[1] == u"浓汤" and titles[2] == "汤" and titles[3] == "汤", titles
 
 
+def testTheVersionTellsWhenAnswersMayHaveChanged():
+    """ItemNames.version()：装 / 卸口、新问到一个名字、forget() 时加一；读记着的、照旧要不到、卸一个没装着的口都不变
+    （经典厨锅界面的搜索按名字记着过滤结果，拿它判断要不要重算：Shared/Rules/PotSearch）。"""
+    with Rows(None):
+        port = Port({INGOT: "铁锭"})
+        start = Names.version()
+        Book.setNamePort(port)
+        assert Names.version() == start + 1, "装口"
+        assert Names.nameOf("minecraft:dirt", 0) is None and Names.version() == start + 1, "要不到：不变"
+        assert Names.nameOf(*INGOT) == "铁锭" and Names.version() == start + 2, "新问到一个名字"
+        assert Names.nameOf(*INGOT) == "铁锭" and Names.version() == start + 2, "读记着的：不变"
+        Names.removePort(Port({}))
+        assert Names.version() == start + 2, "卸一个没装着的口：不变"
+        Names.removePort(port)
+        Names.forget()
+        assert Names.version() == start + 4, "卸口、forget() 各加一"
+
+
 def testTheBuiltInRowsKeepTheirTitlesAndDoNotAsk():
     port = Port({})
     with Rows(port):

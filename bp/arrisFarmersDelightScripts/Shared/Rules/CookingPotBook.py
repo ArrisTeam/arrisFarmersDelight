@@ -47,8 +47,8 @@ def _pair(value):
             and isInt(value[1]))
 
 
-def _wellFormed(recipe):
-    """食谱字典的形状对不对：不是墓碑（Disabled）、成品 (物品名, aux)、每个变体是非空的 (物品名, aux) 列表、容器可以没有；
+def isShown(recipe):
+    """这一行在经典界面里列不列（PotSearch 也问它）：不是墓碑（Disabled）、成品 (物品名, aux)、每个变体是非空的 (物品名, aux) 列表、容器可以没有；
     至少一个变体，或者有写对了的格子（Slots：新接口登记的配方，标签格一个成员都没有时展开出来的写法是空的）。"""
     if not isinstance(recipe, dict) or recipe.get("Disabled") or not _pair(recipe.get("CookResult")):
         return False
@@ -61,7 +61,7 @@ def _wellFormed(recipe):
 
 
 def _recipes():
-    return [recipe for recipe in CookingPotRecipeList if _wellFormed(recipe)]
+    return [recipe for recipe in CookingPotRecipeList if isShown(recipe)]
 
 
 def _stack(item, count=1):
@@ -84,7 +84,7 @@ def _found(search):
     if entry is None or entry[0] != signature:
         if len(_memo) >= _MEMO_LIMIT:
             _memo.clear()
-        indices = [index for index, recipe in enumerate(CookingPotRecipeList) if _wellFormed(recipe) and matchesSearch(recipe, word)]
+        indices = [index for index, recipe in enumerate(CookingPotRecipeList) if isShown(recipe) and matchesSearch(recipe, word)]
         entry = _memo[word] = [signature, indices, None]
     return entry
 
@@ -113,7 +113,7 @@ def gridCells(search):
 def recipeAt(index):
     """表里第 index 条食谱；越界或形状不对为 None。"""
     recipe = CookingPotRecipeList[index] if 0 <= index < len(CookingPotRecipeList) else None
-    return recipe if _wellFormed(recipe) else None
+    return recipe if isShown(recipe) else None
 
 
 def pickedRecipe(search, picked):

@@ -14,6 +14,7 @@
   要到的名字两端共用（同一个进程、同一种语言）。没装口（离线、沙箱）时什么都要不到。
 - nameOf(物品名, aux)：要到了的（是文字、不空、不是没翻出来的语言键）记住并返回；哪个口都要不到返回 None、不记，隔 RETRY_EVERY 次
   再问（世界还没进完时会要不到；物品真没有名字时也别每次都去问：选中那道菜的标题界面每次刷新都要）。
+- version()：名字的版本：装 / 卸口、新问到一个名字、forget() 时加一。按名字记着东西的（经典厨锅界面的搜索结果，PotSearch）拿它判断要不要重算。
 - forget()：测试用。
 """
 try:
@@ -24,9 +25,18 @@ except NameError:
 _KEY_HEADS = ("item.", "tile.")
 _KEY_TAIL = ".name"
 RETRY_EVERY = 16     # 要不到的名字，再问引擎之前先跳过这么多次（界面每次刷新都要标题）
-_state = {"ports": []}
+_state = {"ports": [], "version": 0}
 _names = {}          # (物品名, aux) -> 显示名（引擎给的原样：py2 是 utf-8 字节串）
 _skips = {}          # (物品名, aux) -> 再问之前还要跳过几次
+
+
+def _changed():
+    _state["version"] += 1
+
+
+def version():
+    """名字的版本：装 / 卸口、新问到一个名字、forget() 时加一（答案可能变了）；照旧要不到、读记着的都不变。"""
+    return _state["version"]
 
 
 def setPort(port):
@@ -35,12 +45,14 @@ def setPort(port):
         del _state["ports"][:]
     elif port not in _state["ports"]:
         _state["ports"].append(port)
+    _changed()
 
 
 def removePort(port):
     """卸下一个口（没装着的不管）。"""
     if port in _state["ports"]:
         _state["ports"].remove(port)
+        _changed()
 
 
 def isLangKey(text):
@@ -76,6 +88,7 @@ def nameOf(name, aux=0):
         if answer is not None:
             _skips.pop(key, None)
             _names[key] = answer
+            _changed()
             return answer
     _skips[key] = RETRY_EVERY
     return None
@@ -85,3 +98,4 @@ def forget():
     """测试用：忘掉记着的名字和要不到的记录。"""
     _names.clear()
     _skips.clear()
+    _changed()
