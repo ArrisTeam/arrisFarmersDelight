@@ -9,6 +9,9 @@
 """
 from __future__ import print_function
 
+import ast
+import io
+import os
 import warnings
 
 import fdtest
@@ -242,6 +245,18 @@ def testCellsAndRows():
                                    "newAuxValue": Pot.CookingPotRecipeList[row]["CookResult"][1], "count": 1}
         for cell in (-1, len(shown), None, "0", 1.0):
             assert Search.rowAt(word, cell) is None, cell
+
+
+def testTheOldNativeScreenUsesTheSameMatcherAndSkipsRemovedRows():
+    """旧的原生界面（DOLOR_SCREEN = False 时的后备，Client/Ui/CookingPotProxy.py；带着引擎，离线导不了）：按源码看，过滤用的是
+    PotSearch.matches、开屏时只列 CookingPotBook.isShown 的行（以前开屏列整张表、墓碑也在），不再自己比 text。"""
+    path = os.path.join(fdtest.BP, fdtest.SCRIPTS, "Client", "Ui", "CookingPotProxy.py")
+    with io.open(path, "rb") as handle:
+        tree = ast.parse(handle.read())
+    calls = set("%s.%s" % (node.func.value.id, node.func.attr) for node in ast.walk(tree)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name))
+    assert "PotSearch.matches" in calls and "CookingPotBook.isShown" in calls, sorted(calls)
+    assert not [call for call in calls if call.endswith(".matchesSearch")], "旧的按 text 比已经拿掉"
 
 
 if __name__ == "__main__":

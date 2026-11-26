@@ -3,7 +3,7 @@
 from ...QuModLibs.Client import Call
 from .. import Texts
 from ..Engine import clientApi, compFactory, levelId, playerId
-from ...Shared.Rules import CookingPotBook
+from ...Shared.Rules import CookingPotBook, PotSearch
 
 CustomUIScreenProxy = clientApi.GetUIScreenProxyCls()
 ViewBinder = clientApi.GetViewBinderCls()
@@ -21,7 +21,8 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
         self.foodRecipe = None # 配方面板UI实例
         self.foodRecipeList = None # 选择的食谱列表
         self.foodRecipeIndex = 0 # 选择的食谱索引
-        self.RecipeList = self.cookingPotRecipeList
+        # 删掉了的（墓碑）、形状不对的行不列（和新界面一样：CookingPotBook.isShown）；表还是进服时 ModAttr 给的那一份
+        self.RecipeList = [recipe for recipe in (self.cookingPotRecipeList or ()) if CookingPotBook.isShown(recipe)]
         self.foodRecipeTimerRunning = False
         self.foodRecipeSearchDict = None
         # 背包列表现在仅在 "Add Food" 按钮点击时按需拉取，OnTick 不再维护
@@ -69,12 +70,9 @@ class arrisCookingPotProxy(CustomUIScreenProxy):
     @ViewBinder.binding(ViewBinder.BF_EditFinished, "#arrisCookingPotEditBox")
     def EditBoxFinished(self, args):
         text = args["Text"]
-        recipeList = []
-        for index in range(len(self.cookingPotRecipeList)):
-            recipeDict = self.cookingPotRecipeList[index]
-            if CookingPotBook.matchesSearch(recipeDict, text):         # 按行里的 text 搜，和新界面一个口径（标题才用显示名）
-                recipeList.append(recipeDict)
-        self.RecipeList = recipeList
+        # 和新界面同一套比法（PotSearch：照 JEI、这一端的显示名）；墓碑、形状不对的比不上。点哪格拿的是本地列表里那个字典，
+        # "添加食材"只发背包格号，从不发食谱的位置：两端过滤结果不一样也点不错
+        self.RecipeList = [recipe for recipe in (self.cookingPotRecipeList or ()) if PotSearch.matches(recipe, text)]
         self.screenNode.UpdateScreen(True)
 
     def FoodRecipeTimerSwitch(self):
