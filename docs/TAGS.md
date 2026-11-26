@@ -106,8 +106,9 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 ## 和森罗物语的标签对照
 
 团队的烹饪原料标签规范是森罗物语厨房网易版（下面简称森罗）2026-11-26 的提交 `2df8e1c` 登记的 18 个标签。下表是两边各登记了什么：
-两个模组都装着时，引擎把同名标签两边的成员并起来，`#` 引的标签再展开。"森罗登记的"照它 `kaleidoscope_cookery_bp/netease_tags/` 的文件抄，
-"农夫乐事登记的"就是词表（测试核对这一列）。
+两个模组都装着时，引擎把同名标签两边的成员并起来，`#` 引的标签再展开（3.10 实机量过的是"两个包登记同一个标签会合并"和"别的包登记进被 `#` 引的标签，
+引它的标签里也有"；两个包都往同一个标签里写 `#`、各引各的时并出来什么样，还没在游戏里量过）。"森罗登记的"照它 `kaleidoscope_cookery_bp/netease_tags/`
+的文件抄，"农夫乐事登记的"就是词表（测试核对这一列）。
 
 | 标签 | 森罗登记的 | 农夫乐事登记的 | JE 里对应的标签 |
 | --- | --- | --- | --- |
@@ -183,7 +184,7 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 | `kaleidoscope_cookery:cooked_rice` | `common:cooked_rice` | 农夫乐事现在不读（JEI 里算同一类） | `forge:cooked_rice`（`:190`） |
 | `kaleidoscope_cookery:tomato_seed` | `common:tomato_seeds` | 不读 | `forge:seeds/tomato`（`:180`） |
 | `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chops`、`common:cooked_mutton_chops` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |
-| 番茄、辣椒、生菜、米；四种种子 | `common:crops`；`common:seeds` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:166-169`）、`forge:seeds`（`:152-158`） |
+| 番茄、两种辣椒、生菜、米；番茄、辣椒、生菜的种子，野生稻种子，米 | `common:crops`；`common:seeds` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:162-169`）、`forge:seeds`（`:152-158`） |
 
 森罗自己的 `common:seed` 现在只有原版种子和米；JE 森罗的 `forge:seeds` 还有它的番茄、辣椒、生菜种子和野生稻（`TagItem.java:152-158`），要不要补由森罗定。
 
