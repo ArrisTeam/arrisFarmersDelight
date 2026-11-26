@@ -75,10 +75,10 @@ def testWithoutAPortItAnswersFromTheStaticTable():
     assert not ItemTags.has("minecraft:pufferfish", Tags.RAW_FISH) and not ItemTags.has(None, Tags.RAW_FISH)
     assert ItemTags.tagsOf("arris:rice") == frozenset((Tags.RICE, Tags.CROPS, Tags.SEEDS))
     assert ItemTags.tagsOf("minecraft:apple") == frozenset()
-    assert ItemTags.blocksOf(Tags.HEAT_SOURCE_LIT) == frozenset(("minecraft:campfire", "minecraft:soul_campfire"))
-    assert ItemTags.blockHas("arris:stove", Tags.HEAT_SOURCE) and not ItemTags.blockHas("arris:stove_extinguish", Tags.HEAT_SOURCE)
-    assert ItemTags.blockTagsOf("minecraft:magma") == frozenset((Tags.HEAT_SOURCE,))
-    assert not ItemTags.blockHas("minecraft:campfire", Tags.HEAT_SOURCE), "营火在要看点燃状态的那个标签里"
+    assert ItemTags.blocksOf(Tags.HEAT_SOURCES) >= frozenset(("minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma"))
+    assert ItemTags.blockHas("arris:stove", Tags.HEAT_SOURCES) and not ItemTags.blockHas("arris:stove_extinguish", Tags.HEAT_SOURCES)
+    assert ItemTags.blockTagsOf("minecraft:magma") == frozenset((Tags.HEAT_SOURCES,))
+    assert ItemTags.blockTagsOf("minecraft:campfire") == frozenset((Tags.HEAT_SOURCES, Tags.TRAY_HEAT_SOURCES)), "营火点没点着看状态"
 
 
 def testANotReadyPortAnswersSingleItemsUncachedButNoEnumerationsThenTakesOver():
@@ -87,17 +87,17 @@ def testANotReadyPortAnswersSingleItemsUncachedButNoEnumerationsThenTakesOver():
     _reset()
     port = FakePort(ready=False, answers={("items", Tags.TOMATO): [u"kaleidoscope_cookery:tomato", "arris:tomato"],
                                           ("tags", "kaleidoscope_cookery:tomato"): ["common:tomato", "kaleidoscope_cookery:vegetable"],
-                                          ("blocks", Tags.HEAT_SOURCE): ["mymod:burner"],
-                                          ("blocktags", "mymod:oven"): ["common:heat_source"]})
+                                          ("blocks", Tags.HEAT_SOURCES): ["mymod:burner"],
+                                          ("blocktags", "mymod:oven"): ["farmersdelight:heat_sources"]})
     ItemTags.setPort("client", port)
     first = ItemTags.generation()
     assert not ItemTags.ready()
     assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
-    assert ItemTags.blocksOf(Tags.HEAT_SOURCE) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCE])
-    assert not ItemTags.blockHas("mymod:burner", Tags.HEAT_SOURCE), "只在反查里的：没准备好不认"
+    assert ItemTags.blocksOf(Tags.HEAT_SOURCES) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCES])
+    assert not ItemTags.blockHas("mymod:burner", Tags.HEAT_SOURCES), "只在反查里的：没准备好不认"
     assert "items" not in port.calls and "blocks" not in port.calls, "没准备好时不问枚举"
     assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO), "按单件问的照样问引擎"
-    assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCE) and Tags.HEAT_SOURCE in ItemTags.blockTagsOf("mymod:oven")
+    assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCES) and Tags.HEAT_SOURCES in ItemTags.blockTagsOf("mymod:oven")
     assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS)), "引擎没答（None）：静态表的"
     asked = port.calls["tags"]
     ItemTags.tagsOf("kaleidoscope_cookery:tomato")
@@ -126,12 +126,12 @@ def testTheEngineOnlyAddsToTheStaticTable():
     """引擎那边万一没挂上农夫乐事的东西（答的里面没有），静态表的照样认：装了口只会多认，不会少认。"""
     _reset()
     ItemTags.setPort("server", FakePort(answers={("items", Tags.RAW_BEEF): [], ("tags", "arris:minced_beef"): [],
-                                                 ("blocks", Tags.HEAT_SOURCE): ["mymod:burner"]}))
+                                                 ("blocks", Tags.HEAT_SOURCES): ["mymod:burner"]}))
     assert ItemTags.ready()
     assert ItemTags.itemsOf(Tags.RAW_BEEF) == ("minecraft:beef", "arris:minced_beef")
     assert ItemTags.has("arris:minced_beef", Tags.RAW_BEEF) and Tags.RAW_BEEF in ItemTags.tagsOf("arris:minced_beef")
-    assert ItemTags.blocksOf(Tags.HEAT_SOURCE) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCE] + ("mymod:burner",))
-    assert ItemTags.blockHas("mymod:burner", Tags.HEAT_SOURCE)
+    assert ItemTags.blocksOf(Tags.HEAT_SOURCES) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCES] + ("mymod:burner",))
+    assert ItemTags.blockHas("mymod:burner", Tags.HEAT_SOURCES)
     _reset()
 
 
@@ -139,11 +139,11 @@ def testHasAsksBothWays():
     """按物品问（3.10 以前的服务端只有 GetItemTags：物品 JSON 里声明的标签）和按标签反查，任一个说带就是带；方块一样。"""
     _reset()
     ItemTags.setPort("server", FakePort(answers={("tags", "mymod:cleaver"): ["arris:knife"],
-                                                 ("blocktags", "mymod:oven"): ["common:heat_source"]}))
+                                                 ("blocktags", "mymod:oven"): ["farmersdelight:heat_sources"]}))
     assert ItemTags.has("mymod:cleaver", Tags.LEGACY_KNIFE), "反查答不了（None）时按物品问的也算"
     assert "mymod:cleaver" not in ItemTags.itemsOf(Tags.LEGACY_KNIFE)
-    assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCE) and Tags.HEAT_SOURCE in ItemTags.blockTagsOf("mymod:oven")
-    assert not ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCE_LIT)
+    assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCES) and Tags.HEAT_SOURCES in ItemTags.blockTagsOf("mymod:oven")
+    assert not ItemTags.blockHas("mymod:oven", Tags.TRAY_HEAT_SOURCES)
     _reset()
 
 
@@ -172,15 +172,15 @@ def testABrokenPortFallsBackToTheStaticTable():
     _reset()
     for port in (FakePort(error=RuntimeError("engine")),
                  FakePort(answers={("items", Tags.TOMATO): "arris:tomato", ("tags", "arris:tomato"): {"a": 1},
-                                   ("blocks", Tags.HEAT_SOURCE): 7, ("items", Tags.MILK): [None, 3, "arris:milk_bottle"]}),
+                                   ("blocks", Tags.HEAT_SOURCES): 7, ("items", Tags.MILK): [None, 3, "arris:milk_bottle"]}),
                  object()):
         ItemTags.setPort("server", port)
         ItemTags.itemsOf(Tags.TOMATO)
         assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
         assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS))
-        assert ItemTags.blocksOf(Tags.HEAT_SOURCE) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCE])
+        assert ItemTags.blocksOf(Tags.HEAT_SOURCES) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCES])
         assert ItemTags.itemsOf(Tags.MILK) == ("minecraft:milk_bucket", "arris:milk_bottle"), "读不懂的成员丢掉，不重复"
-        assert ItemTags.has("arris:onion", Tags.VEGETABLE) and ItemTags.blockHas("minecraft:lava", Tags.HEAT_SOURCE)
+        assert ItemTags.has("arris:onion", Tags.VEGETABLE) and ItemTags.blockHas("minecraft:lava", Tags.HEAT_SOURCES)
 
     class Flaky(FakePort):
         def ready(self):
@@ -226,17 +226,17 @@ class FakeBlockComp(object):
 
 class FakeBlockInfo(object):
     def GetBlockTags(self, blockName):
-        return {"minecraft:magma": ["common:heat_source", "minecraft:is_pickaxe_item_destructible"]}.get(blockName)
+        return {"minecraft:magma": ["farmersdelight:heat_sources", "minecraft:is_pickaxe_item_destructible"]}.get(blockName)
 
 
 def testTheEnginePortReadsTheEnginesShapes():
     items = FakeItemComp(tags={"minecraft:beef": ["minecraft:is_meat", PROBE_TAG]},
                          members={PROBE_TAG: [PROBE_ITEM, "arris:minced_beef", PROBE_ITEM]})
-    port = TagPort.EnginePort(lambda: items, lambda: FakeBlockComp({Tags.HEAT_SOURCE: ["arris:stove"]}), FakeBlockInfo)
+    port = TagPort.EnginePort(lambda: items, lambda: FakeBlockComp({Tags.HEAT_SOURCES: ["arris:stove"]}), FakeBlockInfo)
     assert port.itemsOf(PROBE_TAG) == (PROBE_ITEM, "arris:minced_beef") and port.itemsOf("nobody:tag") == ()
     assert port.tagsOf("minecraft:beef") == ("minecraft:is_meat", PROBE_TAG) and port.tagsOf("nosuchmod:nothing") is None
-    assert port.blocksOf(Tags.HEAT_SOURCE) == ("arris:stove",)
-    assert port.blockTagsOf("minecraft:magma")[0] == "common:heat_source" and port.blockTagsOf("nosuchmod:block") is None
+    assert port.blocksOf(Tags.HEAT_SOURCES) == ("arris:stove",)
+    assert port.blockTagsOf("minecraft:magma")[0] == "farmersdelight:heat_sources" and port.blockTagsOf("nosuchmod:block") is None
     assert port.ready()
     client = TagPort.EnginePort(lambda: items, lambda: FakeBlockComp({}))
     assert client.blockTagsOf("minecraft:magma") is None, "客户端没有 GetBlockTags"

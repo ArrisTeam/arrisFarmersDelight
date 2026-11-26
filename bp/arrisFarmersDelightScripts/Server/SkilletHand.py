@@ -3,7 +3,7 @@
 
 JE SkilletItem.use / getUseDuration / onUseTick / releaseUsing / finishUsingItem：
 - 一只手煎锅、另一只手原料（JE 两只手都认；基岩版生肉放不进副手，常用的是煎锅放副手、原料拿主手，见 SkilletHandRules.skilletHand），
-  玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块：名单或两个热源标签，营火熄没熄不管，Shared/Rules/HeatSources.nearHeat；
+  玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块：名单或热源标签，营火熄没熄不管，Shared/Rules/HeatSources.nearHeat；
   食物要有营火配方：CanCookedFoodDict，表里没有的问引擎的营火配方，Shared/Rules/Grilling）；
 - 煎一件的时间 = SkilletBlock.getSkilletCookingTime(营火配方 600 刻, 这把煎锅的火焰附加)：6 / 4 / 3 秒；
 - 另一只手没有能煎的食物：提示"用另一只手拿着原料！"；头泡在水里：提示"在水里可没法煎啊……"（潜行时不提示：潜行右键方块是放煎锅，

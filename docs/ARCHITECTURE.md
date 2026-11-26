@@ -280,7 +280,7 @@ def OnServerSkilletBlockUse(args):
   静态表 ∪ 引擎的答案，按标签 / 物品缓存；准备好的那一刻、装卸口、`refresh()` 时换代（`generation` 加一），按标签建了索引的地方据此重建
   （厨锅的 `PotRecipeTable` 准备好之前一个答案都不记，见下一节）。
 - **判断点**：`Shared/Rules/Knives`（是不是刀：`knifeList` ∪ `arris:knife` ∪ `common:knife`）、`HeatSources`（热源方块：`CanProvideHeatBlockList` ∪
-  `common:heat_source` ∪ 点着的 `common:heat_source_lit`）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
+  JE 的 `farmersdelight:heat_sources`，有点燃状态的要点着）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
   厨锅的标签格、砧板按标签的配方也问 `ItemTags`（见下一节）。
 - **自检**：两端的 `McdkTagsTest`（`Server/Debug`、`Client/Debug`：口准备好没有、词表每个标签引擎反查到的成员和静态表比、刀、营火配方的原始返回值和解析、
   热源标签；怎么调写在文件头）。
@@ -558,16 +558,24 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
   否则进背包，背包满了掉在脚下。
   - 有序配方把剩余物写进 `result` 数组，引擎自己给（原版蛋糕就是这样还桶的）。
   - 无序配方的 `result` 数组引擎只认第一项，由脚本补：`CraftItemOutputChangeServerEvent` 时读合成格（`GetPlayerUIItem`，2×2 是槽位 28..31、3×3 是 32..40），
-    对上 `Shared/Data/CraftReturns.py`（`tools/gen_crafts.py` 从 `bp/recipes` 生成：成品 -> 原料名、一份几个、哪种原料剩什么），下一刻再读一遍格子，
-    按每格真的少了几件算做了几份（`Shared/Rules/Crafting.craftsDone`：被取消、请求被拒都是 0 份；同一刻玩家又挪走别的格子也不会多算，上限是取出个数 ÷ 一份个数）。
-  - JE 的面团配方（`DoughRecipe`）把水桶原样留下：表里它的剩余物是水桶自己，做完水桶回到原来那格。
+    对上 `Shared/Data/CraftReturns.py`（`tools/gen_crafts.py` 从 `bp/recipes` 生成：成品 -> 每格的选项（物品名或 `#标签`）、一份几个、原样留下的选项；
+    只收做完可能还东西的无序配方），下一刻再读一遍格子，按每格真的少了几件算做了几份（`Shared/Rules/Crafting.craftsDone`：被取消、请求被拒都是 0 份；
+    同一刻玩家又挪走别的格子也不会多算，上限是取出个数 ÷ 一份个数）。认配方时标签格按标签现问（`Crafting.entryFor`，`ItemTags`：别的模组并进标签的东西也认），
+    还什么按格子里**实际放的物品**查 `Remainders`（和 JE 一样按物品算；别的模组并进来的、表里没有的物品不留东西）。两条不变式：每格每份最多还一次；
+    认不出是哪条配方（一条都对不上，或者对上了不止一条）什么都不还。
+  - JE 的面团配方（`DoughRecipe`）把水桶原样留下：表里它的 `keeps` 是水桶，做完水桶回到原来那格。
   - `Food.shapedRecipeContainerDict` 是 linkage 的旧接口（下游包按成品名登记"还一个容器"），生成的表里没有的成品才走它；表不能清空——
     `Interface` / `Obtain` 对空容器返回 `False`。本包留在里面的条目由 `tests/test_recipe_rules.py` 核对和生成的表一致。
 - **砧板摆盘**（前置包在场）：`tools/gen_dishes.py` 给每道菜算 `extras`（换成了别的东西的容器）和 `keeps`（原样留下的配料，即面团的水桶）。
   照 HoD 的 `Assembling.make`：`keeps` 的那层每轮都放回去，不限做几份（一桶水揉完一整叠小麦），做完整层还给厨师（`DishStation.roundsOf / leftOf`）。
 
-配方的写法也照 JE：JE 是无序的这边也是无序（面团、牛奶瓶倒回桶、蜂蜜火腿、牧羊人派、填馅马铃薯……）；标签占好几格的各格可以混着放
-（熟羊肉 / 熟羊排、奶桶 / 奶瓶——有序配方把每种位置组合各写一份，左右镜像引擎自己认，只写一边）。`tests/test_recipe_parity.py` 逐条对照 JE。
+配方的写法也照 JE：JE 是无序的这边也是无序（面团、牛奶瓶倒回桶、蜂蜜火腿、牧羊人派、填馅马铃薯……）。JE 写标签的格子这边也写标签
+（`{"tag": ...}`，词表 `Shared/Data/Tags.py` 的名字，2026-11-26 起；3.10 实机：有序的 key、无序的 ingredients 都认，别的包并进同一标签的物品也做得出），
+一份 JE 配方一份文件（烤串那一格 JE 是"熟牛 / 猪 / 鸡 / 羊 / 鱼 / 熟兔肉"任一，基岩版一格只能写一个标签：`common:cooked_meat`、`common:cooked_fish` 两份）。
+无序配方一格一个原料、物品写在前标签写在后（引擎的无序配方是贪心匹配；count 大于 1 的标签格里有堆叠不够的成员整份作废——Strata 引擎研究，3.9 反编译）。
+有序配方里会剩容器的格子写具体物品：奶桶 / 奶瓶每种摆法各写一份（左右镜像引擎自己认，只写一边），厨锅的水桶也写物品——容器写在 `result` 数组里，
+和放进去的是什么无关，不给有序配方开脚本还容器的路。铁锭照团队的写法写物品。`tests/test_recipe_tags.py` 对着 `.refs` 逐格复算"哪格是哪个标签"，
+`tests/test_recipe_parity.py` 按词表展开后逐条对照 JE 的做法、摆法、剩余物。
 
 前置包在场时工作台不再出砧板菜（`Compat/Diegesis/DishCrafts.py`）：拦的是"配方"不是"成品"——取结果时读合成格，格子里的原料正好是这道菜在砧板上的某条配方才取消
 （`DishStation.isDishCraft`）。切片拼回整个派（一种原料）、原版自己的南瓜派配方、创造模式从物品栏拿东西（合成格对不上）都不拦。
@@ -1047,10 +1055,15 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 村庄结构（同上一节的限制以外，JE 的五种村庄房子也没搬）。
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
 
-暂时和 JE 不一样、等用户定的：
-- 下界合金刀：JE 只有锻造台这一条（下界合金升级锻造模板 + 钻石刀 + 下界合金锭，附魔和耐久跟着走）。这边两条都在：锻造台配方
-  `bp/recipes/arris_netherite_knife_smithing.json`（`minecraft:recipe_smithing_transform`；2026-11-26 引擎收了，按原料、按成品都查得到，
-  但还没在锻造台界面里真做过一次、附魔留不留没看），工作台那条"下界合金锭 + 木棍"（`arris_netherite_knife.json`）先留着，等在游戏里亲手做过一次再决定删不删。
+用户定了的：
+- 下界合金刀（2026-11-26）：和 JE 一样只有锻造台这一条，下界合金升级锻造模板 + 钻石刀 + 下界合金锭
+  （`bp/recipes/arris_netherite_knife_smithing.json`，`minecraft:recipe_smithing_transform`）；原来工作台的"下界合金锭 + 木棍"删了。
+  引擎收了这条锻造配方（按原料、按成品都查得到）；第九轮实机在锻造台界面里用带锋利 III 的钻石刀做出了下界合金刀，附魔留着（那一局探针包里
+  另有一条同样内容的配方，只留农夫乐事这条、带损耗的刀还要再量）。
+- 工作台配方按标签（2026-11-26，见「合成与合成剩余物」）。和 JE 不一样的几处：有序配方里会剩容器的格子写具体物品（蛋糕、巧克力派、芝士蛋糕、
+  派皮的奶，厨锅的水桶），所以别的模组的奶、水桶进不了这几样有序配方；铁锭写物品（`minecraft:iron_ingot`），别的模组的铁锭不认。
+  前置包在场时工作台不出砧板菜，按砧板的菜谱表（`DishList`，写标签的配方按词表的静态成员展开）认：格子里有别的模组并进标签的东西时
+  对不上，工作台照出这道菜（砧板也不收它），这个口子先留着（主会话定的，不动 `DishStation` / 前置包那一侧）。
 
 2026-11-26 四轮实机量过、照着改了或核过的：刀打一下掉 1 点耐久（和 JE 一样）、拆方块掉 2 点（改回 1 点）、`attack_damage` 加在基础 1 点之上（五把刀各减 1）；
 原版堆肥桶空桶第一件必成、7 层不收不扣（脚本堆肥照做）；原版成熟作物的掉落分布和时运（沃土上的原版作物照它改）；番茄藤放回绳子、舒适回血、

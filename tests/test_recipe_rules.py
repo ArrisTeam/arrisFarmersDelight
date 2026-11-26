@@ -24,6 +24,8 @@ import fdtest
 from recipekit import RECIPES, loadRecipes, packIdentifiers, readText, resultsOf
 
 Food = fdtest.load("Shared.Data.Food")
+Remainders = fdtest.load("Shared.Data.Remainders")
+Tags = fdtest.load("Shared.Data.Tags")
 CraftReturns = fdtest.load("Shared.Data.CraftReturns").CraftReturns
 
 FURNACE_TAGS = ("furnace", "blast_furnace", "smoker", "campfire", "soul_campfire")
@@ -86,7 +88,22 @@ def testPackItemsExist():
 def testTheReturnsTableIsUpToDateWithTheRecipes():
     tool = os.path.join(fdtest.ROOT, "tools", "gen_crafts.py")
     code = subprocess.call([sys.executable, tool, "--check"])
-    assert code == 0, "合成配方改了：py -3 tools/gen_crafts.py 重新生成 Shared/Data/CraftReturns.py"
+    assert code == 0, "合成配方改了：py -3 tools/gen_crafts.py 重新生成 Shared/Data/CraftReturns.py 和 Server/Debug/CraftCases.py"
+
+
+def _members(option):
+    """表里一格的选项 -> 词表里的静态成员（物品名就是它自己）。"""
+    if not option.startswith("#"):
+        return (option,)
+    return tuple(Tags.ITEM_TAGS.get(option[1:]) or Tags.VANILLA_TAGS[option[1:]])
+
+
+def _cells(body):
+    """无序配方 JSON 一格一个选项（物品名或 "#标签"），count 展开成几格。"""
+    cells = []
+    for entry in body["ingredients"]:
+        cells += [("#" + entry["tag"]) if "tag" in entry else entry["item"]] * entry.get("count", 1)
+    return cells
 
 
 def testTheReturnsTableOnlyHoldsShapelessRecipes():
@@ -95,7 +112,10 @@ def testTheReturnsTableOnlyHoldsShapelessRecipes():
         for entry in entries:
             kind, body = recipes[entry["source"]]
             assert kind == "shapeless" and resultsOf(body) == [(result, entry["count"])], entry["source"]
-            assert entry["returns"] and set(entry["returns"]) <= set(entry["ingredients"]), entry["source"]
+            assert sorted(entry["slots"]) == sorted(_cells(body)), entry["source"]
+            leaves = [member for option in entry["slots"] for member in _members(option) if Remainders.craftRemainderOf(member)]
+            assert leaves or entry["keeps"], "%s 做完不会还东西，不该进表" % entry["source"]
+            assert set(entry["keeps"]) <= set(entry["slots"]), entry["source"]
 
 
 def testLegacyContainerDictAgreesWithTheReturnsTable():
@@ -114,8 +134,10 @@ def testLegacyContainerDictAgreesWithTheReturnsTable():
         entries = CraftReturns.get(item) or []
         assert sorted(entry["source"] for entry in entries) == sorted(name for name, _kind, _results in makers[item]), item
         for entry in entries:
-            back = [entry["returns"][name] for name in entry["ingredients"] if name in entry["returns"]]
-            assert back == [container["itemName"]], "%s 按 JE 还 %s，旧字典写的是 %s" % (entry["source"], back, container["itemName"])
+            leaving = [option for option in entry["slots"] if any(Remainders.craftRemainderOf(m) for m in _members(option))]
+            back = set(Remainders.craftRemainderOf(m) for option in leaving for m in _members(option)) - {None}
+            assert len(leaving) == 1 and back == {container["itemName"]}, "%s 按 JE 还 %s，旧字典写的是 %s" % (
+                entry["source"], back, container["itemName"])
 
 
 if __name__ == "__main__":

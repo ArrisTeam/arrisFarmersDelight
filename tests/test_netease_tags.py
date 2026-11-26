@@ -3,12 +3,14 @@
 """行为包的 netease_tags/ 和 docs/TAGS.md 里的词表（tools/gen_tags.py 从词表 Shared/Data/Tags.py 生成）与词表本身。
 
 引擎的规矩（网易 3.10 实机，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：一个文件一个标签，各模组登记的同名标签合并去重；
-成员不存在时引擎一直刷 ERROR 日志（所以只写本包的和原版的，名字要真）；没有 aux（只写扁平名）；# 引用"物品 JSON 里声明的标签"展开不全（这里不用 #）。
+成员不存在时引擎一直刷 ERROR 日志（所以只写本包的和原版的，名字要真）；没有 aux（只写扁平名）；# 引用"物品 JSON 里声明的标签"展开不全，
+引 netease_tags 登记的标签、原版标签都展开（第九轮实机：反查、按物品问、配方三处都认）。
 锁的事：
-  1. 文件和文档的词表是最新的；每个文件 type / identifier / items 三个键，文件名照 identifier，identifier 不重复，成员不重复、没有 #、没有旧聚合名
+  1. 文件和文档的词表是最新的；每个文件 type / identifier / items 三个键，文件名照 identifier，identifier 不重复，成员不重复、没有旧聚合名；
+     # 只引本包登记的同类标签；文件展开后就是静态表（Tags.ITEM_TAGS / BLOCK_TAGS），JE 的标签文件用 # 引了这边也有的标签的地方，这边也用 #
   2. 成员只有 arris: 和 minecraft: 的：arris: 的在本包的物品 / 方块定义里；minecraft: 的在本机最新游戏的原版创造目录（物品）/ blocks.json（方块）里
      （本机没装游戏时这一项跳过）
-  3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时）；热源两个标签合起来就是现在的热源方块表；
+  3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时）；热源标签就是现在的热源方块表；
      一个 JE 物品标签名只对应一个标签（JE 配方的标签名 → 这里的名字，做别名表时不能有歧义）；准备好的探针在表里；没有成员的名字不生成文件
 """
 from __future__ import print_function
@@ -72,7 +74,7 @@ def _docReads():
         text = handle.read()
     table = text[text.index("<!-- gen_tags: 词表开始"):text.index("<!-- gen_tags: 词表结束")]      # 文档前面另有几张小表，只看生成的词表
     rows = [line for line in table.splitlines() if line.startswith("| `")]
-    return dict((cells[1].strip("` "), cells[6].strip()) for cells in (row.split("|") for row in rows))
+    return dict((cells[1].strip("` "), cells[-2].strip()) for cells in (row.split("|") for row in rows))   # 最后一列
 
 
 def testTheDocSaysWhichRecipesReadEachTag():
@@ -105,7 +107,12 @@ def testEachFileIsOneWellFormedTag():
         seen.add((doc["type"], doc["identifier"]))
         items = doc["items"]
         assert isinstance(items, list) and items and len(set(items)) == len(items), name
-        assert all(NAME.match(item) for item in items), "%s：成员只写扁平的名字（没有 #、没有 aux）%r" % (name, items)
+        own = Tags.ITEM_TAG_FILES if doc["type"] == "item" else Tags.BLOCK_TAG_FILES
+        for item in items:
+            if item.startswith("#"):
+                assert item[1:] in own and item[1:] != doc["identifier"], "%s：# 只引本包登记的同类标签 %r" % (name, item)
+            else:
+                assert NAME.match(item), "%s：成员只写扁平的名字（没有 aux）%r" % (name, item)
         assert not set(items) & set(LEGACY_NAMES), name
 
 
@@ -114,7 +121,7 @@ def testMembersAreOursOrVanillaAndExist():
     blocks = _definitions("netease_blocks", "minecraft:block")
     for name, doc in _tagFiles().items():
         own = blocks if doc["type"] == "block" else items | blocks         # 方块也是物品（方块物品）
-        for member in doc["items"]:
+        for member in (item for item in doc["items"] if not item.startswith("#")):
             space = member.split(":")[0]
             assert space in ("arris", "minecraft"), "%s 写了别的模组的 %s（对方没装时引擎一直刷 ERROR）" % (name, member)
             assert space != "arris" or member in own, "%s 的 %s 本包里没有定义" % (name, member)
@@ -159,11 +166,16 @@ JE_ITEMS.update(("farmersdelight:%s_block" % feast, ("arris:%s_block_stage0" % f
 JE_BLOCKS = {
     "minecraft:lava": ("minecraft:lava", "minecraft:flowing_lava"), "minecraft:grass": ("minecraft:short_grass",),
     "minecraft:twisting_vines_plant": ("minecraft:twisting_vines",), "minecraft:big_dripleaf_stem": ("minecraft:big_dripleaf",),
+    "minecraft:magma_block": ("minecraft:magma",),
     "farmersdelight:organic_compost": tuple("arris:organic_compost_stage%d" % stage for stage in range(4)),
     "farmersdelight:rich_soil_farmland": ("arris:rich_soil_farmland", "arris:rich_soil_farmland_moist"),
 }
-# JE 原版自己的方块标签：.refs 里只有农夫乐事往里加的那几个，原版的成员照 1.20.1 换成基岩版的名字抄在这里
+# JE 原版自己的方块标签：.refs 里只有农夫乐事往里加的那几个，原版的成员照 1.20.1 换成基岩版的名字抄在这里；
+# Forge 1.20.1 自己的物品标签里的原版部分（Forge 仓库 src/generated/resources/data/forge/tags/items/crops.json、seeds.json，
+# 引的 crops/* / seeds/* 展开）：JE 里 forge:crops / forge:seeds = Forge 给的这些 + 农夫乐事文件里的
 JE_VANILLA = {
+    ("items", "forge:crops"): ("minecraft:beetroot", "minecraft:carrot", "minecraft:nether_wart", "minecraft:potato", "minecraft:wheat"),
+    ("items", "forge:seeds"): ("minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
     ("blocks", "minecraft:campfires"): ("minecraft:campfire", "minecraft:soul_campfire"),
     ("blocks", "minecraft:fire"): ("minecraft:fire", "minecraft:soul_fire"),
     ("blocks", "minecraft:tall_flowers"): ("minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:pitcher_plant"),
@@ -215,6 +227,51 @@ def testMembersMatchTheJavaTags():
     assert sorted(flowers) == sorted(Tags.ITEM_TAGS[Tags.FLOWERS]), (flowers, Tags.ITEM_TAGS[Tags.FLOWERS])
 
 
+def _alias(kind):
+    """JE 的标签名 -> 这边同类的标签（JE_NAMES 反过来，只取 kind 那一类：物品 / 方块）。"""
+    table = Tags.ITEM_TAG_FILES if kind == "items" else Tags.BLOCK_TAG_FILES
+    return dict((name, tag) for tag, names in Tags.JE_NAMES.items() if tag in table for name in names)
+
+
+def testTheFilesExpandToTheStaticTables():
+    """文件里写的（ITEM_TAG_FILES，可以有 "#标签"）展开就是静态作答的表；静态表里没有 #。"""
+    for files, expanded in ((Tags.ITEM_TAG_FILES, Tags.ITEM_TAGS), (Tags.BLOCK_TAG_FILES, Tags.BLOCK_TAGS)):
+        assert sorted(files) == sorted(expanded)
+        for tag, members in expanded.items():
+            assert not [name for name in members if name.startswith("#")] and len(set(members)) == len(members), tag
+            flat = [name for name in files[tag] if not name.startswith("#")]
+            assert set(flat) <= set(members), tag
+            for ref in (name[1:] for name in files[tag] if name.startswith("#")):
+                assert set(expanded[ref]) <= set(members), (tag, ref)
+    assert Tags.ITEM_TAGS[Tags.VEGETABLE] == ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato")
+    assert "#" + Tags.TOMATO in Tags.ITEM_TAG_FILES[Tags.VEGETABLE], "别的模组的番茄进 common:tomato 就算蔬菜"
+    assert "#" + Tags.TRAY_HEAT_SOURCES in Tags.BLOCK_TAG_FILES[Tags.HEAT_SOURCES]
+
+
+def testNestingFollowsJava():
+    """JE 1.3.4 的标签文件里用 # 引了别的标签、而那个标签这边也登记了（同一类），这边的文件也写 #：别的模组登记进小标签的东西自动进大标签。
+    引的是这边没有的（#minecraft:campfires、#farmersdelight:cabinets/wooden、#forge:milk/milk……）照旧展开写成员。"""
+    if not os.path.isdir(JE_DATA):
+        print("跳过：没有 JE 源码（.refs/FarmersDelight）")
+        return
+    checked = 0
+    for kind, files in (("items", Tags.ITEM_TAG_FILES), ("blocks", Tags.BLOCK_TAG_FILES)):
+        alias = _alias(kind)
+        for tag, written in files.items():
+            for jeName in Tags.JE_NAMES.get(tag, ()):
+                space, path = jeName.split(":", 1)
+                source = os.path.join(JE_DATA, space, "tags", kind, *path.split("/")) + ".json"
+                if not os.path.isfile(source):
+                    continue
+                for value in _json(source)["values"]:
+                    ref = value if isinstance(value, str) else value.get("id", "")
+                    target = alias.get(ref[1:]) if ref.startswith("#") else None
+                    if target is not None and target != tag:
+                        checked += 1
+                        assert "#" + target in written, "%s：JE 的 %s 引了 %s，这边要写 #%s" % (tag, jeName, ref, target)
+    assert checked >= 15, checked
+
+
 def testTheVocabulary():
     itemTags, blockTags = set(Tags.ITEM_TAGS), set(Tags.BLOCK_TAGS)
     assert not itemTags & blockTags and not (itemTags | blockTags) & set(Tags.VANILLA_TAGS)
@@ -245,6 +302,7 @@ def _serverHeat():
 
 # 农夫乐事自己的方块标签（farmersdelight:）读的地方是"名单 ∪ 标签"：标签的成员就是那张名单（离线时和原来一样）
 LISTED = {
+    Tags.HEAT_SOURCES: lambda: Cooking.CanProvideHeatBlockList,
     Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
     Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
     Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
@@ -252,6 +310,10 @@ LISTED = {
     Tags.MUSHROOM_COLONY_GROWABLE_ON: lambda: fdtest.load("Shared.Rules.ColonyRules").GROWABLE_ON,
     Tags.DROPS_CAKE_SLICE: lambda: fdtest.load("Shared.Data.Slicing").CANDLE_CAKES,
 }
+
+# JE 有、这边还没登记的成员（等实机）：熔岩炼药锅在基岩版是炼药锅（minecraft:cauldron）的 cauldron_liquid 状态，Server/Helpers/Heat 另认；
+# 引擎里有没有 lava_cauldron 这个方块名没核实
+PENDING = {Tags.HEAT_SOURCES: ("minecraft:lava_cauldron",)}
 
 
 def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
@@ -269,7 +331,7 @@ def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
     for tag in own:
         expanded = _jeTag(tag, "blocks", optional=optional)
         assert expanded is not None, tag
-        missing = sorted(set(expanded) - set(Tags.BLOCK_TAGS[tag]))
+        missing = sorted(set(expanded) - set(Tags.BLOCK_TAGS[tag]) - set(PENDING.get(tag, ())))
         assert not missing, "%s：JE 有、这边没有 %s" % (tag, missing)
     assert optional == ["create:chute"], optional
 
@@ -294,24 +356,25 @@ def testFarmersDelightsCategoryItemTagsAreJavasFiles():
     assert len(Tags.ITEM_TAGS[Tags.CABINETS]) == 11 and "minecraft:pumpkin_pie" in Tags.ITEM_TAGS[Tags.PIES]
 
 
-def testTheHeatTagsAreTodaysHeatSources():
-    """两个热源标签合起来 = 现在的热源方块表（CanProvideHeatBlockList 导入时的样子）；营火要看点燃状态，单列。"""
-    both = Tags.BLOCK_TAGS[Tags.HEAT_SOURCE] + Tags.BLOCK_TAGS[Tags.HEAT_SOURCE_LIT]
-    assert sorted(both) == sorted(Cooking.CanProvideHeatBlockList)
-    assert set(Tags.BLOCK_TAGS[Tags.HEAT_SOURCE_LIT]) == {"minecraft:campfire", "minecraft:soul_campfire"}
-    assert "arris:stove_extinguish" not in both, "熄着的炉灶不发热"
+def testTheHeatTagIsTodaysHeatSources():
+    """热源标签照 JE 只有一个（farmersdelight:heat_sources）= 现在的热源方块表（CanProvideHeatBlockList 导入时的样子）；营火点没点着看状态
+    （HeatSources 的规则），不再单列一个标签。"""
+    members = Tags.BLOCK_TAGS[Tags.HEAT_SOURCES]
+    assert sorted(members) == sorted(Cooking.CanProvideHeatBlockList)
+    assert {"minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma"} <= set(members)
+    assert "arris:stove_extinguish" not in members, "熄着的炉灶不发热"
 
 
 def testTheBriefsMembers():
     """任务书里定下的几条（A 拿它们还原厨锅格子）。"""
     expect = {
-        Tags.TOMATO: ("arris:tomato",), Tags.DOUGH: ("arris:wheat_dough",), Tags.FRIED_EGG: ("arris:fried_egg",),
+        Tags.TOMATO: ("arris:tomato",), Tags.DOUGH: ("arris:wheat_dough",), Tags.COOKED_EGG: ("arris:fried_egg",),
         Tags.RAW_BEEF: ("minecraft:beef", "arris:minced_beef"), Tags.RAW_PORK: ("minecraft:porkchop", "arris:bacon"),
         Tags.RAW_CHICKEN: ("minecraft:chicken", "arris:chicken_cuts"), Tags.RAW_MUTTON: ("minecraft:mutton", "arris:mutton_chops"),
         Tags.RAW_FISH: ("minecraft:cod", "arris:cod_slice", "minecraft:salmon", "arris:salmon_slice", "minecraft:tropical_fish"),
         Tags.VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
-        Tags.MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONE: ("minecraft:bone",),
+        Tags.MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
+        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONES: ("minecraft:bone",),
         Tags.WATER_BUCKET: ("minecraft:water_bucket",),
     }
     for tag, members in expect.items():

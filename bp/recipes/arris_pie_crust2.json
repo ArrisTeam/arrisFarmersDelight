@@ -10,8 +10,7 @@
                 "item": "arris:milk_bottle"
             },
             "D": {
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
             }
         },
         "pattern": [
@@ -39,8 +38,7 @@
                 "item": "arris:milk_bottle"
             },
             {
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
             }
         ]
     }

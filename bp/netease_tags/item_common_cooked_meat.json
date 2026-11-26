@@ -1,0 +1,11 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_meat",
+  "items": [
+    "minecraft:cooked_rabbit",
+    "#common:cooked_beef",
+    "#common:cooked_chicken",
+    "#common:cooked_pork",
+    "#common:cooked_mutton"
+  ]
+}

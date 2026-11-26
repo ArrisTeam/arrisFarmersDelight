@@ -79,9 +79,11 @@ def testTwelveDishesUseALiquidOrAnEggLayerAndEveryOneIsRecognised():
                                    "arris:honey_glazed_ham_block_stage0", "arris:pie_crust", "arris:roast_chicken_block_stage0",
                                    "arris:shepherds_pie_block_stage0", "arris:stuffed_potato", "arris:sweet_berry_cheesecake_item",
                                    "arris:wheat_dough", "minecraft:cake", "minecraft:pumpkin_pie"])
-    assert used["minecraft:cake"] == set([BOTTLE, "minecraft:milk_bucket", EGG]), "蛋糕：奶瓶 / 奶桶和蛋"
-    assert used["arris:wheat_dough"] == set(["minecraft:water_bucket", EGG]), "面团：水桶（原样留下的）和蛋两种做法"
-    assert used["arris:roast_chicken_block_stage0"] == set([EGG]) and used["minecraft:pumpkin_pie"] == set([EGG])
+    eggs = set(name for name, _aux in fdtest.load("Shared.Data.PotSunk").CRACKED)          # 三种蛋（工作台配方写 minecraft:egg 标签）
+    assert eggs == set([EGG, "minecraft:blue_egg", "minecraft:brown_egg"])
+    assert used["minecraft:cake"] == set([BOTTLE, "minecraft:milk_bucket"]) | eggs, "蛋糕：奶瓶 / 奶桶和蛋"
+    assert used["arris:wheat_dough"] == set(["minecraft:water_bucket"]) | eggs, "面团：水桶（原样留下的）和蛋两种做法"
+    assert used["arris:roast_chicken_block_stage0"] == eggs and used["minecraft:pumpkin_pie"] == eggs
 
 
 def testNoDishStartsWithALiquidOnItsBase():

@@ -1,0 +1,9 @@
+{
+  "type": "block",
+  "identifier": "farmersdelight:heat_sources",
+  "items": [
+    "minecraft:magma",
+    "arris:stove",
+    "#farmersdelight:tray_heat_sources"
+  ]
+}

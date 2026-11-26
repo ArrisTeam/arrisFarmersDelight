@@ -11,9 +11,10 @@
                 "item": "minecraft:honey_bottle"
             },
             {
-                "count": 2,
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
+            },
+            {
+                "tag": "common:wheat"
             }
         ],
         "result": {

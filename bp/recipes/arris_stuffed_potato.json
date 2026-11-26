@@ -11,14 +11,10 @@
                 "item": "minecraft:baked_potato"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:beef_patty"
+                "tag": "common:cooked_beef"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:milk_bottle"
+                "tag": "common:milk"
             }
         ],
         "result": {

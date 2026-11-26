@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:cooked_egg",
+  "items": [
+    "arris:fried_egg"
+  ]
+}

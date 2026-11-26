@@ -1,19 +1,28 @@
 # -*- coding: utf-8 -*-
 """Tags - 物品 / 方块标签的词表：标签名 → 农夫乐事登记的成员（双端，纯数据）
 
-一张表说了算：tools/gen_tags.py 从这里生成 bp/netease_tags/ 的文件（一个标签一个文件；别的模组登记同名标签时引擎把成员合并去重），
-Shared/Rules/ItemTags 在没有引擎口（离线测试、Strata 沙箱、3.10 以前的引擎）或者口还没准备好（客户端进世界之前）时按这里作答，
-docs/TAGS.md 写的也是这里。
+一张表说了算：tools/gen_tags.py 从 ITEM_TAG_FILES / BLOCK_TAG_FILES 生成 bp/netease_tags/ 的文件（一个标签一个文件；别的模组登记同名标签时
+引擎把成员合并去重），Shared/Rules/ItemTags 在没有引擎口（离线测试、Strata 沙箱、3.10 以前的引擎）或者口还没准备好（客户端进世界之前）时
+按展开后的 ITEM_TAGS / BLOCK_TAGS 作答，docs/TAGS.md 写的也是这里。
 
-命名：common: + 小写下划线的单数名词，对应 JE 的 forge: / c: 标签；物品本名就是复数的照物品名（tomato_seeds、mutton_chops）。
-团队里已经在用的名字照用、不另起（有的是复数，照旧）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags
-登记了原版的作物、种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
+命名（主会话 2026-11-26 定的，docs/TAGS.md 开头）：名字照 JE 1.21、成员照 JE 1.20.1（移植的基线 FD 1.3.4）。
+- common: + JE 1.21 的 c: 名的最后一段，单复数照 JE（c:crops/tomato -> tomato、c:foods/raw_beef -> raw_beef、c:tools/knife -> knife；
+  只有一层的类目名照 JE 用复数：c:crops -> crops、c:bones -> bones、c:mushrooms -> mushrooms）；
+- 最后一段只是材料名的，照机械动力把类目的单数接在后面（c:buckets/water -> water_bucket；机械动力的 c:plates/iron -> iron_plate、
+  c:flours/wheat -> wheat_flour）；JE 没有对应 c: 名的照物品名（rice_panicle、mutton_chops、tomato_seeds）；
+- JE 农夫乐事自己的标签照 JE 原名 farmersdelight:<路径>；不用 / 分层。
+团队里已经在用的名字照用（都和上面对得上）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags 登记了原版的作物、
+种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
 
 成员的规矩（网易 3.10 实机量过的，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：
 - 只写农夫乐事自己的和原版的物品 / 方块：写别的模组的名字，对方没装时引擎一直刷 ERROR 日志；
 - 只写扁平名（netease_tags 没有 aux），不写 minecraft:planks 这种旧聚合名；
-- 不用 #（引用"物品 JSON 里声明的标签"时展开不全），每个标签把成员写全；
-- 顺序：静态作答（ItemTags.itemsOf）按这里的顺序给，厨锅配方展开写法照它——和原来 CookingPotRecipes 里那几张列表（JE 标签的展开）一个顺序。
+- 嵌套照 JE 用 #：JE 的标签文件里用 # 引别的标签、那个标签这边也登记的地方，文件里也写 "#common:xxx"（主会话 2026-11-26 定的），
+  别的模组把番茄登记进 common:tomato，它就自动算蔬菜、算作物，和 JE 一样；1.21 的 c: 文件多引的几处（生 / 熟猪肉引培根、熟肉引四种熟肉、
+  叶菜引卷心菜）也照写。# 只引这里登记的同类标签（引擎展开；3.10 实机：反查、按物品问、配方三处都认）。JE 引的是这边没有的标签
+  （#minecraft:campfires、#farmersdelight:cabinets/wooden……）就展开写成员；
+- 静态作答用展开后的成员（ITEM_TAGS / BLOCK_TAGS，_expanded 按文件的先后展开、重复的去掉）：顺序就是 ItemTags.itemsOf 给的顺序，
+  厨锅配方展开写法照它——和原来 CookingPotRecipes 里那几张列表（JE 标签的展开）一个顺序。
 原版自带的标签（minecraft:egg）不生成文件，成员抄在 VANILLA_TAGS 里，没有引擎口时也答得出。
 """
 
@@ -25,7 +34,7 @@ RICE = "common:rice"
 RICE_PANICLE = "common:rice_panicle"
 COOKED_RICE = "common:cooked_rice"
 DOUGH = "common:dough"
-FRIED_EGG = "common:fried_egg"
+COOKED_EGG = "common:cooked_egg"
 MUTTON_CHOPS = "common:mutton_chops"
 COOKED_MUTTON_CHOPS = "common:cooked_mutton_chops"
 KNIFE = "common:knife"
@@ -43,7 +52,11 @@ RAW_FISH = "common:raw_fish"
 VEGETABLE = "common:vegetable"
 CABBAGE = "common:cabbage"
 MILK = "common:milk"
-MUSHROOM = "common:mushroom"
+MUSHROOMS = "common:mushrooms"
+# JE 1.21 才有名字、主会话 2026-11-26 定了补上的：熟肉（c:foods/cooked_meat，烤串那一格：JE 1.20.1 写的是熟牛 / 猪 / 鸡 / 羊 / 鱼 / 熟兔肉任一）；
+# 沙拉用的叶菜（c:foods/leafy_green = JE 1.20.1 的 forge:salad_ingredients：三明治、沙拉、四道汤读它，和卷心菜卷、饺子读的"卷心菜"分开）
+COOKED_MEAT = "common:cooked_meat"
+LEAFY_GREEN = "common:leafy_green"
 # JE 农夫乐事的配方（厨锅、工作台、砧板）实际用到的标签，同一条命名规则补的
 ONION = "common:onion"
 CARROT = "common:carrot"
@@ -53,7 +66,7 @@ WHEAT = "common:wheat"
 BREAD = "common:bread"
 PASTA = "common:pasta"
 BERRY = "common:berry"
-BONE = "common:bone"
+BONES = "common:bones"
 RAW_COD = "common:raw_cod"
 RAW_SALMON = "common:raw_salmon"
 COOKED_FISH = "common:cooked_fish"
@@ -63,7 +76,8 @@ RAW_BACON = "common:raw_bacon"
 COOKED_BACON = "common:cooked_bacon"
 CABBAGE_SEEDS = "common:cabbage_seeds"
 WATER_BUCKET = "common:water_bucket"
-# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去；
+# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去，
+# 原版的那部分（JE 里是 Forge 自己给的：甜菜根、胡萝卜、地狱疣、土豆、小麦；四种原版种子）也登记，农夫乐事单独在场时这两个标签也是全的；
 # common:flowers 在它那里是"所有的花"（照 JE 的 minecraft:flowers：小花、高花、开花的杜鹃……），JE 把七种野生作物放在
 # minecraft:small_flowers / tall_flowers 里，所以野生作物登记进 common:flowers
 CROPS = "common:crops"
@@ -85,12 +99,11 @@ CABINETS = "farmersdelight:cabinets"
 SERVING_CONTAINERS = "farmersdelight:serving_containers"
 
 # ---- 方块标签 ----
-# 热源分两个，因为方块标签不带方块状态：HEAT_SOURCE 是方块名本身就说明在发热的（农夫乐事点着和熄着的炉灶是两个方块名，登记点着的那个）；
-# HEAT_SOURCE_LIT 是要看点燃状态的（营火的 extinguished；别的模组一个方块 + lit 状态的炉灶）
-HEAT_SOURCE = "common:heat_source"
-HEAT_SOURCE_LIT = "common:heat_source_lit"
 # 农夫乐事自己的方块标签，名字照 JE 的 farmersdelight:<路径>。读的地方是"名单 ∪ 标签"：原来的名单原样留着，不在名单里的再看标签；
 # 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
+# 热源照 JE 只有一个标签：在里面就算热，方块有"点没点着"这类状态（lit、*:lit、extinguished）的要点着（JE 的 HeatableBlockEntity：带 LIT 的看 LIT；
+# 规则在 Shared/Rules/HeatSources）。农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个
+HEAT_SOURCES = "farmersdelight:heat_sources"               # 给上面的锅 / 煎锅加热：Cooking.CanProvideHeatBlockList
 HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
@@ -102,15 +115,13 @@ DROPS_CAKE_SLICE = "farmersdelight:drops_cake_slice"       # 拿刀右键切下�
 EGG = "minecraft:egg"
 
 # ---- 词表里有、农夫乐事没有成员的名字（不生成文件，docs/TAGS.md 列出来给别的模组用）----
-CHILI = "common:chili"
 FRUIT = "common:fruit"
 WHEAT_FLOUR = "common:wheat_flour"      # 机械动力的小麦粉
-WITHOUT_MEMBERS = (CHILI, FRUIT, WHEAT_FLOUR)
+WITHOUT_MEMBERS = (FRUIT, WHEAT_FLOUR)
 
 _KNIVES = ("arris:flint_knife", "arris:golden_knife", "arris:iron_knife", "arris:diamond_knife", "arris:netherite_knife")
 _RAW_BEEF = ("minecraft:beef", "arris:minced_beef")
 _RAW_CHICKEN = ("minecraft:chicken", "arris:chicken_cuts")
-_RAW_PORK = ("minecraft:porkchop", "arris:bacon")
 _RAW_MUTTON = ("minecraft:mutton", "arris:mutton_chops")
 _RAW_COD = ("minecraft:cod", "arris:cod_slice")
 _RAW_SALMON = ("minecraft:salmon", "arris:salmon_slice")
@@ -119,33 +130,35 @@ _COOKED_SALMON = ("minecraft:cooked_salmon", "arris:cooked_salmon_slice")
 _WILD_CROPS = ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroots", "arris:wild_cabbages", "arris:wild_tomatoes",
                "arris:wild_onions", "arris:wild_rice")
 
-# 物品标签 → 农夫乐事登记的成员（照 JE 1.3.4 的 forge / farmersdelight 标签文件，换成这边的物品名）
-ITEM_TAGS = {
+# 物品标签 → netease_tags 文件里写的成员（照 JE 1.3.4 的 forge / farmersdelight 标签文件，换成这边的物品名；"#标签" 引这张表里的别的标签）
+ITEM_TAG_FILES = {
     TOMATO: ("arris:tomato",),
     TOMATO_SEEDS: ("arris:tomato_seeds",),
     RICE: ("arris:rice",),
     RICE_PANICLE: ("arris:rice_panicle",),
     COOKED_RICE: ("arris:cooked_rice",),
     DOUGH: ("arris:wheat_dough",),
-    FRIED_EGG: ("arris:fried_egg",),
+    COOKED_EGG: ("arris:fried_egg",),
     MUTTON_CHOPS: ("arris:mutton_chops",),
     COOKED_MUTTON_CHOPS: ("arris:cooked_mutton_chops",),
     KNIFE: _KNIVES,
     LEGACY_KNIFE: _KNIVES,
     RAW_BEEF: _RAW_BEEF,
-    RAW_PORK: _RAW_PORK,
+    RAW_PORK: ("minecraft:porkchop", "#" + RAW_BACON),                      # 1.21 引培根（1.20.1 直接写培根）
     RAW_CHICKEN: _RAW_CHICKEN,
     RAW_MUTTON: _RAW_MUTTON,
-    RAW_MEAT: ("minecraft:rabbit",) + _RAW_BEEF + _RAW_CHICKEN + _RAW_PORK + _RAW_MUTTON,
+    RAW_MEAT: ("minecraft:rabbit", "#" + RAW_BEEF, "#" + RAW_CHICKEN, "#" + RAW_PORK, "#" + RAW_MUTTON),
     COOKED_BEEF: ("minecraft:cooked_beef", "arris:beef_patty"),
-    COOKED_PORK: ("minecraft:cooked_porkchop", "arris:cooked_bacon"),
+    COOKED_PORK: ("minecraft:cooked_porkchop", "#" + COOKED_BACON),
     COOKED_CHICKEN: ("minecraft:cooked_chicken", "arris:cooked_chicken_cuts"),
     COOKED_MUTTON: ("minecraft:cooked_mutton", "arris:cooked_mutton_chops"),
-    RAW_FISH: _RAW_COD + _RAW_SALMON + ("minecraft:tropical_fish",),          # JE 的 forge:raw_fishes：不含河豚
-    VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
+    COOKED_MEAT: ("minecraft:cooked_rabbit", "#" + COOKED_BEEF, "#" + COOKED_CHICKEN, "#" + COOKED_PORK, "#" + COOKED_MUTTON),
+    RAW_FISH: ("#" + RAW_COD, "#" + RAW_SALMON, "minecraft:tropical_fish"),     # JE 的 forge:raw_fishes：不含河豚
+    VEGETABLE: ("#" + BEETROOT, "#" + CARROT, "#" + ONION, "#" + POTATO, "#" + TOMATO),
     CABBAGE: ("arris:cabbage", "arris:cabbage_leaf"),                           # JE 不把卷心菜算进 forge:vegetables，单列
+    LEAFY_GREEN: ("#" + CABBAGE,),
     MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-    MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
+    MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
     ONION: ("arris:onion",),
     CARROT: ("minecraft:carrot",),
     POTATO: ("minecraft:potato",),
@@ -154,18 +167,20 @@ ITEM_TAGS = {
     BREAD: ("minecraft:bread",),
     PASTA: ("arris:raw_pasta",),
     BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"),
-    BONE: ("minecraft:bone",),
+    BONES: ("minecraft:bone",),
     RAW_COD: _RAW_COD,
     RAW_SALMON: _RAW_SALMON,
-    COOKED_FISH: _COOKED_COD + _COOKED_SALMON,
+    COOKED_FISH: ("#" + COOKED_COD, "#" + COOKED_SALMON),
     COOKED_COD: _COOKED_COD,
     COOKED_SALMON: _COOKED_SALMON,
     RAW_BACON: ("arris:bacon",),
     COOKED_BACON: ("arris:cooked_bacon",),
     CABBAGE_SEEDS: ("arris:cabbage_seeds",),
     WATER_BUCKET: ("minecraft:water_bucket",),
-    CROPS: ("arris:cabbage", "arris:cabbage_leaf", "arris:onion", "arris:rice", "arris:tomato"),
-    SEEDS: ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds"),     # JE 的 forge:seeds/rice 就是米
+    CROPS: ("#" + CABBAGE, "#" + ONION, "#" + RICE, "#" + TOMATO,
+            "#" + BEETROOT, "#" + CARROT, "minecraft:nether_wart", "#" + POTATO, "#" + WHEAT),
+    SEEDS: ("#" + CABBAGE_SEEDS, "#" + RICE, "#" + TOMATO_SEEDS,          # JE 的 forge:seeds/rice 就是米
+            "minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
     FLOWERS: _WILD_CROPS,                       # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
     # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
     # 大餐的物品是第 0 阶段的方块（*_block_stage0）
@@ -194,10 +209,10 @@ ITEM_TAGS = {
     SERVING_CONTAINERS: ("minecraft:bowl", "minecraft:glass_bottle", "minecraft:bucket"),
 }
 
-# 方块标签 → 农夫乐事登记的成员
-BLOCK_TAGS = {
-    HEAT_SOURCE: ("minecraft:fire", "minecraft:soul_fire", "minecraft:lava", "minecraft:flowing_lava", "minecraft:magma", "arris:stove"),
-    HEAT_SOURCE_LIT: ("minecraft:campfire", "minecraft:soul_campfire"),
+# 方块标签 → netease_tags 文件里写的成员
+BLOCK_TAG_FILES = {
+    # JE：岩浆块、熔岩炼药锅（基岩版是炼药锅的 cauldron_liquid 状态，没有这个方块名：Server/Helpers/Heat 另认）、炉灶、#tray_heat_sources
+    HEAT_SOURCES: ("minecraft:magma", "arris:stove", "#" + TRAY_HEAT_SOURCES),
     HEAT_CONDUCTORS: ("minecraft:hopper",),               # JE 还有可选的 create:chute：别的模组的名字不写，机械动力那边登记
     # JE：熔岩、#minecraft:campfires、#minecraft:fire（基岩版熔岩是两个方块名）
     TRAY_HEAT_SOURCES: ("minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:fire",
@@ -222,56 +237,80 @@ BLOCK_TAGS = {
         "blue_", "brown_", "green_", "red_", "black_")),                   # 插了蜡烛的蛋糕：无色加 16 种颜色
 }
 
+
+
+def _expanded(files):
+    """{标签: 文件里写的成员（"#标签" 引同一张表里的标签）} -> {标签: 展开后的成员元组}：按写的先后展开、重复的去掉；引了表里没有的、
+    转圈引用的，导入时就报错（测试里就红）。"""
+    def members(tag, seen):
+        if tag in seen:
+            raise ValueError("标签转圈引用：%s" % " -> ".join(seen + (tag,)))
+        found = []
+        for name in files[tag]:
+            for member in (members(name[1:], seen + (tag,)) if name.startswith("#") else (name,)):
+                if member not in found:
+                    found.append(member)
+        return found
+    return dict((tag, tuple(members(tag, ()))) for tag in files)
+
+
+# 静态作答用的展开表（Shared/Rules/ItemTags、厨锅的旧写法展开、测试都读这两张）
+ITEM_TAGS = _expanded(ITEM_TAG_FILES)
+BLOCK_TAGS = _expanded(BLOCK_TAG_FILES)
+
 # 原版自带的物品标签：引擎自己有，不生成文件；这里抄成员（3.10 实机，R4 §3）给没有引擎口时用
 VANILLA_TAGS = {
     EGG: ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"),
 }
 
-# 每个标签对应的 JE 标签名（docs/TAGS.md 用；也是"JE 配方里的标签名 → 这里的名字"的别名表：一个 JE 物品标签名只对应这里的一个物品标签）。
-# JE 1.20 的农夫乐事用 forge:；cooked_rice 是 JE 森罗厨房定义的（它把两边的米饭都放进去）；heat_source 是 farmersdelight:heat_sources 里
-# 不看状态的那部分，heat_source_lit 是里面要看点燃状态的 #minecraft:campfires（JE 的 HeatableBlockEntity：带 LIT 的看 LIT）
+# 每个标签对应的 JE 标签名（docs/TAGS.md 分两列：forge: 是 1.20.1 的，c: 是 1.21 的，别的命名空间两边一样）；也是"JE 配方里的标签名 → 这里的名字"
+# 的别名表（Shared/Rules/RecipeJson：行为包里照 JE 写的配方 JSON 用这两种名字都认）：一个 JE 物品标签名只对应这里的一个物品标签。
+# cooked_rice 是 JE 森罗厨房（1.20.1）和它的兼容包（1.21）定义的；c:foods/raw_fish 在 1.21 含河豚，这边的 raw_fish 不含（= c:foods/safe_raw_fish），
+# 照 JE 写的配方里写 raw_fish 的也换成它；cooked_meat、leafy_green 照 1.21 的名字补的（1.20.1 的烤串那一格、forge:salad_ingredients）
 JE_NAMES = {
-    TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato"),
+    TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato", "c:crops/tomato", "c:foods/tomato"),
     TOMATO_SEEDS: ("forge:seeds/tomato",),
-    RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice"),
-    COOKED_RICE: ("forge:cooked_rice",),
-    DOUGH: ("forge:dough", "forge:dough/wheat"),
-    FRIED_EGG: ("forge:cooked_eggs",),
-    KNIFE: ("forge:tools/knives", "farmersdelight:tools/knives"),
-    RAW_BEEF: ("forge:raw_beef",),
-    RAW_PORK: ("forge:raw_pork",),
-    RAW_CHICKEN: ("forge:raw_chicken",),
-    RAW_MUTTON: ("forge:raw_mutton",),
-    RAW_MEAT: ("forge:raw_meat",),
-    COOKED_BEEF: ("forge:cooked_beef",),
-    COOKED_PORK: ("forge:cooked_pork",),
-    COOKED_CHICKEN: ("forge:cooked_chicken",),
-    COOKED_MUTTON: ("forge:cooked_mutton",),
-    RAW_FISH: ("forge:raw_fishes",),
-    VEGETABLE: ("forge:vegetables",),
-    CABBAGE: ("forge:crops/cabbage", "forge:salad_ingredients", "forge:salad_ingredients/cabbage"),
-    MILK: ("forge:milk",),
-    MUSHROOM: ("forge:mushrooms",),
-    ONION: ("forge:crops/onion", "forge:vegetables/onion"),
-    CARROT: ("forge:crops/carrot", "forge:vegetables/carrot"),
-    POTATO: ("forge:crops/potato", "forge:vegetables/potato"),
-    BEETROOT: ("forge:crops/beetroot", "forge:vegetables/beetroot"),
-    WHEAT: ("forge:crops/wheat", "forge:grain/wheat"),
-    BREAD: ("forge:bread", "forge:bread/wheat"),
-    PASTA: ("forge:pasta", "forge:pasta/raw_pasta"),
-    BERRY: ("forge:berries",),
-    BONE: ("forge:bones",),
-    RAW_COD: ("forge:raw_fishes/cod",),
-    RAW_SALMON: ("forge:raw_fishes/salmon",),
-    COOKED_FISH: ("forge:cooked_fishes",),
-    COOKED_COD: ("forge:cooked_fishes/cod",),
-    COOKED_SALMON: ("forge:cooked_fishes/salmon",),
-    RAW_BACON: ("forge:raw_bacon",),
-    COOKED_BACON: ("forge:cooked_bacon",),
+    RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice", "c:crops/rice"),
+    COOKED_RICE: ("forge:cooked_rice", "c:foods/cooked_rice"),
+    DOUGH: ("forge:dough", "forge:dough/wheat", "c:foods/dough", "c:foods/dough/wheat"),
+    COOKED_EGG: ("forge:cooked_eggs", "c:foods/cooked_egg"),
+    KNIFE: ("forge:tools/knives", "farmersdelight:tools/knives", "c:tools/knife"),
+    RAW_BEEF: ("forge:raw_beef", "c:foods/raw_beef"),
+    RAW_PORK: ("forge:raw_pork", "c:foods/raw_pork"),
+    RAW_CHICKEN: ("forge:raw_chicken", "c:foods/raw_chicken"),
+    RAW_MUTTON: ("forge:raw_mutton", "c:foods/raw_mutton"),
+    RAW_MEAT: ("forge:raw_meat", "c:foods/raw_meat"),
+    COOKED_BEEF: ("forge:cooked_beef", "c:foods/cooked_beef"),
+    COOKED_PORK: ("forge:cooked_pork", "c:foods/cooked_pork"),
+    COOKED_CHICKEN: ("forge:cooked_chicken", "c:foods/cooked_chicken"),
+    COOKED_MUTTON: ("forge:cooked_mutton", "c:foods/cooked_mutton"),
+    COOKED_MEAT: ("c:foods/cooked_meat",),
+    RAW_FISH: ("forge:raw_fishes", "c:foods/safe_raw_fish", "c:foods/raw_fish"),
+    VEGETABLE: ("forge:vegetables", "c:foods/vegetable"),
+    CABBAGE: ("forge:crops/cabbage", "c:crops/cabbage", "c:foods/cabbage"),
+    LEAFY_GREEN: ("forge:salad_ingredients", "forge:salad_ingredients/cabbage", "c:foods/leafy_green"),
+    MILK: ("forge:milk", "c:drinks/milk"),
+    MUSHROOMS: ("forge:mushrooms", "c:mushrooms"),
+    ONION: ("forge:crops/onion", "forge:vegetables/onion", "c:crops/onion", "c:foods/onion"),
+    CARROT: ("forge:crops/carrot", "forge:vegetables/carrot", "c:crops/carrot"),
+    POTATO: ("forge:crops/potato", "forge:vegetables/potato", "c:crops/potato"),
+    BEETROOT: ("forge:crops/beetroot", "forge:vegetables/beetroot", "c:crops/beetroot"),
+    WHEAT: ("forge:crops/wheat", "forge:grain/wheat", "c:crops/wheat"),
+    BREAD: ("forge:bread", "forge:bread/wheat", "c:foods/bread"),
+    PASTA: ("forge:pasta", "forge:pasta/raw_pasta", "c:foods/pasta"),
+    BERRY: ("forge:berries", "c:foods/berry"),
+    BONES: ("forge:bones", "c:bones"),
+    RAW_COD: ("forge:raw_fishes/cod", "c:foods/raw_cod"),
+    RAW_SALMON: ("forge:raw_fishes/salmon", "c:foods/raw_salmon"),
+    COOKED_FISH: ("forge:cooked_fishes", "c:foods/cooked_fish"),
+    COOKED_COD: ("forge:cooked_fishes/cod", "c:foods/cooked_cod"),
+    COOKED_SALMON: ("forge:cooked_fishes/salmon", "c:foods/cooked_salmon"),
+    RAW_BACON: ("forge:raw_bacon", "c:foods/raw_bacon"),
+    COOKED_BACON: ("forge:cooked_bacon", "c:foods/cooked_bacon"),
     CABBAGE_SEEDS: ("forge:seeds/cabbage",),
-    WATER_BUCKET: ("forge:buckets/water",),
-    CROPS: ("forge:crops",),
-    SEEDS: ("forge:seeds",),
+    WATER_BUCKET: ("forge:buckets/water", "c:buckets/water"),
+    CROPS: ("forge:crops", "c:crops"),
+    SEEDS: ("forge:seeds", "c:seeds"),
     FLOWERS: ("minecraft:flowers",),
     MEALS: (MEALS,),
     SNACKS: (SNACKS,),
@@ -283,9 +322,8 @@ JE_NAMES = {
     MUSHROOM_COLONIES: (MUSHROOM_COLONIES,),
     CABINETS: (CABINETS,),
     SERVING_CONTAINERS: (SERVING_CONTAINERS,),
-    EGG: ("forge:eggs",),
-    HEAT_SOURCE: ("farmersdelight:heat_sources",),
-    HEAT_SOURCE_LIT: ("minecraft:campfires",),
+    EGG: ("forge:eggs", "c:eggs"),
+    HEAT_SOURCES: (HEAT_SOURCES,),
     HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
     COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),

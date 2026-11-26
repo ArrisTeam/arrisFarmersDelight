@@ -6,7 +6,12 @@
         },
         "ingredients": [
             {
-                "count": 2,
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:glow_berries"
+            },
+            {
+                "count": 1,
                 "data": 0,
                 "item": "minecraft:glow_berries"
             },
@@ -18,20 +23,15 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:tomato"
-            },
-            {
-                "count": 1,
-                "data": 0,
                 "item": "minecraft:golden_carrot"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:beetroot"
+                "item": "arris:cabbage"
             },
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
                 "item": "arris:cabbage"
             },
@@ -39,6 +39,12 @@
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:beetroot"
             }
         ],
         "result": {

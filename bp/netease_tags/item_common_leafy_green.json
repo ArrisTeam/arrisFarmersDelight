@@ -1,0 +1,7 @@
+{
+  "type": "item",
+  "identifier": "common:leafy_green",
+  "items": [
+    "#common:cabbage"
+  ]
+}

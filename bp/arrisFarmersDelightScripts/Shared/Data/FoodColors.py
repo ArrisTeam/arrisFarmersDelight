@@ -94,7 +94,6 @@ FoodColors = {
     'arris:shepherds_pie': 0xA6772C,
     'arris:skillet_item': 0x7A4435,
     'arris:smoked_ham': 0x9D4B2A,
-    'arris:spatula': 0x604636,
     'arris:squid_ink_pasta': 0x544142,
     'arris:steak_and_potatoes': 0x845B2C,
     'arris:straw': 0x67421E,

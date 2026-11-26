@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """gen_tags - 从词表 Shared/Data/Tags.py 生成行为包的 netease_tags/ 和 docs/TAGS.md 里的词表（开发工具，py -3 运行）
 
-一个标签一个文件：{"type": "item" | "block", "identifier": 标签名, "items": [成员...]}，文件名照机械动力：
+一个标签一个文件：{"type": "item" | "block", "identifier": 标签名, "items": [成员...]}（成员照词表的 ITEM_TAG_FILES / BLOCK_TAG_FILES，
+"#标签" 是照 JE 引的本包另一个标签，引擎展开），文件名照机械动力：
 item_<标签名里的 : 和 / 换成 _>.json、block_<同上>.json。引擎把各模组登记的同名标签（type 和 identifier 都一样）合并去重。
 原版自带的标签（VANILLA_TAGS）不生成文件。目录里不是这里生成的文件也算不一致（--check 失败，生成时删掉），词表是唯一的出处。
 docs/TAGS.md 的词表（两行标记之间）也从词表生成：标签、意思、对应 JE、农夫乐事登记的、农夫乐事在哪里读；"意思"和"在哪里读"写在下面的
 MEANINGS / READS 里（文档的话，不进游戏），词表加了标签这里没写意思时生成失败。"在哪里读"里配方读的那部分不手写，从配方表里数
-（recipeReaders：厨锅每道菜的 Slots 里写着的 #标签、砧板的 CuttingTagDict）：改了这两张表要重新生成（测试核对文档是最新的）。
+（recipeReaders：厨锅每道菜的 Slots 里写着的 #标签、砧板的 CuttingTagDict、bp/recipes 里工作台配方写的 {"tag": ...}）：
+改了这几处要重新生成（测试核对文档是最新的）。
 用法：py -3 tools/gen_tags.py            生成 / 更新 bp/netease_tags/ 和 docs/TAGS.md 的词表
       py -3 tools/gen_tags.py --check    只比较，不一致时退出码 1（tests/test_netease_tags.py 也会比）
 """
@@ -29,20 +31,22 @@ END = "<!-- gen_tags: 词表结束 -->"
 
 MEANINGS = {
     "common:tomato": "番茄", "common:tomato_seeds": "番茄种子", "common:rice": "米（也是水稻的种子）", "common:rice_panicle": "稻穗",
-    "common:cooked_rice": "米饭", "common:dough": "面团", "common:fried_egg": "煎蛋", "common:mutton_chops": "生羊排",
+    "common:cooked_rice": "米饭", "common:dough": "面团", "common:cooked_egg": "做熟的蛋（煎蛋）", "common:mutton_chops": "生羊排",
     "common:cooked_mutton_chops": "熟羊排", "common:knife": "刀", "arris:knife": "刀（农夫乐事的老标签，照旧有效）",
     "common:raw_beef": "生牛肉（含牛肉末）", "common:raw_pork": "生猪肉（含培根）", "common:raw_chicken": "生鸡肉（含鸡块）",
-    "common:raw_mutton": "生羊肉（含羊排）", "common:raw_meat": "生肉：上面四种和生兔肉", "common:cooked_beef": "熟牛肉（含牛肉饼）",
+    "common:raw_mutton": "生羊肉（含羊排）", "common:raw_meat": "生肉：上面四种和生兔肉",
+    "common:cooked_meat": "熟肉：四种熟肉和熟兔肉", "common:leafy_green": "沙拉用的叶菜（JE 的 salad_ingredients）", "common:cooked_beef": "熟牛肉（含牛肉饼）",
     "common:cooked_pork": "熟猪肉（含熟培根）", "common:cooked_chicken": "熟鸡肉（含熟鸡块）", "common:cooked_mutton": "熟羊肉（含熟羊排）",
     "common:raw_fish": "生鱼（含鱼片，不含河豚）", "common:vegetable": "蔬菜（不含卷心菜）", "common:cabbage": "卷心菜（含卷心菜叶）",
-    "common:milk": "奶（奶桶、奶瓶）", "common:mushroom": "能吃的蘑菇", "common:onion": "洋葱", "common:carrot": "胡萝卜",
+    "common:milk": "奶（奶桶、奶瓶）", "common:mushrooms": "能吃的蘑菇", "common:onion": "洋葱", "common:carrot": "胡萝卜",
     "common:potato": "土豆", "common:beetroot": "甜菜根", "common:wheat": "小麦", "common:bread": "面包", "common:pasta": "生意面",
-    "common:berry": "浆果", "common:bone": "骨头", "common:raw_cod": "生鳕鱼（含鱼片）", "common:raw_salmon": "生鲑鱼（含鱼片）",
+    "common:berry": "浆果", "common:bones": "骨头", "common:raw_cod": "生鳕鱼（含鱼片）", "common:raw_salmon": "生鲑鱼（含鱼片）",
     "common:cooked_fish": "熟鱼（含熟鱼片）", "common:cooked_cod": "熟鳕鱼（含熟鱼片）", "common:cooked_salmon": "熟鲑鱼（含熟鱼片）",
     "common:raw_bacon": "生培根", "common:cooked_bacon": "熟培根", "common:cabbage_seeds": "卷心菜种子", "common:water_bucket": "水桶",
-    "common:crops": "作物（团队已有的名字）", "common:seeds": "种子（团队已有的名字）", "common:flowers": "花（团队已有的名字）",
-    "common:heat_source": "热源：方块名就说明在发热", "common:heat_source_lit": "热源：要看方块状态点没点着",
-    "minecraft:egg": "蛋（原版自带的标签）", "common:chili": "辣椒", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
+    "common:crops": "作物（团队已有的名字；原版的那部分 JE 里是 Forge 给的，这边也登记）",
+    "common:seeds": "种子（团队已有的名字；同上）", "common:flowers": "花（团队已有的名字）",
+    "farmersdelight:heat_sources": "热源：给上面的锅 / 煎锅加热（有点燃状态的要点着）",
+    "minecraft:egg": "蛋（原版自带的标签）", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
     "farmersdelight:heat_conductors": "把热传给上面一格的方块",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅放在上面要画托盘的方块",
     "farmersdelight:compost_activators": "有机肥周围的催化剂",
@@ -57,7 +61,7 @@ MEANINGS = {
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
-    "common:heat_source": "热源（Shared/Rules/HeatSources）", "common:heat_source_lit": "热源（Shared/Rules/HeatSources，锅底下要点着）",
+    "farmersdelight:heat_sources": "热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看）",
     "farmersdelight:heat_conductors": "锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts）",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat）",
     "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
@@ -88,7 +92,7 @@ def files(tags=None):
     """{文件名: 内容}"""
     tags = tags or vocabulary()
     found = {}
-    for kind, table in (("item", tags.ITEM_TAGS), ("block", tags.BLOCK_TAGS)):
+    for kind, table in (("item", tags.ITEM_TAG_FILES), ("block", tags.BLOCK_TAG_FILES)):
         for identifier, members in table.items():
             found[fileName(kind, identifier)] = render(kind, identifier, members)
     return found
@@ -96,6 +100,12 @@ def files(tags=None):
 
 def _codes(names):
     return "、".join("`%s`" % name for name in names) if names else "—"
+
+
+def _jeNames(names, version):
+    """JE_NAMES 里的名字分两列：forge: 是 1.20.1 的，c: 是 1.21 的，别的命名空间（farmersdelight:、minecraft:）两个版本一样。"""
+    other = "c:" if version == "1.20.1" else "forge:"
+    return [name for name in names if not name.startswith(other)]
 
 
 def recipeReaders():
@@ -117,6 +127,29 @@ def recipeReaders():
     for tag, recipe in sorted(cutting.CuttingTagDict.items()):
         made = "、".join("`%s`" % entry["itemName"] for entry in recipe["itemList"])
         found.setdefault(tag, []).append("砧板按标签切成 %s（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf）" % made)
+    for tag, results in sorted(craftReaders().items()):
+        found.setdefault(tag, []).append("工作台：%s（bp/recipes）" % "、".join("`%s`" % result for result in results))
+    return found
+
+
+def craftReaders():
+    """{标签: [做出来的东西（物品名，按配方文件名的先后、不重复）]}：bp/recipes 里工作台配方（有序的 key、无序的 ingredients）写了这个标签的。"""
+    found = {}
+    folder = os.path.join(BP, "recipes")
+    for name in sorted(os.listdir(folder)):
+        with io.open(os.path.join(folder, name), encoding="utf-8-sig") as handle:
+            doc = json.load(handle)
+        for kind in ("minecraft:recipe_shaped", "minecraft:recipe_shapeless"):
+            body = doc.get(kind)
+            if not body:
+                continue
+            entries = list(body.get("key", {}).values()) + list(body.get("ingredients", []))
+            result = body["result"][0] if isinstance(body["result"], list) else body["result"]
+            for entry in entries:
+                if isinstance(entry, dict) and entry.get("tag"):
+                    results = found.setdefault(entry["tag"], [])
+                    if result["item"] not in results:
+                        results.append(result["item"])
     return found
 
 
@@ -125,19 +158,21 @@ def docTable(tags=None):
     tags = tags or vocabulary()
     readers = recipeReaders()
     known = set(tags.ITEM_TAGS) | set(tags.VANILLA_TAGS) | set(tags.WITHOUT_MEMBERS)
-    unknown = sorted(set(readers) - known)
+    unknown = sorted(tag for tag in set(readers) - known if not tag.startswith("minecraft:"))     # 原版自己的标签（minecraft:planks）不进词表
     if unknown:
         raise SystemExit("配方里用了词表里没有的物品标签：%s（加进 Shared/Data/Tags.py，或者改配方）" % "、".join(unknown))
-    rows = ["| 标签 | 种类 | 意思 | 对应 JE | 农夫乐事登记的 | 农夫乐事在哪里读 |", "| --- | --- | --- | --- | --- | --- |"]
-    groups = (("物品", tags.ITEM_TAGS), ("方块", tags.BLOCK_TAGS), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
+    rows = ["| 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |",
+            "| --- | --- | --- | --- | --- | --- | --- |"]
+    groups = (("物品", tags.ITEM_TAG_FILES), ("方块", tags.BLOCK_TAG_FILES), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
               ("物品（农夫乐事没有成员，不生成文件）", dict((tag, ()) for tag in tags.WITHOUT_MEMBERS)))
     for kind, table in groups:
         for tag, members in table.items():
             if tag not in MEANINGS:
                 raise SystemExit("tools/gen_tags.py 的 MEANINGS 里没写 %s 的意思" % tag)
             reads = ([READS[tag]] if tag in READS else []) + (readers.get(tag, []) if kind.startswith("物品") else [])
-            rows.append("| `%s` | %s | %s | %s | %s | %s |" % (tag, kind, MEANINGS[tag], _codes(tags.JE_NAMES.get(tag, ())),
-                                                             _codes(members), "；".join(reads) or "—"))
+            names = tags.JE_NAMES.get(tag, ())
+            rows.append("| `%s` | %s | %s | %s | %s | %s | %s |" % (tag, kind, MEANINGS[tag], _codes(_jeNames(names, "1.20.1")),
+                                                                  _codes(_jeNames(names, "1.21")), _codes(members), "；".join(reads) or "—"))
     return "\n".join(rows)
 
 

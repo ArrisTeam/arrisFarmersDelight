@@ -6,29 +6,37 @@
         },
         "ingredients": [
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
                 "item": "minecraft:baked_potato"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:milk_bottle"
-            },
-            {
-                "count": 3,
-                "data": 0,
-                "item": "arris:cooked_mutton_chops"
-            },
-            {
-                "count": 2,
-                "data": 0,
-                "item": "arris:onion"
+                "item": "minecraft:baked_potato"
             },
             {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:milk"
+            },
+            {
+                "tag": "common:cooked_mutton"
+            },
+            {
+                "tag": "common:cooked_mutton"
+            },
+            {
+                "tag": "common:cooked_mutton"
+            },
+            {
+                "tag": "common:onion"
+            },
+            {
+                "tag": "common:onion"
             }
         ],
         "result": {

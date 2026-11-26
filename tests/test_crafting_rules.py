@@ -13,6 +13,7 @@ import fdtest
 
 world = fakeengine.install()
 Rules = fdtest.load("Shared.Rules.Crafting")
+ItemTags = fdtest.load("Shared.Rules.ItemTags")
 Table = fdtest.load("Shared.Data.CraftReturns").CraftReturns
 Food = fdtest.load("Shared.Data.Food")
 Registry = fdtest.load("Server.EventRegistry")
@@ -61,11 +62,68 @@ def testTheGridNamesOneRecipe():
     potato = Table["arris:stuffed_potato"]
     grid = {32: ("minecraft:baked_potato", 5), 36: ("minecraft:milk_bucket", 1), 40: ("arris:beef_patty", 2)}
     assert Rules.namesOf(grid) == ("arris:beef_patty", "minecraft:baked_potato", "minecraft:milk_bucket")
-    assert Rules.entryFor(potato, grid)["returns"] == {"minecraft:milk_bucket": BUCKET}
+    assert Rules.returnsOf(Rules.entryFor(potato, grid), grid, 1) == [(36, BUCKET, 1)]
     grid[36] = ("arris:milk_bottle", 3)
-    assert Rules.entryFor(potato, grid)["returns"] == {"arris:milk_bottle": BOTTLE}, "同一成品按格子里实际的料分得清"
+    assert Rules.returnsOf(Rules.entryFor(potato, grid), grid, 1) == [(36, BOTTLE, 1)], "同一成品按格子里实际的料还"
     grid[33] = ("minecraft:dirt", 1)
     assert Rules.entryFor(potato, grid) is None and Rules.entryFor(potato, {}) is None
+    assert Rules.returnsOf(None, grid, 1) == [], "认不出配方：什么都不还"
+
+
+class TagPort(object):
+    """只答物品标签的假口：members = {标签: [物品名]}。"""
+
+    def __init__(self, members):
+        self.members = members
+
+    def ready(self):
+        return True
+
+    def itemsOf(self, tag):
+        return self.members.get(tag, [])
+
+    def tagsOf(self, itemName, aux=0):
+        return [tag for tag, names in self.members.items() if itemName in names]
+
+
+def _ports(port):
+    for side in ItemTags.SIDES:
+        ItemTags.setPort(side, port if side == "server" else None)
+
+
+def testTagSlotsTakeWhatOtherModsPutInTheTag():
+    """标签格按标签认（ItemTags 现问）：别的模组并进 common:milk 的奶也认得出是这条配方，但它不在 Remainders 里，不还东西。"""
+    entries = [{"slots": ("minecraft:baked_potato", "#common:cooked_beef", "#common:milk"), "count": 1, "keeps": (), "source": "a"}]
+    grid = {32: ("minecraft:baked_potato", 1), 33: ("mymod:goat_milk", 1), 34: ("minecraft:cooked_beef", 1)}
+    _ports(None)
+    assert Rules.entryFor(entries, grid) is None, "没登记进标签：对不上"
+    _ports(TagPort({"common:milk": ["mymod:goat_milk"]}))
+    try:
+        entry = Rules.entryFor(entries, grid)
+        assert entry is entries[0]
+        assert Rules.returnsOf(entry, grid, 1) == [], "Remainders 里没有的物品不留东西"
+        grid[33] = ("arris:milk_bottle", 1)
+        assert Rules.returnsOf(Rules.entryFor(entries, grid), grid, 2) == [(33, BOTTLE, 2)], "自带的奶瓶照还，两份还两个"
+    finally:
+        _ports(None)
+
+
+def testTwoMatchingRecipesMeanNoReturns():
+    """格子同时对得上两条：认不出是哪条，什么都不还（一次合成最多还一次的另一面）。"""
+    entries = [{"slots": ("#common:milk", "minecraft:sugar"), "count": 1, "keeps": (), "source": "a"},
+               {"slots": ("minecraft:milk_bucket", "minecraft:sugar"), "count": 1, "keeps": (), "source": "b"}]
+    grid = {32: ("minecraft:milk_bucket", 1), 33: ("minecraft:sugar", 1)}
+    assert Rules.entryFor(entries, grid) is None
+    grid[32] = ("arris:milk_bottle", 1)
+    assert Rules.entryFor(entries, grid) is entries[0]
+    assert Rules.entryFor(entries, {32: ("minecraft:sugar", 1)}) is None, "少一格对不上"
+
+
+def testKeptOptionsStay():
+    entry = {"slots": ("#common:wheat", "#common:water_bucket"), "count": 1, "keeps": ("#common:water_bucket",), "source": "d"}
+    grid = {32: ("minecraft:wheat", 3), 34: ("minecraft:water_bucket", 1)}
+    assert Rules.entryFor([entry], grid) is entry
+    assert Rules.returnsOf(entry, grid, 1) == [(34, "minecraft:water_bucket", 1)], "水桶原样留下，不换成空桶"
 
 
 def testCraftsAreCountedFromWhatTheGridLost():

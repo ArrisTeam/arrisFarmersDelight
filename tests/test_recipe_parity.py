@@ -7,8 +7,9 @@
 1. 退还的容器：用 JE 物品自带的合成剩余物（牛奶桶 / 水桶 -> 空桶，牛奶瓶 / 蜂蜜瓶 -> 玻璃瓶，煮熟的米饭 -> 碗）推出每份配方该还什么，
    和配方实际还的逐条对：有序配方看 result 数组的第二项起（引擎给），无序配方看 tools/gen_crafts.py 生成的
    Shared/Data/CraftReturns.py（服务端读合成格补还）。新配方漏还、多还都会红。例外是面团：JE 的 DoughRecipe 把水桶原样留下。
-2. 成品的做法（FAMILIES）：JE 一个配方里的标签展开后有几种原料组合，基岩版就要有几个配方，一个不多一个不少，个数也对；
-   标签占好几格时各格可以混着放（奶桶奶瓶、熟羊肉熟羊排、浆果）。
+2. 成品的做法（FAMILIES）：JE 一个配方里的标签展开后有几种原料组合，基岩版的配方（写标签的格子按词表的静态成员展开，
+   recipekit.variantsOf）展开后就要有这几种，一个不多一个不少，个数也对；标签占好几格时各格可以混着放（奶桶奶瓶、熟羊肉熟羊排、浆果）。
+   JE 的 forge:eggs 这边是原版的 minecraft:egg（鸡蛋、蓝色、棕色鸡蛋，用户定的三种蛋一视同仁）。
 3. 有序配方的摆法（LAYOUTS）：和 JE 的 pattern 形状一致（键换成别的字母不影响；奶桶奶瓶是 JE 的同一个标签，算同一个键）。
 4. JE 的无序配方这边也是无序（SHAPELESS_IN_JAVA）：蜂蜜火腿、牧羊人派、牛奶瓶倒回桶、面团（JE 的 DoughRecipe 摆哪都行）……
 蛋糕的三桶奶做法是原版自带的配方，本包只补带奶瓶的几种。
@@ -22,6 +23,7 @@ import fdtest
 import recipekit
 
 CraftReturns = fdtest.load("Shared.Data.CraftReturns").CraftReturns
+GAME_REMAINDERS = fdtest.load("Shared.Data.Remainders")         # 游戏里还剩余物用的表（和下面按 JE 推的 REMAINDER 对账）
 
 # JE 标签 -> 基岩版物品（FD 的换成 arris:）：forge:cooked_chicken / cooked_mutton / cooked_beef / cooked_fishes/salmon /
 # salad_ingredients（= crops/cabbage）/ berries / vegetables / milk，另有配方里直接写的候选 hay（干草块或稻草块）
@@ -35,6 +37,7 @@ TAGS = {
     "vegetables": ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
     "milk": ("minecraft:milk_bucket", "arris:milk_bottle"),
     "hay": ("minecraft:hay_block", "arris:rice_bale"),
+    "eggs": ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg"),
 }
 # JE 物品自带的合成剩余物（ModItems 的 craftRemainder 和原版物品）：用它当原料，合成后还回来
 REMAINDER = {
@@ -88,7 +91,7 @@ FAMILIES = {
     ("arris:roasted_mutton_chops", 1): [[one("arris:cooked_mutton_chops"), one("minecraft:beetroot"), BOWL, RICE, TOMATO]],
     ("arris:steak_and_potatoes", 1): [[POTATO, one("minecraft:cooked_beef"), BOWL, ONION, RICE]],
     ("arris:wheat_dough", 1): [[one("minecraft:wheat"), one("minecraft:water_bucket")]],               # DoughRecipe
-    ("arris:wheat_dough", 3): [[one("minecraft:wheat", 3), one("minecraft:egg")]],
+    ("arris:wheat_dough", 3): [[one("minecraft:wheat", 3), anyOf("eggs")]],
     ("arris:cooking_pot", 1): [[one("minecraft:brick", 2), one("minecraft:wooden_shovel"), one("minecraft:iron_ingot", 5),
                                 one("minecraft:water_bucket")]],
     ("arris:tatami", 2): [[one("arris:canvas", 2), one("arris:straw", 2)]],
@@ -108,13 +111,13 @@ FAMILIES = {
     ("minecraft:packed_mud", 2): [[one("arris:straw"), one("minecraft:mud", 2)]],
     ("minecraft:paper", 1): [[one("arris:tree_bark", 3)]],
     # 南瓜派的成品是原版的 minecraft:pumpkin_pie（JE 的 FD 也是）：派皮做 2 个，4 片拼回 1 个
-    ("minecraft:pumpkin_pie", 2): [[one("arris:pumpkin_slice", 4), one("minecraft:egg"), one("minecraft:sugar"), CRUST]],
+    ("minecraft:pumpkin_pie", 2): [[one("arris:pumpkin_slice", 4), anyOf("eggs"), one("minecraft:sugar"), CRUST]],
     ("minecraft:pumpkin_pie", 1): [[one("arris:pumpkin_pie_slice", 4)]],
     ("minecraft:pumpkin_seeds", 1): [[one("arris:pumpkin_slice")]],
     # 蛋糕：三桶奶是原版自带的配方，本包补带奶瓶的三种组合
     ("minecraft:cake", 1): [[one("arris:cake_slice", 7)]] + [
         [one("minecraft:milk_bucket", 3 - bottles)] * (bottles < 3) + [one("arris:milk_bottle", bottles), one("minecraft:sugar", 2),
-                                                                      one("minecraft:egg"), one("minecraft:wheat", 3)]
+                                                                      anyOf("eggs"), one("minecraft:wheat", 3)]
         for bottles in (1, 2, 3)],
     ("minecraft:milk_bucket", 1): [[one("minecraft:bucket"), one("arris:milk_bottle", 4)]],
 }
@@ -135,7 +138,8 @@ LAYOUTS = [
     (("arris:rope_fence",), "r/r|r/r"),
     (("arris:rope_fence_gate",), "/r/|/r/"),
     (("arris:cooking_pot",), "bSb|iWi|iii"),
-    (("arris:kelp_roll", "arris:kelp_roll2", "arris:kelp_roll3", "arris:kelp_roll4", "arris:kelp_roll5"), "RXR|###"),
+    (("arris:kelp_roll",), "RXR|###"),
+    (("arris:cutting_board",), "/##|/##"),
 ]
 
 
@@ -171,13 +175,14 @@ def canonical(rows, key=None):
     names = {}
 
     def of(char):
-        item = key[char]["item"] if key else char
+        item = recipekit.nameOf(key[char]) if key else char
         return str(names.setdefault(SAME_KEY.get(item, item), len(names)))
     return ["".join(" " if char == " " else of(char) for char in row) for row in rows]
 
 
-def returnedContainers(name, kind, body):
-    """配方实际还的容器：有序配方是 result 数组第二项起（引擎给）；无序配方是生成的 CraftReturns 表里这份配方的那条（服务端补还）。"""
+def returnedContainers(name, kind, body, variant):
+    """这份配方按 variant（一种具体的原料组合）做一份实际还的容器：有序配方是 result 数组第二项起（引擎给，和放进去的是什么无关）；
+    无序配方是生成的 CraftReturns 表里这份配方的那条，按放进去的物品查游戏用的 Remainders（服务端补还，Shared/Rules/Crafting）。"""
     results = recipekit.resultsOf(body)
     back = collections.Counter()
     if kind == "shaped":
@@ -187,29 +192,35 @@ def returnedContainers(name, kind, body):
     for entry in CraftReturns.get(results[0][0], ()):
         if entry["source"] == name:
             assert entry["count"] == results[0][1], name
-            for item in entry["ingredients"]:
-                if item in entry["returns"]:
-                    back[entry["returns"][item]] += 1
+            for item, count in variant.items():
+                kept = any(item in recipekit.membersOf(option) for option in entry["keeps"])
+                left = item if kept else GAME_REMAINDERS.craftRemainderOf(item)
+                if left:
+                    back[left] += count
     return back
 
 
-def expectedContainers(kind, body):
+def expectedContainers(result, variant):
     """JE 说该还的容器：原料里自带剩余物的每件还一件；面团的水桶原样留下。"""
-    ingredients = recipekit.ingredientsOf(kind, body)
-    if recipekit.resultsOf(body)[0][0] == "arris:wheat_dough" and "minecraft:water_bucket" in ingredients:
+    if result == "arris:wheat_dough" and "minecraft:water_bucket" in variant:
         return collections.Counter({"minecraft:water_bucket": 1})
     back = collections.Counter()
-    for item, count in ingredients.items():
+    for item, count in variant.items():
         if item in REMAINDER:
             back[REMAINDER[item]] += count
     return back
 
 
 def testContainersComeBackLikeJava():
+    """每份配方的每种原料组合（写标签的格子按词表展开）都比：有序配方写死在 result 数组里的容器对每种组合都要对，
+    所以有序配方里会剩东西的格子（奶、水桶）不能写标签——这边写具体的奶桶 / 奶瓶，每种摆法一份文件。"""
     for name, (kind, body) in recipekit.loadRecipes().items():
-        if kind != "furnace":
-            assert returnedContainers(name, kind, body) == expectedContainers(kind, body), "%s 退还 %s，JE 是 %s" % (
-                name, dict(returnedContainers(name, kind, body)), dict(expectedContainers(kind, body)))
+        if kind in ("furnace", "transform"):
+            continue
+        result = recipekit.resultsOf(body)[0][0]
+        for variant in recipekit.variantsOf(kind, body):
+            got, want = returnedContainers(name, kind, body, variant), expectedContainers(result, variant)
+            assert got == want, "%s 用 %s 退还 %s，JE 是 %s" % (name, dict(variant), dict(got), dict(want))
 
 
 def testEveryDishHasAllItsJavaVariants():
@@ -217,7 +228,7 @@ def testEveryDishHasAllItsJavaVariants():
     for kind, body in recipekit.loadRecipes().values():
         if kind != "furnace":
             item, count = recipekit.resultsOf(body)[0]
-            made[(item, count)].add(frozenset(recipekit.ingredientsOf(kind, body).items()))
+            made[(item, count)] |= set(frozenset(variant.items()) for variant in recipekit.variantsOf(kind, body))
     for key, recipes in FAMILIES.items():
         expected = set()
         for parts in recipes:
@@ -249,9 +260,9 @@ def testJavasShapelessRecipesAreShapelessHere():
 
 def testDoughFromWaterKeepsTheBucketLikeJava():
     # JE 的 DoughRecipe：一格小麦 + 一格水桶，摆哪都行（就是无序配方），水桶原样留下——表里它的剩余物是它自己
-    water = [entry for entry in CraftReturns["arris:wheat_dough"] if "minecraft:water_bucket" in entry["ingredients"]]
-    assert len(water) == 1 and water[0]["ingredients"] == ("minecraft:water_bucket", "minecraft:wheat")
-    assert water[0]["count"] == 1 and water[0]["returns"] == {"minecraft:water_bucket": "minecraft:water_bucket"}
+    water = [entry for entry in CraftReturns["arris:wheat_dough"] if "minecraft:water_bucket" in entry["slots"]]
+    assert len(water) == 1 and sorted(water[0]["slots"]) == ["minecraft:water_bucket", "minecraft:wheat"]
+    assert water[0]["count"] == 1 and water[0]["keeps"] == ("minecraft:water_bucket",)
 
 
 if __name__ == "__main__":

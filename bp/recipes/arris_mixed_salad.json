@@ -1,0 +1,32 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:mixed_salad"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:leafy_green"
+            },
+            {
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:beetroot"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:mixed_salad"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

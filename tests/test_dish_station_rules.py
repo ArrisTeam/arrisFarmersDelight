@@ -95,8 +95,8 @@ def testDishesGiveBackWhatJavaLeaves():
     ham = next(dish for dish in Rules.dishes() if dish["result"][0] == "arris:honey_glazed_ham_block_stage0")
     assert ham["extras"] == [("minecraft:bowl", 0, 2), ("minecraft:glass_bottle", 0, 1)]
     cakes = [dish for dish in Rules.dishes() if dish["result"][0] == "minecraft:cake"]
-    assert len(cakes) == 5 and all(len(dish["ingredients"]) == 9 for dish in cakes), "奶瓶 / 奶桶的五种凑法，每种 9 层"
-    assert sorted(dish["extras"] for dish in cakes if dish["ingredients"].count(bottle) == 3) == [[("minecraft:glass_bottle", 0, 3)]]
+    assert len(cakes) == 15 and all(len(dish["ingredients"]) == 9 for dish in cakes), "奶瓶 / 奶桶的五种凑法 × 三种蛋，每种 9 层"
+    assert sorted(dish["extras"] for dish in cakes if dish["ingredients"].count(bottle) == 3) == [[("minecraft:glass_bottle", 0, 3)]] * 3
     assert all(dish["ingredients"].count(milk) + dish["ingredients"].count(bottle) == 3 for dish in cakes)
     potato = [dish["extras"] for dish in Rules.dishes() if dish["result"][0] == "arris:stuffed_potato"]
     assert sorted(potato) == [[("minecraft:bucket", 0, 1)]] * 2 + [[("minecraft:glass_bottle", 0, 1)]] * 2

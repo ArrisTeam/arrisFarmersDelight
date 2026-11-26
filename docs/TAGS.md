@@ -7,6 +7,23 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 词表以代码为准：`bp/arrisFarmersDelightScripts/Shared/Data/Tags.py`。`bp/netease_tags/` 下的文件和本文的词表都由 `py -3 tools/gen_tags.py` 从它生成，
 `tests/test_netease_tags.py` 核对文件是不是最新、成员是不是真的、和 JE 的标签对不对得上。
 
+## 名字和成员照什么定
+
+**名字照 JE 1.21，成员照 JE 1.20.1。** 名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走
+（Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
+
+- 名字是 `common:` 加 `c:` 名的最后一段，单复数照 JE。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
+  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边也是：
+  `c:crops` → `common:crops`、`c:seeds` → `common:seeds`、`c:bones` → `common:bones`、`c:mushrooms` → `common:mushrooms`。
+- 最后一段只是材料名、单拿出来说不清是什么的，照机械动力的写法把类目的单数接在后面：`c:buckets/water` → `common:water_bucket`
+  （机械动力的 `c:plates/iron` → `common:iron_plate`、`c:flours/wheat` → `common:wheat_flour` 也是这样来的）。
+- JE 没有对应 `c:` 名的，照物品名：`common:rice_panicle`、`common:mutton_chops`、`common:tomato_seeds`。
+- JE 农夫乐事自己定义的标签，照 JE 的原名 `farmersdelight:<路径>`：`farmersdelight:heat_sources`、`farmersdelight:meals`……
+- 不用 `/` 分层，一个名字只有一段。JE 两个版本的名字（1.20.1 的 `forge:`、1.21 的 `c:`）都列在下面词表里；行为包里照 JE 写的配方 JSON
+  用这两种名字都行，农夫乐事会换成这边的名字（[RECIPE-JSON.md](RECIPE-JSON.md)）。
+- 成员照 1.20.1，1.21 有两处不同，这边不跟：1.21 的 `c:foods/vegetable` 多了金胡萝卜；`c:foods/raw_fish` 含河豚，
+  农夫乐事 1.21 自己的配方用的是去掉河豚的 `c:foods/safe_raw_fish`，和这边的 `common:raw_fish` 一样。
+
 ## 别的模组怎么加入
 
 在你自己的行为包里放 `netease_tags/` 目录，一个 JSON 一个标签，`type` 和 `identifier` 和农夫乐事的一样，`items` 里只写你自己的物品：
@@ -25,13 +42,20 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 
 - 只写你自己的物品和原版物品。写别的模组的物品名，对方没装时引擎会一直往日志里写 ERROR。
 - 只写物品名，没有 aux。
-- 不要用 `#` 引用"在物品 JSON 里声明的标签"。引擎展开这种引用时只拿到经 `netease_tags` 加进去的成员。农夫乐事的文件一律不用 `#`。
+- `#标签名` 引用另一个同一类的标签。引原版标签（`#minecraft:egg`）、引别的包用 `netease_tags` 登记的标签（`#common:tomato`），引擎都展开，
+  按标签反查、按物品问、配方匹配三处都认（3.10 实机）。不要引只在物品 JSON 里声明的标签：引擎展开这种引用时只拿到经 `netease_tags` 加进去的成员。
+- 农夫乐事的文件照 JE 的标签文件写 `#`：JE 用 `#` 引了别的标签、那个标签这边也登记的地方，这边也引。比如 `common:vegetable` 写的是
+  `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato`，你把番茄登记进 `common:tomato`，它也就算蔬菜、
+  算作物，和 JE 一样。下面词表"农夫乐事登记的"一列照文件列（含 `#`）。
 - 你自己的物品也可以继续在物品 JSON 的 `minecraft:tags` 里写标签，引擎两种写法都认；原版物品只能用 `netease_tags`。
 
 ### 配方里的标签原料
 
-农夫乐事自带的厨锅菜照 JE 按标签认料，砧板切生意面也收 `common:dough` 里的面团：哪几道菜、哪条砧板配方读哪个标签，见下面词表的最后一列。
-把你的东西登记进那个标签，它就能进这些配方。你自己的厨锅、砧板配方也可以把一格写成标签，写法见
+农夫乐事自带的厨锅菜照 JE 按标签认料，砧板切生意面也收 `common:dough` 里的面团，工作台配方里 JE 写标签的格子这边也写标签
+（`{"tag": "common:tomato"}` 这种，31 条 JE 配方）：哪几道菜、哪条砧板配方、哪些工作台配方读哪个标签，见下面词表的最后一列。
+把你的东西登记进那个标签，它就能进这些配方（工作台配方 3.10 实机：别的包并进同一标签的物品，有序、无序配方都认）。
+例外：有序的工作台配方里会剩容器的格子写的是具体物品——蛋糕、巧克力派、芝士蛋糕、派皮的奶（奶桶、奶瓶每种摆法一份配方），厨锅配方的水桶，
+所以别的模组的奶进不了这四样有序配方；铁锭照团队的写法写 `minecraft:iron_ingot`。你自己的厨锅、砧板配方也可以把一格写成标签，写法见
 [EXTENSION-API.md](EXTENSION-API.md) §5（代码里登记）和 [RECIPE-JSON.md](RECIPE-JSON.md) §3（行为包里的配方 JSON）。
 
 ### 刀
@@ -42,14 +66,11 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 
 ### 热源方块
 
-方块标签不带方块状态，所以热源分两个：
+热源照 JE 用农夫乐事自己的方块标签 `farmersdelight:heat_sources`（JE 的森罗物语也把炉灶登记进这个名字）。方块在这个标签里，放在它上面的厨锅、煎锅就会热；
+方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
+或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
-- `common:heat_source`：方块名本身就说明在发热，比如火、熔岩、岩浆块、点着的炉灶（农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个）。
-  方块在这个标签里，放在它上面的厨锅、煎锅就会热。
-- `common:heat_source_lit`：同一个方块名有点着和没点着两种，要看方块状态。农夫乐事认的"点着"是：方块状态里有名字是 `lit` 或以 `:lit` 结尾的状态，
-  值为真；或者有 `extinguished` 状态，值为假。两种都没有就不算点着。营火在这个标签里。
-
-手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样），两个标签里的方块都算。
+手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。
 
 ### 能煎烤什么
@@ -59,18 +80,20 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 食谱书和 JEI 里"能煎烤的东西"那几页只列表里的。
 
 基岩版的三种蛋（鸡蛋、蓝色鸡蛋、棕色鸡蛋，原版标签 `minecraft:egg` 的成员）一视同仁：都能在煎锅上煎成煎蛋，只煎一面，炉灶站点的烤架不收，
-熔炉、烟熏炉、营火也收（JE 只有一种蛋）。工作台配方里的蛋还只认鸡蛋。
+熔炉、烟熏炉、营火也收（JE 只有一种蛋）。工作台配方里 JE 写 `#forge:eggs` 的四样（蛋糕、南瓜派、烤鸡、鸡蛋面团）写的是 `minecraft:egg` 标签，三种蛋都收。
 
 ## JE 农夫乐事自己的标签（farmersdelight:）
 
-JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字，`#` 引用展开写全；
-只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
+JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字；JE 用 `#` 引的标签这边也登记的
+照写 `#`（`farmersdelight:heat_sources` 引 `#farmersdelight:tray_heat_sources`；方块标签里的 `#` 还没在游戏里量过，农夫乐事读热源先看名单，
+自己的方块不受影响），引的是这边没有的（`#minecraft:campfires`、`#farmersdelight:cabinets/wooden`……）展开写成员；只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
 
-方块标签有六个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
-这六张名单不在 `linkage.md` 的接口里，别的模组要加进来就用标签。
+方块标签有七个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
+热源的名单 `CanProvideHeatBlockList` 在 `linkage.md` 的接口里，另外六张不在，别的模组要加进来就用标签。
 
 | 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
 | --- | --- | --- |
+| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火 |
 | `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
 | `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
 | `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
@@ -88,86 +111,85 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 
 ## 词表
 
-标签名是 `common:` 加小写、下划线连接的单数名词，对应 JE 的 `forge:` / `c:` 标签；物品名本身就是复数的照物品名（`tomato_seeds`、`mutton_chops`）。
-团队里已经在用的名字照用，其中有复数的（`common:crops`、`common:seeds`、`common:flowers`、机械动力的 `common:leaves`、`common:buttons`）；新起的名字用单数。
+名字怎么来的见开头「名字和成员照什么定」。团队里已经在用的名字照用：`common:crops`、`common:seeds`、`common:flowers`（机械动力附属）、
+`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。
 
-- `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
+- `common:mushrooms` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
 - 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。
-- `farmersdelight:` 开头的是 JE 农夫乐事自己定义的标签，名字照 JE（见上一节），不按上面的单数规矩改。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 
 <!-- gen_tags: 词表开始（tools/gen_tags.py 从 Shared/Data/Tags.py 生成，别手改） -->
-| 标签 | 种类 | 意思 | 对应 JE | 农夫乐事登记的 | 农夫乐事在哪里读 |
-| --- | --- | --- | --- | --- | --- |
-| `common:tomato` | 物品 | 番茄 | `forge:crops/tomato`、`forge:vegetables/tomato` | `arris:tomato` | 厨锅的格子：番茄酱、蔬菜杂烩、鱿鱼墨面、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:tomato_seeds` | 物品 | 番茄种子 | `forge:seeds/tomato` | `arris:tomato_seeds` | — |
-| `common:rice` | 物品 | 米（也是水稻的种子） | `forge:crops/rice`、`forge:grain/rice`、`forge:seeds/rice` | `arris:rice` | 厨锅的格子：米饭、炒饭、蘑菇饭、填馅南瓜、狗粮（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:rice_panicle` | 物品 | 稻穗 | — | `arris:rice_panicle` | — |
-| `common:cooked_rice` | 物品 | 米饭 | `forge:cooked_rice` | `arris:cooked_rice` | — |
-| `common:dough` | 物品 | 面团 | `forge:dough`、`forge:dough/wheat` | `arris:wheat_dough` | 厨锅的格子：饺子（Shared/Data/CookingPotRecipes 的 Slots）；砧板按标签切成 `arris:raw_pasta`（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf） |
-| `common:fried_egg` | 物品 | 煎蛋 | `forge:cooked_eggs` | `arris:fried_egg` | — |
-| `common:mutton_chops` | 物品 | 生羊排 | — | `arris:mutton_chops` | — |
-| `common:cooked_mutton_chops` | 物品 | 熟羊排 | — | `arris:cooked_mutton_chops` | — |
-| `common:knife` | 物品 | 刀 | `forge:tools/knives`、`farmersdelight:tools/knives` | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
-| `arris:knife` | 物品 | 刀（农夫乐事的老标签，照旧有效） | — | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
-| `common:raw_beef` | 物品 | 生牛肉（含牛肉末） | `forge:raw_beef` | `minecraft:beef`、`arris:minced_beef` | 厨锅的格子：饺子、牛肉炖（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_pork` | 物品 | 生猪肉（含培根） | `forge:raw_pork` | `minecraft:porkchop`、`arris:bacon` | 厨锅的格子：饺子、南瓜汤、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_chicken` | 物品 | 生鸡肉（含鸡块） | `forge:raw_chicken` | `minecraft:chicken`、`arris:chicken_cuts` | 厨锅的格子：饺子、鸡肉汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_mutton` | 物品 | 生羊肉（含羊排） | `forge:raw_mutton` | `minecraft:mutton`、`arris:mutton_chops` | 厨锅的格子：羊排意面（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_meat` | 物品 | 生肉：上面四种和生兔肉 | `forge:raw_meat` | `minecraft:rabbit`、`minecraft:beef`、`arris:minced_beef`、`minecraft:chicken`、`arris:chicken_cuts`、`minecraft:porkchop`、`arris:bacon`、`minecraft:mutton`、`arris:mutton_chops` | 厨锅的格子：卷心菜卷、狗粮（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:cooked_beef` | 物品 | 熟牛肉（含牛肉饼） | `forge:cooked_beef` | `minecraft:cooked_beef`、`arris:beef_patty` | — |
-| `common:cooked_pork` | 物品 | 熟猪肉（含熟培根） | `forge:cooked_pork` | `minecraft:cooked_porkchop`、`arris:cooked_bacon` | — |
-| `common:cooked_chicken` | 物品 | 熟鸡肉（含熟鸡块） | `forge:cooked_chicken` | `minecraft:cooked_chicken`、`arris:cooked_chicken_cuts` | — |
-| `common:cooked_mutton` | 物品 | 熟羊肉（含熟羊排） | `forge:cooked_mutton` | `minecraft:cooked_mutton`、`arris:cooked_mutton_chops` | — |
-| `common:raw_fish` | 物品 | 生鱼（含鱼片，不含河豚） | `forge:raw_fishes` | `minecraft:cod`、`arris:cod_slice`、`minecraft:salmon`、`arris:salmon_slice`、`minecraft:tropical_fish` | 厨锅的格子：鱿鱼墨面、卷心菜卷、鱼肉炖（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:vegetable` | 物品 | 蔬菜（不含卷心菜） | `forge:vegetables` | `minecraft:beetroot`、`minecraft:carrot`、`arris:onion`、`minecraft:potato`、`arris:tomato` | 厨锅的格子：蔬菜面、蔬菜杂烩、填馅南瓜、卷心菜卷、鸡肉汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:cabbage` | 物品 | 卷心菜（含卷心菜叶） | `forge:crops/cabbage`、`forge:salad_ingredients`、`forge:salad_ingredients/cabbage` | `arris:cabbage`、`arris:cabbage_leaf` | 厨锅的格子：饺子、蔬菜面、卷心菜卷、鸡肉汤、蔬菜汤、南瓜汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:milk` | 物品 | 奶（奶桶、奶瓶） | `forge:milk` | `minecraft:milk_bucket`、`arris:milk_bottle` | 厨锅的格子：南瓜汤、洋葱汤、热可可、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:mushroom` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:onion` | 物品 | 洋葱 | `forge:crops/onion`、`forge:vegetables/onion` | `arris:onion` | 厨锅的格子：炒饭、饺子、蔬菜杂烩、填馅南瓜、鱼肉炖、洋葱汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:carrot` | 物品 | 胡萝卜 | `forge:crops/carrot`、`forge:vegetables/carrot` | `minecraft:carrot` | 厨锅的格子：兔肉煲、炒饭、蔬菜面、牛肉炖、鸡肉汤、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:potato` | 物品 | 土豆 | `forge:crops/potato`、`forge:vegetables/potato` | `minecraft:potato` | 厨锅的格子：兔肉煲、填馅南瓜、牛肉炖、蔬菜汤、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:beetroot` | 物品 | 甜菜根 | `forge:crops/beetroot`、`forge:vegetables/beetroot` | `minecraft:beetroot` | 厨锅的格子：甜菜汤、蔬菜杂烩、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:wheat` | 物品 | 小麦 | `forge:crops/wheat`、`forge:grain/wheat` | `minecraft:wheat` | — |
-| `common:bread` | 物品 | 面包 | `forge:bread`、`forge:bread/wheat` | `minecraft:bread` | 厨锅的格子：洋葱汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:pasta` | 物品 | 生意面 | `forge:pasta`、`forge:pasta/raw_pasta` | `arris:raw_pasta` | 厨锅的格子：肉丸意面、羊排意面、蔬菜面、鱿鱼墨面、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:berry` | 物品 | 浆果 | `forge:berries` | `minecraft:sweet_berries`、`minecraft:glow_berries` | 厨锅的格子：填馅南瓜（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:bone` | 物品 | 骨头 | `forge:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_cod` | 物品 | 生鳕鱼（含鱼片） | `forge:raw_fishes/cod` | `minecraft:cod`、`arris:cod_slice` | 厨锅的格子：烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:raw_salmon` | 物品 | 生鲑鱼（含鱼片） | `forge:raw_fishes/salmon` | `minecraft:salmon`、`arris:salmon_slice` | — |
-| `common:cooked_fish` | 物品 | 熟鱼（含熟鱼片） | `forge:cooked_fishes` | `minecraft:cooked_cod`、`arris:cooked_cod_slice`、`minecraft:cooked_salmon`、`arris:cooked_salmon_slice` | — |
-| `common:cooked_cod` | 物品 | 熟鳕鱼（含熟鱼片） | `forge:cooked_fishes/cod` | `minecraft:cooked_cod`、`arris:cooked_cod_slice` | — |
-| `common:cooked_salmon` | 物品 | 熟鲑鱼（含熟鱼片） | `forge:cooked_fishes/salmon` | `minecraft:cooked_salmon`、`arris:cooked_salmon_slice` | — |
-| `common:raw_bacon` | 物品 | 生培根 | `forge:raw_bacon` | `arris:bacon` | — |
-| `common:cooked_bacon` | 物品 | 熟培根 | `forge:cooked_bacon` | `arris:cooked_bacon` | — |
-| `common:cabbage_seeds` | 物品 | 卷心菜种子 | `forge:seeds/cabbage` | `arris:cabbage_seeds` | — |
-| `common:water_bucket` | 物品 | 水桶 | `forge:buckets/water` | `minecraft:water_bucket` | — |
-| `common:crops` | 物品 | 作物（团队已有的名字） | `forge:crops` | `arris:cabbage`、`arris:cabbage_leaf`、`arris:onion`、`arris:rice`、`arris:tomato` | — |
-| `common:seeds` | 物品 | 种子（团队已有的名字） | `forge:seeds` | `arris:cabbage_seeds`、`arris:rice`、`arris:tomato_seeds` | — |
-| `common:flowers` | 物品 | 花（团队已有的名字） | `minecraft:flowers` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
-| `farmersdelight:meals` | 物品 | 饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算） | `farmersdelight:meals` | `minecraft:mushroom_stew`、`minecraft:beetroot_soup`、`minecraft:rabbit_stew`、`arris:mixed_salad`、`arris:cooked_rice`、`arris:bone_broth`、`arris:cookbeef_stew`、`arris:vegetable_soup`、`arris:fish_stew`、`arris:chicken_soup`、`arris:fried_rice`、`arris:pumpkin_soup`、`arris:baked_cod_stew`、`arris:noodle_soup`、`arris:onion_soup`、`arris:bacon_and_eggs`、`arris:ratatouille`、`arris:steak_and_potatoes`、`arris:pasta_with_meatballs`、`arris:pasta_with_mutton_chop`、`arris:mushroom_rice`、`arris:roasted_mutton_chops`、`arris:vegetable_noodles`、`arris:squid_ink_pasta`、`arris:grilled_salmon`、`arris:roast_chicken`、`arris:stuffed_pumpkin`、`arris:honey_glazed_ham`、`arris:shepherds_pie`、`arris:gleaming_salad` | — |
-| `farmersdelight:snacks` | 物品 | 小吃（三明治、汉堡、卷、饺子……） | `farmersdelight:snacks` | `arris:barbecue_stick`、`arris:egg_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:bacon_sandwich`、`arris:mutton_wrap`、`arris:dumplings`、`arris:stuffed_potato`、`arris:cabbage_rolls`、`arris:salmon_roll`、`arris:cod_roll`、`arris:kelp_roll`、`arris:kelp_roll_slice` | — |
-| `farmersdelight:sweets` | 物品 | 甜食（蛋糕、曲奇、派的切片、冰棍……） | `farmersdelight:sweets` | `minecraft:cake`、`minecraft:cookie`、`arris:cake_slice`、`arris:apple_pie_slice`、`arris:sweet_berry_cheesecake_slice`、`arris:chocolate_pie_slice`、`arris:pumpkin_pie_slice`、`arris:sweet_berry_cookie`、`arris:honey_cookie`、`arris:melon_popsicle`、`arris:glow_berry_custard`、`arris:fruit_salad` | — |
-| `farmersdelight:drinks` | 物品 | 饮料（瓶装的） | `farmersdelight:drinks` | `arris:milk_bottle`、`arris:apple_cider`、`arris:melon_juice`、`arris:hot_cocoa` | — |
-| `farmersdelight:feasts` | 物品 | 大餐（放在地上、一份一份盛出来的那几样） | `farmersdelight:feasts` | `arris:roast_chicken_block_stage0`、`arris:stuffed_pumpkin_block_stage0`、`arris:shepherds_pie_block_stage0`、`arris:honey_glazed_ham_block_stage0`、`arris:gleaming_salad_block_stage0`、`arris:rice_roll_medley_block_stage0` | — |
-| `farmersdelight:pies` | 物品 | 派（原版的南瓜派也算） | `farmersdelight:pies` | `minecraft:pumpkin_pie`、`arris:apple_pie_item`、`arris:sweet_berry_cheesecake_item`、`arris:chocolate_pie_item` | — |
-| `farmersdelight:wild_crops` | 物品 | 野生作物 | `farmersdelight:wild_crops` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
-| `farmersdelight:mushroom_colonies` | 物品 | 蘑菇菌落 | `farmersdelight:mushroom_colonies` | `arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | — |
-| `farmersdelight:cabinets` | 物品 | 橱柜 | `farmersdelight:cabinets` | `arris:oak_cabinet`、`arris:spruce_cabinet`、`arris:birch_cabinet`、`arris:jungle_cabinet`、`arris:acacia_cabinet`、`arris:dark_oak_cabinet`、`arris:mangrove_cabinet`、`arris:cherry_cabinet`、`arris:bamboo_cabinet`、`arris:crimson_cabinet`、`arris:warped_cabinet` | — |
-| `farmersdelight:serving_containers` | 物品 | 盛饭菜的容器（碗、玻璃瓶、桶） | `farmersdelight:serving_containers` | `minecraft:bowl`、`minecraft:glass_bottle`、`minecraft:bucket` | — |
-| `common:heat_source` | 方块 | 热源：方块名就说明在发热 | `farmersdelight:heat_sources` | `minecraft:fire`、`minecraft:soul_fire`、`minecraft:lava`、`minecraft:flowing_lava`、`minecraft:magma`、`arris:stove` | 热源（Shared/Rules/HeatSources） |
-| `common:heat_source_lit` | 方块 | 热源：要看方块状态点没点着 | `minecraft:campfires` | `minecraft:campfire`、`minecraft:soul_campfire` | 热源（Shared/Rules/HeatSources，锅底下要点着） |
-| `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
-| `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
-| `farmersdelight:compost_activators` | 方块 | 有机肥周围的催化剂 | `farmersdelight:compost_activators` | `minecraft:brown_mushroom`、`minecraft:red_mushroom`、`minecraft:podzol`、`minecraft:mycelium`、`arris:organic_compost_stage0`、`arris:organic_compost_stage1`、`arris:organic_compost_stage2`、`arris:organic_compost_stage3`、`arris:rich_soil`、`arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | 有机肥堆沤的概率（Server/OrganicCompost） |
-| `farmersdelight:unaffected_by_rich_soil` | 方块 | 沃土不催熟的植物 | `farmersdelight:unaffected_by_rich_soil` | `minecraft:grass_block`、`minecraft:moss_block`、`minecraft:crimson_nylium`、`minecraft:warped_nylium`、`minecraft:short_grass`、`minecraft:tall_grass`、`minecraft:fern`、`minecraft:large_fern`、`minecraft:twisting_vines`、`minecraft:big_dripleaf`、`minecraft:pink_petals`、`minecraft:sunflower`、`minecraft:lilac`、`minecraft:rose_bush`、`minecraft:peony`、`minecraft:pitcher_plant`、`arris:sandy_shrub`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony`、`arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | 沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant） |
-| `farmersdelight:mushroom_colony_growable_on` | 方块 | 蘑菇菌落在它上面才长 | `farmersdelight:mushroom_colony_growable_on` | `arris:rich_soil` | 蘑菇菌落长不长（Server/MushroomColony） |
-| `farmersdelight:drops_cake_slice` | 方块 | 拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕） | `farmersdelight:drops_cake_slice` | `minecraft:candle_cake`、`minecraft:white_candle_cake`、`minecraft:orange_candle_cake`、`minecraft:magenta_candle_cake`、`minecraft:light_blue_candle_cake`、`minecraft:yellow_candle_cake`、`minecraft:lime_candle_cake`、`minecraft:pink_candle_cake`、`minecraft:gray_candle_cake`、`minecraft:light_gray_candle_cake`、`minecraft:cyan_candle_cake`、`minecraft:purple_candle_cake`、`minecraft:blue_candle_cake`、`minecraft:brown_candle_cake`、`minecraft:green_candle_cake`、`minecraft:red_candle_cake`、`minecraft:black_candle_cake` | 拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake） |
-| `minecraft:egg` | 物品（原版自带，不生成文件） | 蛋（原版自带的标签） | `forge:eggs` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg` | 厨锅的格子：炒饭、烘焙鳕鱼炖、面条汤、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:chili` | 物品（农夫乐事没有成员，不生成文件） | 辣椒 | — | — | — |
-| `common:fruit` | 物品（农夫乐事没有成员，不生成文件） | 水果 | — | — | — |
-| `common:wheat_flour` | 物品（农夫乐事没有成员，不生成文件） | 小麦粉（机械动力的） | — | — | — |
+| 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `common:tomato` | 物品 | 番茄 | `forge:crops/tomato`、`forge:vegetables/tomato` | `c:crops/tomato`、`c:foods/tomato` | `arris:tomato` | 厨锅的格子：番茄酱、蔬菜杂烩、鱿鱼墨面、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:barbecue_stick`、`arris:gleaming_salad_block_stage0`、`arris:hamburger`、`arris:mixed_salad`、`arris:roasted_mutton_chops`（bp/recipes） |
+| `common:tomato_seeds` | 物品 | 番茄种子 | `forge:seeds/tomato` | — | `arris:tomato_seeds` | — |
+| `common:rice` | 物品 | 米（也是水稻的种子） | `forge:crops/rice`、`forge:grain/rice`、`forge:seeds/rice` | `c:crops/rice` | `arris:rice` | 厨锅的格子：米饭、炒饭、蘑菇饭、填馅南瓜、狗粮（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:rice_panicle` | 物品 | 稻穗 | — | — | `arris:rice_panicle` | — |
+| `common:cooked_rice` | 物品 | 米饭 | `forge:cooked_rice` | `c:foods/cooked_rice` | `arris:cooked_rice` | — |
+| `common:dough` | 物品 | 面团 | `forge:dough`、`forge:dough/wheat` | `c:foods/dough`、`c:foods/dough/wheat` | `arris:wheat_dough` | 厨锅的格子：饺子（Shared/Data/CookingPotRecipes 的 Slots）；砧板按标签切成 `arris:raw_pasta`（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf） |
+| `common:cooked_egg` | 物品 | 做熟的蛋（煎蛋） | `forge:cooked_eggs` | `c:foods/cooked_egg` | `arris:fried_egg` | 工作台：`arris:bacon_and_eggs`、`arris:egg_sandwich`（bp/recipes） |
+| `common:mutton_chops` | 物品 | 生羊排 | — | — | `arris:mutton_chops` | — |
+| `common:cooked_mutton_chops` | 物品 | 熟羊排 | — | — | `arris:cooked_mutton_chops` | — |
+| `common:knife` | 物品 | 刀 | `forge:tools/knives`、`farmersdelight:tools/knives` | `farmersdelight:tools/knives`、`c:tools/knife` | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
+| `arris:knife` | 物品 | 刀（农夫乐事的老标签，照旧有效） | — | — | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
+| `common:raw_beef` | 物品 | 生牛肉（含牛肉末） | `forge:raw_beef` | `c:foods/raw_beef` | `minecraft:beef`、`arris:minced_beef` | 厨锅的格子：饺子、牛肉炖（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_pork` | 物品 | 生猪肉（含培根） | `forge:raw_pork` | `c:foods/raw_pork` | `minecraft:porkchop`、`#common:raw_bacon` | 厨锅的格子：饺子、南瓜汤、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_chicken` | 物品 | 生鸡肉（含鸡块） | `forge:raw_chicken` | `c:foods/raw_chicken` | `minecraft:chicken`、`arris:chicken_cuts` | 厨锅的格子：饺子、鸡肉汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_mutton` | 物品 | 生羊肉（含羊排） | `forge:raw_mutton` | `c:foods/raw_mutton` | `minecraft:mutton`、`arris:mutton_chops` | 厨锅的格子：羊排意面（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_meat` | 物品 | 生肉：上面四种和生兔肉 | `forge:raw_meat` | `c:foods/raw_meat` | `minecraft:rabbit`、`#common:raw_beef`、`#common:raw_chicken`、`#common:raw_pork`、`#common:raw_mutton` | 厨锅的格子：卷心菜卷、狗粮（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:cooked_beef` | 物品 | 熟牛肉（含牛肉饼） | `forge:cooked_beef` | `c:foods/cooked_beef` | `minecraft:cooked_beef`、`arris:beef_patty` | 工作台：`arris:stuffed_potato`（bp/recipes） |
+| `common:cooked_pork` | 物品 | 熟猪肉（含熟培根） | `forge:cooked_pork` | `c:foods/cooked_pork` | `minecraft:cooked_porkchop`、`#common:cooked_bacon` | — |
+| `common:cooked_chicken` | 物品 | 熟鸡肉（含熟鸡块） | `forge:cooked_chicken` | `c:foods/cooked_chicken` | `minecraft:cooked_chicken`、`arris:cooked_chicken_cuts` | 工作台：`arris:chicken_sandwich`（bp/recipes） |
+| `common:cooked_mutton` | 物品 | 熟羊肉（含熟羊排） | `forge:cooked_mutton` | `c:foods/cooked_mutton` | `minecraft:cooked_mutton`、`arris:cooked_mutton_chops` | 工作台：`arris:mutton_wrap`、`arris:shepherds_pie_block_stage0`（bp/recipes） |
+| `common:cooked_meat` | 物品 | 熟肉：四种熟肉和熟兔肉 | — | `c:foods/cooked_meat` | `minecraft:cooked_rabbit`、`#common:cooked_beef`、`#common:cooked_chicken`、`#common:cooked_pork`、`#common:cooked_mutton` | 工作台：`arris:barbecue_stick`（bp/recipes） |
+| `common:raw_fish` | 物品 | 生鱼（含鱼片，不含河豚） | `forge:raw_fishes` | `c:foods/safe_raw_fish`、`c:foods/raw_fish` | `#common:raw_cod`、`#common:raw_salmon`、`minecraft:tropical_fish` | 厨锅的格子：鱿鱼墨面、卷心菜卷、鱼肉炖（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:vegetable` | 物品 | 蔬菜（不含卷心菜） | `forge:vegetables` | `c:foods/vegetable` | `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato` | 厨锅的格子：蔬菜面、蔬菜杂烩、填馅南瓜、卷心菜卷、鸡肉汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:kelp_roll`（bp/recipes） |
+| `common:cabbage` | 物品 | 卷心菜（含卷心菜叶） | `forge:crops/cabbage` | `c:crops/cabbage`、`c:foods/cabbage` | `arris:cabbage`、`arris:cabbage_leaf` | 厨锅的格子：饺子、卷心菜卷（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:grilled_salmon`（bp/recipes） |
+| `common:leafy_green` | 物品 | 沙拉用的叶菜（JE 的 salad_ingredients） | `forge:salad_ingredients`、`forge:salad_ingredients/cabbage` | `c:foods/leafy_green` | `#common:cabbage` | 厨锅的格子：蔬菜面、鸡肉汤、蔬菜汤、南瓜汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:mixed_salad`、`arris:mutton_wrap`（bp/recipes） |
+| `common:milk` | 物品 | 奶（奶桶、奶瓶） | `forge:milk` | `c:drinks/milk` | `minecraft:milk_bucket`、`arris:milk_bottle` | 厨锅的格子：南瓜汤、洋葱汤、热可可、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:shepherds_pie_block_stage0`、`arris:stuffed_potato`（bp/recipes） |
+| `common:mushrooms` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `c:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:onion` | 物品 | 洋葱 | `forge:crops/onion`、`forge:vegetables/onion` | `c:crops/onion`、`c:foods/onion` | `arris:onion` | 厨锅的格子：炒饭、饺子、蔬菜杂烩、填馅南瓜、鱼肉炖、洋葱汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:barbecue_stick`、`arris:grilled_salmon`、`arris:hamburger`、`arris:mutton_wrap`、`arris:roast_chicken_block_stage0`、`arris:shepherds_pie_block_stage0`、`arris:steak_and_potatoes`（bp/recipes） |
+| `common:carrot` | 物品 | 胡萝卜 | `forge:crops/carrot`、`forge:vegetables/carrot` | `c:crops/carrot` | `minecraft:carrot` | 厨锅的格子：兔肉煲、炒饭、蔬菜面、牛肉炖、鸡肉汤、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:chicken_sandwich`、`arris:roast_chicken_block_stage0`（bp/recipes） |
+| `common:potato` | 物品 | 土豆 | `forge:crops/potato`、`forge:vegetables/potato` | `c:crops/potato` | `minecraft:potato` | 厨锅的格子：兔肉煲、填馅南瓜、牛肉炖、蔬菜汤、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:beetroot` | 物品 | 甜菜根 | `forge:crops/beetroot`、`forge:vegetables/beetroot` | `c:crops/beetroot` | `minecraft:beetroot` | 厨锅的格子：甜菜汤、蔬菜杂烩、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:gleaming_salad_block_stage0`、`arris:mixed_salad`、`arris:roasted_mutton_chops`（bp/recipes） |
+| `common:wheat` | 物品 | 小麦 | `forge:crops/wheat`、`forge:grain/wheat` | `c:crops/wheat` | `minecraft:wheat` | 工作台：`arris:apple_pie_item`、`minecraft:cake`、`arris:honey_cookie`、`arris:pie_crust`、`arris:sweet_berry_cookie`、`arris:wheat_dough`（bp/recipes） |
+| `common:bread` | 物品 | 面包 | `forge:bread`、`forge:bread/wheat` | `c:foods/bread` | `minecraft:bread` | 厨锅的格子：洋葱汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:chicken_sandwich`、`arris:egg_sandwich`、`arris:hamburger`、`arris:mutton_wrap`（bp/recipes） |
+| `common:pasta` | 物品 | 生意面 | `forge:pasta`、`forge:pasta/raw_pasta` | `c:foods/pasta` | `arris:raw_pasta` | 厨锅的格子：肉丸意面、羊排意面、蔬菜面、鱿鱼墨面、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:berry` | 物品 | 浆果 | `forge:berries` | `c:foods/berry` | `minecraft:sweet_berries`、`minecraft:glow_berries` | 厨锅的格子：填馅南瓜（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:fruit_salad`（bp/recipes） |
+| `common:bones` | 物品 | 骨头 | `forge:bones` | `c:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_cod` | 物品 | 生鳕鱼（含鱼片） | `forge:raw_fishes/cod` | `c:foods/raw_cod` | `minecraft:cod`、`arris:cod_slice` | 厨锅的格子：烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:raw_salmon` | 物品 | 生鲑鱼（含鱼片） | `forge:raw_fishes/salmon` | `c:foods/raw_salmon` | `minecraft:salmon`、`arris:salmon_slice` | — |
+| `common:cooked_fish` | 物品 | 熟鱼（含熟鱼片） | `forge:cooked_fishes` | `c:foods/cooked_fish` | `#common:cooked_cod`、`#common:cooked_salmon` | 工作台：`arris:barbecue_stick`（bp/recipes） |
+| `common:cooked_cod` | 物品 | 熟鳕鱼（含熟鱼片） | `forge:cooked_fishes/cod` | `c:foods/cooked_cod` | `minecraft:cooked_cod`、`arris:cooked_cod_slice` | — |
+| `common:cooked_salmon` | 物品 | 熟鲑鱼（含熟鱼片） | `forge:cooked_fishes/salmon` | `c:foods/cooked_salmon` | `minecraft:cooked_salmon`、`arris:cooked_salmon_slice` | 工作台：`arris:grilled_salmon`（bp/recipes） |
+| `common:raw_bacon` | 物品 | 生培根 | `forge:raw_bacon` | `c:foods/raw_bacon` | `arris:bacon` | — |
+| `common:cooked_bacon` | 物品 | 熟培根 | `forge:cooked_bacon` | `c:foods/cooked_bacon` | `arris:cooked_bacon` | 工作台：`arris:bacon_sandwich`（bp/recipes） |
+| `common:cabbage_seeds` | 物品 | 卷心菜种子 | `forge:seeds/cabbage` | — | `arris:cabbage_seeds` | — |
+| `common:water_bucket` | 物品 | 水桶 | `forge:buckets/water` | `c:buckets/water` | `minecraft:water_bucket` | — |
+| `common:crops` | 物品 | 作物（团队已有的名字；原版的那部分 JE 里是 Forge 给的，这边也登记） | `forge:crops` | `c:crops` | `#common:cabbage`、`#common:onion`、`#common:rice`、`#common:tomato`、`#common:beetroot`、`#common:carrot`、`minecraft:nether_wart`、`#common:potato`、`#common:wheat` | — |
+| `common:seeds` | 物品 | 种子（团队已有的名字；同上） | `forge:seeds` | `c:seeds` | `#common:cabbage_seeds`、`#common:rice`、`#common:tomato_seeds`、`minecraft:beetroot_seeds`、`minecraft:melon_seeds`、`minecraft:pumpkin_seeds`、`minecraft:wheat_seeds` | — |
+| `common:flowers` | 物品 | 花（团队已有的名字） | `minecraft:flowers` | `minecraft:flowers` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
+| `farmersdelight:meals` | 物品 | 饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算） | `farmersdelight:meals` | `farmersdelight:meals` | `minecraft:mushroom_stew`、`minecraft:beetroot_soup`、`minecraft:rabbit_stew`、`arris:mixed_salad`、`arris:cooked_rice`、`arris:bone_broth`、`arris:cookbeef_stew`、`arris:vegetable_soup`、`arris:fish_stew`、`arris:chicken_soup`、`arris:fried_rice`、`arris:pumpkin_soup`、`arris:baked_cod_stew`、`arris:noodle_soup`、`arris:onion_soup`、`arris:bacon_and_eggs`、`arris:ratatouille`、`arris:steak_and_potatoes`、`arris:pasta_with_meatballs`、`arris:pasta_with_mutton_chop`、`arris:mushroom_rice`、`arris:roasted_mutton_chops`、`arris:vegetable_noodles`、`arris:squid_ink_pasta`、`arris:grilled_salmon`、`arris:roast_chicken`、`arris:stuffed_pumpkin`、`arris:honey_glazed_ham`、`arris:shepherds_pie`、`arris:gleaming_salad` | — |
+| `farmersdelight:snacks` | 物品 | 小吃（三明治、汉堡、卷、饺子……） | `farmersdelight:snacks` | `farmersdelight:snacks` | `arris:barbecue_stick`、`arris:egg_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:bacon_sandwich`、`arris:mutton_wrap`、`arris:dumplings`、`arris:stuffed_potato`、`arris:cabbage_rolls`、`arris:salmon_roll`、`arris:cod_roll`、`arris:kelp_roll`、`arris:kelp_roll_slice` | — |
+| `farmersdelight:sweets` | 物品 | 甜食（蛋糕、曲奇、派的切片、冰棍……） | `farmersdelight:sweets` | `farmersdelight:sweets` | `minecraft:cake`、`minecraft:cookie`、`arris:cake_slice`、`arris:apple_pie_slice`、`arris:sweet_berry_cheesecake_slice`、`arris:chocolate_pie_slice`、`arris:pumpkin_pie_slice`、`arris:sweet_berry_cookie`、`arris:honey_cookie`、`arris:melon_popsicle`、`arris:glow_berry_custard`、`arris:fruit_salad` | — |
+| `farmersdelight:drinks` | 物品 | 饮料（瓶装的） | `farmersdelight:drinks` | `farmersdelight:drinks` | `arris:milk_bottle`、`arris:apple_cider`、`arris:melon_juice`、`arris:hot_cocoa` | — |
+| `farmersdelight:feasts` | 物品 | 大餐（放在地上、一份一份盛出来的那几样） | `farmersdelight:feasts` | `farmersdelight:feasts` | `arris:roast_chicken_block_stage0`、`arris:stuffed_pumpkin_block_stage0`、`arris:shepherds_pie_block_stage0`、`arris:honey_glazed_ham_block_stage0`、`arris:gleaming_salad_block_stage0`、`arris:rice_roll_medley_block_stage0` | — |
+| `farmersdelight:pies` | 物品 | 派（原版的南瓜派也算） | `farmersdelight:pies` | `farmersdelight:pies` | `minecraft:pumpkin_pie`、`arris:apple_pie_item`、`arris:sweet_berry_cheesecake_item`、`arris:chocolate_pie_item` | — |
+| `farmersdelight:wild_crops` | 物品 | 野生作物 | `farmersdelight:wild_crops` | `farmersdelight:wild_crops` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
+| `farmersdelight:mushroom_colonies` | 物品 | 蘑菇菌落 | `farmersdelight:mushroom_colonies` | `farmersdelight:mushroom_colonies` | `arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | — |
+| `farmersdelight:cabinets` | 物品 | 橱柜 | `farmersdelight:cabinets` | `farmersdelight:cabinets` | `arris:oak_cabinet`、`arris:spruce_cabinet`、`arris:birch_cabinet`、`arris:jungle_cabinet`、`arris:acacia_cabinet`、`arris:dark_oak_cabinet`、`arris:mangrove_cabinet`、`arris:cherry_cabinet`、`arris:bamboo_cabinet`、`arris:crimson_cabinet`、`arris:warped_cabinet` | — |
+| `farmersdelight:serving_containers` | 物品 | 盛饭菜的容器（碗、玻璃瓶、桶） | `farmersdelight:serving_containers` | `farmersdelight:serving_containers` | `minecraft:bowl`、`minecraft:glass_bottle`、`minecraft:bucket` | — |
+| `farmersdelight:heat_sources` | 方块 | 热源：给上面的锅 / 煎锅加热（有点燃状态的要点着） | `farmersdelight:heat_sources` | `farmersdelight:heat_sources` | `minecraft:magma`、`arris:stove`、`#farmersdelight:tray_heat_sources` | 热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看） |
+| `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
+| `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
+| `farmersdelight:compost_activators` | 方块 | 有机肥周围的催化剂 | `farmersdelight:compost_activators` | `farmersdelight:compost_activators` | `minecraft:brown_mushroom`、`minecraft:red_mushroom`、`minecraft:podzol`、`minecraft:mycelium`、`arris:organic_compost_stage0`、`arris:organic_compost_stage1`、`arris:organic_compost_stage2`、`arris:organic_compost_stage3`、`arris:rich_soil`、`arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | 有机肥堆沤的概率（Server/OrganicCompost） |
+| `farmersdelight:unaffected_by_rich_soil` | 方块 | 沃土不催熟的植物 | `farmersdelight:unaffected_by_rich_soil` | `farmersdelight:unaffected_by_rich_soil` | `minecraft:grass_block`、`minecraft:moss_block`、`minecraft:crimson_nylium`、`minecraft:warped_nylium`、`minecraft:short_grass`、`minecraft:tall_grass`、`minecraft:fern`、`minecraft:large_fern`、`minecraft:twisting_vines`、`minecraft:big_dripleaf`、`minecraft:pink_petals`、`minecraft:sunflower`、`minecraft:lilac`、`minecraft:rose_bush`、`minecraft:peony`、`minecraft:pitcher_plant`、`arris:sandy_shrub`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony`、`arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | 沃土 / 沃土耕地催不催熟上面的植物（Server/BoneMeal.BoostPlant） |
+| `farmersdelight:mushroom_colony_growable_on` | 方块 | 蘑菇菌落在它上面才长 | `farmersdelight:mushroom_colony_growable_on` | `farmersdelight:mushroom_colony_growable_on` | `arris:rich_soil` | 蘑菇菌落长不长（Server/MushroomColony） |
+| `farmersdelight:drops_cake_slice` | 方块 | 拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕） | `farmersdelight:drops_cake_slice` | `farmersdelight:drops_cake_slice` | `minecraft:candle_cake`、`minecraft:white_candle_cake`、`minecraft:orange_candle_cake`、`minecraft:magenta_candle_cake`、`minecraft:light_blue_candle_cake`、`minecraft:yellow_candle_cake`、`minecraft:lime_candle_cake`、`minecraft:pink_candle_cake`、`minecraft:gray_candle_cake`、`minecraft:light_gray_candle_cake`、`minecraft:cyan_candle_cake`、`minecraft:purple_candle_cake`、`minecraft:blue_candle_cake`、`minecraft:brown_candle_cake`、`minecraft:green_candle_cake`、`minecraft:red_candle_cake`、`minecraft:black_candle_cake` | 拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake） |
+| `minecraft:egg` | 物品（原版自带，不生成文件） | 蛋（原版自带的标签） | `forge:eggs` | `c:eggs` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg` | 厨锅的格子：炒饭、烘焙鳕鱼炖、面条汤、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`minecraft:cake`、`minecraft:pumpkin_pie`、`arris:roast_chicken_block_stage0`、`arris:wheat_dough`（bp/recipes） |
+| `common:fruit` | 物品（农夫乐事没有成员，不生成文件） | 水果 | — | — | — | — |
+| `common:wheat_flour` | 物品（农夫乐事没有成员，不生成文件） | 小麦粉（机械动力的） | — | — | — | — |
 <!-- gen_tags: 词表结束 -->
 
 ## 限制

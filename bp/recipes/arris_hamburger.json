@@ -1,0 +1,35 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:hamburger"
+        },
+        "ingredients": [
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:beef_patty"
+            },
+            {
+                "tag": "common:bread"
+            },
+            {
+                "tag": "common:leafy_green"
+            },
+            {
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:onion"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:hamburger"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

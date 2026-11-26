@@ -50,8 +50,8 @@ def testTheNetherSaladIsNotMadeAtTheCraftingTable():
 
 
 def testEveryDishRecipeTheBoardTakesIsStoppedAtTheTableAndNothingElseIs():
-    """逐道：菜谱表里每道菜的每条配方（33 道、86 条写法）在工作台被拦；bp/recipes 里别的每一条合成（切片拼回整个派、叶子压回卷心菜、
-    马饲料、牛奶瓶、厨锅、箱子拆回来……）一条也不拦。"""
+    """逐道：菜谱表里每道菜的每条配方（33 道、102 条写法）在工作台被拦；bp/recipes 里别的每一条合成（切片拼回整个派、叶子压回卷心菜、
+    马饲料、牛奶瓶、厨锅、箱子拆回来……）一条也不拦。写标签的配方按词表的静态成员展开成每种具体的原料组合再试（recipekit.variantsOf）。"""
     B.bootServer()
     board = set()
     for dish in Dishes.dishes():
@@ -63,10 +63,12 @@ def testEveryDishRecipeTheBoardTakesIsStoppedAtTheTableAndNothingElseIs():
     for fileName, (kind, body) in recipekit.loadRecipes().items():
         if kind not in ("shaped", "shapeless"):
             continue
-        result, names = recipekit.resultsOf(body)[0][0], _namesOf(kind, body)
-        assert _craft(result, names) is ((result, tuple(names)) in board), fileName
-        crafts += 1
-    assert crafts > 150, "把整个配方目录都过了一遍"
+        result = recipekit.resultsOf(body)[0][0]
+        for variant in recipekit.variantsOf(kind, body):
+            names = sorted(variant.elements())
+            assert _craft(result, names) is ((result, tuple(names)) in board), (fileName, names)
+            crafts += 1
+    assert crafts > 150, "把整个配方目录（按写法展开）都过了一遍"
 
 
 def testTheCraftsJavaLeavesInTheCraftingTableStayThere():

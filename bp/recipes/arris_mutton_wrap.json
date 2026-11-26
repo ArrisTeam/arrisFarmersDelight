@@ -1,0 +1,30 @@
+{
+    "format_version": "1.12",
+    "minecraft:recipe_shapeless": {
+        "description": {
+            "identifier": "arris:mutton_wrap"
+        },
+        "ingredients": [
+            {
+                "tag": "common:bread"
+            },
+            {
+                "tag": "common:cooked_mutton"
+            },
+            {
+                "tag": "common:leafy_green"
+            },
+            {
+                "tag": "common:onion"
+            }
+        ],
+        "result": {
+            "count": 1,
+            "data": 0,
+            "item": "arris:mutton_wrap"
+        },
+        "tags": [
+            "crafting_table"
+        ]
+    }
+}

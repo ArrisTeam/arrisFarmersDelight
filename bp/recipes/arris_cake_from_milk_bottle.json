@@ -6,8 +6,7 @@
         },
         "key": {
             "E": {
-                "data": 0,
-                "item": "minecraft:egg"
+                "tag": "minecraft:egg"
             },
             "M": {
                 "data": 0,
@@ -18,8 +17,7 @@
                 "item": "minecraft:sugar"
             },
             "W": {
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
             }
         },
         "pattern": [
@@ -44,8 +42,7 @@
         ],
         "unlock": [
             {
-                "data": 0,
-                "item": "minecraft:egg"
+                "tag": "minecraft:egg"
             },
             {
                 "data": 0,
@@ -56,8 +53,7 @@
                 "item": "minecraft:sugar"
             },
             {
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
             }
         ]
     }

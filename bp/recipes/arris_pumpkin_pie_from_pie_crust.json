@@ -10,8 +10,7 @@
                 "item": "arris:pie_crust"
             },
             "E": {
-                "data": 0,
-                "item": "minecraft:egg"
+                "tag": "minecraft:egg"
             },
             "P": {
                 "data": 0,

@@ -89,7 +89,7 @@ def testTheServerSelfTestsPassOnAFullEngine():
         assert members["items"][Tags.MEALS]["missing"] == [] and members["items"][Tags.MEALS]["engine"] == len(Tags.ITEM_TAGS[Tags.MEALS])
         blocks = ServerTest.mcdk_test_tags_blocks()
         own = sorted(tag for tag in Tags.BLOCK_TAGS if tag.startswith("farmersdelight:"))
-        assert blocks["ok"] and sorted(blocks["tags"]) == own and len(own) == 6, sorted(blocks["tags"])
+        assert blocks["ok"] and sorted(blocks["tags"]) == own and len(own) == 7, sorted(blocks["tags"])
         assert all(row["notTagged"] == [] and row["missing"] == [] for row in blocks["tags"].values())
         ServerPort.PORT = NoBlockTagsPort()
         blocks = ServerTest.mcdk_test_tags_blocks()
