@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """Registry - JEI 联动的公共部分：取 arrisJei 的注册表、物品悬停文本（客户端）
 
-未安装 arrisJei 时 GetJeiApiModule() 返回 None，各注册函数直接返回。
+未安装 arrisJei（或者它的接口模块导入时出错，经 Compat/OtherMods 打一次日志）时 GetJeiApiModule() 返回 None，各注册函数直接返回。
 """
+from .. import OtherMods
 from ...Client.Engine import clientApi, compFactory, levelId
 
+JEI_MODULE = "arrisJeiScripts.api.jei"
+
+
 def GetJeiApiModule():
-    jeiApiModule = clientApi.ImportModule("arrisJeiScripts.api.jei")
+    jeiApiModule = OtherMods.find(clientApi.ImportModule, JEI_MODULE)
     if not jeiApiModule:
         return None
     # 获取注册表单例实例

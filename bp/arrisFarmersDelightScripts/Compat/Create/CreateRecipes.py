@@ -7,18 +7,20 @@
 - mixing  (搅拌) 3 条：卷心菜叶、派皮、番茄酱
 - filling (灌注) 1 条：巧克力派
 
-若 arrisCreate 副包未安装（ImportModule 失败）本模块静默 no-op
+若 arrisCreate 副包未安装（ImportModule 给 None），或者它的 RecipeApi 导入时出错（经 Compat/OtherMods：打一次日志）本模块静默 no-op
 模组照常运行，不影响任何其它功能。
 """
 
 from ...QuModLibs.Server import serverApi, Listen
+from .. import OtherMods
 
+RECIPE_API = "arrisCreateScripts.Api.ServerApi.RecipeApi"
 _REGISTERED = False
 
 
 def _getRecipeApi():
-    """延迟 import 机械动力 RecipeApi。若副包未装或未加载则返回 None。"""
-    return serverApi.ImportModule("arrisCreateScripts.Api.ServerApi.RecipeApi")
+    """延迟取机械动力 RecipeApi。若副包未装、未加载或者它导入时出错则返回 None。"""
+    return OtherMods.find(serverApi.ImportModule, RECIPE_API)
 
 def _registerMilling(api):
     """石磨配方 —— 对齐 recipes/integration/create/milling/*.json"""

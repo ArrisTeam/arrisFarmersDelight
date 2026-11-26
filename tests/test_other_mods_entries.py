@@ -6,6 +6,8 @@
   接不上的时候 ready 事件那条路照样能用。
 - 机械动力的土豆加农炮（Compat/Create/PotatoCannonAmmo；两端的入口 PotatoCannonServer / PotatoCannonClient 导入时就调 hook）：取模块、
   取门面（getExtensionApi 到这时才导入它自己的门面模块）、登记，哪一步是机械动力出错都不漏出入口；单机时两端取同一个模块，日志只打一次。
+- 机械动力的配方（Compat/Create/CreateRecipes）：LoadServerAddonScriptsAfter 里取 RecipeApi，事件来两次也只打一次日志、只登记一次。
+- arrisJei（Compat/Jei/Registry.GetJeiApiModule）：界面初始化完成（UiInitFinished，JeiClient）时四类配方各取一次，坏的只打一次日志。
 引擎、QuModLibs、两端的 Engine 都是这里的假模块（只有用到的几个名字）。
 """
 from __future__ import print_function
@@ -76,9 +78,13 @@ _module("QuModLibs.Systems.Loader.Server", LoaderSystem=_loader("server"))
 _module("QuModLibs.Systems.Loader.Client", LoaderSystem=_loader("client"))
 _module("Server.Helpers.Engine", serverApi=serverApi, compFactory=None, levelId="level", ItemPosType=None,
         GetEngineTypeStr=lambda entityId: None)
+_module("Client.Engine", clientApi=clientApi, compFactory=None, levelId="level")
 
 Bridge = fdtest.load("Compat.Advancements.AdvBridge")
 Ammo = fdtest.load("Compat.Create.PotatoCannonAmmo")
+Recipes = fdtest.load("Compat.Create.CreateRecipes")
+Registry = fdtest.load("Compat.Jei.Registry")
+JeiClient = fdtest.load("Compat.Jei.JeiClient")
 ADV_BOOT = PACKAGE + ".Compat.Advancements.AdvBoot"
 ADV_API = "dolorAdvancementsScripts.Api.Server"
 ADV_SYSTEM = ("dolorAdvancements", "ExtensionApi")
@@ -234,6 +240,70 @@ def testABrokenFacadeOrABrokenRegistrationDoesNotLeakOutOfTheEntry():
     facade = Facade()
     with Captured():
         assert Ammo.attach("client", facade) is True and len(facade.potatoCannon.calls) == 7, "之后照样接得上"
+
+
+# ---------------------------------------------------------------- 机械动力的配方（LoadServerAddonScriptsAfter 里取 RecipeApi）
+
+class Builder(object):
+    """机械动力 RecipeApi.createBuilder 给的东西的替身：链式调用都收下，register 记下配方 id。"""
+
+    def __init__(self, registered, recipeId):
+        self.registered, self.recipeId = registered, recipeId
+
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return lambda *args, **kwargs: self
+
+    def register(self):
+        self.registered.append(self.recipeId)
+
+
+class RecipeApi(object):
+    def __init__(self):
+        self.registered = []
+
+    def createBuilder(self, recipeId, kind):
+        return Builder(self.registered, recipeId)
+
+
+def testCreateRecipesAreRegisteredOnlyWithAGoodRecipeApiAndTheEventNeverRaises():
+    (onLoaded,) = [func for event, func in listened if event == "LoadServerAddonScriptsAfter" and func.__module__ == Recipes.__name__]
+    good = RecipeApi()
+    for name, answer, absent in otherkit.kinds(good):
+        otherkit.fresh()
+        Recipes._REGISTERED = False
+        serverApi.importer = Importer({Recipes.RECIPE_API: answer})
+        with Captured() as out:
+            onLoaded({})
+            onLoaded({})                                   # 事件再来一次（热重载以后）
+        assert Recipes._REGISTERED is (not absent), name
+        assert serverApi.importer.asked == [Recipes.RECIPE_API] * (2 if absent else 1), (name, serverApi.importer.asked)
+        raised = 1 if isinstance(answer, Exception) else 0
+        assert out.logged(Recipes.RECIPE_API) == raised and out.tracebacks() == raised, (name, out.text)
+    assert len(good.registered) == 12, "石磨 8 + 搅拌 3 + 灌注 1，只登记一次"
+
+
+# ---------------------------------------------------------------- arrisJei（界面初始化完成时每类配方各取一次）
+
+def testEveryJeiCategoryTakesArrisJeiThroughOtherModsAndABrokenOneIsLoggedOnce():
+    registry = object()
+    good = types.ModuleType(Registry.JEI_MODULE)
+    good.JeiRecipeRegistry = type("JeiRecipeRegistry", (object,), {"getInstance": staticmethod(lambda: registry)})
+    for name, answer, absent in otherkit.kinds(good):
+        otherkit.fresh()
+        clientApi.importer = Importer({Registry.JEI_MODULE: answer})
+        with Captured() as out:
+            assert Registry.GetJeiApiModule() is (None if absent else registry), name
+        raised = 1 if isinstance(answer, Exception) else 0
+        assert out.logged(Registry.JEI_MODULE) == raised and out.tracebacks() == raised, (name, out.text)
+    (onUiInit,) = [func for event, func in listened if event == "UiInitFinished" and func.__module__ == JeiClient.__name__]
+    otherkit.fresh()
+    clientApi.importer = Importer({Registry.JEI_MODULE: ImportError("No module named broken_dependency")})
+    with Captured() as out:
+        onUiInit({})
+    assert clientApi.importer.asked == [Registry.JEI_MODULE] * 4, "四类配方各取一次（砧板摆盘要联动了才登记）"
+    assert out.logged(Registry.JEI_MODULE) == 1 and out.tracebacks() == 1, out.text
 
 
 if __name__ == "__main__":
