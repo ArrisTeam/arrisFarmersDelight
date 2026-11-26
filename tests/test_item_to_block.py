@@ -87,6 +87,25 @@ def testTheOtherPiesKeepTheirOwnItemAndAreNotCancelled():
     assert args["ret"] is False, "只有原版南瓜派要拦住"
 
 
+def testAScriptedPlacementIsReportedAsADeed():
+    # 引擎不知道这是玩家放的（脚本 SetBlockNew），不发放置事件：Server/Helpers/Deeds 报一声（成就联动的"放下煎锅"靠它）
+    Deeds = fdtest.load("Server.Helpers.Deeds")
+    seen = []
+
+    def record(playerId, detail):
+        seen.append((playerId, detail))
+
+    Deeds.subscribe(Deeds.PLACED_BLOCK, record)
+    try:
+        _setUp(hand=APPLE_PIE)
+        _use()
+        assert seen == [("p1", "arris:apple_pie")]
+        _use()
+        assert seen == [("p1", "arris:apple_pie")], "那一格占了：没放下就不报"
+    finally:
+        Deeds.unsubscribe(Deeds.PLACED_BLOCK, record)
+
+
 def testSneakConfigOffByDefaultPlacesWithoutSneaking():
     assert Food.PUMPKIN_PIE_SNEAK_TO_PLACE is False, "JE enablePumpkinPieSneakToPlace 缺省 false"
     _setUp(sneaking=False)

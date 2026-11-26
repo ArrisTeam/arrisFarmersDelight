@@ -82,6 +82,26 @@ def testSixSecondsOfHoldingCooksOneItem():
     assert world.players["p1"]["hand"]["durability"] == 200                         # JE：手持烹饪不磨损煎锅
 
 
+def testEachCookedPieceIsReportedAsADeed():
+    # JE 的 finishUsingItem 触发 consume_item（use_skillet 进度）：做好一件 Server/Helpers/Deeds 报一声，没做好不报
+    Deeds = fdtest.load("Server.Helpers.Deeds")
+    seen = []
+
+    def record(playerId, detail):
+        seen.append((playerId, detail))
+
+    Deeds.subscribe(Deeds.SKILLET_COOKED, record)
+    try:
+        _setUp()
+        _press()
+        _advance(23)
+        assert seen == []
+        _advance(1)
+        assert seen == [("p1", "minecraft:beef")]
+    finally:
+        Deeds.unsubscribe(Deeds.SKILLET_COOKED, record)
+
+
 def testKeepHoldingCooksTheWholeStackOneByOne():
     _setUp()
     _press()

@@ -168,6 +168,31 @@ def testAKnifeInTheInventoryIsStillUntouchedWhenTheChopFailsToo():
     assert K.board(data) == (CABBAGE, 2) and K.count(LEAF) == 0
 
 
+def testTheLastChopIsReportedAsADeedOnlyWhenItWentThrough():
+    # JE + HoD：站点切开一叠走的是 FD 的 processStoredItemUsingTool，JE 在那里给 use_cutting_board；这里切成了才报（Server/Helpers/Deeds），
+    # 动作里哪一步抛了（作废）不报：报在最后一步
+    import fdtest
+    Deeds = fdtest.load("Server.Helpers.Deeds")
+    seen = []
+
+    def record(playerId, detail):
+        seen.append((playerId, detail))
+
+    Deeds.subscribe(Deeds.CUT_ON_BOARD, record)
+    try:
+        manager, data = _setup(offhand=70)
+        undo = _failing(manager, "give")
+        try:
+            assert not _chop(manager)
+        finally:
+            undo()
+        del fake.world.errors[:]
+        assert seen == []
+        assert _chop(manager) and seen == [("a", CABBAGE)]
+    finally:
+        Deeds.unsubscribe(Deeds.CUT_ON_BOARD, record)
+
+
 if __name__ == "__main__":
     import fdtest
     raise SystemExit(fdtest.run(globals()))

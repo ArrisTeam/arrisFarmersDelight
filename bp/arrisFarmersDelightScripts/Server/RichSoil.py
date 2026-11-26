@@ -9,6 +9,7 @@ import random
 from .BoneMeal import BoostPlant
 from .EventRegistry import registerHandler
 from .FarmWorld import FarmWorld
+from .Helpers import Deeds
 from .Helpers.Engine import GetBlockName
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Items import GetItemType
@@ -106,3 +107,4 @@ def OnPlantOnRichFarmland(args):
         _setBlock((x, y + 1, z), cropBlock, dimensionId)
         ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "dig.grass")
         SetNotCreateItem(playerId, itemDict)
+        Deeds.done(playerId, Deeds.PLACED_BLOCK, cropBlock)

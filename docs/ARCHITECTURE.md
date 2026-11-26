@@ -18,6 +18,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
                         Tips（服务端提示说的每一句：(语言文件的键, 中文)，客户端按玩家的语言查，见「砧板和站点的几处补齐」）
+                        Advancements（JE 的 21 条进度：交给成就系统的节点、每条怎么算做到，见「成就系统联动」）
   Rules/                纯规则：CookingPot（厨锅配方匹配 / 出料结算，公共函数都在这里） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
                         PotSlots（厨锅配方的格子：选项的写法、逐格配对、种类的各种摆法、展开成写法）  PotRecipeTable（厨锅配方表的索引和记着的答案，只有 CookingPot 用）
                         RecipeJson（JE 写法的配方 JSON 读成规整的配方：厨锅、砧板、营火烹饪；新联动接口和行为包配方 JSON 共用）
@@ -47,6 +48,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         BoardSupport（砧板下面撑不撑得住：JE 的 canSurvive，下面那格的顶面要盖住正中 2x2 像素——按引擎给的碰撞盒判，包围盒说不准的按名字）
                         MobLoot（刀杀死生物的额外掉落、洋葱掉落的概率结算） Slicing（刀切派 / 蛋糕 / 南瓜：剩几片、切片单） Eating（吃一份食物的饥饿 / 饱和度）
                         Livestock（马饲料 / 狗粮喂给谁、有什么效果） ChestLoot（战利品箱追加物品的掷骰）
+                        AnimalFood（原版六种动物认本包的食物：生效的实体定义 -> 每个组件每个出处追加以后的 JSON、换组的事件、定义栈折成现在该下发哪几个）
                         GrowthRates（JE 作物的生长概率 -> 基岩随机刻的概率，换算只在这里） CropTick（一次随机刻长不长、长几级）
                         FarmEdits（随机刻 / 骨粉要改哪些方块） BoneMealRules（骨粉照 JE） WildSpread（野生作物骨粉蔓延）
                         CompostRules（有机肥堆沤） ColonyRules（蘑菇菌落） RichSoilRules（沃土催熟与湿度） StrawRules（刀收草秆）
@@ -88,6 +90,8 @@ Server/                 服务端
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
                         PackJson（读全部行为包里某个目录下的 JSON：引擎内部的 server_resource，经 traceback.sys.modules 取，只在这里碰它；2026-11-26 游戏里核过）
+                        Deeds（玩家做成了某件事的登记点：砧板切开一件、手持煎锅煎好一件、脚本替玩家放下方块、右键采摘；玩法模块在做成的地方报一声，
+                        想知道的订阅——成就联动 Compat/Advancements 用它；没人订阅时就是一次字典查找，核心里没有"成就"这回事）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）
@@ -108,6 +112,7 @@ Server/                 服务端
   CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
   PotSupport            厨锅的支架：挂在天花板下面放下就是吊把手（放置前事件记点的面），潜行空手右键在吊把手和托盘 / 没有之间切（见"厨锅的支架"）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
+  AnimalFood            原版猫 / 鸡 / 猪 / 兔子 / 鹦鹉 / 狼认本包的食物：读生效的实体定义、实体出现和换组以后晚一拍 AddActorComponent（见"战利品、刀与喂养"）
   TableSync             下游在服务端追加的表发给客户端：玩家进服发一次累计的差异，之后每 5 秒看表变没变、补发（客户端的站点表现读的是客户端那一份表）
   Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
@@ -133,6 +138,8 @@ Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来；
                         CookPages = 煎锅、炉灶两个分类共用的分页（StationBooks.cookGroups：三种蛋一页）和配方页；厨锅、砧板的配方页轮换标签格的成员
   Create/               机械动力配方（未安装则不做任何事）
+  Advancements/         成就系统（arrisAdvancements）：JE 的 21 条进度（未安装则不做任何事）。AdvBoot 听它的 ready，AdvBridge 登记节点、挂监听，
+                        AdvTriggers 算推进哪一条；见「成就系统联动」
   Diegesis/             沉浸式交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
                         ServerSteps / ClientSteps 是步骤表（只放数据）、每个站点一步，步骤的实现是 BoardServerLink / PotServerLink / PanServerLink / GrillServerLink 和
                         BoardClientLink / PotClientLink / PanClientLink / GrillClientLink（调站点的 register，登记上了再开连带的东西）；站点模块在步骤里才导入，见「联动（沉浸式交互前置）」，
@@ -586,15 +593,31 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 - 喂食（马饲料、狗粮）：`Livestock.py` 在 `PlayerInteractServerEvent` 里直接处理并取消（JE 同样用右键事件）。官方文档说这个事件在玩家"可以与实体交互"时才来，
   也就是目标对手里的物品有交互时；所以马和狼身上加了 `minecraft:bribeable` 记号（原版只有海豚用，没有自带行为，见 `Shared/Data/Mobs.py` 开头），
   否则马饲料触发不了事件、能吃的狗粮会被玩家吃掉。野生的目标也由这里接管取消，什么都不发生。
-- 覆盖原版文件（猫、鸡、猪、兔子、鹦鹉、狼，农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
+- 原版动物认农夫乐事的东西（JE `CommonSetup` / `RabbitsEatCabbageMixin` / 猫的 `TEMPT_INGREDIENT` / 狼吃 isMeat）：猫（两种鱼片）的吸引 / 驯服 / 繁殖 /
+  喂小崽 / 治疗（一片回 1 点），鸡（两种种子、稻米）、猪（卷心菜、番茄）、兔子（卷心菜、卷心菜叶）的吸引 / 繁殖 / 喂小崽，鹦鹉（三种种子）的驯服，
+  狼（十种肉）的繁殖 / 喂小崽 / 治疗（治疗量照原版狼 = 饱食度 × 2）。2026-11-26 起**不覆盖原版实体文件**，照森罗物语（厨房）的做法运行时加组件
+  （`Server/AnimalFood.py`，规则 `Shared/Rules/AnimalFood.py`，数据 `Shared/Data/Mobs.ANIMAL_FOOD`；离线 `tests/test_animal_food.py`，实机 `Server/Debug/McdkAnimalsTest.py`）：
+  - 读哪份定义：经 `Server/Helpers/PackJson.read`（引擎内部的 `server_resource`）读 `entities/<短名>.json`，几个包都有这个路径时是包栈里优先级最高的那份
+    [推断：照 `LoadServerFile` 的反编译，没实测两份同路径]；identifier 对不上（别的包在这个路径放了别的实体）时退一步列 `entities/`（子目录也进）找。
+    第一次碰到这种动物时读、按类型记着，读不到 / 看不懂这只动物不做，记一次日志不再试。去掉注释和对象 / 数组末尾多余的逗号再解析。
+  - 补什么：定义里凡是带这个组件的地方（顶层 `components` 或哪个组件组）都在列表末尾追加本包的条目（已经有的不重复加），别的字段原样；
+    组件在哪、哪些事件会加减这些组件组（连 `trigger` 转过去的）都从定义里读，不写死。
+  - 什么时候打：实体出现（`AddEntityServerEvent`，读档、区块加载也来）之后、定义里那些换组事件（`EntityDefinitionsEventServerEvent`：出生、长大、驯服……）之后，
+    都晚一拍（`AddTimer(0)`）——加减组件组下一帧才生效，换组以后组件回到定义里的值（森罗物语实机复现过）。打的时候读 `GetEntityDefinitions` 的定义栈，
+    照引擎的折法（后加的组盖掉同名组件；减组拿掉组里有的组件，连顶层同名的一起）只下发实体**现在真有**的组件、用它现在那个出处的值：
+    给成年的加 `ageable` 会让它重新能长大，野猫的 `tempt` 用驯服猫那组的值也不对。定义栈读不懂时只下发顶层的。
+  - 和别的包怎么共存：别的包整份覆盖了这只动物（同路径），我们读到的就是它那份，在它上面追加；别的包用别的文件名覆盖同一个 identifier 时，
+    我们读到的还是 `entities/<短名>.json`（多半是原版），下发的几个组件会盖掉那个包对这几个组件的改动。两个模组都用 `AddActorComponent` 改同一个组件时，
+    引擎按组件名替换（官方文档："重复添加会覆盖原有的值"），后打的赢——和森罗物语（它补鸡的 tempt / ageable / breedable）同时装时，鸡只认后打的那一家的种子 [没实测]。
+  - 代价：每次下发 `behavior.tempt` 这种 AI 目标组件，实体的 AI 目标整套重建（Strata 引擎研究 GOAL_ENGINE §7）；重新加上的组件状态清零（ENT-04）。
+    读档 / 区块加载每次都重打（照森罗物语）；`AddActorComponent` 加的组件随存档存进 `neteaseComponents`，读档以后要不要重打没实测。
+  马、驴、骡被马饲料吸引、狼的讨食和马 / 狼的喂食记号还是 `Shared/Data/Mobs.py` 里写死的 JSON 串、在实体出现时加（`horseComponentsDict` / `wolfComponentsDict` 是联动契约）。
+  村民没做：拾取（`shareables`）是数据，但要整份覆盖很大的 `villager_v2.json`，JE 的 `FOOD_POINTS`（作物算几点繁殖食物）在基岩没找到对应的数据。
+- 覆盖原版文件（农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
   由 `tools/gen_vanilla_overrides.py` 生成；`tests/test_vanilla_overrides.py` 找得到本机原版行为包时逐字比对，游戏升级后原版变了就失败，重新生成即可。
-  动物认农夫乐事的东西（JE `CommonSetup` / `RabbitsEatCabbageMixin` / 狼吃 isMeat）：鸡（两种种子、稻米）、猪（卷心菜、番茄）的吸引 / 繁殖 / 喂小崽，
-  兔子（卷心菜、卷心菜叶）的繁殖 / 喂小崽，鹦鹉（三种种子）的驯服，狼（十种肉）的繁殖 / 喂小崽 / 治疗（治疗量照原版狼 = 饱食度 × 2）。
-  繁殖、喂小崽、驯服在成年 / 幼年 / 野生组件组里，用 `AddActorComponent` 加会被组的切换盖掉，所以走覆盖文件；兔子的吸引、狼的讨食
-  （基础组件）仍由 `Shared/Data/Mobs.py` 在实体出现时加。村民没做：拾取（`shareables`）是数据，但要整份覆盖很大的 `villager_v2.json`，
-  JE 的 `FOOD_POINTS`（作物算几点繁殖食物）在基岩没找到对应的数据。
-  整份覆盖的两个风险：玩家的游戏比开发机新时，原版对这几种生物的改动被这几份旧拷贝盖住，要等农夫乐事重新生成、重新出包；
-  别的包也覆盖同一个原版文件时只有一份生效（按包的先后），另一边加的东西就没了。
+  整份覆盖的两个风险：玩家的游戏比开发机新时，原版的改动被旧拷贝盖住，要等农夫乐事重新生成、重新出包；别的包也覆盖同一个原版文件时只有一份生效（按包的先后）。
+  不覆盖文件给村民加交易的路没找到：网易没有加交易的接口；`AddActorComponent("minecraft:economy_trade_table", …)` 引擎会当场加载那张表
+  （Strata 引擎研究 11_entities §8.2），但那是换整张表（还得是我们自己的一整份拷贝）、换职业的组件组时又被盖回去，不比覆盖文件好。
 - 时运（`Server/FortuneDrops.py`，规则 `Shared/Rules/FortuneBonus.py`）：基岩的战利品表没有时运，方块被玩家打掉（`DestroyBlockEvent`）时按手上工具的时运等级
   （`enchantData` 编号 18）在方块中心补掉。JE 那 11 张表照搬：熟卷心菜的种子、熟洋葱 binomial（补"等级"次、每次 4/7），熟番茄 / 番茄藤 0..等级 个，
   六种野生作物和沙地灌木 0..2×等级 个；剪刀（原版剪刀或引擎说 itemType 是 shears 的）打野生作物不补，沙地灌木只在真掉了种子时补，创造模式不补。
@@ -610,7 +633,8 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 2. 用刀右键原版蛋糕：不再吃蛋糕、掉一片蛋糕片，`bite_counter` 读写正常；插蜡烛的蛋糕变成少一片的蛋糕并掉出蜡烛。用刀拆派 / 蛋糕 / 南瓜掉的切片数。
 3. 用刀杀着火的猪 / 疣猪兽掉烟熏火腿；抢夺等级是否读得到。
 4. `OnContainerFillLoottableServerEvent` 的 `loottable` 字符串长什么样（`Rules.ChestLoot.tableKey` 兼容几种写法）、追加的物品进了箱子。
-5. 引擎采用了 `entities/cat.json` 与两张交易表（猫吃鱼片、农民收洋葱、流浪商人卖种子）。
+5. 引擎采用了两张交易表（农民收洋葱、流浪商人卖种子）；六种动物运行时加的组件生效（`Server/Debug/McdkAnimalsTest.py`：读到定义没有、
+   定义栈长什么样、`GetComponents` 里带没带本包的物品、真喂一次繁殖 / 驯服 / 长大 / 回血、长大以后再读）。
 6. 南瓜派：对着方块（含潜行）按住右键拿原版南瓜派，只放下一个、不开始吃（`ServerItemUseOnEvent` 的 `ret` 压不压得住"吃"；压不住要再在
    `ServerItemTryUseEvent` / `ClientItemTryUseEvent` 里拦）；对着空气右键照常吃。放下的方块图集、四口动画、拿刀切 / 拆掉的切片数、饥饿值满时点派没反应、
    创造模式中键拾取给什么（JE 是原版南瓜派，这边多半给 `arris:pumpkin_pie` 方块物品）。
@@ -951,6 +975,40 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - **借来的工具跟着环境光变暗**：砧板站点上借来的那把刀 / 工具（半透明粒子 `arris:board_tool`）加了 `minecraft:particle_appearance_lighting`——JE 是照物品画的（`SceneRenderer.java:848` 的 `renderStatic` 带着站点的光照），
   原来暗处也是满亮度。实机只核过粒子建得出来。
 
+## 成就系统联动：JE 的 21 条进度（arrisAdvancements，可选依赖）
+
+- 接上：`Compat/Advancements/AdvBoot`（`modMain.py` 里 `MOD.Server`）在导入时（引擎加载期）在本包的加载器系统上听成就系统的
+  `("dolorAdvancements", "ExtensionApi", "ServerApiReady")`（它 README 的"方法一"），事件里的 `api` 就是它的 `dolorAdvancementsScripts.Api.Server`；
+  它的系统已经在（热重载以后）就 `ImportModule` 晚接一次（照 `Compat/Create/PotatoCannonAmmo`）。监听不挂在 `Server/ExtensionSystem`：那个系统只用来广播本包自己的 ready。
+  没装成就系统：事件不来，只多了一个空监听；处理函数、`Deeds` 的订阅、背包事件的监听全是接上以后才挂的（`AdvBridge.attach`），平时零开销。
+- 节点：`Shared/Data/Advancements.NODES`，ID 是 JE 的 `farmersdelight:main/<名字>`，父子、框、隐藏、弹窗、全服播报、经验奖励照 JE 的 json，标题和描述照抄 JE 官方中文
+  （`zh_cn.json`），图标换成本包的物品；根节点的背景是基岩原版资源包的 `textures/blocks/brick`（JE 用砖块贴图，16x16，和成就系统自带的背景一样大）。
+  `tests/test_advancements.py` 对着 `.refs` 的 21 个 json 和 `zh_cn.json` 复算。
+- 推进：`Compat/Advancements/AdvTriggers`（纯逻辑）：JE 要求是 OR 的做到一个子条件就 `setFinish`（做到过的不再调），AND 的（轮作 19 种、厨神当道 27 道）
+  每个子条件 `addProgressUnique` 一次，子键是 JE 的子条件名。条件表 `Shared/Data/Advancements.CRITERIA`。
+- 核心模块里没有"成就"：玩法模块在脚本做成某件事的地方调 `Server/Helpers/Deeds.done(玩家, 事, 细节)`（没人订阅时就是一次字典查找），`AdvBridge` 订阅它。
+  引擎自己报的事（放方块、吃、效果、弹射物）由 `AdvBridge` 接上以后在注册表上登记处理函数（ModServer 本来就转这几个），背包变化（ModServer 不转）接上以后动态监听。
+
+| 进度 | JE 的条件 | 这里怎么算 |
+| --- | --- | --- |
+| 农夫乐事（root） | 背包有任何变化 | 玩家的进度装好时（成就系统的 `listenOnPlayerReady`）就给 |
+| 刀耕火种 craft_knife | 背包里有五种刀之一 | `InventoryItemChangedServerEvent` 新那一格的物品；进度装好时再按背包补一遍（进服时的背包事件比进度早，那时加不上） |
+| 救命稻草 / 植物肥料 / 狂野屠夫 / 没这金刚钻的话…… / 野生作物 / 我们当中出了内"菌" | 背包里有草秆 / 沃土 / 火腿或熏火腿 / 下界合金刀 / 四种种子之一 / 两种菌落之一 | 同上 |
+| 先进堆肥 / 点燃营火 / 晚餐上桌喽！ / 一顿盛宴 | 放下有机堆肥 / 营火或灵魂营火 / 厨锅 / 六种盛宴之一 | `EntityPlaceBlockAfterServerEvent` 的 `fullName`（盛宴是各自的 `_stage0`） |
+| 当心伤手…… use_cutting_board | 自定义触发器：砧板上切成一件 | `Deeds.CUT_ON_BOARD`：经典右键 `Server/CuttingBoard._cutOne`，砧板站点最后一刀 `Compat/Diegesis/BoardChop._cutTheStack`（HoD 也是走 FD 的切法给的） |
+| 倾斜稻根 plant_rice | 放下稻米作物 | `Deeds.PLACED_BLOCK`（`Server/Crops._plantRice`，稻米是脚本种的） |
+| 采田艹加 harvest_ropelogged_tomato | 对 0 级的绳上番茄用东西（= 右键摘熟了的） | `Deeds.HARVESTED`（`Server/Crops.OnTomatoUse`，摘的是 `arris:tomatoes_vine_stage3`） |
+| 嘘！去！ hit_raider_with_rotten_tomato | 玩家扔的烂番茄（弹射物伤害）打到袭击者 | `ProjectileDoHitEffectEvent`：弹射物是 `arris:rotten_tomato`、打中实体、实体在 `Advancements.RAIDERS`（唤魔者、掠夺者、劫掠兽、卫道士、女巫），算扔的人 |
+| 轮作 plant_all_crops | 19 种作物各放下一次 | `EntityPlaceBlockAfterServerEvent`；种子类再看 `ItemUseOnAfterServerEvent` 之后点的那一面外面那一格种上没有（`Advancements.PLANTERS`）；脚本种的（稻米、沃土耕地上的原版作物、蘑菇放在有机肥 / 沃土上直接成的菌落）走 `Deeds.PLACED_BLOCK` |
+| 移动厨房 use_skillet | 用完一次手持煎锅 | `Deeds.SKILLET_COOKED`（`Server/SkilletHand._finish`）；放下的煎锅（经典右键、煎锅站点）照 JE 不算 |
+| 滋滋火热！ place_skillet | 放下煎锅方块 | `Deeds.PLACED_BLOCK`（潜行放煎锅是 `Server/ItemToBlock` 脚本放的） |
+| 服务周到 eat_nourishing_food | 身上有了滋养 | `AddEffectServerEvent` 的 `arris:nourishment` |
+| 厨神当道 master_chef | 27 道菜各吃一次 | `PlayerEatFoodServerEvent`（牛肉炖菜是 `arris:cookbeef_stew`） |
+
+没实机验证（`Server/Debug/McdkAdvTest.py` 用脚本把能触发的都触发一遍，真玩的路要手动试）：种子类、营火、厨锅、盛宴的放置引擎发不发 `EntityPlaceBlockAfterServerEvent`
+（种子类另有 `ItemUseOnAfterServerEvent` 那条兜着）；`AddEffectServerEvent` 里自定义效果的名字是不是 `arris:nourishment`；`PlayerEatFoodServerEvent` 对骨头汤这种喝的来不来；
+成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的）。
+
 ## 和 JE 的出入（2026-11-26 审计）
 
 对照 FD 1.3.4 逐类核过一遍（方块属性、掉落、食物、效果、声音、提示、绳子、番茄、烂番茄……）。改掉的在各自的"对照 JE"一节或提交说明里；
@@ -960,7 +1018,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 滋养期间"总能吃"（JE `NourishmentAlwaysEatMixin`）：`can_always_eat` 只能写死在物品 JSON 里，没找到按身上的效果临时放开的接口。
 - 原版汤（蘑菇煲、甜菜汤、兔肉煲）叠到 16（JE `SoupItemMixin`）：附加包覆盖不了原版物品的定义（网易有没有改原版堆叠的接口没核实）。
 - 村庄里的堆肥堆、村庄农田种上农夫乐事的作物（JE `VillageStructures`）：附加包加不进原版村庄的拼图池（网易有没有替代接口没核实）。
-- 进度（JE 21 条 advancements）：附加包加不了原版进度（网易的自定义成就能不能用没核实）。
+- 进度（JE 21 条 advancements）：原版的进度界面附加包加不进去；装了团队的成就系统（arrisAdvancements）时 21 条都在它那里（见「成就系统联动」），
+  不装就没有。和 JE 不一样的几处：根节点进游戏就给（JE 是背包第一次变化，实际上也是进游戏就给）；"嘘！去！"的袭击者里没有幻术师（基岩版没有）；
+  "采田艹加"只认右键摘熟了的绳子上的番茄（JE 是"对 0 级的绳上番茄用了东西"，摘完正好回 0 级，别的用法几乎碰不到）；标题和描述只有中文。
 - 拿刀打人击退少 0.1（JE `KnifeItem`）：`DamageEvent` 只能开关击退，改不了大小（煎锅同一个问题，见"煎锅"一节）。
 - 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
@@ -970,7 +1030,6 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
 - 村庄结构（同上一节的限制以外，JE 的五种村庄房子也没搬）。
-- 进度（同上）。
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
 
 暂时和 JE 不一样、等用户定的：
@@ -980,7 +1039,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 
 2026-11-26 四轮实机量过、照着改了或核过的：刀打一下掉 1 点耐久（和 JE 一样）、拆方块掉 2 点（改回 1 点）、`attack_damage` 加在基础 1 点之上（五把刀各减 1）；
 原版堆肥桶空桶第一件必成、7 层不收不扣（脚本堆肥照做）；原版成熟作物的掉落分布和时运（沃土上的原版作物照它改）；番茄藤放回绳子、舒适回血、
-滋养清消耗度、鸡 / 猪 / 兔子认本包的东西、沃土作物的分布、农夫乐事作物的时运也核过，五份覆盖的实体文件加载没报错。
+滋养清消耗度、鸡 / 猪 / 兔子认本包的东西、沃土作物的分布、农夫乐事作物的时运也核过，五份覆盖的实体文件加载没报错
+（这几份覆盖文件当天晚些时候删了，六种动物改成运行时加组件，动物认本包食物的那几条要用 `McdkAnimalsTest` 重新量）。
 第四轮又核了：狼和鹦鹉的喂食（脚本驯服的狼掉血后喂肉末、熟培根、火腿各扣 1 件、回了血，回多少被野狼 8 点的血量上限截住没量出来，野狼不收；
 鹦鹉收番茄种子、卷心菜种子、稻米）；派、菌落、填馅南瓜、野生作物点堆肥桶（3 层入桶、不放成方块，7 层不扣不放，8 层取骨粉、不放）；
 装了机械动力时七种土豆加农炮弹药两端都登记上了（没开炮）；锻造台配方引擎收了（没在锻造台界面里做）。
