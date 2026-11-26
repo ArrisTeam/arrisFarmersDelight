@@ -1247,6 +1247,11 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   对方装着却没有这个模块、正常的模块）。
   QuModLibs 的加载器（`QuModLibs/Systems/Loader/Server.py` / `Client.py` 的 `regSystemInit`，照代码读的）按 `modMain.py` 登记的顺序导入入口模块，每个单独 `try`：一个入口导入失败只记一条
   "系统文件错误"，不连累排在后面的入口；但它自己只做了一半——出错之前挂上的监听、登记的东西留着，之后的没做，这个入口也不会再导一次。
+- 引擎的事件派发（3.10.0.467018 单机实机，2026-11-26，两端各量一遍：自定义事件 `BroadcastEvent`，引擎事件 `AddEntityServerEvent` / `AddEntityClientEvent`）：
+  同一事件的监听按挂上的先后同步派发；一个监听抛异常，引擎在事件总线里逐个接住、往错误日志打一段调用栈，**后面的监听照常收到这一次事件**，
+  广播的人（调 `BroadcastEvent` 的）收不到这个异常，抛过异常的监听也不会被摘掉（下一次事件照样调它）。所以一个监听出错不连累同一事件的别的监听，
+  但它自己停在出错的那一行，后面的没做：在事件里取别的模组的模块（`CreateRecipes`、`Compat/Jei/Registry`）经 `OtherMods`，就是为了取不到时照"没装"那条路走完。
+  本包 ready 广播（`Api/ExtensionApi/Ready.py`）外面那层 `try` 照这个量法接不到别的模组处理函数的异常，只是第二道。
 
 ## 新增内容的清单
 
