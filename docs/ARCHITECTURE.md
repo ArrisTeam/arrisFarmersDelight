@@ -304,7 +304,9 @@ def OnServerSkilletBlockUse(args):
   `item_matches_ingredient` 认不认农夫乐事的东西、两端看它按标签名记的缓存过没过时；怎么调写在文件头）。反方向是 `Server/Debug/McdkKcTagsTest`：
   森罗把十样东西登记进农夫乐事读的细标签以后（它 2026-11-26 的提交 `9ea2b05`，TAGS.md「森罗已经登记了」），引擎里有没有、`ItemTags` / `Knives` /
   `HeatSources`（炉灶点着 / 没点着）认不认、厨锅拿森罗的原料凑不凑得出菜；没装森罗时说明没装。`tests/test_netease_tags.py` 的
-  `testTheStandardIsKaleidoscopesOwnFiles` 对着森罗工程里的文件核对对照表和那张表，森罗进那次提交之前、之后两种样子都认（`FD_KC_DIR` 指定森罗工程）。
+  `testTheStandardIsKaleidoscopesOwnFiles` 对着森罗工程里的文件核对对照表和那张表，`testKaleidoscopeAlsoReadsOurKnivesAndRice` 核对森罗反过来认农夫乐事的
+  刀、米饭、卷心菜（它 2026-11-26 晚上的 `0ca620f` / `3e21548` / `19aeb20`，TAGS.md「森罗也认农夫乐事的东西」）；森罗的 main 进这几个提交之前、之后两种样子都认
+  （`FD_KC_DIR` 指定森罗工程）。
 
 ## 新联动接口与配方的登记
 
@@ -1142,6 +1144,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
 - 村庄结构（同上一节的限制以外，JE 的五种村庄房子也没搬）。
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
+- 别的模组的工作台配方用到农夫乐事的东西时不还合成剩余物（2026-11-26，森罗的盖饭认农夫乐事的米饭以后，TAGS.md「森罗也认农夫乐事的东西」）：
+  JE 里剩余物是物品自带的，农夫乐事的米饭（`bowlFoodItem`）做森罗的盖饭会还一个碗；这边的碗是脚本补的（`Server/CraftReturns.py` 按本包生成的无序配方表
+  `Shared/Data/CraftReturns.py` 里的成品名查），别的模组配方的成品不在表里，所以不还。照代码读出来的，没在游戏里做过；要还就得改成按引擎里的配方读，这次没做。
 
 用户定了的：
 - 熔岩炼药锅 / 热源按方块状态判（2026-11-26，用户："热源标签可以支持一下方块状态判定"）：JE 的 `heat_sources` 里有 `minecraft:lava_cauldron`，

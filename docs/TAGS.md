@@ -74,6 +74,7 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 `linkage.md` 里往 `knifeList` 追加名字的办法也照旧有效。三样任一个说是刀，农夫乐事就当它是刀：砧板上刀切的配方、借刀、插刀，刀杀生物的额外掉落，
 刀切蛋糕和派，刀收稻穗，蘑菇菌落，炉灶站点开不开；还有刀掉耐久：一次掉的多于 1 点时只扣 1 点（`Server/Tools.OnKnifeDurability`，
 为的是农夫乐事的刀：它们是剑类的自定义武器，拆一块方块引擎扣 2 点，JE 的刀只扣 1 点；别的模组的刀是刀，也照这一条）。
+反过来，装了森罗物语厨房时，`common:knife` 里的刀也是森罗的菜刀：能在它的砧板上切、杀猪掉油（见下面「森罗也认农夫乐事的东西」）。
 
 ### 热源方块
 
@@ -111,7 +112,8 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 团队的烹饪原料标签规范是森罗物语厨房网易版（下面简称森罗）2026-11-26 的提交 `2df8e1c` 登记的 18 个标签。下表是两边各登记了什么：
 两个模组都装着时，引擎把同名标签两边的成员并起来，`#` 引的标签再展开（3.10 实机量过的是"两个包登记同一个标签会合并"和"别的包登记进被 `#` 引的标签，
 引它的标签里也有"；两个包都往同一个标签里写 `#`、各引各的时并出来什么样，还没在游戏里量过）。"森罗登记的"照它 `kaleidoscope_cookery_bp/netease_tags/`
-的文件抄，"农夫乐事登记的"就是词表（测试核对这一列）。
+的文件抄，"农夫乐事登记的"就是词表（测试核对这一列）。`common:vegetable` 末尾的 `#common:cabbage` 是森罗 2026-11-26 晚上的提交 `19aeb20` 加的
+（见下面「森罗也认农夫乐事的东西」）；测试对着还没有这个提交的森罗 main 也认，那时这一格少这一项。
 
 | 标签 | 森罗登记的 | 农夫乐事登记的 | JE 里对应的标签 |
 | --- | --- | --- | --- |
@@ -132,7 +134,7 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 | `common:rice` | `kaleidoscope_cookery:rice` | `arris:rice` | `forge:crops/rice`、`forge:grain/rice` |
 | `common:seed` | `minecraft:wheat_seeds`、`minecraft:pumpkin_seeds`、`minecraft:melon_seeds`、`minecraft:beetroot_seeds`、`minecraft:torchflower_seeds`、`minecraft:pitcher_pod`、`kaleidoscope_cookery:rice` | `#common:cabbage_seed`、`#common:rice`、`#common:tomato_seed`、`minecraft:beetroot_seeds`、`minecraft:melon_seeds`、`minecraft:pumpkin_seeds`、`minecraft:wheat_seeds` | `forge:seeds` |
 | `common:tomato` | `kaleidoscope_cookery:tomato` | `arris:tomato` | `forge:crops/tomato` |
-| `common:vegetable` | `#common:tomato`、`#common:lettuce`、`#common:chili`、`minecraft:carrot`、`minecraft:potato`、`minecraft:beetroot` | `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato` | `forge:vegetables` |
+| `common:vegetable` | `#common:tomato`、`#common:lettuce`、`#common:chili`、`minecraft:carrot`、`minecraft:potato`、`minecraft:beetroot`、`#common:cabbage` | `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato` | `forge:vegetables` |
 
 ### 农夫乐事登记进去的依据
 
@@ -160,6 +162,12 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
   （机械动力附属同一天的提交 `aa8fc45` 改读 `common:seed`；改名的对照见 [API-CHANGELOG.md](API-CHANGELOG.md)）。
 - **蘑菇、番茄、米、面团、蔬菜**：本来就同名，两边的成员引擎合并。JE 里这几样也是两个模组共用同一个 `forge:` 标签
   （`forge:mushrooms`、`forge:crops/tomato`、`forge:crops/rice`、`forge:dough`、`forge:vegetables`）。
+- **卷心菜算蔬菜**（森罗那边登记的，农夫乐事这边没改）：JE 森罗的 `forge:vegetables` 可选地含 `#forge:crops/cabbage`（`TagItem.java:174-177`，
+  注释写的是兼容农夫乐事卷心菜），JE 农夫乐事读的是同一个标签，所以两个模组都装时农夫乐事的蔬菜格也收卷心菜。网易版森罗在 `common:vegetable`
+  末尾写了 `#common:cabbage`（森罗提交 `19aeb20`）：两个包都装着时农夫乐事的卷心菜、卷心菜叶算蔬菜，农夫乐事读 `common:vegetable` 的格子也收它们
+  （厨锅的蔬菜面、蔬菜杂烩、填馅南瓜、卷心菜卷、鸡肉汤，工作台的海带卷），和 JE 两个都装时一样；农夫乐事自己登记的 `common:vegetable` 照旧不含卷心菜。
+  只装森罗时这个 `#` 引的是没人登记的标签：3.10 实机（2026-11-26，两端各量一遍）被引的标签只要还有别的真成员，标签照常登记、成员就是那些真成员，
+  加载时不记日志。两个包都装着时整条链（`#` 引 → 引擎展开 → 厨锅的蔬菜格收卷心菜）还没在游戏里走过。
 - **面条不登记**（用户 2026-11-26 定：意面和面条不是同一种东西）：农夫乐事的生意面只在 `common:pasta` 里，不进 `common:noodle`；
   森罗的生面条也不进 `common:pasta`，两边互不认。JE 里本来也是两样：JE 森罗的牛肉面、羊肉烩面、热干面、乌冬面写的是物品
   `kaleidoscope_cookery:raw_noodles`（如 `flex_stockpot/beef_noodle.json:15`），不是标签；两个兼容模组也没把农夫乐事的生意面和森罗的生面条当成一种
@@ -176,7 +184,8 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 `kaleidoscope_cookery_bp/netease_tags/` 下九个物品标签文件、一个方块标签文件，只写森罗自己的东西）。农夫乐事这边一行配方没改：
 两个模组都装着时引擎把同名标签两边的成员并起来，农夫乐事按标签认的地方就认得它们，农夫乐事用 `#` 嵌了这些细标签的标签（生肉、熟肉、粗标签）里也有它们。
 "农夫乐事哪里因此能用上它"照现在的配方数（厨锅每道菜的 `Slots`、`bp/recipes` 里写标签的工作台配方，`tests/test_netease_tags.py` 照配方重新数一遍）；
-依据是 JE 森罗把它放进的 `forge:` 标签，就是农夫乐事读的那个（`TagItem.java` 的行号）。
+依据是 JE 森罗把它放进的 `forge:` 标签，就是农夫乐事读的那个（`TagItem.java` 的行号）。表里最后一行（米饭）是同一天晚些时候森罗的另一个提交（`3e21548`）
+登记的：农夫乐事自己不读 `common:cooked_rice`，用处在森罗那边（下一节）。
 
 | 森罗的东西 | 登记进 | 农夫乐事哪里因此能用上它 | JE 依据 |
 | --- | --- | --- | --- |
@@ -190,12 +199,36 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 | `kaleidoscope_cookery:fried_egg`（煎蛋） | `common:cooked_egg` | 工作台：培根蛋、夹蛋三明治 | `forge:cooked_eggs`（`:189`） |
 | `kaleidoscope_cookery:iron_kitchen_knife`、`kaleidoscope_cookery:gold_kitchen_knife`、`kaleidoscope_cookery:diamond_kitchen_knife`、`kaleidoscope_cookery:netherite_kitchen_knife`（四把菜刀） | `common:knife` | 认作刀的地方都认（见上面「刀」） | `forge:tools/knives`、`farmersdelight:tools/knives`（`:53-62`） |
 | `kaleidoscope_cookery:kaleidoscope_cookery_stove`（炉灶） | 方块标签 `farmersdelight:heat_sources` | 放在上面的厨锅、煎锅会热，点着才算（它的 `kaleidoscope_cookery:lit` 是点燃状态）；手持煎锅站在它旁边也算身边有热源（和 JE 一样不看点没点着） | JE 森罗生成的 `data/farmersdelight/tags/blocks/heat_sources.json:3` |
+| `kaleidoscope_cookery:cooked_rice`（米饭） | `common:cooked_rice` | 农夫乐事不读这个标签，用处在森罗自己的盖饭配方（下一节） | `forge:cooked_rice`（`:190`） |
 
 - 工作台那几样（填馅马铃薯、羊肉卷饼、牧羊人派、烧烤串、培根蛋、夹蛋三明治）都是砧板菜。装了沉浸式交互前置、砧板站点开着时，工作台不出砧板菜、要在砧板上拼；
   砧板的菜谱按词表里农夫乐事登记的成员展开（`DishList`），认不出森罗的东西：格子里有森罗的东西时工作台拦不住、照样做得出，砧板上却拼不了
   （已知的口子，见 ARCHITECTURE.md「和 JE 的出入」里"工作台配方按标签"那一条）。没装前置包时就是工作台照常做。
 - 森罗的炉灶只登记方块名就够了：农夫乐事看"点没点着"认的是名字是 `lit` 或以 `:lit` 结尾的状态（上面「热源方块」）。
-- 游戏内自检：`Server/Debug/McdkKcTagsTest.mcdk_test_kc_tags()`（两个包都装着时报这十样在不在引擎的标签里、农夫乐事的规则认不认、厨锅凑不凑得出菜）。
+- 游戏内自检：`Server/Debug/McdkKcTagsTest.mcdk_test_kc_tags()`（两个包都装着时报前十样在不在引擎的标签里、农夫乐事的规则认不认、厨锅凑不凑得出菜；米饭那一行它还没问）。
+
+### 森罗也认农夫乐事的东西
+
+反方向：森罗 2026-11-26 晚上又加了三处（用户定的："森罗切菜认农夫乐事的刀……盖饭认农夫乐事的米饭、卷心菜算蔬菜"），都只动了它的数据，农夫乐事这边没改。
+两个包都装着时：
+
+- **刀**（森罗提交 `0ca620f`）：森罗的 `netease_tags/kitchen_knife.json` 给 `kaleidoscope_cookery:kitchen_knife` 写了四把菜刀，再用 `#` 引 `common:knife`。
+  农夫乐事的五把刀和别的模组登记进 `common:knife` 的刀，能在森罗的砧板上切菜、杀猪 / 猪灵 / 疣猪兽时掉油；沉浸式交互前置的森罗砧板站点也认
+  （这几处问的是同一个标签 `kaleidoscope_cookery:kitchen_knife`）。JE 依据：JE 森罗的 `kitchen_knife` 可选地含 `#farmersdelight:tools/knives`（`TagItem.java:43-47`），
+  网易版对应的是 `common:knife`。四把菜刀还在各自物品 JSON 的 `minecraft:tags` 里声明着，这个文件里又写了一遍：同一个包里两种写法声明同一个标签时会不会都算，
+  还没在游戏里量过，写全了两种结果都对。
+- **盖饭**（`3e21548`）：森罗的 `netease_tags/cooked_rice.json` 把 `kaleidoscope_cookery:cooked_rice` 登记进 `common:cooked_rice`（农夫乐事的 `arris:cooked_rice` 在同一个标签里），
+  五条盖饭的工作台配方（番茄炒蛋盖饭、红烧牛肉盖饭、青椒炒肉盖饭、糖醋里脊盖饭、鱼香肉丝盖饭）里米饭那一格写成 `{"tag": "common:cooked_rice"}`。
+  农夫乐事的米饭能做这五种盖饭；只装森罗时靠它自己的文件，配方照样做得出。JE 依据：`forge:cooked_rice` 可选地含农夫乐事的米饭（`TagItem.java:190-192`），
+  盖饭配方收 `#forge:cooked_rice`（`RiceBowlRecipe.java`）。
+- **卷心菜**（`19aeb20`）：森罗的 `common:vegetable` 末尾加了 `#common:cabbage`，农夫乐事的卷心菜、卷心菜叶算蔬菜，依据见「农夫乐事登记进去的依据」里"卷心菜算蔬菜"一条。
+
+这三处都只是数据，离线核过名字和写法（测试 `testKaleidoscopeAlsoReadsOurKnivesAndRice` 对着森罗的文件核，没有这三个提交的森罗 main 也认），
+还没在游戏里整条走过：农夫乐事的刀在森罗砧板上真切一次、只装森罗时盖饭做得出、两个包都装着时厨锅的蔬菜格收卷心菜。
+
+和 JE 不一样的一处：农夫乐事的米饭做森罗的盖饭**不还碗**。JE 里米饭自带合成剩余物（碗，`ModItems` 里的 `bowlFoodItem`），做完盖饭碗还给玩家；
+这边的碗由农夫乐事自己的脚本还（`Server/CraftReturns.py`，只认本包生成的工作台配方表 `Shared/Data/CraftReturns.py`，按成品名查），森罗的盖饭不在表里，所以不还。
+这是照代码读出来的，没在游戏里做过；记在 ARCHITECTURE.md「和 JE 的出入」。
 
 ### 给森罗那边的建议
 
@@ -203,7 +236,6 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 
 | 森罗的东西 | 登记进 | 农夫乐事哪里因此能用上它 | JE 依据 |
 | --- | --- | --- | --- |
-| `kaleidoscope_cookery:cooked_rice` | `common:cooked_rice` | 农夫乐事现在不读（JEI 里算同一类） | `forge:cooked_rice`（`:190`） |
 | `kaleidoscope_cookery:tomato_seed` | `common:tomato_seed` | 不读 | `forge:seeds/tomato`（`:180`） |
 | `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chop`、`common:cooked_mutton_chop` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |
 | 番茄、两种辣椒、生菜、米；番茄、辣椒、生菜的种子，野生稻种子 | `common:crop`；`common:seed` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:162-169`）、`forge:seeds`（`:152-158`） |
@@ -219,17 +251,18 @@ JE 有、这边不建议的：
 - 生菜进 `common:leafy_green`（沙拉、三明治和几道汤用的叶菜）：JE 里没有依据（JE 森罗没把生菜放进 `forge:salad_ingredients`），要不要由团队定。
 - 生面条进 `common:pasta`：不进（用户 2026-11-26 定：意面和面条不是同一种东西，见上面「面条不登记」；JE 里生面条也不在 `forge:pasta`）。
 
-JE 森罗另外还认农夫乐事的东西，网易版要森罗那边改（农夫乐事不用动）：
+JE 森罗另外还认农夫乐事的东西，网易版要森罗那边改（农夫乐事不用动）。原来列的五条，加上网易版独有的炒锅盛饭一条，现在的进度（2026-11-26 晚）：
 
-- 菜刀：JE 森罗的 `kaleidoscope_cookery:kitchen_knife` 可选地含 `#farmersdelight:tools/knives`（`TagItem.java:43-47`），农夫乐事的刀能当菜刀用。网易版：判断时也认 `common:knife`。
-- 热源：JE 森罗"没有点燃状态的热源"含 `#farmersdelight:heat_sources`（生成的 `data/kaleidoscope_cookery/tags/blocks/heat_source_blocks_without_lit.json:7`）。
-  网易版：也按方块标签 `farmersdelight:heat_sources` 认（见上面「热源方块」）。
-- 水稻种在农夫乐事的沃土耕地上：`rice_plantable` 含农夫乐事的沃土耕地（生成的 `data/kaleidoscope_cookery/tags/blocks/rice_plantable.json:4`）。
+- 菜刀：**已做**（森罗提交 `0ca620f`）。JE 森罗的 `kaleidoscope_cookery:kitchen_knife` 可选地含 `#farmersdelight:tools/knives`（`TagItem.java:43-47`），
+  网易版的 `kitchen_knife` 引了 `common:knife`，农夫乐事的刀能当菜刀用（见上面「森罗也认农夫乐事的东西」）。
+- 盖饭认农夫乐事的米饭：**已做**（`3e21548`）。`forge:cooked_rice` 可选地含农夫乐事的米饭（`TagItem.java:190-192`）；网易版五条工作台盖饭配方读 `common:cooked_rice`，农夫乐事的米饭在里面。
+- 卷心菜算蔬菜：**已做**（`19aeb20`）。`forge:vegetables` 可选地含 `#forge:crops/cabbage`（`TagItem.java:177`，注释"兼容农夫乐事卷心菜"）；网易版森罗的 `common:vegetable`
+  写了 `#common:cabbage`，农夫乐事的蔬菜格子也收卷心菜，和 JE 两个模组都装时一样。只装森罗时这个 `#` 引的是没人登记的标签，3.10 实机量过：标签里还有别的真成员时照常、不记日志（见上面「农夫乐事登记进去的依据」）。
+- 热源：要改森罗的代码，森罗那边另外在做。JE 森罗"没有点燃状态的热源"含 `#farmersdelight:heat_sources`（生成的 `data/kaleidoscope_cookery/tags/blocks/heat_source_blocks_without_lit.json:7`）；
+  网易版森罗的锅现在认的是写死的名单（火、熔岩、岩浆块，炉灶、营火另外判），不读标签，要改成也按方块标签 `farmersdelight:heat_sources` 认（见上面「热源方块」）。
+- 水稻种在农夫乐事的沃土耕地上：不做。JE 的 `rice_plantable` 含农夫乐事的沃土耕地（生成的 `data/kaleidoscope_cookery/tags/blocks/rice_plantable.json:4`），
   网易版的沃土耕地是 `arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist` 两个方块。
-- 盖饭认农夫乐事的米饭：`forge:cooked_rice` 可选地含农夫乐事的米饭（`TagItem.java:190-192`）。网易版：读 `common:cooked_rice`，农夫乐事的米饭在里面。
-- 卷心菜算蔬菜：`forge:vegetables` 可选地含 `#forge:crops/cabbage`（`TagItem.java:177`，注释"兼容农夫乐事卷心菜"）。网易版：森罗的 `common:vegetable`
-  写上 `#common:cabbage`（农夫乐事的卷心菜、卷心菜叶）；这样农夫乐事的蔬菜格子也收卷心菜，和 JE 两个模组都装时一样。没装农夫乐事时这个 `#`
-  引的是没人登记的标签，引擎怎么处理（报不报错、记不记日志）没量过。
+- 炒锅里用米饭盛成盖饭（森罗 `pot_action.py` 里的 `RICE_BOWL_MAPPING`）：网易版独有，JE 没有，不做，还是只认森罗自己的米饭。
 
 ## JE 农夫乐事自己的标签（farmersdelight:）
 
