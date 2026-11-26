@@ -55,6 +55,11 @@ def removePort(port):
         _changed()
 
 
+def ports():
+    """装着的口（拷贝，按装的先后）：游戏内自检看每个口在这个线程里各答什么。"""
+    return list(_state["ports"])
+
+
 def isLangKey(text):
     """item.xxx.name / tile.xxx.name：引擎没翻出来的语言键（物品没有语言条目，或者世界还没进完），当没要到。"""
     if isinstance(text, bytes) and not isinstance(text, str):
