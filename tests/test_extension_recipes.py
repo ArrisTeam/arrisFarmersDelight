@@ -489,5 +489,24 @@ def testSyncToClientsCallsTheSyncAndTheHandlers():
         assert CLIENT.registerFromJson("{not json")["error"] == "server_only", "客户端先答 server_only，坏文本也一样"
 
 
+def testFindRecipeAnswersLikeTheBoardAndThePanDo():
+    """主会话定的 A1-P2：findRecipe（照机械动力的 findRecipe）。砧板：原料正好是这件东西的那条先，再按标签（CuttingStation.recipeKeyOf，
+    和砧板自己认的一样）；营火只查表；厨锅、不认识的类型、不是文字的物品名都是 None；客户端一样能查（表同步过来的那一份）。"""
+    with Sandbox():
+        cabbage = SERVER.findRecipe("cutting", "arris:cabbage")
+        assert cabbage == SERVER.getRecipeById("farmersdelight:cutting/arris/cabbage") and cabbage["id"] == "farmersdelight:cutting/arris/cabbage"
+        assert SERVER.findRecipe("cutting", u"arris:cabbage") == cabbage and CLIENT.findRecipe("cutting", "arris:cabbage") == cabbage
+        assert SERVER.findRecipe("cutting", "other:steak") is None
+        assert SERVER.createBuilder("mymod:cutting/any_beef", "cutting").ingredient("#common:raw_beef").output("arris:minced_beef", 2) \
+            .tool("knife").register()["ok"]
+        assert SERVER.findRecipe("cutting", "other:steak")["id"] == "mymod:cutting/any_beef", "没有精确的：按标签（别的模组的牛排进了 common:raw_beef）"
+        assert SERVER.findRecipe("cutting", "arris:wheat_dough")["id"] == "farmersdelight:cutting/arris/wheat_dough", "精确的那条在标签之前"
+        beef = SERVER.findRecipe("campfire_cooking", "minecraft:beef")
+        assert beef["id"] == "farmersdelight:campfire_cooking/minecraft/beef" and beef["result"] == Cooking.CanCookedFoodDict["minecraft:beef"]
+        for args in (("cutting", "minecraft:dirt"), ("campfire_cooking", "minecraft:dirt"), ("cooking", "minecraft:beef"), ("fishing", "minecraft:beef"),
+                     ("cutting", None), ("cutting", ("arris:cabbage", 0)), ("cutting", "arris:cabbage", "x"), ("cutting", "")):
+            assert SERVER.findRecipe(*args) is None, args
+
+
 if __name__ == "__main__":
     raise SystemExit(fdtest.run(globals()))

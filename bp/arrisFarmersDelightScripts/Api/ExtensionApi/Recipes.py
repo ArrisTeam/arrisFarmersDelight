@@ -4,6 +4,7 @@
     createBuilder(配方 ID, 类型)          一句一句写（RecipeBuilder），.register() 登记
     registerFromJson(JSON 文本或字典, 配方 ID=None)   JE 写法的配方 JSON（Shared/Rules/RecipeJson.py）；ID 不给就用 JSON 里的 "id"
     getRecipeById(ID) / getRecipesOfType(类型)        查：写成 JE 配方 JSON 的样子（带 "id"），删掉的查不到
+    findRecipe(类型, 物品名, aux=0)        砧板 / 营火：这件东西放上去按哪条配方做（和砧板、煎锅自己认的一样）；同上的样子，没有是 None
     removeRecipe(ID)                       删：厨锅打墓碑，砧板 / 营火真删（表同步把删除发给客户端）
     matchCooking(物品列表)                 只读：这几件东西在厨锅里做成什么（给别的模组的锅做回退）；没有是 None
     onRecipesChanged(处理函数)             syncToClients 之后、行为包里的配方 JSON 读完之后调 handler(event)：event.types、event.recipeIds
@@ -16,8 +17,10 @@ import traceback
 
 from . import RecipeIds, RecipeTables, RecipeViews
 from .RecipeBuilder import RecipeBuilder
+from ...Shared.Data.Cooking import CanCookedFoodDict
 from ...Shared.Data.CookingPotRecipes import CookingPotRecipeList
-from ...Shared.Rules import CookingPot, RecipeJson
+from ...Shared.Rules import CookingPot, CuttingStation, RecipeJson
+from ...Shared.Rules.TableWire import isInt
 
 _services = {}                 # 服务端入口交进来的：{"syncNow": 现在就把表同步发给在线玩家的函数}
 _handlers = []                 # onRecipesChanged 登记的处理函数（按登记的先后，不重复）
@@ -114,6 +117,21 @@ class Recipes(object):
         """这一类的全部配方（同上的样子）；类型不认识是 []。"""
         kind = RecipeIds.typeOf(recipeType)
         return [RecipeViews.viewAt(found, recipeId) for recipeId, found in RecipeTables.entriesOf(kind)] if kind else []
+
+    def findRecipe(self, recipeType, itemName, aux=0):
+        """砧板 / 营火：这件东西（物品名, aux）放上去按哪条配方做，和砧板、煎锅自己认的一样（砧板精确的那条先，再按标签：
+        CuttingStation.recipeKeyOf；营火只认农夫乐事的表，引擎自己的营火配方不在这里）。JE 配方 JSON 的样子（带 "id"），没有是 None。
+        厨锅是几件一起放的：用 matchCooking。类型不认识、物品名不是文字也是 None。"""
+        kind, name = RecipeIds.typeOf(recipeType), RecipeJson.text(itemName)
+        if not isinstance(name, str) or not name or not isInt(aux):
+            return None
+        if kind == "cutting":
+            key = CuttingStation.recipeKeyOf((name, aux))
+        elif kind == "campfire_cooking":
+            key = name if name in CanCookedFoodDict else None
+        else:
+            return None
+        return None if key is None else RecipeViews.viewAt((kind, key), RecipeTables.idOfKey(kind, key))
 
     def removeRecipe(self, recipeId):
         return self._refused(recipeId) or RecipeTables.remove(recipeId)

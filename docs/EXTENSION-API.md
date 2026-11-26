@@ -191,6 +191,7 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `recipe_client_sync` | 服务端 | `ext.recipes.syncToClients`（§5.8） |
 | `recipe_change_events` | 服务端 | `ext.recipes.onRecipesChanged`（§5.8） |
 | `cooking_match` | 两端 | `ext.recipes.matchCooking`（§5.7） |
+| `recipe_lookup` | 两端 | `ext.recipes.findRecipe`：一件东西在砧板 / 营火上按哪条配方做（§5.5） |
 | `knives` | 服务端 | `ext.registerKnife`（§6） |
 | `heat_sources` | 服务端 | `ext.registerHeatSource`（§6） |
 | `stoves` | 服务端 | `ext.registerStove`（§6） |
@@ -332,7 +333,14 @@ ext.recipes.getRecipeById("farmersdelight:cooking/beef_stew")
 #  "result": {"item": "arris:cookbeef_stew"}, "cookingtime": 200, "experience": 1.0, "container": {"item": "minecraft:bowl"},
 #  "text": "牛肉炖"}
 ext.recipes.getRecipesOfType("cutting")      # 这一类的全部，同样的样子；类型不认识是 []
+ext.recipes.findRecipe("cutting", "minecraft:cake")            # 这件东西放上砧板按哪条切；切不了是 None
+ext.recipes.findRecipe("campfire_cooking", "minecraft:beef")   # 煎锅、炉灶的表里它煎成什么；同样的样子
 ```
+
+`findRecipe(类型, 物品名, aux=0)`（能力 `recipe_lookup`，两端）照机械动力的 `findRecipe`，给自己的机器（自动切菜、自动煎）找农夫乐事的配方用：
+砧板先找原料正好是这件东西（物品名加 aux）的那条，再按标签（按标签名排，第一个收它的那条），和砧板自己认的一样；营火只查农夫乐事的表
+（`CanCookedFoodDict`；引擎自己的营火配方不在这里，煎锅、炉灶查不到这张表时才去问引擎，见 §5.1）。厨锅是几件一起放的，用 `matchCooking`（§5.7）；
+类型是 `cooking` 或认不出、物品名不是文字时是 `None`。
 
 给的是 JE 配方 JSON 的样子（带 `"id"`），改几个字段原样交回 `registerFromJson` 就是覆盖。删了的查不到（`None`）。
 兼容入口只写了物品写法的厨锅配方，`ingredients` 按它的第一种写法一格一样东西给。
