@@ -6,8 +6,13 @@
 （它的 docs/EXTENSION-API.md §15.52，能力 potato_cannon_ammo）两端各登记一次：服务端管开火和命中，客户端管弹丸怎么画。
 门面从它的 ready 事件拿（命名空间 arrisCreate、系统 ExtensionApi）；这个模块被导入时它已经广播过，就从它的 ExtensionApi 模块
 取那一端的门面晚接一次（§3.3：弹药是现查的表，冻结之后登记照样生效）。没装机械动力、或者它没有这项能力：什么都不做。
-碰引擎的那两样（加载器系统、ImportModule）由两端的入口 PotatoCannonServer / PotatoCannonClient 传进来。
+碰引擎的那两样（加载器系统、ImportModule）由两端的入口 PotatoCannonServer / PotatoCannonClient 传进来；晚接是在入口模块导入时，
+所以机械动力那边的错（它的模块导入出错、取门面时才导入的门面模块出错——经 Compat/OtherMods——登记时出错）都只打日志、当没接上，不漏出入口。
 """
+import traceback
+
+from .. import OtherMods
+
 CAPABILITY = "potato_cannon_ammo"
 NAMESPACE, SYSTEM_NAME = "arrisCreate", "ExtensionApi"
 READY_EVENTS = {"server": "ServerExtensionApiReady", "client": "ClientExtensionApiReady"}
@@ -63,10 +68,15 @@ _attached = {}
 
 
 def attach(side, facade):
-    """这一端接上（ready 事件或晚接）：接过了不再接。返回接上了没有。"""
+    """这一端接上（ready 事件或晚接）：接过了不再接。返回接上了没有。门面是机械动力的代码：登记时它抛异常只打日志、当没接上。"""
     if _attached.get(side):
         return True
-    count = register(facade)
+    try:
+        count = register(facade)
+    except Exception:  # noqa: BLE001 - 别的模组的错不许带倒农夫乐事（晚接时在入口模块的导入里）
+        print("[arrisFarmersDelight] 土豆加农炮弹药（%s 端）：登记时机械动力那边出错，不登记" % side)
+        traceback.print_exc()
+        return False
     if count is None:
         print("[arrisFarmersDelight] 机械动力没有 %s（%s 端）：土豆加农炮不认农夫乐事的弹药" % (CAPABILITY, side))
         return False
@@ -86,7 +96,7 @@ def hook(side, system, api):
         system.ListenForEvent(NAMESPACE, SYSTEM_NAME, READY_EVENTS[side], system, onReady)
     if not api.GetSystem(NAMESPACE, SYSTEM_NAME):
         return False
-    module = api.ImportModule(FACADE_MODULE)
+    module = OtherMods.find(api.ImportModule, FACADE_MODULE)
     getter = getattr(module, "getExtensionApi", None) if module is not None else None
-    facade = getter(side) if getter is not None else None
+    facade = OtherMods.call(getter, side) if getter is not None else None     # 它这时才导入自己的门面模块（_facade）
     return attach(side, facade) if facade is not None else False

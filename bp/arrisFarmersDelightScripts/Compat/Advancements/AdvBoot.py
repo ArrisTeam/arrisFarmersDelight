@@ -3,7 +3,8 @@
 
 照它 README 的"方法一"：在本包的加载器系统上听 ("dolorAdvancements", "ExtensionApi", "ServerApiReady")，事件里的 api 就是它的
 dolorAdvancementsScripts.Api.Server 模块。它在所有模组加载完以后才广播，这里在导入时（引擎加载期）就挂上监听，两边谁先加载都收得到。
-它的 ExtensionApi 系统已经在（热重载以后再导入这里）：事件不会再来，直接 ImportModule 它的接口晚接一次（照 Compat/Create/PotatoCannonAmmo）。
+它的 ExtensionApi 系统已经在（热重载以后再导入这里，或者它比本包先加载完）：事件不会再来，直接 ImportModule 它的接口晚接一次（照 Compat/Create/PotatoCannonAmmo）。
+这一下是在本模块导入时：经 Compat/OtherMods 取，它的接口导入出错只打日志、当没接上，异常不漏出本模块的导入（本模块是 modMain 登记的入口）。
 没装成就系统：事件不来、系统不在，这里只挂了一个空监听、问了一次引擎，什么都不做。接上以后做什么见 AdvBridge。
 监听挂在本包的加载器系统上，不挂在 Server/ExtensionSystem：那个系统只用来广播本包自己的 ready（要广播时才建、不挂监听）。
 """
@@ -12,6 +13,7 @@ import traceback
 from ...QuModLibs.Server import ListenForEvent
 from ...QuModLibs.Systems.Loader.Server import LoaderSystem
 from ...Server.Helpers.Engine import compFactory, levelId, serverApi, ItemPosType, GetEngineTypeStr
+from .. import OtherMods
 from . import AdvBridge
 
 NAMESPACE, SYSTEM_NAME, READY_EVENT = "dolorAdvancements", "ExtensionApi", "ServerApiReady"
@@ -62,7 +64,7 @@ def hook(system):
         setattr(system, READY_METHOD, onReady)
         system.ListenForEvent(NAMESPACE, SYSTEM_NAME, READY_EVENT, system, onReady)
     if AdvBridge.api() is None and serverApi.GetSystem(NAMESPACE, SYSTEM_NAME):
-        _attach(serverApi.ImportModule(API_MODULE))
+        _attach(OtherMods.find(serverApi.ImportModule, API_MODULE))
 
 
 hook(LoaderSystem.getSystem())
