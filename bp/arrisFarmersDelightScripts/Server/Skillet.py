@@ -35,7 +35,7 @@ COOK_TIMER = 7
 # 液体层里的水：JE 的 WATERLOGGED（含水的煎锅不能煎，锅里的东西浮出来）
 _WATER = ("minecraft:water", "minecraft:flowing_water")
 # 手里拿着这些物品点煎锅时拦截交互：不把它们当食物、也不提示（锅上不放方块是 OnUseItemOnPlacedSkillet 拦的，方块使用的 cancel 拦不住）
-_BLOCKED_ITEMS = ("arris:spatula", "arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
+_BLOCKED_ITEMS = ("arris:cutting_board", "arris:cooking_pot", "arris:skillet_item")
 # 每个煎锅每 TICK_STEP 秒处理一次（真实时间节拍，不受 /time set、doDaylightCycle false 影响），计时按步长累加
 TICK_STEP = 0.25
 _pacer = Pacer(TICK_STEP)

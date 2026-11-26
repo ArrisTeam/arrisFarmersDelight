@@ -265,7 +265,6 @@ tile.arris:rich_soil_wheat6.name=小麦植株
 tile.arris:rich_soil_wheat7.name=小麦植株
 tile.arris:red_mushroom_colony.name=红色蘑菇菌落
 tile.arris:brown_mushroom_colony.name=棕色蘑菇菌落
-item.arris:spatula.name=锅铲
 item.arris:farmer_delight_guide_book.name=农夫乐事说明书
 item.arris:item_display_destroy.name=物品展示实体消除器
 tile.arris:rich_soil_torchflower0.name=火把花植株

@@ -45,7 +45,7 @@ def testKnivesWithoutAnEnginePort():
     _reset()
     for name in Tags.ITEM_TAGS[Tags.KNIFE] + ("ends_delight:dragon_tooth_knife",):
         assert Knives.isKnife(name), name
-    for name in ("minecraft:iron_sword", "minecraft:iron_axe", "arris:spatula", "", None):
+    for name in ("minecraft:iron_sword", "minecraft:iron_axe", "arris:skillet_item", "", None):
         assert not Knives.isKnife(name), name
     Cutting.knifeList.append("mymod:cleaver")
     try:

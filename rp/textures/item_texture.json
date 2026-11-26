@@ -271,9 +271,6 @@
         "arris:smoked_ham": {
             "textures": "textures/items/smoked_ham"
         },
-        "arris:spatula": {
-            "textures": "textures/items/spatula"
-        },
         "arris:squid_ink_pasta": {
             "textures": "textures/items/squid_ink_pasta"
         },
