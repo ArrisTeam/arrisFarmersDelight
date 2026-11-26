@@ -7,7 +7,7 @@
 
 ---
 
-## 未发版（2026-11-26 起，apiVersion 1）
+## hostVersion 1.0.3（2026-11-27，apiVersion 1）
 
 新增：
 

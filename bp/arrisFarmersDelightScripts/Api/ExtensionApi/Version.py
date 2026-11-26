@@ -7,4 +7,4 @@
 hostVersion 每次发版都变；apiVersion 只在公共接口有破坏性变更时才加一。
 """
 
-HOST_VERSION = (1, 0, 2)
+HOST_VERSION = (1, 0, 3)
