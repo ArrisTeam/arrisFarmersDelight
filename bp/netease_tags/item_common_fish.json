@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:fish",
+  "items": [
+    "#common:raw_fish",
+    "#common:cooked_fish"
+  ]
+}

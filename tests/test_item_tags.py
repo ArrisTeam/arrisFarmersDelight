@@ -73,7 +73,9 @@ def testWithoutAPortItAnswersFromTheStaticTable():
     assert ItemTags.has("arris:minced_beef", Tags.RAW_BEEF) and ItemTags.has("minecraft:brown_egg", Tags.EGG)
     assert ItemTags.has("arris:iron_knife", Tags.KNIFE) and ItemTags.has("arris:iron_knife", Tags.LEGACY_KNIFE)
     assert not ItemTags.has("minecraft:pufferfish", Tags.RAW_FISH) and not ItemTags.has(None, Tags.RAW_FISH)
-    assert ItemTags.tagsOf("arris:rice") == frozenset((Tags.RICE, Tags.CROPS, Tags.SEEDS))
+    assert ItemTags.tagsOf("arris:rice") == frozenset((Tags.RICE, Tags.CROPS, Tags.SEEDS, Tags.SEED)), "团队规范的 common:seed 也有米"
+    assert ItemTags.tagsOf("arris:bacon") == frozenset((Tags.RAW_BACON, Tags.RAW_PORK, Tags.RAW_MEAT, Tags.PORK)), "粗标签经两层 # 展开"
+    assert ItemTags.has("arris:cooked_salmon_slice", Tags.FISH) and not ItemTags.has("minecraft:pufferfish", Tags.FISH)
     assert ItemTags.tagsOf("minecraft:apple") == frozenset()
     assert ItemTags.blocksOf(Tags.HEAT_SOURCES) >= frozenset(("minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma"))
     assert ItemTags.blockHas("arris:stove", Tags.HEAT_SOURCES) and not ItemTags.blockHas("arris:stove_extinguish", Tags.HEAT_SOURCES)
@@ -290,7 +292,7 @@ def testTheClientTakesOverWhenItsTagsArrive():
     early = ItemTags.generation()
     assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
     assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO), "自定义物品按单件问，早就答得全"
-    assert ItemTags.tagsOf(PROBE_ITEM) == frozenset((Tags.RAW_BEEF, Tags.RAW_MEAT)), "原版物品那时引擎答 None：只有静态表的"
+    assert ItemTags.tagsOf(PROBE_ITEM) == frozenset((Tags.RAW_BEEF, Tags.RAW_MEAT, Tags.BEEF)), "原版物品那时引擎答 None：只有静态表的"
     items.members[PROBE_TAG].append(PROBE_ITEM)
     items.tags[PROBE_ITEM] = ["minecraft:is_meat", PROBE_TAG]
     clock.now += 1.0

@@ -117,6 +117,12 @@ def testTagsAreItemTagsWithTheVocabularyNames():
     assert tags.RAW_BEEF in tags.tagsOf("minecraft:beef") and tags.blockHas("arris:stove", tags.HEAT_SOURCES)
     assert "common:fruit" in tags.names() and "common:chili" not in tags.names() and "common:raw_beef" in tags.names() and tags.names() == sorted(tags.names())
     assert isinstance(tags.generation(), int) and CLIENT.tags.has("arris:minced_beef", tags.RAW_BEEF)
+    # 团队规范的名字（单数）：蘑菇、骨头改过名，不留旧名；农夫乐事登记了的粗标签有常量，蛋的粗标签叫 ANY_EGG（EGG 是原版的）
+    assert tags.MUSHROOM == "common:mushroom" and tags.BONE == "common:bone" and not hasattr(tags, "MUSHROOMS") and not hasattr(tags, "BONES")
+    assert (tags.BEEF, tags.PORK, tags.FISH, tags.NOODLE, tags.SEED, tags.ANY_EGG) == (
+        "common:beef", "common:pork", "common:fish", "common:noodle", "common:seed", "common:egg")
+    assert tags.has("arris:beef_patty", tags.BEEF) and "common:egg" in tags.names() and not hasattr(tags, "COOKING_STANDARD")
+    assert not [name for name in ("CHILI", "FLOUR", "LETTUCE", "MEAT", "MEATBALL") if hasattr(tags, name)], "规范里农夫乐事不登记的不给常量"
 
 
 if __name__ == "__main__":

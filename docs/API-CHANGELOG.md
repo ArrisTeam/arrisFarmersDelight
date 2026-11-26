@@ -39,6 +39,11 @@
   能力 `heat_source_states`（服务端），新错误码 `invalid_states`（带 `message`）。见 EXTENSION-API.md §6.1。
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。
   能力 `item_tags`（两端）。见 EXTENSION-API.md §7、[TAGS.md](TAGS.md)。
+- **团队烹饪原料标签的规范**（森罗物语厨房网易版定的 18 个平铺、单数的 `common:` 标签，生的熟的都算）：农夫乐事把自己的东西登记进其中的
+  `common:beef`、`common:chicken`、`common:lamb`、`common:pork`、`common:fish`（都是 `#` 嵌生、熟两个细标签）、`common:noodle`（生意面）、
+  `common:egg`（煎蛋）、`common:seed`（卷心菜种子、米、番茄种子），森罗物语的模糊配方就认农夫乐事的这些原料；农夫乐事自己的配方照旧读细标签。
+  `ext.tags` 新增常量 `BEEF`、`CHICKEN`、`LAMB`、`PORK`、`FISH`、`NOODLE`、`SEED`、`ANY_EGG`（`"common:egg"`；`EGG` 照旧是原版的 `"minecraft:egg"`）。
+  见 TAGS.md「和森罗物语的标签对照」。
 - **行为包里的配方 JSON**：任何行为包根下的 `farmersdelight_recipes/**.json`，开服时在 ready 广播之后读，写法同 `registerFromJson`。
   跨行为包读文件 2026-11-26 在游戏里核过。能力 `recipe_json_files`（服务端）。见 [RECIPE-JSON.md](RECIPE-JSON.md)。
 - **兼容入口的表**：白名单多一个名字 `CuttingTagDict`（原料是一个物品标签的砧板配方，`{标签名: 和 CuttingBoardDict 一样的值}`），

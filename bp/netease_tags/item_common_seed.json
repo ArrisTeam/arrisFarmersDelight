@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "identifier": "common:seed",
+  "items": [
+    "#common:cabbage_seeds",
+    "#common:rice",
+    "#common:tomato_seeds"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "type": "item",
+  "identifier": "common:beef",
+  "items": [
+    "#common:raw_beef",
+    "#common:cooked_beef"
+  ]
+}
