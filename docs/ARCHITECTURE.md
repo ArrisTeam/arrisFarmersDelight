@@ -305,7 +305,7 @@ def OnServerSkilletBlockUse(args):
   森罗把十样东西登记进农夫乐事读的细标签以后（它 2026-11-26 的提交 `9ea2b05`，TAGS.md「森罗已经登记了」），引擎里有没有、`ItemTags` / `Knives` /
   `HeatSources`（炉灶点着 / 没点着）认不认、厨锅拿森罗的原料凑不凑得出菜；没装森罗时说明没装。`tests/test_netease_tags.py` 的
   `testTheStandardIsKaleidoscopesOwnFiles` 对着森罗工程里的文件核对对照表和那张表，`testKaleidoscopeAlsoReadsOurKnivesAndRice` 核对森罗反过来认农夫乐事的
-  刀、米饭、卷心菜（它 2026-11-26 晚上的 `0ca620f` / `3e21548` / `19aeb20`，TAGS.md「森罗也认农夫乐事的东西」）；森罗的 main 进这几个提交之前、之后两种样子都认
+  刀、米饭、卷心菜（它 2026-11-26 晚上的 `c254893` / `6287898` / `4be4319`，TAGS.md「森罗也认农夫乐事的东西」）；森罗的 main 进这几个提交之前、之后两种样子都认
   （`FD_KC_DIR` 指定森罗工程）。
 
 ## 新联动接口与配方的登记

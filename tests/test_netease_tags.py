@@ -504,7 +504,7 @@ def testTheDocComparesTheStandardWithWhatWeRegister():
 KC_REGISTERED = "### 森罗已经登记了"      # docs/TAGS.md 里那一节的标题开头
 KC_THING = re.compile(r"`(kaleidoscope_cookery:[a-z0-9_]+)`")
 TAG_NAME = re.compile(r"`([a-z_]+:[a-z0-9_/]+)`")
-# 那张表里游戏内自检 McdkKcTagsTest 还没问的行：米饭（农夫乐事自己不读它，用处在森罗的盖饭配方；森罗提交 3e21548）
+# 那张表里游戏内自检 McdkKcTagsTest 还没问的行：米饭（农夫乐事自己不读它，用处在森罗的盖饭配方；森罗提交 6287898）
 KC_NOT_ASKED = (("item", Tags.COOKED_RICE),)
 
 
@@ -572,7 +572,7 @@ def _outerTags(tag):
 
 def testTheKaleidoscopeRegisteredTable():
     """docs/TAGS.md「森罗已经登记了」那张表（森罗 2026-11-26 的提交 9ea2b05 在它自己的包里登记的十样东西，农夫乐事的配方没改；
-    第 11 行米饭是同一天晚些时候的提交 3e21548 登记的，农夫乐事不读它）：登记进的都是农夫乐事词表里的标签（九个物品标签、
+    第 11 行米饭是同一天晚些时候的提交 6287898 登记的，农夫乐事不读它）：登记进的都是农夫乐事词表里的标签（九个物品标签、
     方块标签 farmersdelight:heat_sources，米饭的 common:cooked_rice 农夫乐事自己的配方不读），东西都是森罗的；"农夫乐事哪里因此能用上它"那一格
     照现在的配方重新数：厨锅的 Slots、工作台配方直接读这个标签的菜，加上经 # 嵌了它的标签（生肉、熟肉……）读到的菜（格子里写"经 `标签`"），
     不多不少；游戏内自检 Server/Debug/McdkKcTagsTest 问的就是前十行（米饭那一行它还没问，KC_NOT_ASKED 写着，自检加上以后这个例外自己就空了）。"""
@@ -606,12 +606,12 @@ KC_DIR = os.environ.get("FD_KC_DIR") or os.path.join(os.path.dirname(fdtest.ROOT
 KC_TAGS = os.path.join(KC_DIR, "kaleidoscope_cookery_bp", "netease_tags")
 KC_FOOD = os.path.join(KC_DIR, "kaleidoscope_cookery_bp", "netease_recipes", "kaleidoscope_cookery", "food")
 
-# 森罗 2026-11-26 晚上又加的三处（提交 0ca620f 菜刀、3e21548 盖饭、19aeb20 卷心菜；docs/TAGS.md「森罗也认农夫乐事的东西」）。文档按有了这三处写；
+# 森罗 2026-11-26 晚上又加的三处（提交 c254893 菜刀、6287898 盖饭、4be4319 卷心菜；docs/TAGS.md「森罗也认农夫乐事的东西」）。文档按有了这三处写；
 # 森罗的 main 还没有它们时（895d94f 的样子）也认，一处一处各自判：没有、或者就是文档写的样子，别的都算错。这三个提交进了森罗的 main 以后，
 # "还没有"那一支可以删。
 KC_KNIFE = "kaleidoscope_cookery:kitchen_knife"
 KC_RICE = "kaleidoscope_cookery:cooked_rice"
-KC_APPENDED = {Tags.VEGETABLE: ("#" + Tags.CABBAGE,)}      # 19aeb20 加在已有标签文件末尾的成员
+KC_APPENDED = {Tags.VEGETABLE: ("#" + Tags.CABBAGE,)}      # 4be4319 加在已有标签文件末尾的成员
 KC_BOWLS = ("braised_beef", "fish_flavored_shredded_pork", "scramble_egg_with_tomatoes", "stir_fried_pork_with_peppers", "sweet_and_sour_pork")
 
 
@@ -627,13 +627,13 @@ def _kcFound():
 
 def testTheStandardIsKaleidoscopesOwnFiles():
     """本机有森罗的工程时对着它 netease_tags 里的文件核对，两种样子都认：
-    1. 规范的 18 个 common: 物品标签都在，对照表"森罗登记的"一列照它的文件抄（含先后）；一处例外：19aeb20 加在 common:vegetable 末尾的
+    1. 规范的 18 个 common: 物品标签都在，对照表"森罗登记的"一列照它的文件抄（含先后）；一处例外：4be4319 加在 common:vegetable 末尾的
        #common:cabbage，文档按有了它写，森罗的文件里还没有它时就是文档少这一项（KC_APPENDED，别的成员一个不能差）；
        农夫乐事靠得上的一条：它的 common:meat 用 # 引了牛、鸡、羊、猪四个（农夫乐事的肉登记进那四个就算肉，所以 common:meat 不用登记）；
     2. 森罗另外登记的、和农夫乐事有关的标签（规范以外的 common: / farmersdelight: 标签，物品、方块都算，还有农夫乐事词表里的别的名字）
        都在「森罗已经登记了」那张表里，成员一样（森罗自己命名空间里的标签不管，菜刀标签 kaleidoscope_cookery:kitchen_knife 另有一条用例）。
        一个都没有也行：森罗 2026-11-26 的提交 9ea2b05（十样东西登记进农夫乐事读的标签）进它的 main 以前就是这样，进了以后那十个文件都在；
-       米饭的 common:cooked_rice（3e21548）也一样，有就必须是表里写的那一个成员。
+       米饭的 common:cooked_rice（6287898）也一样，有就必须是表里写的那一个成员。
     所以全量要跑两种样子：平常读旁边的森罗工程（它的 main），再用 FD_KC_DIR 指向进了新提交的森罗工作目录跑一遍，两种都得绿。
     森罗改了规范、多登记了什么时这里先红：对照表、「森罗已经登记了」那张表、这条用例跟着改。"""
     registered = dict(((kind, tag), things) for kind, tag, things, _cell in _kcRegistered())
@@ -648,7 +648,7 @@ def testTheStandardIsKaleidoscopesOwnFiles():
     for tag, items in standard.items():
         written, late = rows[tag][0], KC_APPENDED.get(tag, ())
         if written == _codes(items):
-            assert set(late) <= set(items), "文档的对照表按有了 19aeb20 写，%s 一格里要有 %s" % (tag, "、".join(late))
+            assert set(late) <= set(items), "文档的对照表按有了 4be4319 写，%s 一格里要有 %s" % (tag, "、".join(late))
             appended.extend(late)
         else:                                  # 还没有那个提交的森罗 main：文件里只是少了末尾的这几个，别的一样
             assert late and not set(late) & set(items) and written == _codes(list(items) + list(late)), (tag, written, items)
@@ -660,7 +660,7 @@ def testTheStandardIsKaleidoscopesOwnFiles():
         assert key in registered, "森罗另外登记了 %s 标签 %s，「森罗已经登记了」那张表里没有" % key
         assert sorted(items) == sorted(registered[key]), (key, items, registered[key])
     print("森罗另外登记的：%d 个（%s）；common:vegetable 末尾的 #common:cabbage：%s"
-          % (len(extra), "、".join(tag for _kind, tag in sorted(extra)) or "没有：还是 9ea2b05 之前的样子", "有" if appended else "还没有（19aeb20 之前的样子）"))
+          % (len(extra), "、".join(tag for _kind, tag in sorted(extra)) or "没有：还是 9ea2b05 之前的样子", "有" if appended else "还没有（4be4319 之前的样子）"))
 
 
 def _kcBowlCells():
@@ -678,7 +678,7 @@ def _kcBowlCells():
 
 
 def testKaleidoscopeAlsoReadsOurKnivesAndRice():
-    """docs/TAGS.md「森罗也认农夫乐事的东西」：森罗 2026-11-26 晚上加的三处（0ca620f 菜刀、3e21548 盖饭、19aeb20 卷心菜）。
+    """docs/TAGS.md「森罗也认农夫乐事的东西」：森罗 2026-11-26 晚上加的三处（c254893 菜刀、6287898 盖饭、4be4319 卷心菜）。
     农夫乐事这边的前提不靠森罗的工程：五把刀在 common:knife 里，米饭在 common:cooked_rice 里，卷心菜、卷心菜叶在 common:cabbage 里，
     自己登记的 common:vegetable 不含卷心菜（两个包都装着时它们是靠森罗那一行 # 进去的）。
     对着森罗的工程（两种样子都认，一处一处各自判）：kaleidoscope_cookery:kitchen_knife 没有、或者就是四把菜刀加 #common:knife
@@ -703,8 +703,8 @@ def testKaleidoscopeAlsoReadsOurKnivesAndRice():
     assert sorted(tagged + plain) == sorted(KC_BOWLS) and not (tagged and plain), ("五条盖饭一起改：要么全是物品、要么全是标签", cells)
     rice = found.get(("item", Tags.COOKED_RICE))
     assert rice == ([KC_RICE] if tagged else None), ("米饭的标签文件和配方的写法一起有、一起没有", rice, tagged)
-    print("森罗：菜刀标签 %s，盖饭配方 %s，卷心菜 %s" % ("有" if knife is not None else "还没有（0ca620f 之前）", "读标签" if tagged else "还写物品（3e21548 之前）",
-                                              "有" if "#" + Tags.CABBAGE in found[("item", Tags.VEGETABLE)] else "还没有（19aeb20 之前）"))
+    print("森罗：菜刀标签 %s，盖饭配方 %s，卷心菜 %s" % ("有" if knife is not None else "还没有（c254893 之前）", "读标签" if tagged else "还写物品（6287898 之前）",
+                                              "有" if "#" + Tags.CABBAGE in found[("item", Tags.VEGETABLE)] else "还没有（4be4319 之前）"))
 
 
 if __name__ == "__main__":
