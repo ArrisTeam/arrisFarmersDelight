@@ -14,7 +14,7 @@
 画面由各客户端按广播自己渲染（Helpers/BlockItems.py）。
 """
 from .EventRegistry import registerHandler
-from .Helpers import BoardDish
+from .Helpers import BoardDish, Deeds
 from .Helpers.BlockItems import DropLegacyDisplays, PublishBoard
 from .Helpers.Drops import PopFromBoard, ScatterItem
 from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetCarriedItem, SetCarriedItem, ShowTip
@@ -194,6 +194,7 @@ def _cutOne(blockEntityData, cuttingDict, result, carriedDict, blockPos, dimensi
         blockEntityData["cuttingDict"] = None
         BoardDish.setCarved(blockEntityData, None)
     PublishBoard(dimensionId, blockPos, blockEntityData["cuttingDict"], BoardDish.carvedOf(blockEntityData))
+    Deeds.done(playerId, Deeds.CUT_ON_BOARD, cuttingDict["newItemName"])     # JE 在这里触发 use_cutting_board
 
 
 @registerHandler("BlockRemoveServerEvent", match=CUTTING_BOARD)

@@ -134,6 +134,10 @@ PACKS = {
             "Compat/Diegesis/StoveScenes.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/FryTints.py": {"forbid": {"Server"}, "engine": True},      # 煎锅 / 炉灶场景里朝上那面的熟色粒子
             "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True, "only": ENTRY_ONLY},
+            # 成就系统联动（服务端）：入口碰引擎；接上以后挂监听的那一层和算推进的那一层不碰引擎（离线拿假接口测）
+            "Compat/Advancements/AdvBoot.py": {"forbid": {"Client"}, "engine": True},
+            "Compat/Advancements/AdvBridge.py": {"forbid": {"Client"}, "engine": False},
+            "Compat/Advancements/AdvTriggers.py": {"forbid": {"Server", "Client"}, "engine": False},
         },
         "allowLong": {"Client/Ui/CookingPotProxy.py": "历史界面代理，后续由站点界面替换"},
         "endpoints": [("server", "CookingPotAddFood"), ("client", "OnPlaySound")],

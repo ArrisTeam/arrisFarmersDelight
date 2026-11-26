@@ -20,6 +20,7 @@ import math
 import random
 import time
 
+from .Helpers import Deeds
 from .Helpers.Engine import compFactory, levelId, Call, ItemPosType, GetBlockName, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import GiveOrDropItem
@@ -151,3 +152,4 @@ def _finish(playerId, session):
     food["count"] -= 1
     compFactory.CreateItem(playerId).SetEntityItem(hands[2], food if food["count"] > 0 else None, 0)
     GiveOrDropItem(playerId, {"itemName": session.result, "auxValue": 0, "count": 1})
+    Deeds.done(playerId, Deeds.SKILLET_COOKED, session.food)               # JE 的 finishUsingItem：用完一次手持的煎锅

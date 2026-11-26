@@ -6,6 +6,7 @@
 都不会落到"吃"；只有配置要求潜行（缺省不要求）而玩家没潜行时才交给原版去吃。
 """
 from .EventRegistry import registerHandler
+from .Helpers import Deeds
 from .Helpers.Engine import compFactory, levelId, GetBlockEntityData, GetBlockName
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Placement import DetectionExperimentalHoliday
@@ -56,3 +57,4 @@ def OnPlaceItemAsBlock(args):
         ToAllPlayerPlaySound(dimensionId, setPos, "dig.cloth")
         blockEntityData["blockStatus"] = 0.0
         blockEntityData["setMolang"] = False
+    Deeds.done(playerId, Deeds.PLACED_BLOCK, blockName)                     # 脚本放的，引擎不报放置事件
