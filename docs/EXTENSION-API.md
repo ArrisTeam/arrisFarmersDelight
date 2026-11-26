@@ -130,14 +130,15 @@ T2 → T5 的先后 2026-11-26 在游戏里核过：第三方在 ready 的处理
 
 ### 1.4 兜底：主动导入（兼容入口）
 
-实在接不到事件时，可以主动导入门面模块：
+实在接不到事件时，可以主动导入这个包，写法和机械动力的兜底一样（`ImportModule("arrisCreateScripts.Api.ExtensionApi").getExtensionApi(side)`）：
 
 ```python
-facadeModule = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade")   # 农夫乐事没装是 None
-ext = facadeModule.getExtensionApi("server") if facadeModule else None                         # 客户端写 "client"
+package = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi")   # 农夫乐事没装是 None
+ext = package.getExtensionApi("server") if package else None                      # 客户端写 "client"
 ```
 
-拿到的和 ready 载荷里的是同一个对象。**只在 `LoadServerAddonScriptsAfter` 之后用**（比如玩家进服时）：表同步的基线是农夫乐事服务端模块导入那一刻的表，
+拿到的和 ready 载荷里的是同一个对象。原来写在这里的 `ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade").getExtensionApi(side)`
+照旧能用（同一个对象）。导入这个包不会顺带拉起门面：门面到调 `getExtensionApi` 时才导入。**只在 `LoadServerAddonScriptsAfter` 之后用**（比如玩家进服时）：表同步的基线是农夫乐事服务端模块导入那一刻的表，
 在那之前登记的配方会被当成"本来就有"，不会同步给客户端（站点、书、JEI 不认它）。能监听事件就别用这条路。
 
 ### 1.5 农夫乐事没装时

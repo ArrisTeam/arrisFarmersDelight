@@ -13,8 +13,9 @@
 
 - **新联动接口**：农夫乐事在服务端的 `LoadServerAddonScriptsAfter`、客户端的 `LoadClientAddonScriptsAfter` 各广播一次 ready 事件
   （命名空间 `arrisFarmersDelight`、系统 `ExtensionApi`，事件 `ServerExtensionApiReady` / `ClientExtensionApiReady`），载荷带这一端的门面 `ext`。
-  `ext.side`、`ext.apiVersion`（1）、`ext.hostVersion`、`ext.capabilities`、`ext.hasCapability(name)`。也可以主动导入
-  `arrisFarmersDelightScripts.Api.ExtensionApi.Facade.getExtensionApi(side)`（兜底）。见 [EXTENSION-API.md](EXTENSION-API.md) §1–§3。
+  `ext.side`、`ext.apiVersion`（1）、`ext.hostVersion`、`ext.capabilities`、`ext.hasCapability(name)`。也可以主动导入包
+  `arrisFarmersDelightScripts.Api.ExtensionApi` 调 `getExtensionApi(side)`（兜底，写法和机械动力一样；
+  `arrisFarmersDelightScripts.Api.ExtensionApi.Facade.getExtensionApi(side)` 也照旧能用）。见 [EXTENSION-API.md](EXTENSION-API.md) §1–§3。
 - **配方 `ext.recipes`**：厨锅（`cooking`）、砧板（`cutting`）、营火烹饪（`campfire_cooking`）三类配方有 ID，能用 Builder（`createBuilder`）
   或 JE 写法的 JSON（`registerFromJson`）登记，同 ID 覆盖，`getRecipeById` / `getRecipesOfType` 查（JE 写法，带 `id`），`removeRecipe` 删；
   厨锅的配料能写标签（`{"tag": "common:tomato"}`），配对照 JE 逐格配；砧板的原料能是一个标签；兼容入口追加的配方有 `legacy:` 开头的派生 ID。

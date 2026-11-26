@@ -23,6 +23,7 @@
 
 1. **新接口**：ready 事件和它的载荷（EXTENSION-API.md §2 的命名空间、系统名、事件名，`arrisFarmersDelightScripts.Api.ExtensionApi.Events` 里的常量），
    `ext` 和 `ext.recipes`、`ext.tags` 上 EXTENSION-API.md 写明的成员（参数、返回值、错误码、行为），主动导入用的
+   `arrisFarmersDelightScripts.Api.ExtensionApi.getExtensionApi`（和机械动力的兜底同一个写法）与原来的
    `arrisFarmersDelightScripts.Api.ExtensionApi.Facade.getExtensionApi`（EXTENSION-API.md §1.4）。
 2. **配方 JSON 的写法**（[RECIPE-JSON.md](RECIPE-JSON.md)）和配方 ID 的规矩（EXTENSION-API.md §5.2），包括农夫乐事自带配方的 ID。
 3. **兼容入口**：`CreateModAttr("arris")` 的三个函数 `ArrisFarmersDelightInterface` / `ArrisFarmersDelightObtain` / `ArrisAddCookingPotRecipe`，
