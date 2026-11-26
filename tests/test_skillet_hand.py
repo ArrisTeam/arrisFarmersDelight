@@ -166,6 +166,17 @@ def testExtinguishedCampfireStillCountsLikeInJe():
     assert "p1" in SkilletHand._sessions
 
 
+def testALavaCauldronNearbyCountsLikeInJe():
+    """JE 的 heat_sources 里有熔岩炼药锅；基岩版（3.10 实机）是炼药锅 minecraft:cauldron 的状态 cauldron_liquid = lava：读状态认，
+    盛水的、舀空了的不算。"""
+    for states, cooks in (({"cauldron_liquid": "lava", "fill_level": 6}, True), ({"cauldron_liquid": "water", "fill_level": 6}, False),
+                          ({"cauldron_liquid": "lava", "fill_level": 0}, False), (None, False)):
+        _setUp(heat=False)
+        world.setBlock(1, 63, 0, "minecraft:cauldron", states=states)
+        _press()
+        assert ("p1" in SkilletHand._sessions) is cooks, states
+
+
 def testHeatButNoFoodInTheOtherHandShowsTheHowToCookTip():
     for food in (None, {"newItemName": "minecraft:stick", "newAuxValue": 0, "count": 1}):
         _setUp(food=food)

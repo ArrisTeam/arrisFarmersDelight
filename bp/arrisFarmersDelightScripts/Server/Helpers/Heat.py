@@ -3,7 +3,8 @@
 
 热源照 FD 的 HeatableBlockEntity.isHeated（java:15-36，厨锅和煎锅共用）：正下方一格是热源（标签 heat_sources：岩浆块、熔岩炼药锅、炉灶、熔岩、营火、火；
 带 LIT 状态的要点着才算）就热；正下方是传热方块（标签 heat_conductors：漏斗）时，改看再下面一格是不是热源，所以漏斗下面的火也烧得热上面的锅。
-基岩版里的对应：熔岩炼药锅没有自己的方块（引擎里没有 lava_cauldron），是 cauldron 的状态 cauldron_liquid = lava；营火的 LIT 是 extinguished 取反；
+基岩版里的对应：熔岩炼药锅没有自己的方块，是 cauldron 的状态 cauldron_liquid = lava（3.10 实机：SetBlockNew("minecraft:lava_cauldron")
+返回 True，放出来的是盛水、0 级的 minecraft:cauldron；标签表达不了，按状态认，HoldsLava）；营火的 LIT 是 extinguished 取反；
 炉灶的 LIT 是两个方块（点着的 arris:stove 在 CanProvideHeatBlockList 里，熄着的孪生方块不在）。
 不在名单里的方块再看方块标签 farmersdelight:heat_sources（Shared/Rules/HeatSources）：有点燃状态的要点着（lit 为真 / extinguished 为假），没有的就算。
 支架（托盘）只认正下方那一格：CookingPotBlock.getTrayState / SkilletBlock 只看 pos.below() 是不是 tray_heat_sources（熔岩、营火、火），
@@ -23,7 +24,6 @@ ShelfBlockSet = frozenset(["minecraft:fire", "minecraft:campfire", "minecraft:so
 
 # 营火类方块熄灭时名字不变，只是 extinguished 状态为 True
 _CAMPFIRE_BLOCKS = frozenset(["minecraft:campfire", "minecraft:soul_campfire"])
-_CAULDRON = "minecraft:cauldron"
 
 
 def _states(blockPos, dimensionId):
@@ -31,10 +31,10 @@ def _states(blockPos, dimensionId):
     return compFactory.CreateBlockState(levelId).GetBlockStates(blockPos, dimensionId) or {}
 
 
-def _holdsLava(blockPos, dimensionId):
-    """熔岩炼药锅（JE 的 lava_cauldron）：基岩版是 cauldron 的 cauldron_liquid 状态为 lava，而且锅里有东西（fill_level > 0，倒空了的不算）。"""
-    states = _states(blockPos, dimensionId)
-    return states.get("cauldron_liquid") == "lava" and (states.get("fill_level") or 0) > 0
+def HoldsLava(blockPos, dimensionId):
+    """这一格是不是熔岩炼药锅（JE 的 lava_cauldron）：读方块状态，cauldron_liquid 为 lava 而且锅里有东西（HeatSources.holdsLava）。
+    锅 / 煎锅下面的热源（IsHeatSource）和手持煎锅身边的热源（Server/SkilletHand）都用它。"""
+    return HeatSources.holdsLava(_states(blockPos, dimensionId))
 
 
 def IsHeatSource(blockPos, dimensionId, blockName=None):
@@ -44,8 +44,8 @@ def IsHeatSource(blockPos, dimensionId, blockName=None):
         blockName = GetBlockName(blockPos, dimensionId)
     if blockName in CanProvideHeatBlockList:
         return blockName not in _CAMPFIRE_BLOCKS or _states(blockPos, dimensionId).get("extinguished") is not True
-    if blockName == _CAULDRON:
-        return _holdsLava(blockPos, dimensionId)
+    if blockName == HeatSources.CAULDRON:
+        return HoldsLava(blockPos, dimensionId)
     return HeatSources.sourceByTag(blockName, lambda: _states(blockPos, dimensionId))
 
 

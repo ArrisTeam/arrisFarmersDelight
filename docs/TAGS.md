@@ -70,6 +70,10 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
 或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
+JE 的这个标签里还有熔岩炼药锅。基岩版没有这个方块（3.10 实机：`minecraft:lava_cauldron` 放出来的是盛水、0 级的 `minecraft:cauldron`），
+熔岩炼药锅是炼药锅盛着熔岩的状态（`cauldron_liquid` = `lava`），标签表达不了，所以这边的标签里没有它，农夫乐事按状态认：
+盛着熔岩的炼药锅上面的锅、煎锅会热，站在它旁边能手持煎锅，和 JE 一样。往这个标签里写 `minecraft:lava_cauldron` 不起作用。
+
 手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。
 
@@ -93,7 +97,7 @@ JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersd
 
 | 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
 | --- | --- | --- |
-| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火 |
+| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火（JE 还有熔岩炼药锅：基岩版是炼药锅的状态，按状态认） |
 | `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
 | `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
 | `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |

@@ -501,10 +501,12 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
 
 - 热源表还是对外联动契约的 `CanProvideHeatBlockList`（一个字没改：岩浆块是 `minecraft:magma`，营火看 `extinguished` 状态，点着的 `arris:stove` 在表里、熄着的孪生方块不在）；
   传热方块表 `HeatConductorList`（`Shared/Data/Cooking.py`，只有 `minecraft:hopper`）是新的，不在联动白名单里。
-- 熔岩炼药锅：引擎里没有 `lava_cauldron` 这个方块（Strata 知识库的方块表：`minecraft:cauldron` 有 `fill_level` 0..6 和 `cauldron_liquid` = water / lava / powder_snow；`lava_cauldron` 只剩在原版资源包的
-  `blocks.json` 和旧版方块号 465 里），所以不能按名字进表，`IsHeatSource` 读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算）。
-  **手持煎锅（`SkilletHand`、`Client/Input._nearHeat`）仍认不出它**：那条路只读方块名，客户端又读不到方块状态（`GetBlockStates` 只有服务端有），
-  只改服务端会让客户端放过"吃"、服务端却在煎，所以没做。
+- 熔岩炼药锅：引擎里没有 `lava_cauldron` 这个方块（2026-11-26 实机：`SetBlockNew("minecraft:lava_cauldron")` 返回 True，放出来的是盛水、0 级的
+  `minecraft:cauldron`；`SetBlockStates({"cauldron_liquid": "lava", "fill_level": 6})` 之后 aux 14），熔岩炼药锅是炼药锅的状态，方块标签表达不了，
+  不能按名字进表，读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算；`Shared/Rules/HeatSources.holdsLava`，`Heat.HoldsLava`）。
+  手持煎锅照 JE 也认它（JE 的 `isPlayerNearHeatSource` 看的是同一个标签）：服务端 `SkilletHand` 读状态；客户端 `Input._nearHeat` 读不到方块状态
+  （`GetBlockStates` 只有服务端有），按 `GetBlock` 给的 aux 认（`HeatSources.holdsLavaAux`：aux = `fill_level` + 8 × `cauldron_liquid`，熔岩是 1），
+  两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`）。客户端读到的炼药锅 aux 没在游戏里读过（上面的 14 是服务端读的）。
 - 状态变了怎么知道：邻居事件只来自相邻的方块，正下方变了（放漏斗、拆漏斗、点着 / 熄灭正下方的营火）有原来的处理函数（`OnCookingPotNeighborChanged`、`OnSkilletNeighborChanged`）；
   热源在漏斗再下面一格时那一格变了没有事件，`Server/HeatConduct.py` 对"正下方是漏斗"的锅 / 煎锅每 0.5 秒（真实时间，`Pacer`）重算一次，
   和存着的不一样就把一个"正下方变了"的 `BlockNeighborChangedServerEvent` 交给那两个处理函数（存状态、同步客户端、煎锅断热时重置计时，一个字不抄）。下面不是漏斗的什么都不查。
@@ -512,8 +514,8 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
 
 待实机验证（离线 + 假引擎核对过，没进过游戏）：
 
-1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉。方块状态的名字和值（`cauldron_liquid` = lava、`fill_level` 6）是 Strata 知识库的方块表给的，
-   没在游戏里读过；如果游戏里熔岩炼药锅是别的名字（比如还有 `minecraft:lava_cauldron`），`Heat._holdsLava` / `IsHeatSource` 一处改。
+1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉；站在旁边手持煎锅煎得了。
+   方块状态的名字和值 2026-11-26 在游戏里读过（见上），锅放上去热不热、手持煎锅这两条路还没在游戏里走过。
 2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
    一格一格读的自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_probe(x, y, z)`（方块名、状态、`IsHeatSource`、`IsHeated`；锅 / 煎锅那一格再给存着的 `heatEnable` / `shelfEnable`，
    和 `Heat.IsHeated` 现算的对照），用法在文件开头的说明里。
@@ -777,7 +779,7 @@ float 运算后 6 秒，火焰附加 I 4 秒、II 起 3 秒（下限 60 刻）�
   只保留 JE 的声音分档：`PlayerAttackEntityEvent` 里按距上次挥煎锅的时间挑 `attack_strong`（够 0.8 × 22.2 刻 ≈ 0.89 秒）或 `attack_weak`（音量 0.8、音调 0.9，
   `sound_definitions.json` 里补了定义）。JE 里切物品也会重置冷却，这里不管。
 - 没做：JE 的进度条（客户端物品装饰，基岩版画不了）、翻面的画面（手里的锅翻一下，物品模型是静态的；翻面的**声音**做了，见上）、煎锅里的食物在手上的渲染、同种食物往锅里叠加（`ItemStackHandler.insertItem`，现在锅里有东西就不收了）、
-  手持煎锅认不出熔岩炼药锅（基岩版是 `cauldron` 加 `cauldron_liquid` 状态，手持这条路只读方块名、客户端读不到方块状态；放下的煎锅 / 厨锅认得，见"厨锅 / 煎锅下面的热源"）、含水放置（现在只往空气里放）。
+  含水放置（现在只往空气里放）。手持煎锅身边的熔岩炼药锅（基岩版是 `cauldron` 加 `cauldron_liquid` 状态）认得：服务端读状态、客户端读 aux，见"厨锅 / 煎锅下面的热源"。
 
 待实机验证（写完这一版时没进过游戏）：
 
@@ -1065,6 +1067,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
 - 原版汤 / 南瓜派的提示（滋养时长、"可放置"）：附加包改不了原版物品的提示；六种盛宴的物品是方块物品，没有物品 JSON 可写 `netease:customtips`。
 - 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int，加在玩家基础 1 点之上：总伤害取 JE 的向上取整）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
+- 熔岩炼药锅进不了热源标签（JE 的 `heat_sources` 里有 `minecraft:lava_cauldron`）：基岩版没有这个方块（3.10 实机：`SetBlockNew("minecraft:lava_cauldron")`
+  放出来的是盛水、0 级的 `minecraft:cauldron`），它是炼药锅的状态 `cauldron_liquid` = lava，方块标签表达不了。农夫乐事按状态认（锅 / 煎锅下面、
+  手持煎锅身边，见"厨锅 / 煎锅下面的热源"），玩起来和 JE 一样；别的模组照 JE 往 `farmersdelight:heat_sources` 里写 `minecraft:lava_cauldron` 不起作用。
 
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。

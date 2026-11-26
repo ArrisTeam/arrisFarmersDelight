@@ -56,6 +56,25 @@ def testNearHeatLooksAtBlockNamesOnlyAndFireCounts():
     assert Rules.nearHeat((1.5, 64.0, 2.5), lambda pos: "minecraft:campfire", heat) is True
 
 
+def testNearHeatAsksWhetherACauldronHoldsLavaAndOnlyForCauldrons():
+    """JE 标签里的熔岩炼药锅在基岩版是炼药锅的状态：名字是 minecraft:cauldron 的那一格才去问 lavaAt（服务端读状态、客户端读 aux）。"""
+    heat = ["minecraft:campfire"]
+    names = {(1, 64, 1): "minecraft:cauldron", (0, 63, 1): "minecraft:stone"}
+    asked = []
+
+    def lavaAt(pos):
+        asked.append(pos)
+        return lava[0]
+
+    lava = [True]
+    near = lambda pos: names.get(pos, "minecraft:air")  # noqa: E731
+    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat, lavaAt=lavaAt) is True and asked == [(1, 64, 1)]
+    lava[0] = False
+    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat, lavaAt=lavaAt) is False, "盛水的、空的炼药锅不算"
+    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat) is False, "不给 lavaAt：只看名字，炼药锅认不出"
+    assert set(asked) == {(1, 64, 1)}, "别的方块不问"
+
+
 def testAttackClockPicksStrongOrWeakByTheSkilletAttackDelay():
     # 攻击速度 4.0 - 3.1 = 0.9 次 / 秒：一次间隔 22.2 刻，够 80%（17.8 刻，约 0.889 秒）才算重击
     assert abs(0.8 / Rules.ATTACK_SPEED - 0.8889) < 1e-3
