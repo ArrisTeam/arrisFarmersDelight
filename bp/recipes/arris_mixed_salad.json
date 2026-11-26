@@ -2,29 +2,28 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:stuffed_potato4"
+            "identifier": "arris:mixed_salad"
         },
         "ingredients": [
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:baked_potato"
+                "item": "minecraft:bowl"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:cooked_beef"
+                "tag": "common:leafy_green"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:milk_bucket"
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:beetroot"
             }
         ],
         "result": {
             "count": 1,
             "data": 0,
-            "item": "arris:stuffed_potato"
+            "item": "arris:mixed_salad"
         },
         "tags": [
             "crafting_table"

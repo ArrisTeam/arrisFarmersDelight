@@ -8,27 +8,23 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:cooked_rice"
-            },
-            {
-                "count": 1,
-                "data": 0,
                 "item": "arris:cooked_mutton_chops"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:tomato"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:beetroot"
-            },
-            {
-                "count": 1,
-                "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:cooked_rice"
+            },
+            {
+                "tag": "common:beetroot"
+            },
+            {
+                "tag": "common:tomato"
             }
         ],
         "result": {

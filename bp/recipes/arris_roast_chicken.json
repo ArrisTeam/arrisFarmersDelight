@@ -6,14 +6,9 @@
         },
         "ingredients": [
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
-                "item": "minecraft:carrot"
-            },
-            {
-                "count": 2,
-                "data": 0,
-                "item": "minecraft:baked_potato"
+                "item": "minecraft:bread"
             },
             {
                 "count": 1,
@@ -23,22 +18,29 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:egg"
+                "item": "minecraft:baked_potato"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:onion"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:bread"
+                "item": "minecraft:baked_potato"
             },
             {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:onion"
+            },
+            {
+                "tag": "minecraft:egg"
+            },
+            {
+                "tag": "common:carrot"
+            },
+            {
+                "tag": "common:carrot"
             }
         ],
         "result": {

@@ -6,14 +6,15 @@
         },
         "ingredients": [
             {
-                "count": 2,
-                "data": 0,
-                "item": "minecraft:wheat"
-            },
-            {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:sweet_berries"
+            },
+            {
+                "tag": "common:wheat"
+            },
+            {
+                "tag": "common:wheat"
             }
         ],
         "result": {

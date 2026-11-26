@@ -2,34 +2,31 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:chicken_sandwich3"
+            "identifier": "arris:hamburger"
         },
         "ingredients": [
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:bread"
+                "item": "arris:beef_patty"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:carrot"
+                "tag": "common:bread"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:cooked_chicken"
+                "tag": "common:leafy_green"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cabbage_leaf"
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:onion"
             }
         ],
         "result": {
             "count": 1,
             "data": 0,
-            "item": "arris:chicken_sandwich"
+            "item": "arris:hamburger"
         },
         "tags": [
             "crafting_table"

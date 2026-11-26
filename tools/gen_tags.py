@@ -7,7 +7,8 @@ item_<标签名里的 : 和 / 换成 _>.json、block_<同上>.json。引擎把�
 原版自带的标签（VANILLA_TAGS）不生成文件。目录里不是这里生成的文件也算不一致（--check 失败，生成时删掉），词表是唯一的出处。
 docs/TAGS.md 的词表（两行标记之间）也从词表生成：标签、意思、对应 JE、农夫乐事登记的、农夫乐事在哪里读；"意思"和"在哪里读"写在下面的
 MEANINGS / READS 里（文档的话，不进游戏），词表加了标签这里没写意思时生成失败。"在哪里读"里配方读的那部分不手写，从配方表里数
-（recipeReaders：厨锅每道菜的 Slots 里写着的 #标签、砧板的 CuttingTagDict）：改了这两张表要重新生成（测试核对文档是最新的）。
+（recipeReaders：厨锅每道菜的 Slots 里写着的 #标签、砧板的 CuttingTagDict、bp/recipes 里工作台配方写的 {"tag": ...}）：
+改了这几处要重新生成（测试核对文档是最新的）。
 用法：py -3 tools/gen_tags.py            生成 / 更新 bp/netease_tags/ 和 docs/TAGS.md 的词表
       py -3 tools/gen_tags.py --check    只比较，不一致时退出码 1（tests/test_netease_tags.py 也会比）
 """
@@ -126,6 +127,29 @@ def recipeReaders():
     for tag, recipe in sorted(cutting.CuttingTagDict.items()):
         made = "、".join("`%s`" % entry["itemName"] for entry in recipe["itemList"])
         found.setdefault(tag, []).append("砧板按标签切成 %s（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf）" % made)
+    for tag, results in sorted(craftReaders().items()):
+        found.setdefault(tag, []).append("工作台：%s（bp/recipes）" % "、".join("`%s`" % result for result in results))
+    return found
+
+
+def craftReaders():
+    """{标签: [做出来的东西（物品名，按配方文件名的先后、不重复）]}：bp/recipes 里工作台配方（有序的 key、无序的 ingredients）写了这个标签的。"""
+    found = {}
+    folder = os.path.join(BP, "recipes")
+    for name in sorted(os.listdir(folder)):
+        with io.open(os.path.join(folder, name), encoding="utf-8-sig") as handle:
+            doc = json.load(handle)
+        for kind in ("minecraft:recipe_shaped", "minecraft:recipe_shapeless"):
+            body = doc.get(kind)
+            if not body:
+                continue
+            entries = list(body.get("key", {}).values()) + list(body.get("ingredients", []))
+            result = body["result"][0] if isinstance(body["result"], list) else body["result"]
+            for entry in entries:
+                if isinstance(entry, dict) and entry.get("tag"):
+                    results = found.setdefault(entry["tag"], [])
+                    if result["item"] not in results:
+                        results.append(result["item"])
     return found
 
 
@@ -134,7 +158,7 @@ def docTable(tags=None):
     tags = tags or vocabulary()
     readers = recipeReaders()
     known = set(tags.ITEM_TAGS) | set(tags.VANILLA_TAGS) | set(tags.WITHOUT_MEMBERS)
-    unknown = sorted(set(readers) - known)
+    unknown = sorted(tag for tag in set(readers) - known if not tag.startswith("minecraft:"))     # 原版自己的标签（minecraft:planks）不进词表
     if unknown:
         raise SystemExit("配方里用了词表里没有的物品标签：%s（加进 Shared/Data/Tags.py，或者改配方）" % "、".join(unknown))
     rows = ["| 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |",

@@ -34,16 +34,21 @@ DISH_RESULTS = (
 
 
 def dishes():
+    """砧板上的每种写法一行：配方里写标签的格子按词表的静态成员展开（recipejson.expand：格子的先后不变，前面的格变得慢，
+    多重集合相同的只留一种），所以一份写标签的配方是几行（烤串 2 份配方 13 行、三明治一份 4 行、蛋糕一份三种蛋 3 行）。
+    砧板（HoD 的 Assembly）按具体物品认层：别的模组并进标签的东西砧板不收，工作台照收（docs/ARCHITECTURE.md「和 JE 的出入」）。"""
     found = []
     for recipe in recipejson.recipes():
-        ingredients = recipe["ingredients"]
-        if recipe["result"] not in DISH_RESULTS or len(set(ingredients)) < 2 or not 2 <= len(ingredients) <= 9:
+        if recipe["result"] not in DISH_RESULTS:
             continue
-        names = [name for name, _aux in ingredients]
-        returns = recipejson.returnsOf(recipe["result"], names)
-        keeps = sorted(name for name, left in returns.items() if left == name)
-        extras = [(left, 0, count) for left, count in recipejson.remaindersOf(recipe["result"], names) if left not in keeps]
-        found.append((recipe["result"], recipe["count"], ingredients, extras, keeps, recipe["source"]))
+        for ingredients in recipejson.expand(recipe):
+            if len(set(ingredients)) < 2 or not 2 <= len(ingredients) <= 9:
+                continue
+            names = [name for name, _aux in ingredients]
+            returns = recipejson.returnsOf(recipe["result"], names)
+            keeps = sorted(name for name, left in returns.items() if left == name)
+            extras = [(left, 0, count) for left, count in recipejson.remaindersOf(recipe["result"], names) if left not in keeps]
+            found.append((recipe["result"], recipe["count"], ingredients, extras, keeps, recipe["source"]))
     return found
 
 

@@ -2,28 +2,20 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:bacon_sandwich1"
+            "identifier": "arris:bacon_sandwich"
         },
         "ingredients": [
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:tomato"
+                "tag": "common:bread"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cabbage"
+                "tag": "common:cooked_bacon"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cooked_bacon"
+                "tag": "common:leafy_green"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:bread"
+                "tag": "common:tomato"
             }
         ],
         "result": {

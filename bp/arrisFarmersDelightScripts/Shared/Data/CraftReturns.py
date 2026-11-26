@@ -11,10 +11,10 @@ CraftReturns = {
         {"slots": ('arris:cod_slice', 'arris:cod_slice', 'arris:cooked_rice'), "count": 2, "keeps": (), "source": 'arris_cod_roll.json'},
     ],
     'arris:gleaming_salad_block_stage0': [
-        {"slots": ('minecraft:glow_berries', 'minecraft:glow_berries', 'minecraft:honey_bottle', 'arris:tomato', 'minecraft:golden_carrot', 'minecraft:beetroot', 'arris:cabbage', 'arris:cabbage', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_gleaming_salad_block.json'},
+        {"slots": ('minecraft:glow_berries', 'minecraft:glow_berries', 'minecraft:honey_bottle', 'minecraft:golden_carrot', 'arris:cabbage', 'arris:cabbage', 'minecraft:bowl', '#common:tomato', '#common:beetroot'), "count": 1, "keeps": (), "source": 'arris_gleaming_salad_block.json'},
     ],
     'arris:honey_cookie': [
-        {"slots": ('minecraft:honey_bottle', 'minecraft:wheat', 'minecraft:wheat'), "count": 8, "keeps": (), "source": 'arris_honey_cookie.json'},
+        {"slots": ('minecraft:honey_bottle', '#common:wheat', '#common:wheat'), "count": 8, "keeps": (), "source": 'arris_honey_cookie.json'},
     ],
     'arris:honey_glazed_ham_block_stage0': [
         {"slots": ('minecraft:sweet_berries', 'minecraft:sweet_berries', 'minecraft:sweet_berries', 'minecraft:sweet_berries', 'minecraft:honey_bottle', 'arris:smoked_ham', 'arris:cooked_rice', 'arris:cooked_rice', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_honey_glazed_ham_block.json'},
@@ -23,29 +23,19 @@ CraftReturns = {
         {"slots": ('minecraft:glass_bottle', 'minecraft:glass_bottle', 'minecraft:glass_bottle', 'minecraft:glass_bottle', 'minecraft:milk_bucket'), "count": 4, "keeps": (), "source": 'arris_milk_bottle.json'},
     ],
     'arris:roasted_mutton_chops': [
-        {"slots": ('arris:cooked_rice', 'arris:cooked_mutton_chops', 'arris:tomato', 'minecraft:beetroot', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_roasted_mutton_chops.json'},
+        {"slots": ('arris:cooked_mutton_chops', 'minecraft:bowl', 'arris:cooked_rice', '#common:beetroot', '#common:tomato'), "count": 1, "keeps": (), "source": 'arris_roasted_mutton_chops.json'},
     ],
     'arris:salmon_roll': [
         {"slots": ('arris:cooked_rice', 'arris:salmon_slice', 'arris:salmon_slice'), "count": 2, "keeps": (), "source": 'arris_salmon_roll.json'},
     ],
     'arris:shepherds_pie_block_stage0': [
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'arris:milk_bottle', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'arris:milk_bottle', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block2.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'minecraft:milk_bucket', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block3.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'minecraft:milk_bucket', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block4.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'arris:milk_bottle', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block5.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'arris:milk_bottle', 'arris:cooked_mutton_chops', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block6.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'minecraft:milk_bucket', 'arris:cooked_mutton_chops', 'arris:cooked_mutton_chops', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block7.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'minecraft:milk_bucket', 'arris:cooked_mutton_chops', 'minecraft:cooked_mutton', 'minecraft:cooked_mutton', 'arris:onion', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block8.json'},
+        {"slots": ('minecraft:baked_potato', 'minecraft:baked_potato', 'minecraft:bowl', '#common:milk', '#common:cooked_mutton', '#common:cooked_mutton', '#common:cooked_mutton', '#common:onion', '#common:onion'), "count": 1, "keeps": (), "source": 'arris_shepherds_pie_block.json'},
     ],
     'arris:steak_and_potatoes': [
-        {"slots": ('arris:cooked_rice', 'minecraft:cooked_beef', 'minecraft:baked_potato', 'arris:onion', 'minecraft:bowl'), "count": 1, "keeps": (), "source": 'arris_steak_and_potatoes.json'},
+        {"slots": ('minecraft:baked_potato', 'minecraft:cooked_beef', 'minecraft:bowl', 'arris:cooked_rice', '#common:onion'), "count": 1, "keeps": (), "source": 'arris_steak_and_potatoes.json'},
     ],
     'arris:stuffed_potato': [
-        {"slots": ('minecraft:baked_potato', 'arris:beef_patty', 'arris:milk_bottle'), "count": 1, "keeps": (), "source": 'arris_stuffed_potato.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:cooked_beef', 'arris:milk_bottle'), "count": 1, "keeps": (), "source": 'arris_stuffed_potato2.json'},
-        {"slots": ('minecraft:baked_potato', 'arris:beef_patty', 'minecraft:milk_bucket'), "count": 1, "keeps": (), "source": 'arris_stuffed_potato3.json'},
-        {"slots": ('minecraft:baked_potato', 'minecraft:cooked_beef', 'minecraft:milk_bucket'), "count": 1, "keeps": (), "source": 'arris_stuffed_potato4.json'},
+        {"slots": ('minecraft:baked_potato', '#common:cooked_beef', '#common:milk'), "count": 1, "keeps": (), "source": 'arris_stuffed_potato.json'},
     ],
     'arris:wheat_dough': [
         {"slots": ('minecraft:wheat', 'minecraft:water_bucket'), "count": 1, "keeps": ('minecraft:water_bucket',), "source": 'arris_wheat_dough.json'},

@@ -8,7 +8,7 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:cooked_rice"
+                "item": "minecraft:baked_potato"
             },
             {
                 "count": 1,
@@ -18,17 +18,15 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:baked_potato"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "arris:onion"
-            },
-            {
-                "count": 1,
-                "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "count": 1,
+                "data": 0,
+                "item": "arris:cooked_rice"
+            },
+            {
+                "tag": "common:onion"
             }
         ],
         "result": {

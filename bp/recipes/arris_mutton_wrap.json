@@ -2,28 +2,20 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:mutton_wrap1"
+            "identifier": "arris:mutton_wrap"
         },
         "ingredients": [
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:bread"
+                "tag": "common:bread"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:onion"
+                "tag": "common:cooked_mutton"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cabbage"
+                "tag": "common:leafy_green"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:cooked_mutton"
+                "tag": "common:onion"
             }
         ],
         "result": {

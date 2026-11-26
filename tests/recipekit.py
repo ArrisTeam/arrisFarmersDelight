@@ -46,21 +46,57 @@ def resultsOf(body):
     return [(entry, 1) if not isinstance(entry, dict) else (entry["item"], entry.get("count", 1)) for entry in entries]
 
 
-def ingredientsOf(kind, body):
-    """{物品名: 个数}：有序按 pattern 里每个键出现几次，无序把 count 加起来。"""
-    counts = collections.Counter()
-    if kind == "transform":
-        for key in ("template", "base", "addition"):
-            counts[body[key]] += 1
-        return counts
+def nameOf(entry):
+    """原料一格的写法 -> 物品名，写标签的是 "#标签名"。"""
+    return ("#" + entry["tag"]) if "tag" in entry else entry["item"]
+
+
+def cellsOf(kind, body):
+    """一格一个原料（物品名或 "#标签"）：有序按 pattern 的先后（空格不算），无序按 ingredients 的先后、count 展开成几格。"""
     if kind == "shaped":
-        for char in "".join(body["pattern"]):
-            if char != " ":
-                counts[body["key"][char]["item"]] += 1
-    else:
-        for entry in body["ingredients"]:
-            counts[entry["item"]] += entry.get("count", 1)
-    return counts
+        return [nameOf(body["key"][char]) for char in "".join(body["pattern"]) if char != " "]
+    if kind == "transform":
+        return [body[key] for key in ("template", "base", "addition")]
+    cells = []
+    for entry in body["ingredients"]:
+        cells += [nameOf(entry)] * entry.get("count", 1)
+    return cells
+
+
+def ingredientsOf(kind, body):
+    """{物品名或 "#标签": 个数}：有序按 pattern 里每个键出现几次，无序把 count 加起来，锻造台是模板、底料、添加物各一。"""
+    return collections.Counter(cellsOf(kind, body))
+
+
+# 配方里用到、词表里没有的原版标签（基岩版 3.10 原版的成员）：和 tools/recipejson.VANILLA 一样
+VANILLA = {"minecraft:planks": tuple("minecraft:%s_planks" % wood for wood in (
+    "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped"))}
+
+
+def membersOf(name):
+    """一格 -> 能放的具体物品：物品就是它自己；"#标签" 是词表（Shared/Data/Tags）的静态成员。"""
+    if not name.startswith("#"):
+        return (name,)
+    Tags = fdtest.load("Shared.Data.Tags")
+    tag = name[1:]
+    for table in (Tags.ITEM_TAGS, Tags.VANILLA_TAGS, VANILLA):
+        if tag in table:
+            return tuple(table[tag])
+    raise KeyError("配方里的标签 %s 词表里没有" % tag)
+
+
+def variantsOf(kind, body):
+    """一份配方按格展开成全部具体的原料组合：[Counter({物品名: 个数})]，组合相同的只留一份（无序配方几格同一个标签时各选各的）。"""
+    ways = [()]
+    for cell in cellsOf(kind, body):
+        ways = [way + (member,) for way in ways for member in membersOf(cell)]
+    found, seen = [], set()
+    for way in ways:
+        key = tuple(sorted(way))
+        if key not in seen:
+            seen.add(key)
+            found.append(collections.Counter(way))
+    return found
 
 
 def packIdentifiers():

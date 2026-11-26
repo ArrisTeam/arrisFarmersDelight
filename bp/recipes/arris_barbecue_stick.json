@@ -2,28 +2,22 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:barbecue_stick2"
+            "identifier": "arris:barbecue_stick"
         },
         "ingredients": [
-            {
-                "count": 1,
-                "data": 0,
-                "item": "arris:onion"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "arris:tomato"
-            },
             {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:stick"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:cooked_beef"
+                "tag": "common:tomato"
+            },
+            {
+                "tag": "common:onion"
+            },
+            {
+                "tag": "common:cooked_meat"
             }
         ],
         "result": {

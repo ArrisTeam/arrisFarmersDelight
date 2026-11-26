@@ -6,8 +6,7 @@
         },
         "key": {
             "B": {
-                "data": 0,
-                "item": "minecraft:carrot"
+                "tag": "common:vegetable"
             },
             "C": {
                 "data": 0,
@@ -39,8 +38,7 @@
         ],
         "unlock": [
             {
-                "data": 0,
-                "item": "minecraft:carrot"
+                "tag": "common:vegetable"
             },
             {
                 "data": 0,

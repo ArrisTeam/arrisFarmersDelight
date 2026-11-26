@@ -6,19 +6,25 @@
         },
         "ingredients": [
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
                 "item": "arris:cooked_bacon"
             },
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
-                "item": "arris:fried_egg"
+                "item": "arris:cooked_bacon"
             },
             {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:cooked_egg"
+            },
+            {
+                "tag": "common:cooked_egg"
             }
         ],
         "result": {

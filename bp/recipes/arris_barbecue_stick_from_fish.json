@@ -2,34 +2,28 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:mutton_wrap3"
+            "identifier": "arris:barbecue_stick_from_fish"
         },
         "ingredients": [
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:bread"
+                "item": "minecraft:stick"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:onion"
+                "tag": "common:tomato"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cabbage_leaf"
+                "tag": "common:onion"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:cooked_mutton"
+                "tag": "common:cooked_fish"
             }
         ],
         "result": {
             "count": 1,
             "data": 0,
-            "item": "arris:mutton_wrap"
+            "item": "arris:barbecue_stick"
         },
         "tags": [
             "crafting_table"

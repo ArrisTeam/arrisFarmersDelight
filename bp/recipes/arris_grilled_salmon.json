@@ -8,27 +8,21 @@
             {
                 "count": 1,
                 "data": 0,
-                "item": "minecraft:bowl"
-            },
-            {
-                "count": 1,
-                "data": 0,
-                "item": "arris:onion"
-            },
-            {
-                "count": 1,
-                "data": 0,
                 "item": "minecraft:sweet_berries"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:cabbage_leaf"
+                "item": "minecraft:bowl"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "arris:cooked_salmon_slice"
+                "tag": "common:cooked_salmon"
+            },
+            {
+                "tag": "common:cabbage"
+            },
+            {
+                "tag": "common:onion"
             }
         ],
         "result": {

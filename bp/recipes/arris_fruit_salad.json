@@ -2,39 +2,45 @@
     "format_version": "1.12",
     "minecraft:recipe_shapeless": {
         "description": {
-            "identifier": "arris:shepherds_pie_block2"
+            "identifier": "arris:fruit_salad"
         },
         "ingredients": [
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
-                "item": "minecraft:baked_potato"
+                "item": "minecraft:apple"
             },
             {
                 "count": 1,
                 "data": 0,
-                "item": "arris:milk_bottle"
+                "item": "minecraft:melon_slice"
             },
             {
-                "count": 3,
+                "count": 1,
                 "data": 0,
-                "item": "minecraft:cooked_mutton"
+                "item": "minecraft:melon_slice"
             },
             {
-                "count": 2,
+                "count": 1,
                 "data": 0,
-                "item": "arris:onion"
+                "item": "arris:pumpkin_slice"
             },
             {
                 "count": 1,
                 "data": 0,
                 "item": "minecraft:bowl"
+            },
+            {
+                "tag": "common:berry"
+            },
+            {
+                "tag": "common:berry"
             }
         ],
         "result": {
             "count": 1,
             "data": 0,
-            "item": "arris:shepherds_pie_block_stage0"
+            "item": "arris:fruit_salad"
         },
         "tags": [
             "crafting_table"

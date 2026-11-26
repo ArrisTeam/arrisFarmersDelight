@@ -6,14 +6,16 @@
         },
         "ingredients": [
             {
-                "count": 3,
-                "data": 0,
-                "item": "minecraft:wheat"
+                "tag": "common:wheat"
             },
             {
-                "count": 1,
-                "data": 0,
-                "item": "minecraft:egg"
+                "tag": "common:wheat"
+            },
+            {
+                "tag": "common:wheat"
+            },
+            {
+                "tag": "minecraft:egg"
             }
         ],
         "result": {
