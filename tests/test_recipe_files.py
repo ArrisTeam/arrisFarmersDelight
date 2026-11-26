@@ -7,7 +7,7 @@
 - 一个文件一条，走 ext.recipes.registerFromJson：标签格的厨锅配方登记上、配得上别的模组的料；坏 JSON、没 ID、legacy:、格式不对的各记一条原因，
   不耽误别的；同一个 ID 两份时后读的覆盖先读的；
 - PackJson：经 traceback.sys.modules 拿引擎内部的 server_resource（没有、缺函数、列目录抛异常都是 None）；只要 .json、去重、排好序、剥注释、
-  解码 UTF-8，读不了的那个跳过；
+  解码 UTF-8，读不了的那个跳过；引擎只给一层时自己往下列子目录（不是 .json 的条目再列一次，绕回来的不转圈，列它出错当它没有下一层）；
 - 接线：ready 广播之后读（ready 里登记的同 ID 配方被文件覆盖），读完调一次 onRecipesChanged 的处理函数（types、recipeIds 都是 None），
   每端只读一次；能力名 recipe_json_files（2026-11-26 游戏里核过才登记的：Events.RECIPE_JSON_FILES_VERIFIED）只在服务端。
 """
@@ -173,7 +173,8 @@ def testBrokenJsonNeverRaisesAndOneBadFileDoesNotStopTheRest():
 
 
 class _Resource(object):
-    """server_resource 的替身：列目录给的路径、读文件给的字节；raises 里的路径读的时候抛异常。"""
+    """server_resource 的替身：列目录给的路径（listed 是字典时按路径给，没有的路径是 []；是异常时抛它）、读文件给的字节；
+    raises 里的路径读的时候抛异常。"""
 
     def __init__(self, listed, contents, raises=()):
         self.listed, self.contents, self.raises = listed, contents, raises
@@ -181,9 +182,10 @@ class _Resource(object):
 
     def list_server_directory(self, path):
         self.asked.append(path)
-        if isinstance(self.listed, Exception):
-            raise self.listed
-        return self.listed
+        found = self.listed.get(path, []) if isinstance(self.listed, dict) else self.listed
+        if isinstance(found, Exception):
+            raise found
+        return found
 
     def load_server_file(self, path):
         if path in self.raises:
@@ -218,12 +220,29 @@ def testPackJsonReadsEveryPackThroughTheEnginesInternalModule():
     assert json.loads(found[0][1]) == {"type": "farmersdelight:cooking", "text": "a//b /* c */"}, "注释剥掉，字符串里的不动"
     assert json.loads(found[1][1]) == {"x": 1}, "开头带 BOM 的 UTF-8 也读得进来（T 复核时复现的：以前 json 读不了）"
     assert found[0][1].count("\n") == commented.count("\n"), "块注释里的换行留着（报错的行号对得上）"
-    assert resource.asked == ["farmersdelight_recipes"] and "gone.json" in printed, "读不了的那个跳过、记一行"
+    assert resource.asked == ["farmersdelight_recipes", "farmersdelight_recipes/readme.txt"], "不是 .json 的条目再列一次（引擎只给一层时往下走）"
+    assert "gone.json" in printed, "读不了的那个跳过、记一行"
     assert _withResource(None, lambda: PackJson.files("farmersdelight_recipes"))[0] is None, "没有这个模块"
     assert _withResource(types.ModuleType("server_resource"), lambda: PackJson.files("farmersdelight_recipes"))[0] is None, "缺函数"
     gone, printed = _withResource(_Resource(OSError("no such directory"), {}), lambda: PackJson.files("farmersdelight_recipes"))
     assert gone is None and "farmersdelight_recipes/" in printed, "列目录抛异常：当这条路不通，记一行"
     assert _withResource(_Resource(None, {}), lambda: PackJson.files("farmersdelight_recipes"))[0] == [], "目录在哪个包里都没有"
+
+
+def testPackJsonWalksDownWhenTheEngineListsOneLevelAtATime():
+    """主会话定的 A1-P3：成就系统（arrisAdvancements）记着 list_server_directory 不递归、专用服务器上只给一层（不往下列就一个都读不到）；
+    农夫乐事只在开发版游戏里量到过它递归。现在不是 .json 的条目再列一次：一层一层给的也读得全，绕回上一层的不转圈，列一个文件出错当它没有下一层。"""
+    base = "farmersdelight_recipes"
+    files = (base + "/top.json", base + "/mymod/cooking/stew.json", base + "/mymod/cutting/tofu.json")
+    tree = {base: [base + "/mymod", files[0], base + "/notes.txt"],
+            base + "/mymod": [base + "/mymod/cooking", files[2], base + "/mymod/cooking"],
+            base + "/mymod/cooking": [files[1], base + "/mymod"],            # 绕回上一层
+            base + "/notes.txt": OSError("not a directory")}
+    resource = _Resource(tree, dict((path, b'{"x": 1}') for path in files))
+    found, printed = _withResource(resource, lambda: PackJson.files(base))
+    assert [path for path, _text in found] == sorted(files), found
+    assert sorted(resource.asked) == sorted([base, base + "/mymod", base + "/notes.txt", base + "/mymod/cooking"]), "每个目录只列一次"
+    assert printed == "", "列一个文件出错不算这条路不通"
 
 
 class _Broadcaster(object):
