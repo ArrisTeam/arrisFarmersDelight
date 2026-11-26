@@ -133,9 +133,16 @@ T2 → T5 的先后 2026-11-26 在游戏里核过：第三方在 ready 的处理
 实在接不到事件时，可以主动导入这个包，写法和机械动力的兜底一样（`ImportModule("arrisCreateScripts.Api.ExtensionApi").getExtensionApi(side)`）：
 
 ```python
-package = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi")   # 农夫乐事没装是 None
-ext = package.getExtensionApi("server") if package else None                      # 客户端写 "client"
+try:
+    package = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi")   # 农夫乐事没装是 None
+    ext = package.getExtensionApi("server") if package else None                      # 客户端写 "client"
+except Exception:
+    ext = None              # 装的是还没有这个包的旧版本，或者这个包、门面导入时出错
 ```
+
+农夫乐事没装时 `ImportModule` 返回 `None`。装的是还没有这个包的旧版本时它不给 `None`，而是抛 `ImportError: No module named ExtensionApi`
+（引擎的 `ImportModule` 只在模组的脚本目录不在时给 `None`，目录在、下面没有这个模块就抛；2026-11-26 在 3.10 的游戏里量过）；
+这个包或者 `getExtensionApi` 这时才导入的门面自己出错，异常也原样抛进你的代码。这几种都当拿不到。
 
 拿到的和 ready 载荷里的是同一个对象。原来写在这里的 `ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade").getExtensionApi(side)`
 照旧能用（同一个对象）。导入这个包不会顺带拉起门面：门面到调 `getExtensionApi` 时才导入。**只在 `LoadServerAddonScriptsAfter` 之后用**（比如玩家进服时）：表同步的基线是农夫乐事服务端模块导入那一刻的表，

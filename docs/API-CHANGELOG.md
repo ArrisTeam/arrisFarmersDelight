@@ -73,3 +73,5 @@
   登记进同名的 `netease_tags` 就能进这些菜。鸡蛋的格子收普通、蓝色、棕色三种蛋。
 - 兼容入口的字典表（`CuttingBoardDict`、`CanCookedFoodDict`……）删掉的键也会同步给客户端（以前只同步新增和改动）。
 - 砧板上剪刀的 6 条拆解配方多了 `item_type: "shears"`：别的模组的剪刀（物品类型是剪刀的）也能用。
+- 兜底入口（主动导入 `arrisFarmersDelightScripts.Api.ExtensionApi`）的示例包上了 `try / except Exception`：农夫乐事没装时 `ImportModule` 返回 `None`，
+  装的是还没有这个包的旧版本时它抛 `ImportError`（不给 `None`），这个包或门面导入时出错也原样抛出来，都当拿不到。接口本身没变。见 EXTENSION-API.md §1.4。
