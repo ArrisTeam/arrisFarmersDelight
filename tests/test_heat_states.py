@@ -6,7 +6,8 @@
      几条都满足才算；读不到状态、缺这个状态、条件是空的都不满足
   2. 登记时的写法（normalize）：规整（unicode → str、tuple → list），写错的拒绝并说哪里不对
   3. 按 aux 列出满足条件的 aux（auxSet）：照引擎按位拼 aux 的样子（炼药锅 fill_level 7 个值占 3 位，aux 7、15、23 是空号）不漏、
-     不停在空号上；越界之后一直给 None、一直给 {}、一直给同一份状态、一直给新的状态，都停得下来
+     不停在空号上；越界之后一直给 None、一直给 {}、一直给同一份状态、一直给新的状态，都停得下来；
+     照 2026-11-26 3.10 实机量到的炼药锅返回原样答（空号和越界都给缺省状态），算出来正是熔岩 1–6 级 = aux 9–14
 """
 from __future__ import print_function
 
@@ -107,6 +108,29 @@ def testAuxSetStopsHoweverTheEngineAnswersBeyondTheEnd():
     found = States.auxSet(lambda aux: {"mymod:n": aux}, {"mymod:n": {"min": 3, "max": 5}}, limit=100)
     assert found["aux"] == [3, 4, 5] and found["asked"] == 100, "引擎一直给新的状态：问到上限为止"
     assert States.auxSet(lambda aux: {"mymod:n": aux}, {"mymod:n": 2})["asked"] == States.LIMIT
+
+
+def testAuxSetOnTheCauldronAsTheEngineReallyAnswers():
+    """2026-11-26 3.10 实机（单机）量到的 GetBlockStatesFromAuxValue("minecraft:cauldron", aux)：aux 0–6 是水 0–6 级、8–14 熔岩 0–6 级、
+    16–22 细雪 0–6 级；空号 7、15 和 23 以上（实机问到 40 都一样，这里问到多少都一样）返回缺省状态 {"cauldron_liquid": "water", "fill_level": 0}，
+    不是 None、不是空、不抛异常。auxSet 把和前面重复的状态当"这个 aux 没有方块"：算出来正是 [9..14]，问到 46 就停（实机也是问了 46 次）。"""
+    default = {"cauldron_liquid": "water", "fill_level": 0}
+    asked = []
+
+    def measured(aux):
+        asked.append(aux)
+        level, liquid = aux & 7, aux >> 3
+        if level > 6 or liquid >= len(LIQUIDS):
+            return dict(default)
+        return {"fill_level": level, "cauldron_liquid": LIQUIDS[liquid]}
+
+    assert measured(7) == measured(15) == measured(23) == measured(40) == measured(4000) == default and measured(0) == default
+    del asked[:]
+    found = States.auxSet(measured, LAVA)
+    assert found["aux"] == [9, 10, 11, 12, 13, 14] == Cooking.HeatSourceAuxDict["minecraft:cauldron"], found
+    assert found["top"] == 22 and found["asked"] == 46 and asked == list(range(46)), "停得下来：问到 2 × (22 + 1) = 46 就停"
+    assert found["asked"] < States.LIMIT
+    assert States.auxSet(measured, {"cauldron_liquid": "water"})["aux"] == [0, 1, 2, 3, 4, 5, 6], "缺省状态只算 aux 0 那一次，空号不混进来"
 
 
 def testAuxSetOnABitPackedBlockWithSeveralHoleRuns():
