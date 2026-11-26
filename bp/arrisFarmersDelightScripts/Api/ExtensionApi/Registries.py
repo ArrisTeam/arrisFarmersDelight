@@ -4,14 +4,15 @@
 刀、热源优先用标签：把自己的刀登记进 common:knife、热源方块登记进 farmersdelight:heat_sources（docs/TAGS.md），
 这几个登记口是给没法用标签的情况。登记就是往旧接口的那几张表里追加（knifeList、CanProvideHeatBlockList、StoveList、ComposterItemDict），
 表同步照旧发给客户端（堆肥表只有服务端读，不同步）；已经在表里的不重复加，照样返回 ok。只在服务端（客户端返回 server_only，不抛）。
+热源带状态条件（registerHeatSource 的 states）时写的是状态条件表 HeatSourceStateDict，不进名单（见那个方法）。
 炉灶只登记点着的那个方块（会烤东西、给热）：熄灭的孪生方块和点火 / 灭火的换方块是另一回事，以后再开。
-返回 {"ok", "error", "id"}（"id" 是登记的名字）。
+返回 {"ok", "error", "id"}（"id" 是登记的名字；states 写错时另带 "message"）。
 """
 from ...Shared.Data import Tags as Vocabulary
-from ...Shared.Data.Cooking import CanProvideHeatBlockList, StoveList
+from ...Shared.Data.Cooking import CanProvideHeatBlockList, HeatSourceStateDict, StoveList
 from ...Shared.Data.Cutting import knifeList
 from ...Shared.Data.Farming import ComposterItemDict
-from ...Shared.Rules import BoardStation, ItemTags
+from ...Shared.Rules import BoardStation, HeatStates, ItemTags
 from ...Shared.Rules.TableWire import INT_TYPES, isInt
 
 try:
@@ -56,9 +57,27 @@ class Registries(object):
             BoardStation.invalidate()
         return answer
 
-    def registerHeatSource(self, blockName):
-        """这个方块给厨锅、煎锅加热（不看方块状态；要看点燃状态的方块用标签 farmersdelight:heat_sources）：追加进 CanProvideHeatBlockList。"""
-        return self._append(blockName, CanProvideHeatBlockList)
+    def registerHeatSource(self, blockName, states=None):
+        """这个方块给厨锅、煎锅加热。
+        不给 states：不看方块状态（要看点燃状态的方块用标签 farmersdelight:heat_sources），追加进 CanProvideHeatBlockList（旧接口的名单）。
+        给了 states（{状态名: 条件}，条件写一个值、一组值或 {"min": n, "max": n}，Shared/Rules/HeatStates）：只写进状态条件表
+        HeatSourceStateDict（同一个方块再登记就换成新的条件），不进名单——名单是旧接口"不看状态的热源"，读它的下游会以为一直热；
+        条件表里的方块满足条件就是热源，不用再进名单或标签，已经在名单、标签里的写了条件也按条件判（锅下面、手持煎锅身边都判）。
+        客户端按服务端照条件算好的 aux 判（Server/HeatAux，下一次表同步时算好、一起发过去）。"""
+        if states is None:
+            return self._append(blockName, CanProvideHeatBlockList)
+        if self._side != "server":
+            return _answer(False, "server_only", blockName)
+        found = _name(blockName)
+        if found is None:
+            return _answer(False, "invalid_name", blockName)
+        conditions, problem = HeatStates.normalize(states)
+        if conditions is None:
+            answer = _answer(False, "invalid_states", found)
+            answer["message"] = problem
+            return answer
+        HeatSourceStateDict[found] = conditions
+        return _answer(True, None, found)
 
     def registerStove(self, blockName):
         """这个方块是点着的炉灶（会烤上面的东西、站上去烫脚、炉灶站点认它）：追加进 StoveList。方块要像农夫乐事的炉灶一样带方块实体（六个烤位存在里面）。"""

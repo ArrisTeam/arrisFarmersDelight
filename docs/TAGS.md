@@ -80,6 +80,8 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 状态条件（农夫乐事的表 `Shared/Data/Cooking.HeatSourceStateDict`）：一个方块的几条条件都满足才算热，每条写一个值（相等）、一组值（是其中之一）
 或 `{"min": n}` / `{"max": n}`（数值范围）。写了条件的方块处处按条件判：放在上面的锅、煎锅，手持煎锅身边，都判；方块在这个标签里、
 在 `CanProvideHeatBlockList` 里也一样；状态读不到、没有这个状态都算不满足。
+你自己的"一个方块 + 某个状态"的热源，用新联动接口登记条件：`ext.registerHeatSource("mymod:brazier", states={"mymod:coals": {"min": 1}})`
+（[EXTENSION-API.md](EXTENSION-API.md) §6.1）；登记了条件的方块不用再进这个标签。只看点燃状态（`lit` / `*:lit` / `extinguished`）的方块不用登记条件，进标签就行。
 
 手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）；写了状态条件的照样按条件判。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。

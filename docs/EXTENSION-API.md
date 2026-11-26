@@ -195,6 +195,7 @@ ext = package.getExtensionApi("server") if package else None                    
 | `recipe_lookup` | 两端 | `ext.recipes.findRecipe`：一件东西在砧板 / 营火上按哪条配方做（§5.5） |
 | `knives` | 服务端 | `ext.registerKnife`（§6） |
 | `heat_sources` | 服务端 | `ext.registerHeatSource`（§6） |
+| `heat_source_states` | 服务端 | `ext.registerHeatSource(方块名, states=...)`：带状态条件的热源（§6.1） |
 | `stoves` | 服务端 | `ext.registerStove`（§6） |
 | `compostables` | 服务端 | `ext.registerCompostable`（§6） |
 | `item_tags` | 两端 | `ext.tags`（§7） |
@@ -222,6 +223,7 @@ ext = package.getExtensionApi("server") if package else None                    
 | `invalid_recipe_types` | `syncToClients` 给的类型不认识 | |
 | `invalid_name` | §6 的登记口：名字不是 `命名空间:名字`（或 aux 不对） | |
 | `invalid_chance` | `registerCompostable` 的概率不在 (0, 100] 里 | |
+| `invalid_states` | `registerHeatSource` 的 `states` 写法不对（§6.1） | `message`：哪里不对 |
 
 客户端调登记类方法一律返回 `server_only`、不抛异常：两端可以共用同一份登记代码。
 
@@ -411,7 +413,7 @@ ext.recipes.syncToClients(recipeTypes=None, recipeIds=None)   # 类型可以是�
 | 方法 | 做什么 |
 | --- | --- |
 | `ext.registerKnife(物品名)` | 这件物品算刀（砧板上切东西、刀杀生物多掉东西、切蛋糕……），追加进 `knifeList` |
-| `ext.registerHeatSource(方块名)` | 这个方块给厨锅、煎锅加热（不看方块状态），追加进 `CanProvideHeatBlockList` |
+| `ext.registerHeatSource(方块名, states=None)` | 这个方块给厨锅、煎锅加热。不给 `states`：不看方块状态，追加进 `CanProvideHeatBlockList`；给了 `states`：只在满足状态条件时热（§6.1） |
 | `ext.registerStove(方块名)` | 这个方块是点着的炉灶（会烤上面的东西、站上去烫脚、炉灶站点认它），追加进 `StoveList`；方块要像农夫乐事的炉灶一样带方块实体 |
 | `ext.registerCompostable(物品名, 概率, aux=0)` | 这件物品能放进原版堆肥桶，概率是让桶升一层的百分数（大于 0、不超过 100），写进 `ComposterItemDict` |
 
@@ -419,6 +421,32 @@ ext.recipes.syncToClients(recipeTypes=None, recipeIds=None)   # 类型可以是�
   （方块有点燃状态的——`lit` / `*:lit` / `extinguished`——点着才算，和 JE 一样），见 TAGS.md。这几个登记口是给没法用标签的情况。
 - 名字写 `命名空间:名字`；已经在表里的不重复加，照样返回 `ok`。返回 §4 的字典，`"id"` 是登记的名字。
 - 炉灶只登记点着的那个方块。熄灭的孪生方块、点火 / 灭火换方块这一套这一版不开。
+
+### 6.1 带状态条件的热源（能力 `heat_source_states`）
+
+方块只在某些状态下才热（盛着熔岩的炼药锅、烧着炭的火盆……）：`states` 写 `{状态名: 条件}`，几条都满足才算热。条件三种写法：
+
+| 写法 | 例子 | 满足的时候 |
+| --- | --- | --- |
+| 一个值（`str` / `int` / `bool`） | `"cauldron_liquid": "lava"` | 状态等于它（写 `True` 时状态是 `1`、`"true"` 也算） |
+| 一组值（`list` / `tuple`，不空） | `"mymod:fuel": ["coal", "charcoal"]` | 状态是其中之一 |
+| 数值范围 | `"fill_level": {"min": 1}`、`"mymod:level": {"min": 1, "max": 3}` | 状态是数（布尔不算），在范围里（含两端） |
+
+```python
+if ext.hasCapability("heat_source_states"):
+    ext.registerHeatSource("mymod:brazier", states={"mymod:coals": {"min": 1}, "mymod:lit": True})
+```
+
+- **写了条件处处按条件判**：放在它上面的厨锅、煎锅，手持煎锅身边（JE 的手持煎锅不看点燃状态，写明的条件照样判），都看；
+  状态读不到、方块没有这个状态都算不满足。已经靠自己的 `netease_tags` 进了 `farmersdelight:heat_sources` 的方块、或者在 `CanProvideHeatBlockList` 里的，
+  写了条件也按条件判。农夫乐事自带的一条就是炼药锅（JE 的熔岩炼药锅）：`{"cauldron_liquid": "lava", "fill_level": {"min": 1}}`（TAGS.md「热源方块」）。
+- **只登记条件、不进名单**：带 `states` 的这一次不往 `CanProvideHeatBlockList` 里加名字（那张是旧接口"不看状态的热源"，读它的下游会以为这个方块一直热）；
+  写了条件的方块不在名单、不在标签里，满足条件也算热源。对同一个方块不带 `states` 再调一次（进名单），条件照旧算数。
+- 同一个方块再带 `states` 登记一次，换成新的条件。写法不对返回 `invalid_states`（`message` 说哪里不对），表不动；名字不对是 `invalid_name`。
+- 客户端读不到方块状态：农夫乐事在服务端照引擎把满足条件的方块附加值（aux）列出来，随表同步发给客户端，客户端手持煎锅那一下"煎还是吃"按 aux 判。
+  登记以后最晚约 5 秒到客户端，`ext.recipes.syncToClients()` 现在就发；到之前客户端当它不热（服务端照条件判，不受影响）。
+  服务端一个状态也问不出来的方块（方块不存在……），客户端一直当它不热。
+- 只看点燃状态（`lit` / `*:lit` / `extinguished`）的方块不用写条件：进 `farmersdelight:heat_sources` 标签就是"点着才热"（TAGS.md）。
 
 ---
 

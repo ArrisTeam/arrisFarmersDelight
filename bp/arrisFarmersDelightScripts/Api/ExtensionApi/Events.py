@@ -49,6 +49,7 @@ SERVER_CAPABILITIES = frozenset([
     "recipe_lookup",             # ext.recipes.findRecipe（只读：这件东西在砧板 / 营火上按哪条配方做，同机械动力的 findRecipe）
     "knives",                    # ext.registerKnife
     "heat_sources",              # ext.registerHeatSource
+    "heat_source_states",        # ext.registerHeatSource 的 states：带状态条件的热源（盛着熔岩的炼药锅那样，"方块 + 状态"）
     "stoves",                    # ext.registerStove（点着的炉灶方块）
     "compostables",              # ext.registerCompostable
     "item_tags",                 # ext.tags（标签的只读查询、词表的名字常量）

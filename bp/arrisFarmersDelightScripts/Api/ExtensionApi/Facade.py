@@ -11,8 +11,8 @@
 以后门面上加的接口各自登记能力名（Events 的两张表），别的模组先 hasCapability 再调。
 接口：
     ext.recipes              配方：厨锅、砧板、营火烹饪的登记 / 查询 / 删除（Recipes.py）
-    ext.registerKnife(物品名) / registerHeatSource(方块名) / registerStove(方块名) / registerCompostable(物品名, 概率, aux=0)
-                             配方以外的登记口（Registries.py；刀、热源优先用标签）
+    ext.registerKnife(物品名) / registerHeatSource(方块名, states=None) / registerStove(方块名) / registerCompostable(物品名, 概率, aux=0)
+                             配方以外的登记口（Registries.py；刀、热源优先用标签；热源可以带状态条件 states）
     ext.tags                 标签的只读查询和词表的名字（Registries.TagView）
 """
 from . import Events
@@ -64,8 +64,8 @@ class ExtensionApiFacade(object):
     def registerKnife(self, itemName):
         return self._registries.registerKnife(itemName)
 
-    def registerHeatSource(self, blockName):
-        return self._registries.registerHeatSource(blockName)
+    def registerHeatSource(self, blockName, states=None):
+        return self._registries.registerHeatSource(blockName, states)
 
     def registerStove(self, blockName):
         return self._registries.registerStove(blockName)

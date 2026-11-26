@@ -33,6 +33,10 @@
   `cookingTime` 以前被忽略、照缺省 200 刻）。见 RECIPE-JSON.md §2、§3。
 - **配方以外的登记口**：`ext.registerKnife`、`ext.registerHeatSource`、`ext.registerStove`（点着的炉灶）、`ext.registerCompostable`。
   能力 `knives`、`heat_sources`、`stoves`、`compostables`（服务端）。见 EXTENSION-API.md §6。
+- **带状态条件的热源**：`ext.registerHeatSource(方块名, states={状态名: 条件})`（末尾加的可选参数，不给照旧）：方块只在几条条件都满足时热
+  （条件写一个值、一组值或 `{"min": n, "max": n}`），厨锅 / 煎锅下面、手持煎锅身边处处按条件判，已经在名单、标签里的方块也一样；
+  只写进农夫乐事的状态条件表、不进 `CanProvideHeatBlockList`；客户端按服务端照条件算好、随表同步发来的方块附加值（aux）判。
+  能力 `heat_source_states`（服务端），新错误码 `invalid_states`（带 `message`）。见 EXTENSION-API.md §6.1。
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。
   能力 `item_tags`（两端）。见 EXTENSION-API.md §7、[TAGS.md](TAGS.md)。
 - **行为包里的配方 JSON**：任何行为包根下的 `farmersdelight_recipes/**.json`，开服时在 ready 广播之后读，写法同 `registerFromJson`。
@@ -49,6 +53,8 @@
   `ext.tags` 的名字常量跟着改，不留旧名：`HEAT_SOURCE`、`HEAT_SOURCE_LIT` → `HEAT_SOURCES`，`MUSHROOM` → `MUSHROOMS`，`BONE` → `BONES`，
   `FRIED_EGG` → `COOKED_EGG`，去掉 `CHILI`；新增 `COOKED_MEAT`、`LEAFY_GREEN`。配方 JSON 里 JE 1.21 的 `c:` 标签名（`c:foods/raw_beef`、
   `c:tools/knife`、`c:eggs`……）也认（RECIPE-JSON.md §3、§4）。
+- 方块标签 `farmersdelight:heat_sources` 多了成员 `minecraft:cauldron`（JE 标签里的熔岩炼药锅：基岩版没有这个方块，是炼药锅盛着熔岩的状态）。
+  农夫乐事只在它盛着熔岩（`cauldron_liquid` 是 `lava`、`fill_level` 至少 1）时当热源；按这个标签认热源的模组也要看这两个状态。见 TAGS.md「热源方块」。
 - 厨锅配方的 `text`：经典厨锅界面的搜索框照 JEI 按成品、食材的显示名和物品 ID 搜（看界面的那一端自己的语言），不再只按 `text` 比；
   没写 `text` 的配方也按名字搜得到（EXTENSION-API.md §5.3、RECIPE-JSON.md §2）。
 - 农夫乐事自带的砧板 / 营火配方 ID 和原料绑死：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，否则新的错误码 `input_mismatch`；
