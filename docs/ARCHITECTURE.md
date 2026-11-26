@@ -468,6 +468,11 @@ def OnServerSkilletBlockUse(args):
    携带版里拿放时飞的那一下（0.3 秒）会不会被别的格子的图标盖住：库的携带版根把物品飞行渲染器放在第 12 层（经典版 21），
    共用的经典样式内容里格子图标累计的层数比 12 高（面板 1、body 5、图标 9 起）。
 
+游戏内自检（搜索和选中，不靠投递的指针）：客户端线程 `Client/Debug/McdkPotSearchTest.mcdk_test_pot_screen_flow(查询词, 格号)`——经典界面开着时
+照引擎报给搜索框的输入交给库的文本框、照食谱格的按下抬起交给手势识别（`TapToPick` 同一条路），报出发的动作、换算出的行号、画成选中的格；
+不带参数再调一次读应答回来之后的样子；服务端线程 `Server/Debug/McdkPotSearchTest.mcdk_test_pot_screen_state()` 读会话里的 `picked`、配方和详情的成品。
+同一个文件里的 `mcdk_test_pot_search_probe` 只看过滤（先客户端线程、后服务端线程）。
+
 ## 厨锅物品带着菜（对照 JE）
 
 JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格里那叠菜"写进厨锅物品的 `BlockEntityTag`，放回去照样在；食材格、容器格、
