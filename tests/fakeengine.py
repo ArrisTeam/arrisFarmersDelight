@@ -58,6 +58,7 @@ class FakeWorld(object):
         self.uiSlots = {}       # 玩家 id -> {合成格槽位: itemDict}（GetPlayerUIItem / SetPlayerUIItem）
         self.uiOpen = True      # False 时 SetPlayerUIItem 返回 False（界面已经关了）
         self.maxStack = {"minecraft:bucket": 16}
+        self.auxStates = {}     # 方块名 -> read(aux)：GetBlockStatesFromAuxValue 给什么（没预设的方块给 None，官方文档"异常时为 None"）
         self._nextId = [1000]
 
     # ---- 预设 ----
@@ -215,7 +216,11 @@ class FakeWorld(object):
         def setStates(pos, states, dim=DIMENSION):
             self.blocks[(dim,) + tuple(pos)]["states"] = dict(states)
             return True
-        return {"GetBlockStates": getStates, "SetBlockStates": setStates}
+
+        def statesOfAux(blockName, aux):
+            read = self.auxStates.get(blockName)
+            return read(aux) if read is not None else None
+        return {"GetBlockStates": getStates, "SetBlockStates": setStates, "GetBlockStatesFromAuxValue": statesOfAux}
 
     def _BlockEntityData(self, target):
         return {"GetBlockEntityData": lambda dim, pos: (self.blocks.get((dim,) + tuple(pos)) or {}).get("data")}

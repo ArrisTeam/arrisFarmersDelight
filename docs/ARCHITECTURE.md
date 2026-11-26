@@ -231,14 +231,19 @@ def OnServerSkilletBlockUse(args):
 | `CuttingTagDict`（键是标签名） | 追加键 | 同上：`CuttingStation.recipeOf` 在精确的查不到时看它；食谱书的 `c:#标签名` 那一页、JEI 按标签的成员登记 |
 | `knifeList`、`axeList` | 追加名字（`append`） | `Client/BlockItems.isKnife`（站点和没开站时的展示都问它）、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
 | `CanCookedFoodDict` | 追加键 | 都经 `Shared/Rules/Grilling`（先查这张表，查不到问引擎的营火配方）：煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、手持煎锅"煎还是吃"（`Client/Input.py:42`）；`StationBooks.panPages / grillPages`（`cookGroups`：三种蛋一页）和 JEI 的煎锅 / 炉灶页只列这张表 |
-| `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
+| `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，`HeatSources.heatsByAux` 读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
 | `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 经典界面的食谱格（选中的是行号；`PotSearch` 按搜索词记着过滤结果，表的长度或 `CookingPot.revision`（重建索引的次数）变了就重算：并表之后的 `rebuildIndex` 让它跟上） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 | `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
 | `OneSidedList` | 追加名字 | 客户端眼下没有地方读，照旧同步（下游在用这张契约表，两端一样）。服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染；也不管书上的秒数（`SkilletBook` / `StoveBook` 都写两面的时间，`StationBooks._cookPages`） |
 | `NotOnGrillList` | 追加名字 | `GrillStation.canGrill`（`NOT_ON_GRILL` 就是这个列表）：炉灶站点的烤架不收，托盘里不亮 |
 
-没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的 + 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、
+契约之外也同步的两张（不在白名单里，`SyncTables.OUTSIDE_CONTRACT` 写着原因，2026-11-26）：热源的状态条件 `HeatSourceStateDict`（`{方块名: {状态名: 条件}}`，
+服务端登记的条件客户端也要知道）和它派生的 `HeatSourceAuxDict`（`{方块名: [满足条件的 aux]}`：只有服务端问得出方块状态，`Server/HeatAux` 照引擎的
+`GetBlockStatesFromAuxValue` 算，`TableSync._refresh` 每次算差异之前先让它跟上，所以条件和 aux 集合在同一版差异里到）；客户端读它们的是
+`HeatSources.heatsByAux`（`Client/Input._nearHeat`：手持煎锅身边有没有热源，见「厨锅 / 煎锅下面的热源」）。
+
+没有同步的（`SyncTables.NOT_SYNCED` 逐个写着原因，测试核对"白名单 = 同步的（除了契约之外那两张）+ 这里的"，新增变量时会红）：`ComposterItemDict`、`itemChangeBlockDict`、`shapedRecipeContainerDict`、`pieList`、
 `canClimbList`、`cabinetList`、`WildCropDict`、`cropsDict`、`negativeEffect`、`horseComponentsDict`、`wolfComponentsDict`（只有服务端读），`uiGuideBookPath / Screen`（字符串常量，契约没法往里追加）。
 联动契约之外的表（`BrothColors / FoodColors / ItemMasks`、`Remainders`……）下游本来就够不到，没有"追加"可同步：下游的菜用兜底汤色，没有刀口遮罩。
 

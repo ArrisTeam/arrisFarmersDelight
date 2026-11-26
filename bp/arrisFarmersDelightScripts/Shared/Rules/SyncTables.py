@@ -5,7 +5,7 @@
 可烹饪物、炉灶。客户端是另一个进程，有自己的一份 Shared/Data，下游追加的内容它没有——经典玩法全在服务端判，不受影响，但四个站点的客户端表现要读
 这些表（托盘里哪些亮、借哪把刀、点板是切还是敲、食谱书的页、哪些方块开炉灶站点……）。所以服务端把"现在的表 - 导入时的表"发过去（TableDiff），
 客户端并进自己的表（TableMerge）。表名就是联动契约的变量名；下面登记的是客户端真有地方读的那几张（OneSidedList 例外：客户端眼下不读，
-照旧发，见它那一行），别的在 NOT_SYNCED 里写明为什么不发。
+照旧发，见它那一行），别的在 NOT_SYNCED 里写明为什么不发。契约之外也同步的表（热源的状态条件和它派生的 aux 集合）在 OUTSIDE_CONTRACT 里写明。
 三种表：ITEMS 名字列表（只追加）、MAP 字典（键可以是 (物品名, aux) 元组；删掉的键也同步）、ROWS 按下标对应的列表（厨锅配方：书页的键就是下标，
 两端必须一一对上；删配方是打墓碑）。
 """
@@ -30,8 +30,18 @@ TABLES = (
     ("DishList", ROWS, Dishes.DishList),                                    # 砧板摆盘的菜：托盘里哪些亮、层接不接得上、食谱书、悬着的成品
     ("OneSidedList", ITEMS, Cooking.OneSidedList),                          # 客户端眼下不读（蛋的样子看 PotSunk.CRACKED，书页的秒数照 JE 不看它）；照旧发：下游在用这张契约表，两端一样
     ("NotOnGrillList", ITEMS, Cooking.NotOnGrillList),                      # 炉灶站点：烤架不收的，托盘里不亮、放不上去
+    # 下面两张不在联动契约里（OUTSIDE_CONTRACT）：
+    ("HeatSourceStateDict", MAP, Cooking.HeatSourceStateDict),              # 热源的状态条件：客户端据此知道哪些方块要按 aux 判（HeatSources.heatsByAux）
+    ("HeatSourceAuxDict", MAP, Cooking.HeatSourceAuxDict),                  # 上一张派生的满足条件的 aux（服务端 Server/HeatAux 算）：手持煎锅"身边有没有热源"
 )
 BY_NAME = dict((name, (kind, container)) for name, kind, container in TABLES)
+
+# 同步、却不在联动契约白名单（Api/LegacyModAttr.py）里的表和原因：契约那边不再加名字，这几张只是两端的派生 / 新接口的数据。
+# tests 核对"同步的 = 白名单里同步的 + 这里的"
+OUTSIDE_CONTRACT = {
+    "HeatSourceStateDict": "热源的状态条件：服务端登记的条件（别的模组经新接口写在服务端）客户端也要知道，那几个方块才按 aux 判",
+    "HeatSourceAuxDict": "上一张派生的满足条件的 aux：只有服务端问得出方块状态（Server/HeatAux 照引擎算），客户端只读得到 aux",
+}
 
 # 砧板配方的 tool 引用的就是这几个列表本身（Shared/Data/Cutting.py；下游按 obtain("knifeList") 拿到的也是它）：
 # 编码时认出来写成引用，客户端换回它自己的那一个，所以之后往 knifeList 里追加的刀对所有配方一起生效，和服务端一样

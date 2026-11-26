@@ -3,7 +3,7 @@
 
 CanCookedFoodDict / CanProvideHeatBlockList / StoveList 是对外联动契约的一部分
 （下游经 ArrisFarmersDelightInterface 追加），对象身份不得改变。热源的状态条件表 HeatSourceStateDict 和它派生的 HeatSourceAuxDict
-不在契约里（就地改，对象身份同样不变）。
+不在契约里，但也随表同步发给客户端（Shared/Rules/SyncTables.OUTSIDE_CONTRACT），对象身份同样不能变。
 """
 # 基岩版有三种鸡蛋（鸡蛋、蓝色鸡蛋、棕色鸡蛋：原版物品标签 minecraft:egg 的成员），JE 1.20 只有一种。三种一视同仁：厨锅收三种
 # （配方里蛋的格子是 minecraft:egg 标签），别处也一样——能煎、只煎一面、烤架不收、是"磕开的蛋"（PotSunk.CRACKED），工作台另说（JSON 配方没改）
@@ -55,7 +55,8 @@ HeatSourceStateDict = {
 }
 
 # 上面那张表派生的：每个写了条件的方块，满足条件的 aux。客户端读不到方块状态（GetBlock 只给名字和 aux），手持煎锅"身边有没有热源"按它判
-# （HeatSources.heatsByAux；写了条件、这里却没有这个方块的当不热）。熔岩炼药锅 1–6 级：aux = fill_level + 8 × cauldron_liquid 的序号，
+# （HeatSources.heatsByAux；写了条件、这里却没有这个方块的当不热）。服务端照引擎的 GetBlockStatesFromAuxValue 重算（Server/HeatAux，
+# 每次表同步算差异之前），经表同步发给客户端；这里是同步到之前的初值：熔岩炼药锅 1–6 级，aux = fill_level + 8 × cauldron_liquid 的序号，
 # 熔岩是 1（3.10 实机：服务端熔岩 6 级读到 aux 14）
 HeatSourceAuxDict = {
     "minecraft:cauldron": [9, 10, 11, 12, 13, 14],

@@ -203,8 +203,12 @@ def testTheSyncerNeverTouchesTheTablesItWatches():
     syncer.messages()
     syncer.refresh()
     assert [(name, id(container)) for name, _kind, container in tables] == ids and K.snapshot(server) == before
-    legacy = server.load("Api.LegacyModAttr")
+    legacy, outside = server.load("Api.LegacyModAttr"), server.load("Shared.Rules.SyncTables").OUTSIDE_CONTRACT
+    cooking = server.load("Shared.Data.Cooking")
     for name, _kind, container in tables:
+        if name in outside:
+            assert getattr(cooking, name) is container, "契约之外的表登记的也是 Shared/Data 里的那个对象：%s" % name
+            continue
         assert legacy.ArrisFarmersDelightObtain(name) is container, "联动契约交出去的还是同一个对象：%s" % name
 
 
@@ -220,13 +224,33 @@ def testSharedObjectsAreNotReplacedWhenBothEndsLiveInOneProcess():
     assert one.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList[-1] is row
 
 
+def testHeatConditionsAndTheirAuxSetsReachTheClient():
+    """热源的状态条件表和它派生的 aux 集合不在契约里，也照常同步：服务端写的条件、算好的 aux 集合到了客户端，客户端的 heatsByAux 就认它；
+    内置的炼药锅那一条两端本来一样，不发。"""
+    server, client, syncer = _pair()
+    cooking = server.load("Shared.Data.Cooking")
+    cooking.HeatSourceStateDict["mymod:brazier"] = {"mymod:coals": {"min": 1}, "mymod:kind": ["coal", "charcoal"]}
+    cooking.HeatSourceAuxDict["mymod:brazier"] = [1, 2, 3]
+    heats = client.load("Shared.Rules.HeatSources")
+    assert not heats.heatsByAux("mymod:brazier", 2), "没同步之前：客户端连这个方块写了条件都不知道（不在名单、标签里）"
+    _sync(server, client, syncer)
+    assert _ops(syncer) == {"HeatSourceStateDict": 1, "HeatSourceAuxDict": 1}, _ops(syncer)
+    mine = client.load("Shared.Data.Cooking")
+    assert mine.HeatSourceStateDict["mymod:brazier"] == {"mymod:coals": {"min": 1}, "mymod:kind": ["coal", "charcoal"]}
+    assert mine.HeatSourceAuxDict["mymod:brazier"] == [1, 2, 3] and heats.heatsByAux("mymod:brazier", 2) and not heats.heatsByAux("mymod:brazier", 0)
+    assert mine.HeatSourceAuxDict["minecraft:cauldron"] == [9, 10, 11, 12, 13, 14] and K.snapshot(server) == K.snapshot(client)
+
+
 def testEveryWhitelistedTableIsEitherSyncedOrExplained():
-    """联动契约白名单里的每个变量：要么同步（而且登记的就是契约交出去的那个对象），要么写明为什么客户端不用。新加变量时这里会红。"""
+    """联动契约白名单里的每个变量：要么同步（而且登记的就是契约交出去的那个对象），要么写明为什么客户端不用。新加变量时这里会红。
+    契约之外也同步的表（热源的状态条件和它派生的 aux 集合）在 OUTSIDE_CONTRACT 里写明原因，不在白名单里。"""
     package = K.Package()
     legacy, tables = package.load("Api.LegacyModAttr"), package.load("Shared.Rules.SyncTables")
-    names = set(legacy._TARGETS)
-    synced, explained = set(tables.BY_NAME), set(tables.NOT_SYNCED)
+    names, outside = set(legacy._TARGETS), set(tables.OUTSIDE_CONTRACT)
+    synced, explained = set(tables.BY_NAME) - outside, set(tables.NOT_SYNCED)
     assert synced | explained == names and not (synced & explained), (sorted(names - synced - explained), sorted((synced | explained) - names))
+    assert outside <= set(tables.BY_NAME) and not outside & names, "契约之外的表要真的同步、又不在白名单里"
+    assert outside == set(["HeatSourceStateDict", "HeatSourceAuxDict"]) and all(tables.OUTSIDE_CONTRACT[name] for name in outside)
     for name in synced:
         assert tables.BY_NAME[name][1] is legacy._TARGETS[name], name
         assert tables.NOT_SYNCED.get(name) is None

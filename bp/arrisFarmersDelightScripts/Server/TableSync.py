@@ -13,9 +13,11 @@
   客户端并表是幂等的，重复的那几份什么都不改；
 - 给一个人发的时候出了错（Call 抛异常）只记日志、下一轮再给他发，不耽误后面的人。
 没有任何下游追加内容时什么都不发。发的是 Call，端点是客户端的 OnTableSync（Client/TableSync.py）。
+契约之外还同步热源的状态条件和它派生的"满足条件的 aux"（SyncTables.OUTSIDE_CONTRACT）：派生的那张在每次算差异之前由 HeatAux 跟上。
 """
 import traceback
 
+from . import HeatAux
 from .EventRegistry import registerHandler
 from .Helpers.Engine import Call, compFactory, levelId, serverApi
 from ..Shared.Rules import SyncTables, TableDiff
@@ -44,7 +46,9 @@ def _push(playerId, since):
 
 
 def _refresh():
-    """重算差异（表没变就是空操作），传不了而被跳过的条目写进日志——只写还没写过的（下游往表里追加了一条坏的、别的什么也没追加时也要写）。"""
+    """重算差异（表没变就是空操作），传不了而被跳过的条目写进日志——只写还没写过的（下游往表里追加了一条坏的、别的什么也没追加时也要写）。
+    派生的表先跟上：热源的状态条件变了的方块先算出满足条件的 aux（HeatAux），这一版差异里条件和 aux 集合一起发。"""
+    HeatAux.refresh()
     syncer.refresh()
     for problem in syncer.problems:
         if problem not in _reported:

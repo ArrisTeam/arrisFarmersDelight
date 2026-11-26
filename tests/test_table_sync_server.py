@@ -293,6 +293,29 @@ def testAFailingPollIsLoggedAndTheNextOneRunsAgain():
     assert [message["table"] for _target, message in _sent("a")] == ["knifeList"]
 
 
+def testAHeatConditionWrittenOnTheServerGoesOutWithTheAuxSetTheServerWorkedOut():
+    """热源的状态条件（契约之外的表）：服务端写进来的条件，在算差异之前先由 Server/HeatAux 照引擎（假的 GetBlockStatesFromAuxValue）
+    算出满足条件的 aux，进服那一份里两张表一起发；并进另一份包（客户端）以后，客户端的 heatsByAux 按它判。"""
+    _fresh("a")
+    HeatAux = fdtest.load("Server.HeatAux")
+    cooking = K.DEFAULT.load("Shared.Data.Cooking")
+    world.auxStates["mymod:brazier"] = lambda aux: {"mymod:coals": aux} if aux < 4 else None
+    cooking.HeatSourceStateDict["mymod:brazier"] = {"mymod:coals": {"min": 2}}
+    try:
+        _join("a")
+        sent = [message for _target, message in _sent("a")]
+        assert sorted(message["table"] for message in sent) == ["HeatSourceAuxDict", "HeatSourceStateDict"], sent
+        assert cooking.HeatSourceAuxDict["mymod:brazier"] == [2, 3]
+        client = K.Package()
+        assert all(result["changed"] and not result["problems"] for result in K.deliver(sent, client))
+        heats = client.load("Shared.Rules.HeatSources")
+        assert heats.heatsByAux("mymod:brazier", 3) and not heats.heatsByAux("mymod:brazier", 1), "客户端按服务端算好的 aux 判"
+        assert K.snapshot(K.DEFAULT) == K.snapshot(client)
+    finally:
+        world.auxStates.pop("mymod:brazier", None)
+        HeatAux._done.pop("mymod:brazier", None)
+
+
 def testTheEntryPointsImportTheTwoEnds():
     root = os.path.join(fdtest.BP, fdtest.SCRIPTS)
     for relPath in ("Server/ModServer.py", "Client/ModClient.py"):
