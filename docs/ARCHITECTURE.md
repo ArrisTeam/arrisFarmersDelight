@@ -89,6 +89,8 @@ Server/                 服务端
                         PotContainer（厨锅容器格与预览槽的读写：出一份、加份数、装碗转出）
                         BoardDish（砧板摆盘的存档：叠着的层、做好的那叠；经典右键还回、拆板掉落）
                         PackJson（读全部行为包里某个目录下的 JSON：引擎内部的 server_resource，经 traceback.sys.modules 取，只在这里碰它；2026-11-26 游戏里核过）
+                        Deeds（玩家做成了某件事的登记点：砧板切开一件、手持煎锅煎好一件、脚本替玩家放下方块、右键采摘；玩法模块在做成的地方报一声，
+                        想知道的订阅——成就联动 Compat/Advancements 用它；没人订阅时就是一次字典查找，核心里没有"成就"这回事）
   CookingPot Skillet Stove CuttingBoard ItemToBlock Crops BoneMeal RichSoil WildCrops
   SkilletItem           煎锅物品：潜行才放成方块、方块实体里记着放下的那件煎锅（耐久 / 附魔 / 名字）、拆掉原样掉回、打一下只磨损 1 点
   SkilletHand           手持煎锅烹饪：一只手煎锅、另一只手原料，热源旁按住右键煎好一件（SkilletHold 是客户端右键上报的 RPC 端点）

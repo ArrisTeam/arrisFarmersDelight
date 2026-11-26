@@ -9,6 +9,7 @@ import random
 
 from .EventRegistry import registerHandler
 from .FarmWorld import FarmWorld
+from .Helpers import Deeds
 from .Helpers.Engine import compFactory, levelId, System, GetBlockName, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
 from .Helpers.Player import SetPlayerUsedCD, SetNotCreateItem
@@ -137,6 +138,7 @@ def OnServerItemUse(args):
         ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 0.5, z + 0.5), "dig.grass")
         colony = "arris:brown_mushroom_colony" if itemName == "minecraft:brown_mushroom" else "arris:red_mushroom_colony"
         PlaceColony(FarmWorld(dimensionId), (x, y + 1, z), colony)
+        Deeds.done(playerId, Deeds.PLACED_BLOCK, colony)
 
 
 def _plantRice(playerId, itemDict, blockName, face, pos, dimensionId):
@@ -149,6 +151,7 @@ def _plantRice(playerId, itemDict, blockName, face, pos, dimensionId):
     SetNotCreateItem(playerId, itemDict)
     ToAllPlayerPlaySound(dimensionId, (x + 0.5, y + 1, z + 0.5), "dig.grass")
     _setBlock((x, y + 1, z), "arris:rice_stage0", dimensionId)
+    Deeds.done(playerId, Deeds.PLACED_BLOCK, "arris:rice_stage0")
 
 
 # ---------------- 采摘 ----------------
@@ -172,6 +175,7 @@ def OnTomatoUse(args):
     ToAllPlayerPlaySound(dimensionId, dropPos, "block.sweet_berry_bush.pick")
     nextName = "arris:budding_tomatoes_stage3" if blockName == "arris:budding_tomatoes_stage6" else "arris:tomatoes_vine_stage0"
     _setBlock((x, y, z), nextName, dimensionId)
+    Deeds.done(playerId, Deeds.HARVESTED, blockName)
     # ServerBlockUseEvent 的拦截字段是 cancel（ret 属于 ServerItemUseOnEvent）
     args["cancel"] = True
 

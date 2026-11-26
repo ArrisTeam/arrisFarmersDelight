@@ -16,6 +16,7 @@ import time
 
 from . import BoardGive, BoardTools
 from .BoardEmit import emit
+from ...Server.Helpers import Deeds
 from ...Server.Helpers.Player import IsCreative
 from ...Shared.Rules import CuttingStation as Rules
 from ...Shared.Rules.BoardStation import keyOf
@@ -98,4 +99,5 @@ def _cutTheStack(logic, playerId, item, recipe, where, tool, look):
     emit(logic, "chopped", dict(look, count=batch, done=True))
     if wears:
         BoardGive.settleTool(logic, playerId, where, worn, broke)
+    Deeds.done(playerId, Deeds.CUT_ON_BOARD, item["newItemName"])        # HoD 切的时候走 FD 的 processStoredItemUsingTool，JE 在那里给 use_cutting_board
     return True

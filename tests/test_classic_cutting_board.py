@@ -144,6 +144,27 @@ def testTheRightToolCutsOneAndSaysHowManyAreLeft():
     assert world.spawnedNames() == [("arris:cabbage_leaf", 2)] * 2 and data["cuttingDict"] is None
 
 
+def testEachCutIsReportedAsADeedAndNothingElseIs():
+    # JE 在 processStoredItemUsingTool 切成以后触发 use_cutting_board：Server/Helpers/Deeds 报一声，订阅的人（成就联动）收到
+    Deeds = fdtest.load("Server.Helpers.Deeds")
+    seen = []
+
+    def record(playerId, detail):
+        seen.append((playerId, detail))
+
+    Deeds.subscribe(Deeds.CUT_ON_BOARD, record)
+    try:
+        _setUp(hand=_item("minecraft:iron_axe", 1), board=_item("arris:cabbage", 2))
+        _use()
+        assert seen == [], "工具不对：没切成"
+        _setUp(hand=_item("arris:iron_knife", 1), board=_item("arris:cabbage", 2))
+        _use()
+        _use()
+        assert seen == [("p1", "arris:cabbage")] * 2
+    finally:
+        Deeds.unsubscribe(Deeds.CUT_ON_BOARD, record)
+
+
 # ---------------------------------------------------------------- 空手取回
 
 def testAnEmptyHandTakesTheStackBackAndCreativeDoesNotGetIt():

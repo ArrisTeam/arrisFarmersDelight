@@ -397,6 +397,42 @@ def testTomatoHarvestAddsFivePercentRottenTomato():
     assert level.nameAt((0, 1, 0)) == "arris:tomatoes_vine_stage0"
 
 
+def _deeds():
+    """订阅 Server/Helpers/Deeds 的全部事：返回 (记下的 [(事, 玩家, 细节)], 退订)。"""
+    Deeds = fdtest.load("Server.Helpers.Deeds")
+    seen, funcs = [], []
+    for deed in (Deeds.PLACED_BLOCK, Deeds.HARVESTED):
+        funcs.append((deed, (lambda name: lambda playerId, detail: seen.append((name, playerId, detail)))(deed)))
+        Deeds.subscribe(*funcs[-1])
+    return seen, lambda: [Deeds.unsubscribe(deed, func) for deed, func in funcs]
+
+
+def testPickingTomatoesPlantingRiceAndRichSoilCropsAreReportedAsDeeds():
+    # 成就联动要知道的三件事是脚本做的，引擎不报：摘番茄（JE item_used_on_block）、种稻米、沃土耕地上种原版作物（JE placed_block）
+    seen, done = _deeds()
+    try:
+        _fresh().put((0, 1, 0), "arris:tomatoes_vine_stage3")
+        Crops.probability = lambda percent: False
+        Crops.random = ScriptRng(ints=[1])
+        _use("arris:tomatoes_vine_stage3", (0, 1, 0))
+        assert seen == [("harvested", "p1", "arris:tomatoes_vine_stage3")]
+        del seen[:]
+        level = _fresh().put((0, 0, 0), "minecraft:dirt").put((0, 1, 0), "minecraft:water")
+        _hold(level, "p1", "arris:rice")
+        args = {"itemDict": dict(level.hands["p1"]), "blockName": "minecraft:dirt", "x": 0, "y": 0, "z": 0, "face": 1,
+                "dimensionId": 0, "entityId": "p1", "ret": False}
+        Registry.dispatch("ServerItemUseOnEvent", args, "minecraft:dirt")
+        assert level.nameAt((0, 1, 0)) == "arris:rice_stage0" and seen == [("placed_block", "p1", "arris:rice_stage0")]
+        del seen[:]
+        level = _fresh().put((0, 0, 0), "arris:rich_soil_farmland")
+        _hold(level, "p1", "minecraft:wheat_seeds")
+        args = dict(args, itemDict=dict(level.hands["p1"]), blockName="arris:rich_soil_farmland")
+        Registry.dispatch("ItemUseOnAfterServerEvent", args, "arris:rich_soil_farmland")
+        assert level.nameAt((0, 1, 0)) == "arris:rich_soil_wheat0" and seen == [("placed_block", "p1", "arris:rich_soil_wheat0")]
+    finally:
+        done()
+
+
 def testBoneMealOnARipeTomatoStillPicksIt():
     # JE TomatoBlock.use：熟了右键就是摘，拿着骨粉也一样（方块的 use 先于骨粉）；潜行拿着东西时 JE 不调方块的 use，才轮到骨粉
     ripe = "arris:budding_tomatoes_stage6"
