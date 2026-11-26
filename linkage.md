@@ -168,6 +168,7 @@ def FarmersDelight(self, args):
 
 农夫乐事用网易 3.10 的 `netease_tags` 登记了一套 `common:` 标签词表，见 [docs/TAGS.md](docs/TAGS.md)；
 JE 农夫乐事自己的 `farmersdelight:` 标签（菜、饮料、热源、传热……）见 TAGS.md 的「JE 农夫乐事自己的标签（farmersdelight:）」一节。
+`common:` 物品标签一律单数（团队 2026-11-26 定：模组的 `common:` 物品标签都用单数，如 `common:seed`、`common:crop`；照 JE 原名的 `farmersdelight:` 标签除外）。
 团队的烹饪原料标签以森罗物语厨房定的 18 个平铺、单数的 `common:` 标签为准（`common:beef`、`common:egg`、`common:mushroom`……，生的熟的都算），
 农夫乐事把自己的东西也登记进了这些标签，见 TAGS.md 的「和森罗物语的标签对照」。别的模组在自己行为包的 `netease_tags/` 里
 往同名的标签放自己的东西，农夫乐事就认得。下面三件事原来只能靠追加表，现在也能用标签；**原来的表照旧有效，标签是并上去的**：

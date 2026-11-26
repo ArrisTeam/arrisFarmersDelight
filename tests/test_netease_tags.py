@@ -225,9 +225,9 @@ def testMembersMatchTheJavaTags():
             assert sorted(expanded) == sorted(members), "%s（JE %s）：JE 是 %s，这边是 %s" % (tag, jeName, expanded, members)
     assert checked >= 40, checked
     assert _jeTag("forge:eggs") == ["minecraft:egg"] and set(Tags.VANILLA_TAGS[Tags.EGG]) >= {"minecraft:egg"}
-    # common:flowers 对的是 JE 的 minecraft:flowers（原版定义，.refs 里没有它的文件）：农夫乐事放进去的是它的 small_flowers + tall_flowers
+    # common:flower 对的是 JE 的 minecraft:flowers（原版定义，.refs 里没有它的文件）：农夫乐事放进去的是它的 small_flowers + tall_flowers
     flowers = _jeTag("minecraft:small_flowers") + _jeTag("minecraft:tall_flowers")
-    assert sorted(flowers) == sorted(Tags.ITEM_TAGS[Tags.FLOWERS]), (flowers, Tags.ITEM_TAGS[Tags.FLOWERS])
+    assert sorted(flowers) == sorted(Tags.ITEM_TAGS[Tags.FLOWER]), (flowers, Tags.ITEM_TAGS[Tags.FLOWER])
 
 
 def _alias(kind):
@@ -296,6 +296,32 @@ def testTheVocabulary():
     assert Tags.ITEM_TAGS[Tags.KNIFE] == Tags.ITEM_TAGS[Tags.LEGACY_KNIFE]
 
 
+# 团队的规矩（2026-11-26 定）：模组的 common: 物品标签一律单数。原来的复数名 -> 现在的名字（复数的 common:seeds 并进了规范的 common:seed）；
+# 照 JE 原名的 farmersdelight: 标签（heat_sources、meals……）是 JE 的标识符，不在此列
+RENAMED = {"common:seeds": "common:seed", "common:crops": "common:crop", "common:flowers": "common:flower",
+           "common:cabbage_seeds": "common:cabbage_seed", "common:tomato_seeds": "common:tomato_seed",
+           "common:mutton_chops": "common:mutton_chop", "common:cooked_mutton_chops": "common:cooked_mutton_chop"}
+SINGULAR_ENDING_IN_S = ()     # 以 s 结尾、却是单数的词（现在没有；真有了写在这里）
+
+
+def testCommonItemTagsAreSingular():
+    """词表里的 common: 名（登记的、没有成员只在文档里的、团队规范的 18 个）最后一个词都不是复数；改过名的旧名字不留（常量也不留），
+    JE 的名字（forge:seeds、c:crops、minecraft:flowers……）照旧对到新名字。"""
+    names = set(Tags.ITEM_TAGS) | set(Tags.WITHOUT_MEMBERS) | set(Tags.COOKING_STANDARD)
+    common = sorted(name for name in names if name.startswith("common:"))
+    plural = [name for name in common if name.endswith("s") and name.split(":")[1].split("_")[-1] not in SINGULAR_ENDING_IN_S]
+    assert len(common) > 50 and not plural, "common: 物品标签一律单数：%s" % plural
+    constants = dict((key, value) for key, value in vars(Tags).items() if key.isupper() and isinstance(value, str))
+    assert not [key for key, value in constants.items() if value.startswith("common:") and key.endswith("S")], "常量名跟着标签名，也是单数"
+    alias = dict((jeName, tag) for tag, jeNames in Tags.JE_NAMES.items() for jeName in jeNames)
+    for old, new in RENAMED.items():
+        assert old not in names and new in Tags.ITEM_TAGS, (old, new)
+        assert old.split(":")[1].upper() not in constants and constants[new.split(":")[1].upper()] == new, "不留旧名：%s" % old
+    assert alias["forge:seeds"] == alias["c:seeds"] == Tags.SEED and alias["forge:crops"] == alias["c:crops"] == Tags.CROP
+    assert alias["minecraft:flowers"] == Tags.FLOWER and alias["forge:seeds/cabbage"] == Tags.CABBAGE_SEED
+    assert alias["forge:seeds/tomato"] == Tags.TOMATO_SEED
+
+
 def _serverHeat():
     """Server/Helpers/Heat（托盘的名单 ShelfBlockSet 在它里面）：换上假引擎再导入。"""
     import fakeengine
@@ -360,7 +386,7 @@ def testFarmersDelightsCategoryItemTagsAreJavasFiles():
     assert own == sorted("farmersdelight:" + name for name in CATEGORIES), own
     for tag in own:
         assert Tags.JE_NAMES[tag] == (tag,), tag
-    assert Tags.ITEM_TAGS[Tags.WILD_CROPS] == Tags.ITEM_TAGS[Tags.FLOWERS], "野生作物也是花（JE 放在 minecraft:small_flowers / tall_flowers）"
+    assert Tags.ITEM_TAGS[Tags.WILD_CROPS] == Tags.ITEM_TAGS[Tags.FLOWER], "野生作物也是花（JE 放在 minecraft:small_flowers / tall_flowers）"
     if not os.path.isdir(JE_DATA):
         print("跳过：没有 JE 源码（.refs/FarmersDelight）")
         return
@@ -401,20 +427,21 @@ def testTheBriefsMembers():
 
 
 # 团队烹饪原料标签的规范（Tags.COOKING_STANDARD，森罗物语厨房网易版的 18 个）：农夫乐事登记进去的粗标签 -> 用 # 嵌进去的细标签
-# （每一条的 JE 依据写在 docs/TAGS.md「和森罗物语的标签对照」）；本来就同名的；农夫乐事不登记的（面条：用户 2026-11-26 定，意面和面条不是一种）
+# （每一条的 JE 依据写在 docs/TAGS.md「和森罗物语的标签对照」）；本来就同名的（种子 common:seed 就是 JE 的 forge:seeds）；
+# 农夫乐事不登记的（面条：用户 2026-11-26 定，意面和面条不是一种）
 COARSE = {
     Tags.BEEF: (Tags.RAW_BEEF, Tags.COOKED_BEEF), Tags.CHICKEN: (Tags.RAW_CHICKEN, Tags.COOKED_CHICKEN),
     Tags.LAMB: (Tags.RAW_MUTTON, Tags.COOKED_MUTTON), Tags.PORK: (Tags.RAW_PORK, Tags.COOKED_PORK),
     Tags.FISH: (Tags.RAW_FISH, Tags.COOKED_FISH), Tags.ANY_EGG: (Tags.COOKED_EGG,),
-    Tags.SEED: (Tags.CABBAGE_SEEDS, Tags.RICE, Tags.TOMATO_SEEDS),
 }
-SAME_NAME = (Tags.DOUGH, Tags.MUSHROOM, Tags.RICE, Tags.TOMATO, Tags.VEGETABLE)
+SAME_NAME = (Tags.DOUGH, Tags.MUSHROOM, Tags.RICE, Tags.SEED, Tags.TOMATO, Tags.VEGETABLE)
 NOT_OURS = ("common:chili", "common:flour", "common:lettuce", "common:meat", "common:meatball", "common:noodle")
 
 
 def testTheTeamStandard():
     """团队烹饪原料标签的规范：18 个平铺、单数的 common: 名（照森罗的文件名排）。农夫乐事登记了 12 个：粗标签只用 # 嵌自己的细标签
-    （别的模组登记进细标签的也跟着算，展开就是细标签的并集，没有 JE 名——JE 里没有对应的单个标签），同名的本来就有；不登记的 6 个
+    （别的模组登记进细标签的也跟着算，展开就是细标签的并集，没有 JE 名——JE 里没有对应的单个标签），同名的本来就有（种子 common:seed
+    就是 JE 的 forge:seeds：嵌农夫乐事的三个细标签，原版的四种也写上，农夫乐事单独在场时这个标签照样是全的）；不登记的 6 个
     不进词表、没有名字常量（五个没有依据，面条是用户 2026-11-26 定的：意面和面条不是一种，生意面不进 common:noodle）。
     农夫乐事自己的配方（厨锅的格子、砧板、工作台）不读粗标签：生 / 熟分开是 JE 配方的原意，蛋读原版的 minecraft:egg。"""
     standard = Tags.COOKING_STANDARD
@@ -435,7 +462,10 @@ def testTheTeamStandard():
     assert {"arris:cod_slice", "arris:cooked_salmon_slice", "minecraft:tropical_fish"} <= set(Tags.ITEM_TAGS[Tags.FISH])
     assert "minecraft:pufferfish" not in Tags.ITEM_TAGS[Tags.FISH]
     assert Tags.ITEM_TAGS[Tags.ANY_EGG] == ("arris:fried_egg",) and Tags.ANY_EGG != Tags.EGG
-    assert Tags.ITEM_TAGS[Tags.SEED] == ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds")
+    assert Tags.ITEM_TAG_FILES[Tags.SEED][:3] == ("#" + Tags.CABBAGE_SEED, "#" + Tags.RICE, "#" + Tags.TOMATO_SEED)
+    assert Tags.ITEM_TAGS[Tags.SEED] == ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds", "minecraft:beetroot_seeds",
+                                         "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds")
+    assert Tags.JE_NAMES[Tags.SEED] == ("forge:seeds", "c:seeds")
     assert not hasattr(Tags, "NOODLE"), "没登记的不给常量"
     assert [tag for tag, members in Tags.ITEM_TAGS.items() if "arris:raw_pasta" in members] == [Tags.PASTA], "生意面只在 common:pasta 里"
     reads = _docReads()

@@ -6,20 +6,22 @@
 按展开后的 ITEM_TAGS / BLOCK_TAGS 作答，docs/TAGS.md 写的也是这里。
 
 团队的烹饪原料标签以森罗物语厨房网易版的 18 个为准（它 2026-11-26 的提交 2df8e1c，COOKING_STANDARD）：平铺、单数的 common: 名，
-是"粗"的类（生的熟的都算，蛋里有煎蛋）。同一个概念用规范的名字；农夫乐事的东西照 JE 登记进对应的粗标签（BEEF……SEED，用 # 嵌自己的细标签，
+是"粗"的类（生的熟的都算，蛋里有煎蛋）。同一个概念用规范的名字；农夫乐事的东西照 JE 登记进对应的粗标签（BEEF……ANY_EGG，用 # 嵌自己的细标签，
 依据见 docs/TAGS.md「和森罗物语的标签对照」），农夫乐事自己的配方不读粗标签：厨锅、工作台、砧板照旧读下面的细标签（生 / 熟分开是 JE 配方的原意），
 蛋照旧读原版的 minecraft:egg。
 
+团队的规矩（2026-11-26 定）：模组的 common: 物品标签一律单数，常量名跟着标签名。例外只有照 JE 原名的 farmersdelight: 标签
+（heat_sources、meals……是 JE 的标识符，照抄才对得上 JE 的数据）；物品名、方块名本身不改（arris:cabbage_seeds 还是这个名字）。
+
 细标签的命名（主会话 2026-11-26 定的，docs/TAGS.md 开头）：名字照 JE 1.21、成员照 JE 1.20.1（移植的基线 FD 1.3.4）。
 - common: + JE 1.21 的 c: 名的最后一段（c:crops/tomato -> tomato、c:foods/raw_beef -> raw_beef、c:tools/knife -> knife），一律单数：
-  只有一层的类目名 JE 写复数，这边照团队烹饪原料标签的规范（森罗物语厨房定的，平铺、单数）写单数：c:bones -> bone、c:mushrooms -> mushroom；
-  团队里已经在用的复数名照旧（下面的 crops、seeds、flowers）；
+  JE 写复数的（只有一层的类目名）这边写单数：c:bones -> bone、c:mushrooms -> mushroom、c:crops -> crop、c:seeds -> seed；
 - 最后一段只是材料名的，照机械动力把类目的单数接在后面（c:buckets/water -> water_bucket；机械动力的 c:plates/iron -> iron_plate、
-  c:flours/wheat -> wheat_flour）；JE 没有对应 c: 名的照物品名（rice_panicle、mutton_chops、tomato_seeds）；
+  c:flours/wheat -> wheat_flour）；JE 没有对应 c: 名的照物品名，也写单数（rice_panicle、mutton_chop、tomato_seed）；
 - JE 农夫乐事自己的标签照 JE 原名 farmersdelight:<路径>；不用 / 分层。
-团队里已经在用的名字照用（都和上面对得上）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags 登记了原版的作物、
-种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；规范里的面粉是 common:flour，
-农夫乐事没有面粉，两个都不登记）。
+团队里别的模组在用的名字照用（都和上面对得上）：common:crop、common:seed、common:flower（arrisCreateAdditions 用 netease_tags 登记了原版的作物、
+种子、花，它的生物质、种子油配方吃这几个标签；它 2026-11-26 的提交 aa8fc45 和这边一起从复数名改成了单数）、common:dough、common:wheat_flour
+（机械动力的面团、小麦粉；规范里的面粉是 common:flour，农夫乐事没有面粉，两个都不登记）。
 
 成员的规矩（网易 3.10 实机量过的，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：
 - 只写农夫乐事自己的和原版的物品 / 方块：写别的模组的名字，对方没装时引擎一直刷 ERROR 日志；
@@ -36,14 +38,14 @@
 # ---- 物品标签（common:，生成 netease_tags 文件）----
 # 同一种东西（REPORT §6.2，用户 2026-11-25 认可）
 TOMATO = "common:tomato"
-TOMATO_SEEDS = "common:tomato_seeds"
+TOMATO_SEED = "common:tomato_seed"
 RICE = "common:rice"
 RICE_PANICLE = "common:rice_panicle"
 COOKED_RICE = "common:cooked_rice"
 DOUGH = "common:dough"
 COOKED_EGG = "common:cooked_egg"
-MUTTON_CHOPS = "common:mutton_chops"
-COOKED_MUTTON_CHOPS = "common:cooked_mutton_chops"
+MUTTON_CHOP = "common:mutton_chop"
+COOKED_MUTTON_CHOP = "common:cooked_mutton_chop"
 KNIFE = "common:knife"
 # 一类东西（同上）
 RAW_BEEF = "common:raw_beef"
@@ -81,15 +83,16 @@ COOKED_COD = "common:cooked_cod"
 COOKED_SALMON = "common:cooked_salmon"
 RAW_BACON = "common:raw_bacon"
 COOKED_BACON = "common:cooked_bacon"
-CABBAGE_SEEDS = "common:cabbage_seeds"
+CABBAGE_SEED = "common:cabbage_seed"
 WATER_BUCKET = "common:water_bucket"
-# 团队里已有的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去，
+# 团队里别的模组也在用的名字（arrisCreateAdditions，它的生物质、种子油配方吃这三个）：农夫乐事的作物、种子照 JE 的 forge:crops / forge:seeds 登记进去，
 # 原版的那部分（JE 里是 Forge 自己给的：甜菜根、胡萝卜、地狱疣、土豆、小麦；四种原版种子）也登记，农夫乐事单独在场时这两个标签也是全的；
-# common:flowers 在它那里是"所有的花"（照 JE 的 minecraft:flowers：小花、高花、开花的杜鹃……），JE 把七种野生作物放在
-# minecraft:small_flowers / tall_flowers 里，所以野生作物登记进 common:flowers
-CROPS = "common:crops"
-SEEDS = "common:seeds"
-FLOWERS = "common:flowers"
+# 种子就是团队烹饪原料规范里的 common:seed（森罗物语厨房登记了原版的种子和它的稻米；机械动力附属 2026-11-26 起也读这一个）。
+# common:flower 在它那里是"所有的花"（照 JE 的 minecraft:flowers：小花、高花、开花的杜鹃……），JE 把七种野生作物放在
+# minecraft:small_flowers / tall_flowers 里，所以野生作物登记进 common:flower
+CROP = "common:crop"
+SEED = "common:seed"
+FLOWER = "common:flower"
 # 团队烹饪原料标签的规范（森罗物语厨房网易版的 18 个，COOKING_STANDARD）里的粗标签：生的熟的都算。农夫乐事的东西照 JE 登记进去（依据：
 # docs/TAGS.md「和森罗物语的标签对照」），用 # 嵌自己的细标签：别的模组登记进细标签的东西也跟着算。农夫乐事自己的配方不读这几个
 BEEF = "common:beef"
@@ -98,7 +101,6 @@ LAMB = "common:lamb"
 PORK = "common:pork"
 FISH = "common:fish"
 ANY_EGG = "common:egg"          # 规范的"蛋"（森罗登记了三种鸡蛋、海龟蛋、嗅探兽蛋、煎蛋）；原版的 minecraft:egg 是 EGG，农夫乐事的配方读那个
-SEED = "common:seed"            # 规范的"种子"；机械动力附属在用的复数名 common:seeds 照旧另外登记
 # 农夫乐事自己的老标签：linkage.md 让下游给自己的刀挂它（Server/Helpers/Items.IsKnife 认），农夫乐事的五把刀以前没挂
 LEGACY_KNIFE = "arris:knife"
 # JE 农夫乐事自己的分类物品标签，名字照 JE 的 farmersdelight:<路径>：给别的模组认"哪些是饭菜、小吃、甜食……"，农夫乐事自己不读。
@@ -157,14 +159,14 @@ _WILD_CROPS = ("arris:wild_carrots", "arris:wild_potatoes", "arris:wild_beetroot
 # 物品标签 → netease_tags 文件里写的成员（照 JE 1.3.4 的 forge / farmersdelight 标签文件，换成这边的物品名；"#标签" 引这张表里的别的标签）
 ITEM_TAG_FILES = {
     TOMATO: ("arris:tomato",),
-    TOMATO_SEEDS: ("arris:tomato_seeds",),
+    TOMATO_SEED: ("arris:tomato_seeds",),
     RICE: ("arris:rice",),
     RICE_PANICLE: ("arris:rice_panicle",),
     COOKED_RICE: ("arris:cooked_rice",),
     DOUGH: ("arris:wheat_dough",),
     COOKED_EGG: ("arris:fried_egg",),
-    MUTTON_CHOPS: ("arris:mutton_chops",),
-    COOKED_MUTTON_CHOPS: ("arris:cooked_mutton_chops",),
+    MUTTON_CHOP: ("arris:mutton_chops",),
+    COOKED_MUTTON_CHOP: ("arris:cooked_mutton_chops",),
     KNIFE: _KNIVES,
     LEGACY_KNIFE: _KNIVES,
     RAW_BEEF: _RAW_BEEF,
@@ -199,13 +201,14 @@ ITEM_TAG_FILES = {
     COOKED_SALMON: _COOKED_SALMON,
     RAW_BACON: ("arris:bacon",),
     COOKED_BACON: ("arris:cooked_bacon",),
-    CABBAGE_SEEDS: ("arris:cabbage_seeds",),
+    CABBAGE_SEED: ("arris:cabbage_seeds",),
     WATER_BUCKET: ("minecraft:water_bucket",),
-    CROPS: ("#" + CABBAGE, "#" + ONION, "#" + RICE, "#" + TOMATO,
-            "#" + BEETROOT, "#" + CARROT, "minecraft:nether_wart", "#" + POTATO, "#" + WHEAT),
-    SEEDS: ("#" + CABBAGE_SEEDS, "#" + RICE, "#" + TOMATO_SEEDS,          # JE 的 forge:seeds/rice 就是米
-            "minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
-    FLOWERS: _WILD_CROPS,                       # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
+    CROP: ("#" + CABBAGE, "#" + ONION, "#" + RICE, "#" + TOMATO,
+           "#" + BEETROOT, "#" + CARROT, "minecraft:nether_wart", "#" + POTATO, "#" + WHEAT),
+    # JE 的 forge:seeds：农夫乐事的三样（forge:seeds/rice 就是米）和 Forge 给的四种原版种子；也是团队规范的种子（森罗登记的原版种子和这里重复的引擎去重）
+    SEED: ("#" + CABBAGE_SEED, "#" + RICE, "#" + TOMATO_SEED,
+           "minecraft:beetroot_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:wheat_seeds"),
+    FLOWER: _WILD_CROPS,                        # JE：前六种野生作物在 minecraft:small_flowers，野生稻在 tall_flowers
     # 团队规范的粗标签：嵌 JE 的生、熟两个细标签（JE 的 forge:raw_* / forge:cooked_*：JE 森罗把自己的生 / 熟牛杂、五花肉、羊排也登记在这两个里，
     # 网易版森罗的粗标签就是两个的合并）。培根算猪肉（JE 的 forge:raw_pork / cooked_pork 有培根），火腿不算（JE 没把火腿放进任何肉的标签）
     BEEF: ("#" + RAW_BEEF, "#" + COOKED_BEEF),
@@ -214,7 +217,6 @@ ITEM_TAG_FILES = {
     PORK: ("#" + RAW_PORK, "#" + COOKED_PORK),
     FISH: ("#" + RAW_FISH, "#" + COOKED_FISH),              # 含鱼片（JE 的 forge:raw_fishes/cod 等有鱼片）、热带鱼，不含河豚
     ANY_EGG: ("#" + COOKED_EGG,),                           # 煎蛋：规范把森罗的煎蛋算进蛋里，JE 的合并表把两边的煎蛋当成一种东西
-    SEED: ("#" + CABBAGE_SEEDS, "#" + RICE, "#" + TOMATO_SEEDS),     # JE 的 forge:seeds 里农夫乐事的三样；原版的种子森罗登记了
     # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
     # 大餐的物品是第 0 阶段的方块（*_block_stage0）
     MEALS: ("minecraft:mushroom_stew", "minecraft:beetroot_soup", "minecraft:rabbit_stew", "arris:mixed_salad", "arris:cooked_rice",
@@ -303,7 +305,7 @@ VANILLA_TAGS = {
 # 照 JE 写的配方里写 raw_fish 的也换成它；cooked_meat、leafy_green 照 1.21 的名字补的（1.20.1 的烤串那一格、forge:salad_ingredients）
 JE_NAMES = {
     TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato", "c:crops/tomato", "c:foods/tomato"),
-    TOMATO_SEEDS: ("forge:seeds/tomato",),
+    TOMATO_SEED: ("forge:seeds/tomato",),
     RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice", "c:crops/rice"),
     COOKED_RICE: ("forge:cooked_rice", "c:foods/cooked_rice"),
     DOUGH: ("forge:dough", "forge:dough/wheat", "c:foods/dough", "c:foods/dough/wheat"),
@@ -341,11 +343,11 @@ JE_NAMES = {
     COOKED_SALMON: ("forge:cooked_fishes/salmon", "c:foods/cooked_salmon"),
     RAW_BACON: ("forge:raw_bacon", "c:foods/raw_bacon"),
     COOKED_BACON: ("forge:cooked_bacon", "c:foods/cooked_bacon"),
-    CABBAGE_SEEDS: ("forge:seeds/cabbage",),
+    CABBAGE_SEED: ("forge:seeds/cabbage",),
     WATER_BUCKET: ("forge:buckets/water", "c:buckets/water"),
-    CROPS: ("forge:crops", "c:crops"),
-    SEEDS: ("forge:seeds", "c:seeds"),
-    FLOWERS: ("minecraft:flowers",),
+    CROP: ("forge:crops", "c:crops"),
+    SEED: ("forge:seeds", "c:seeds"),
+    FLOWER: ("minecraft:flowers",),
     MEALS: (MEALS,),
     SNACKS: (SNACKS,),
     SWEETS: (SWEETS,),

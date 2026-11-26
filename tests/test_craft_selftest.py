@@ -55,7 +55,7 @@ def _ports(port=None):
 def _probePort():
     """第十一轮的探针包：番茄登记进 common:tomato（经 # 嵌套也就在蔬菜、作物里），又往原版的 minecraft:egg 里并了它。"""
     members = dict((tag, list(names)) for tag, names in Tags.ITEM_TAGS.items())
-    for tag in (Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS):
+    for tag in (Tags.TOMATO, Tags.VEGETABLE, Tags.CROP):
         members[tag].append(PROBE)
     members[Tags.EGG] = list(Tags.VANILLA_TAGS[Tags.EGG]) + [PROBE]
     return TagPort(members)

@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "identifier": "common:flowers",
+  "identifier": "common:flower",
   "items": [
     "arris:wild_carrots",
     "arris:wild_potatoes",

@@ -278,10 +278,14 @@ def OnServerSkilletBlockUse(args):
 
 - **团队的规范**（2026-11-26 起）：烹饪原料的标签以森罗物语厨房网易版定的 18 个平铺、单数的 `common:` 标签为准（`Tags.COOKING_STANDARD`；
   TAGS.md「和森罗物语的标签对照」）。它们是"粗"的类，生的熟的都算。农夫乐事登记了其中 12 个：牛、鸡、羊、猪、鱼用 `#` 嵌自己的生、熟两个细标签，
-  蛋嵌做熟的蛋，`common:seed` 嵌卷心菜种子、米、番茄种子，番茄、米、面团、蔬菜、蘑菇本来就同名；辣椒、面粉、生菜、肉丸、肉不登记，
-  面条也不登记（用户 2026-11-26 定：意面和面条不是一种，生意面只在 `common:pasta` 里）。
+  蛋嵌做熟的蛋，番茄、米、面团、蔬菜、蘑菇本来就同名，种子 `common:seed` 就是 JE 的 `forge:seeds`（嵌卷心菜种子、米、番茄种子，原版的四种种子也写上）；
+  辣椒、面粉、生菜、肉丸、肉不登记，面条也不登记（用户 2026-11-26 定：意面和面条不是一种，生意面只在 `common:pasta` 里）。
   农夫乐事自己的配方只读细标签（生 / 熟分开是 JE 配方的原意）和原版的 `minecraft:egg`，不读粗标签（`tests/test_netease_tags.py` 的 `testTheTeamStandard` 守着）。
-  细标签的名字照 JE 1.21 的 `c:` 名，一律单数（`common:bone`、`common:mushroom`），只有机械动力附属在用的 `common:crops` / `common:seeds` / `common:flowers` 照旧复数。
+- **名字一律单数**（团队 2026-11-26 定：模组的 `common:` 物品标签都用单数）：细标签的名字照 JE 1.21 的 `c:` 名取最后一段，JE 写复数的这边写单数
+  （`common:bone`、`common:mushroom`、`common:crop`、`common:seed`、`common:flower`），照物品名起的也是（`common:tomato_seed`、`common:mutton_chop`）；
+  常量名跟着标签名（`Tags.SEED`、`Tags.CROP`……），改了名的不留旧名。例外只有照 JE 原名的 `farmersdelight:` 标签（`heat_sources`、`meals`……）。
+  作物、种子、花这三个标签机械动力附属也读，它同一天改读单数名（它的提交 `aa8fc45`）；原来另有的复数种子标签并进了规范的 `common:seed`
+  （`tests/test_netease_tags.py` 的 `testCommonItemTagsAreSingular` 守着，改名的对照在 docs/API-CHANGELOG.md）。
 - **词表**：`Shared/Data/Tags.py` 一张表说了算（标签名常量、`ITEM_TAGS` / `BLOCK_TAGS` 的成员、原版自带的 `VANILLA_TAGS`、JE 标签名的对照 `JE_NAMES`）；
   `py -3 tools/gen_tags.py` 从它生成 `bp/netease_tags/`（一个标签一个文件）和 docs/TAGS.md 里的词表，`tests/test_netease_tags.py` 核对是不是最新。
 - **查询**一律经 `Shared/Rules/ItemTags`（`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `refresh`），不直接调引擎。
@@ -1153,6 +1157,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 团队的烹饪原料标签以森罗物语厨房网易版的 18 个为准（2026-11-26，用户："森罗物语提交了 tag 相关的规范……可以开始做农夫乐事相关的 tag 联动适配了"；
   见「标签（netease_tags）」、TAGS.md「和森罗物语的标签对照」）。和 JE 不一样的几处：规范的粗标签生的熟的都算，JE 森罗的配方只收生的
   （`#forge:raw_beef` 这些），所以网易版森罗的牛肉菜也收农夫乐事的牛肉饼、熟鸡块这些熟的（网易版森罗自己定的口径，农夫乐事照它登记）。
+- `common:` 物品标签一律单数（2026-11-26，用户："我们规定以后的模组物品tag都按单数设置"）：JE 写复数的标签（`forge:seeds` / `c:seeds`、`c:crops`、
+  `minecraft:flowers`……）这边叫 `common:seed`、`common:crop`、`common:flower`，照 JE 写的配方 JSON 里的复数名照旧认（别名表 `Tags.JE_NAMES`）；
+  照 JE 原名的 `farmersdelight:` 标签不改（见「标签（netease_tags）」）。
 - 意面和面条不是一种（2026-11-26，用户："意面和面条不属于同一种"）：农夫乐事的生意面不进森罗的 `common:noodle`，森罗的生面条也不进 `common:pasta`，
   两边互不认，和 JE 一样（JE 里森罗的面条菜写死自己的生面条，两个兼容模组也没把两样当成一种）。原来主会话定过"生意面算面条"，这一条取代它。
 - 工作台配方按标签（2026-11-26，见「合成与合成剩余物」）。和 JE 不一样的几处：有序配方里会剩容器的格子写具体物品（蛋糕、巧克力派、芝士蛋糕、

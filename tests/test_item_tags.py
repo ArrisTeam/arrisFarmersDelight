@@ -73,7 +73,8 @@ def testWithoutAPortItAnswersFromTheStaticTable():
     assert ItemTags.has("arris:minced_beef", Tags.RAW_BEEF) and ItemTags.has("minecraft:brown_egg", Tags.EGG)
     assert ItemTags.has("arris:iron_knife", Tags.KNIFE) and ItemTags.has("arris:iron_knife", Tags.LEGACY_KNIFE)
     assert not ItemTags.has("minecraft:pufferfish", Tags.RAW_FISH) and not ItemTags.has(None, Tags.RAW_FISH)
-    assert ItemTags.tagsOf("arris:rice") == frozenset((Tags.RICE, Tags.CROPS, Tags.SEEDS, Tags.SEED)), "团队规范的 common:seed 也有米"
+    assert ItemTags.tagsOf("arris:rice") == frozenset((Tags.RICE, Tags.CROP, Tags.SEED)), "米是作物、种子（单数的 common:seed，团队规范的名字）"
+    assert ItemTags.has("minecraft:wheat_seeds", Tags.SEED) and ItemTags.has("minecraft:nether_wart", Tags.CROP), "原版的种子、作物也登记了"
     assert ItemTags.tagsOf("arris:bacon") == frozenset((Tags.RAW_BACON, Tags.RAW_PORK, Tags.RAW_MEAT, Tags.PORK)), "粗标签经两层 # 展开"
     assert ItemTags.has("arris:cooked_salmon_slice", Tags.FISH) and not ItemTags.has("minecraft:pufferfish", Tags.FISH)
     assert ItemTags.tagsOf("minecraft:apple") == frozenset()
@@ -100,7 +101,7 @@ def testANotReadyPortAnswersSingleItemsUncachedButNoEnumerationsThenTakesOver():
     assert "items" not in port.calls and "blocks" not in port.calls, "没准备好时不问枚举"
     assert ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO), "按单件问的照样问引擎"
     assert ItemTags.blockHas("mymod:oven", Tags.HEAT_SOURCES) and Tags.HEAT_SOURCES in ItemTags.blockTagsOf("mymod:oven")
-    assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS)), "引擎没答（None）：静态表的"
+    assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROP)), "引擎没答（None）：静态表的"
     asked = port.calls["tags"]
     ItemTags.tagsOf("kaleidoscope_cookery:tomato")
     ItemTags.has("kaleidoscope_cookery:tomato", Tags.TOMATO)
@@ -179,7 +180,7 @@ def testABrokenPortFallsBackToTheStaticTable():
         ItemTags.setPort("server", port)
         ItemTags.itemsOf(Tags.TOMATO)
         assert ItemTags.itemsOf(Tags.TOMATO) == ("arris:tomato",)
-        assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROPS))
+        assert ItemTags.tagsOf("arris:tomato") == frozenset((Tags.TOMATO, Tags.VEGETABLE, Tags.CROP))
         assert ItemTags.blocksOf(Tags.HEAT_SOURCES) == frozenset(Tags.BLOCK_TAGS[Tags.HEAT_SOURCES])
         assert ItemTags.itemsOf(Tags.MILK) == ("minecraft:milk_bucket", "arris:milk_bottle"), "读不懂的成员丢掉，不重复"
         assert ItemTags.has("arris:onion", Tags.VEGETABLE) and ItemTags.blockHas("minecraft:lava", Tags.HEAT_SOURCES)

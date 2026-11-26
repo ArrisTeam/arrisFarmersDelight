@@ -2,8 +2,12 @@
   "type": "item",
   "identifier": "common:seed",
   "items": [
-    "#common:cabbage_seeds",
+    "#common:cabbage_seed",
     "#common:rice",
-    "#common:tomato_seeds"
+    "#common:tomato_seed",
+    "minecraft:beetroot_seeds",
+    "minecraft:melon_seeds",
+    "minecraft:pumpkin_seeds",
+    "minecraft:wheat_seeds"
   ]
 }

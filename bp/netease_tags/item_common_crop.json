@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "identifier": "common:crops",
+  "identifier": "common:crop",
   "items": [
     "#common:cabbage",
     "#common:onion",

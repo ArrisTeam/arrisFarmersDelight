@@ -476,6 +476,8 @@ tags.names()                                   # 词表里的物品标签名，�
 
 名字常量是标签名冒号后那段的大写（`common:raw_beef` → `RAW_BEEF`、`farmersdelight:heat_sources` → `HEAT_SOURCES`）。例外两个：
 团队规范的 `"common:egg"` 叫 `ANY_EGG`（`EGG` 是原版的 `"minecraft:egg"`，农夫乐事的鸡蛋格子读它），农夫乐事的老标签 `"arris:knife"` 叫 `LEGACY_KNIFE`。
+`common:` 物品标签一律单数（团队 2026-11-26 定：模组的 `common:` 物品标签都用单数），常量也就是单数：`SEED`（`"common:seed"`）、`CROP`、`FLOWER`、
+`CABBAGE_SEED`、`TOMATO_SEED`、`MUTTON_CHOP`……；照 JE 原名的 `farmersdelight:` 标签不在此列（`HEAT_SOURCES`、`MEALS`）。
 
 ---
 

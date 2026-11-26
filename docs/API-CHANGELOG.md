@@ -41,7 +41,8 @@
   能力 `item_tags`（两端）。见 EXTENSION-API.md §7、[TAGS.md](TAGS.md)。
 - **团队烹饪原料标签的规范**（森罗物语厨房网易版定的 18 个平铺、单数的 `common:` 标签，生的熟的都算）：农夫乐事把自己的东西登记进其中的
   `common:beef`、`common:chicken`、`common:lamb`、`common:pork`、`common:fish`（都是 `#` 嵌生、熟两个细标签）、
-  `common:egg`（煎蛋）、`common:seed`（卷心菜种子、米、番茄种子），森罗物语的模糊配方就认农夫乐事的这些原料；农夫乐事自己的配方照旧读细标签。
+  `common:egg`（煎蛋）、`common:seed`（卷心菜种子、米、番茄种子，还有四种原版种子：它也是 JE 的 `forge:seeds`），森罗物语的模糊配方就认农夫乐事的这些原料；
+  农夫乐事自己的配方照旧读细标签。
   `ext.tags` 新增常量 `BEEF`、`CHICKEN`、`LAMB`、`PORK`、`FISH`、`SEED`、`ANY_EGG`（`"common:egg"`；`EGG` 照旧是原版的 `"minecraft:egg"`）。
   见 TAGS.md「和森罗物语的标签对照」。
 - **行为包里的配方 JSON**：任何行为包根下的 `farmersdelight_recipes/**.json`，开服时在 ready 广播之后读，写法同 `registerFromJson`。
@@ -54,13 +55,20 @@
 - 标签词表照 JE 的约定定名（名字照 JE 1.21 的 `c:` 名、成员照 1.20.1，见 [TAGS.md](TAGS.md)「名字和成员照什么定」）：`common:fried_egg` → `common:cooked_egg`；
   两个热源标签 `common:heat_source`、`common:heat_source_lit` 合成 JE 的方块标签
   `farmersdelight:heat_sources`（方块有点燃状态的要点着才算）；去掉没有成员的 `common:chili`；新增 `common:cooked_meat`、`common:leafy_green`；
-  `common:crops`、`common:seeds` 加上原版的作物、种子；几个标签照 JE 用 `#` 引别的标签（登记进 `common:tomato` 的番茄也就算蔬菜、作物）。
+  作物、种子的标签加上原版的作物、种子（名字后来改成了单数，见下面"一律单数"那一条）；几个标签照 JE 用 `#` 引别的标签（登记进 `common:tomato` 的番茄也就算蔬菜、作物）。
   `ext.tags` 的名字常量跟着改，不留旧名：`HEAT_SOURCE`、`HEAT_SOURCE_LIT` → `HEAT_SOURCES`，
   `FRIED_EGG` → `COOKED_EGG`，去掉 `CHILI`；新增 `COOKED_MEAT`、`LEAFY_GREEN`。配方 JSON 里 JE 1.21 的 `c:` 标签名（`c:foods/raw_beef`、
   `c:tools/knife`、`c:eggs`……）也认（RECIPE-JSON.md §3、§4）。
 - 蘑菇、骨头的标签名对上团队的烹饪原料标签规范（森罗物语厨房定的，平铺、单数）：`common:mushrooms` → `common:mushroom`、`common:bones` → `common:bone`
   （这两个复数名只在这一版的开发中用过，没有发过版）；`ext.tags` 的名字常量跟着改，不留旧名：`MUSHROOMS` → `MUSHROOM`，`BONES` → `BONE`。
   配方 JSON 里 JE 的 `forge:mushrooms` / `c:mushrooms`、`forge:bones` / `c:bones` 换成新名字。
+- `common:` 物品标签一律单数（团队 2026-11-26 定：模组的 `common:` 物品标签都用单数）：`common:crops` → `common:crop`、`common:flowers` → `common:flower`、
+  `common:cabbage_seeds` → `common:cabbage_seed`、`common:tomato_seeds` → `common:tomato_seed`、`common:mutton_chops` → `common:mutton_chop`、
+  `common:cooked_mutton_chops` → `common:cooked_mutton_chop`；复数的 `common:seeds` 并进规范的 `common:seed`，`common:seed` 的成员是原来 `common:seeds` 的
+  （农夫乐事的三样加四种原版种子）。这些复数名只在这一版的开发中用过，没有发过版。`ext.tags` 的名字常量跟着改，不留旧名：`CROPS` → `CROP`、
+  `FLOWERS` → `FLOWER`、`CABBAGE_SEEDS` → `CABBAGE_SEED`、`TOMATO_SEEDS` → `TOMATO_SEED`、`MUTTON_CHOPS` → `MUTTON_CHOP`、
+  `COOKED_MUTTON_CHOPS` → `COOKED_MUTTON_CHOP`，`SEEDS` 去掉（用 `SEED`）。配方 JSON 里 JE 的 `forge:seeds` / `c:seeds`、`forge:crops` / `c:crops`、
+  `forge:seeds/cabbage`、`forge:seeds/tomato` 换成新名字。照 JE 原名的 `farmersdelight:` 标签（`heat_sources`、`meals`……）不改。见 TAGS.md「名字和成员照什么定」。
 - 生意面不再登记进团队规范的 `common:noodle`（用户 2026-11-26 定：意面和面条不是一种；生意面只在 `common:pasta` 里，和 JE 一样），
   农夫乐事不再生成 `common:noodle` 的标签文件；`ext.tags` 去掉常量 `NOODLE`（只在这一版的开发中有过，没有发过版）。见 TAGS.md「和森罗物语的标签对照」。
 - 方块标签 `farmersdelight:heat_sources` 多了成员 `minecraft:cauldron`（JE 标签里的熔岩炼药锅：基岩版没有这个方块，是炼药锅盛着熔岩的状态）。

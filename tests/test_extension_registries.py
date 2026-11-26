@@ -125,6 +125,12 @@ def testTagsAreItemTagsWithTheVocabularyNames():
     # 面条：用户 2026-11-26 定，意面和面条不是一种，农夫乐事不登记 common:noodle
     assert not [name for name in ("CHILI", "FLOUR", "LETTUCE", "MEAT", "MEATBALL", "NOODLE") if hasattr(tags, name)], "规范里农夫乐事不登记的不给常量"
     assert "common:noodle" not in tags.names() and not tags.has("arris:raw_pasta", "common:noodle")
+    # 团队的规矩（2026-11-26）：模组的 common: 物品标签一律单数，七个复数名改了名、常量跟着改，不留旧名（复数的 common:seeds 并进了 common:seed）
+    assert (tags.CROP, tags.FLOWER, tags.CABBAGE_SEED, tags.TOMATO_SEED, tags.MUTTON_CHOP, tags.COOKED_MUTTON_CHOP) == (
+        "common:crop", "common:flower", "common:cabbage_seed", "common:tomato_seed", "common:mutton_chop", "common:cooked_mutton_chop")
+    old = ("SEEDS", "CROPS", "FLOWERS", "CABBAGE_SEEDS", "TOMATO_SEEDS", "MUTTON_CHOPS", "COOKED_MUTTON_CHOPS")
+    assert not [name for name in old if hasattr(tags, name)] and "common:seeds" not in tags.names()
+    assert tags.has("minecraft:wheat_seeds", tags.SEED) and tags.has("arris:cabbage_seeds", tags.SEED)
     odd = sorted(name for name, value in vars(tags).items() if name.isupper() and value.split(":", 1)[1].upper() != name)
     assert odd == ["ANY_EGG", "LEGACY_KNIFE"], "EXTENSION-API.md §7：常量名是冒号后那段的大写，例外就这两个（%s）" % odd
 

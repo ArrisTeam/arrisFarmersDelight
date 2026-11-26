@@ -19,12 +19,14 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 这边的厨锅、工作台、砧板照 JE 读这些细标签，不读粗标签；鸡蛋格子照旧读原版的 `minecraft:egg`（规范的 `common:egg` 里有海龟蛋和煎蛋，不能拿来做蛋糕）。
 细标签的名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走（Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
 
-- 名字是 `common:` 加 `c:` 名的最后一段，一律单数。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
-  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边照团队的规范写单数：
-  `c:bones` → `common:bone`、`c:mushrooms` → `common:mushroom`。团队里已经在用的复数名照旧：`c:crops` → `common:crops`、`c:seeds` → `common:seeds`。
+- **`common:` 物品标签一律单数**（团队 2026-11-26 定：模组的 `common:` 物品标签都用单数）。例外只有照 JE 原名的 `farmersdelight:` 标签
+  （`farmersdelight:heat_sources`、`farmersdelight:meals`……是 JE 的标识符，照抄才对得上 JE 的数据）；物品名、方块名本身不改（`arris:cabbage_seeds` 还是这个名字）。
+- 名字是 `common:` 加 `c:` 名的最后一段。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
+  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边写单数：
+  `c:bones` → `common:bone`、`c:mushrooms` → `common:mushroom`、`c:crops` → `common:crop`、`c:seeds` → `common:seed`。
 - 最后一段只是材料名、单拿出来说不清是什么的，照机械动力的写法把类目的单数接在后面：`c:buckets/water` → `common:water_bucket`
   （机械动力的 `c:plates/iron` → `common:iron_plate`、`c:flours/wheat` → `common:wheat_flour` 也是这样来的）。
-- JE 没有对应 `c:` 名的，照物品名：`common:rice_panicle`、`common:mutton_chops`、`common:tomato_seeds`。
+- JE 没有对应 `c:` 名的，照物品名，也写单数：`common:rice_panicle`、`common:mutton_chop`（物品 `arris:mutton_chops`）、`common:tomato_seed`（物品 `arris:tomato_seeds`）。
 - JE 农夫乐事自己定义的标签，照 JE 的原名 `farmersdelight:<路径>`：`farmersdelight:heat_sources`、`farmersdelight:meals`……
 - 不用 `/` 分层，一个名字只有一段。JE 两个版本的名字（1.20.1 的 `forge:`、1.21 的 `c:`）都列在下面词表里；行为包里照 JE 写的配方 JSON
   用这两种名字都行，农夫乐事会换成这边的名字（[RECIPE-JSON.md](RECIPE-JSON.md)）。
@@ -53,7 +55,7 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
   按标签反查、按物品问、配方匹配三处都认；方块标签里的 `#` 也展开（3.10 实机）。不要引只在物品 JSON 里声明的标签：引擎展开这种引用时只拿到经 `netease_tags` 加进去的成员。
 - 农夫乐事的文件照 JE 的标签文件写 `#`：JE 用 `#` 引了别的标签、那个标签这边也登记的地方，这边也引。比如 `common:vegetable` 写的是
   `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato`，你把番茄登记进 `common:tomato`，它也就算蔬菜、
-  算作物，和 JE 一样（3.10 实机：别的包登记进 `common:tomato` 的番茄，反查 `common:vegetable`、`common:crops` 都有它）。
+  算作物，和 JE 一样（3.10 实机：别的包登记进 `common:tomato` 的番茄，反查 `common:vegetable`、作物标签都有它；量的时候作物标签用的还是复数名，现在是 `common:crop`）。
   下面词表"农夫乐事登记的"一列照文件列（含 `#`）。
 - 你自己的物品也可以继续在物品 JSON 的 `minecraft:tags` 里写标签，引擎两种写法都认；原版物品只能用 `netease_tags`。
 
@@ -127,7 +129,7 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 | `common:noodle` | `kaleidoscope_cookery:raw_noodles` | — | 没有（JE 森罗的配方写物品） |
 | `common:pork` | `minecraft:porkchop`、`minecraft:cooked_porkchop`、`kaleidoscope_cookery:raw_pork_belly`、`kaleidoscope_cookery:cooked_pork_belly` | `#common:raw_pork`、`#common:cooked_pork` | `forge:raw_pork` 和 `forge:cooked_pork` |
 | `common:rice` | `kaleidoscope_cookery:rice` | `arris:rice` | `forge:crops/rice`、`forge:grain/rice` |
-| `common:seed` | `minecraft:wheat_seeds`、`minecraft:pumpkin_seeds`、`minecraft:melon_seeds`、`minecraft:beetroot_seeds`、`minecraft:torchflower_seeds`、`minecraft:pitcher_pod`、`kaleidoscope_cookery:rice` | `#common:cabbage_seeds`、`#common:rice`、`#common:tomato_seeds` | `forge:seeds` |
+| `common:seed` | `minecraft:wheat_seeds`、`minecraft:pumpkin_seeds`、`minecraft:melon_seeds`、`minecraft:beetroot_seeds`、`minecraft:torchflower_seeds`、`minecraft:pitcher_pod`、`kaleidoscope_cookery:rice` | `#common:cabbage_seed`、`#common:rice`、`#common:tomato_seed`、`minecraft:beetroot_seeds`、`minecraft:melon_seeds`、`minecraft:pumpkin_seeds`、`minecraft:wheat_seeds` | `forge:seeds` |
 | `common:tomato` | `kaleidoscope_cookery:tomato` | `arris:tomato` | `forge:crops/tomato` |
 | `common:vegetable` | `#common:tomato`、`#common:lettuce`、`#common:chili`、`minecraft:carrot`、`minecraft:potato`、`minecraft:beetroot` | `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato` | `forge:vegetables` |
 
@@ -150,8 +152,11 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
   （`flex_pot/scramble_egg_with_tomatoes.json:8`）；两个模组的煎蛋是同一种东西：Kaleidoscope Compat 的合并表里有农夫乐事的煎蛋
   （`packs/unite_farmersdelight/data/kaleidoscope_cookery/tags/item/united.json:4`）。JE 农夫乐事的煎蛋在 `forge:cooked_eggs`（`ItemTags.java:191`），
   所以这边嵌的是"做熟的蛋"这个细标签，别的模组登记进 `common:cooked_egg` 的也跟着算蛋。农夫乐事自己的鸡蛋格子照旧读 `minecraft:egg`。
-- **种子**（卷心菜种子、米、番茄种子）：JE 森罗的腊八粥收 `#forge:seeds`（`flex_stockpot/laba_congee.json:12`），JE 农夫乐事的 `forge:seeds`
-  就是这三样（`ItemTags.java:240-243`）。原版的种子森罗登记了，农夫乐事不重复写。复数的 `common:seeds` 是机械动力附属在用的名字，照旧登记。
+- **种子**（`common:seed` 就是 JE 的 `forge:seeds`）：JE 森罗的腊八粥收 `#forge:seeds`（`flex_stockpot/laba_congee.json:12`），JE 农夫乐事往
+  `forge:seeds` 里放的是卷心菜种子、米、番茄种子这三样（`ItemTags.java:240-243`），原版的四种种子（甜菜、西瓜、南瓜、小麦的种子）是 Forge 自己给的。
+  这边两样都写：`#` 嵌三个细标签，原版的四种照写，农夫乐事单独在场时这个标签照样是全的；森罗也登记了的原版种子，引擎合并时去重。
+  机械动力附属读的种子标签原来是另一个复数名，团队 2026-11-26 定了 `common:` 物品标签一律单数，它并进了 `common:seed`
+  （机械动力附属同一天的提交 `aa8fc45` 改读 `common:seed`；改名的对照见 [API-CHANGELOG.md](API-CHANGELOG.md)）。
 - **蘑菇、番茄、米、面团、蔬菜**：本来就同名，两边的成员引擎合并。JE 里这几样也是两个模组共用同一个 `forge:` 标签
   （`forge:mushrooms`、`forge:crops/tomato`、`forge:crops/rice`、`forge:dough`、`forge:vegetables`）。
 - **面条不登记**（用户 2026-11-26 定：意面和面条不是同一种东西）：农夫乐事的生意面只在 `common:pasta` 里，不进 `common:noodle`；
@@ -182,11 +187,11 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 | 四把菜刀 `kaleidoscope_cookery:iron_kitchen_knife` 等 | `common:knife` | 认作刀的地方都认（见上面「刀」） | `forge:tools/knives`、`farmersdelight:tools/knives`（`:53-62`） |
 | 炉灶（方块 `kaleidoscope_cookery:kaleidoscope_cookery_stove`） | 方块标签 `farmersdelight:heat_sources` | 放在上面的厨锅、煎锅会热（它的 `kaleidoscope_cookery:lit` 是点燃状态，点着才热） | JE 森罗生成的 `data/farmersdelight/tags/blocks/heat_sources.json:3` |
 | `kaleidoscope_cookery:cooked_rice` | `common:cooked_rice` | 农夫乐事现在不读（JEI 里算同一类） | `forge:cooked_rice`（`:190`） |
-| `kaleidoscope_cookery:tomato_seed` | `common:tomato_seeds` | 不读 | `forge:seeds/tomato`（`:180`） |
-| `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chops`、`common:cooked_mutton_chops` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |
-| 番茄、两种辣椒、生菜、米；番茄、辣椒、生菜的种子，野生稻种子，米 | `common:crops`；`common:seeds` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:162-169`）、`forge:seeds`（`:152-158`） |
+| `kaleidoscope_cookery:tomato_seed` | `common:tomato_seed` | 不读 | `forge:seeds/tomato`（`:180`） |
+| `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chop`、`common:cooked_mutton_chop` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |
+| 番茄、两种辣椒、生菜、米；番茄、辣椒、生菜的种子，野生稻种子 | `common:crop`；`common:seed` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:162-169`）、`forge:seeds`（`:152-158`） |
 
-森罗自己的 `common:seed` 现在只有原版种子和米；JE 森罗的 `forge:seeds` 还有它的番茄、辣椒、生菜种子和野生稻（`TagItem.java:152-158`），要不要补由森罗定。
+森罗自己的 `common:seed` 现在只有原版种子和米；JE 森罗的 `forge:seeds` 还有它的番茄、辣椒、生菜种子和野生稻（`TagItem.java:152-158`，上表最后一行），要不要补由森罗定。
 
 JE 有、这边不建议的：
 
@@ -238,8 +243,8 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 
 ## 词表
 
-名字怎么来的见开头「名字和成员照什么定」。团队里已经在用的名字照用：`common:crops`、`common:seeds`、`common:flowers`（机械动力附属）、
-`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。团队烹饪原料规范里农夫乐事登记的 12 个也在下表里
+名字怎么来的见开头「名字和成员照什么定」。团队里别的模组在用的名字照用：`common:crop`、`common:seed`、`common:flower`（机械动力附属读；
+2026-11-26 和这边一起从复数名改成了单数）、`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。团队烹饪原料规范里农夫乐事登记的 12 个也在下表里
 （粗标签的"意思"一列写着"团队规范的粗标签"），没登记的 6 个见「和森罗物语的标签对照」。
 
 - `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
@@ -253,14 +258,14 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `common:tomato` | 物品 | 番茄 | `forge:crops/tomato`、`forge:vegetables/tomato` | `c:crops/tomato`、`c:foods/tomato` | `arris:tomato` | 厨锅的格子：番茄酱、蔬菜杂烩、鱿鱼墨面、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:barbecue_stick`、`arris:gleaming_salad_block_stage0`、`arris:hamburger`、`arris:mixed_salad`、`arris:roasted_mutton_chops`（bp/recipes） |
-| `common:tomato_seeds` | 物品 | 番茄种子 | `forge:seeds/tomato` | — | `arris:tomato_seeds` | — |
+| `common:tomato_seed` | 物品 | 番茄种子 | `forge:seeds/tomato` | — | `arris:tomato_seeds` | — |
 | `common:rice` | 物品 | 米（也是水稻的种子） | `forge:crops/rice`、`forge:grain/rice`、`forge:seeds/rice` | `c:crops/rice` | `arris:rice` | 厨锅的格子：米饭、炒饭、蘑菇饭、填馅南瓜、狗粮（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:rice_panicle` | 物品 | 稻穗 | — | — | `arris:rice_panicle` | — |
 | `common:cooked_rice` | 物品 | 米饭 | `forge:cooked_rice` | `c:foods/cooked_rice` | `arris:cooked_rice` | — |
 | `common:dough` | 物品 | 面团 | `forge:dough`、`forge:dough/wheat` | `c:foods/dough`、`c:foods/dough/wheat` | `arris:wheat_dough` | 厨锅的格子：饺子（Shared/Data/CookingPotRecipes 的 Slots）；砧板按标签切成 `arris:raw_pasta`（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf） |
 | `common:cooked_egg` | 物品 | 做熟的蛋（煎蛋） | `forge:cooked_eggs` | `c:foods/cooked_egg` | `arris:fried_egg` | 工作台：`arris:bacon_and_eggs`、`arris:egg_sandwich`（bp/recipes） |
-| `common:mutton_chops` | 物品 | 生羊排 | — | — | `arris:mutton_chops` | — |
-| `common:cooked_mutton_chops` | 物品 | 熟羊排 | — | — | `arris:cooked_mutton_chops` | — |
+| `common:mutton_chop` | 物品 | 生羊排 | — | — | `arris:mutton_chops` | — |
+| `common:cooked_mutton_chop` | 物品 | 熟羊排 | — | — | `arris:cooked_mutton_chops` | — |
 | `common:knife` | 物品 | 刀 | `forge:tools/knives`、`farmersdelight:tools/knives` | `farmersdelight:tools/knives`、`c:tools/knife` | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
 | `arris:knife` | 物品 | 刀（农夫乐事的老标签，照旧有效） | — | — | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
 | `common:raw_beef` | 物品 | 生牛肉（含牛肉末） | `forge:raw_beef` | `c:foods/raw_beef` | `minecraft:beef`、`arris:minced_beef` | 厨锅的格子：饺子、牛肉炖（Shared/Data/CookingPotRecipes 的 Slots） |
@@ -295,18 +300,17 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:cooked_salmon` | 物品 | 熟鲑鱼（含熟鱼片） | `forge:cooked_fishes/salmon` | `c:foods/cooked_salmon` | `minecraft:cooked_salmon`、`arris:cooked_salmon_slice` | 工作台：`arris:grilled_salmon`（bp/recipes） |
 | `common:raw_bacon` | 物品 | 生培根 | `forge:raw_bacon` | `c:foods/raw_bacon` | `arris:bacon` | — |
 | `common:cooked_bacon` | 物品 | 熟培根 | `forge:cooked_bacon` | `c:foods/cooked_bacon` | `arris:cooked_bacon` | 工作台：`arris:bacon_sandwich`（bp/recipes） |
-| `common:cabbage_seeds` | 物品 | 卷心菜种子 | `forge:seeds/cabbage` | — | `arris:cabbage_seeds` | — |
+| `common:cabbage_seed` | 物品 | 卷心菜种子 | `forge:seeds/cabbage` | — | `arris:cabbage_seeds` | — |
 | `common:water_bucket` | 物品 | 水桶 | `forge:buckets/water` | `c:buckets/water` | `minecraft:water_bucket` | — |
-| `common:crops` | 物品 | 作物（团队已有的名字；原版的那部分 JE 里是 Forge 给的，这边也登记） | `forge:crops` | `c:crops` | `#common:cabbage`、`#common:onion`、`#common:rice`、`#common:tomato`、`#common:beetroot`、`#common:carrot`、`minecraft:nether_wart`、`#common:potato`、`#common:wheat` | — |
-| `common:seeds` | 物品 | 种子（团队已有的名字；同上） | `forge:seeds` | `c:seeds` | `#common:cabbage_seeds`、`#common:rice`、`#common:tomato_seeds`、`minecraft:beetroot_seeds`、`minecraft:melon_seeds`、`minecraft:pumpkin_seeds`、`minecraft:wheat_seeds` | — |
-| `common:flowers` | 物品 | 花（团队已有的名字） | `minecraft:flowers` | `minecraft:flowers` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
+| `common:crop` | 物品 | 作物（机械动力附属也读；原版的那部分 JE 里是 Forge 给的，这边也登记） | `forge:crops` | `c:crops` | `#common:cabbage`、`#common:onion`、`#common:rice`、`#common:tomato`、`#common:beetroot`、`#common:carrot`、`minecraft:nether_wart`、`#common:potato`、`#common:wheat` | — |
+| `common:seed` | 物品 | 种子（团队规范的名字，机械动力附属也读；原版的那部分 JE 里是 Forge 给的，这边也登记） | `forge:seeds` | `c:seeds` | `#common:cabbage_seed`、`#common:rice`、`#common:tomato_seed`、`minecraft:beetroot_seeds`、`minecraft:melon_seeds`、`minecraft:pumpkin_seeds`、`minecraft:wheat_seeds` | — |
+| `common:flower` | 物品 | 花（机械动力附属也读） | `minecraft:flowers` | `minecraft:flowers` | `arris:wild_carrots`、`arris:wild_potatoes`、`arris:wild_beetroots`、`arris:wild_cabbages`、`arris:wild_tomatoes`、`arris:wild_onions`、`arris:wild_rice` | — |
 | `common:beef` | 物品 | 牛肉，生的熟的都算（团队规范的粗标签，见「和森罗物语的标签对照」） | — | — | `#common:raw_beef`、`#common:cooked_beef` | — |
 | `common:chicken` | 物品 | 鸡肉，生的熟的都算（团队规范的粗标签） | — | — | `#common:raw_chicken`、`#common:cooked_chicken` | — |
 | `common:lamb` | 物品 | 羊肉，生的熟的都算（团队规范的粗标签） | — | — | `#common:raw_mutton`、`#common:cooked_mutton` | — |
 | `common:pork` | 物品 | 猪肉，生的熟的都算，含培根（团队规范的粗标签） | — | — | `#common:raw_pork`、`#common:cooked_pork` | — |
 | `common:fish` | 物品 | 鱼，生的熟的都算，含鱼片，不含河豚（团队规范的粗标签） | — | — | `#common:raw_fish`、`#common:cooked_fish` | — |
 | `common:egg` | 物品 | 蛋，做熟的也算（团队规范的粗标签；农夫乐事的鸡蛋格子读的是原版的 minecraft:egg） | — | — | `#common:cooked_egg` | — |
-| `common:seed` | 物品 | 种子（团队规范的名字；common:seeds 是机械动力附属在用的复数名，两个都登记） | — | — | `#common:cabbage_seeds`、`#common:rice`、`#common:tomato_seeds` | — |
 | `farmersdelight:meals` | 物品 | 饭菜（盛在碗里的一份；原版的蘑菇煲、甜菜汤、兔肉煲也算） | `farmersdelight:meals` | `farmersdelight:meals` | `minecraft:mushroom_stew`、`minecraft:beetroot_soup`、`minecraft:rabbit_stew`、`arris:mixed_salad`、`arris:cooked_rice`、`arris:bone_broth`、`arris:cookbeef_stew`、`arris:vegetable_soup`、`arris:fish_stew`、`arris:chicken_soup`、`arris:fried_rice`、`arris:pumpkin_soup`、`arris:baked_cod_stew`、`arris:noodle_soup`、`arris:onion_soup`、`arris:bacon_and_eggs`、`arris:ratatouille`、`arris:steak_and_potatoes`、`arris:pasta_with_meatballs`、`arris:pasta_with_mutton_chop`、`arris:mushroom_rice`、`arris:roasted_mutton_chops`、`arris:vegetable_noodles`、`arris:squid_ink_pasta`、`arris:grilled_salmon`、`arris:roast_chicken`、`arris:stuffed_pumpkin`、`arris:honey_glazed_ham`、`arris:shepherds_pie`、`arris:gleaming_salad` | — |
 | `farmersdelight:snacks` | 物品 | 小吃（三明治、汉堡、卷、饺子……） | `farmersdelight:snacks` | `farmersdelight:snacks` | `arris:barbecue_stick`、`arris:egg_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:bacon_sandwich`、`arris:mutton_wrap`、`arris:dumplings`、`arris:stuffed_potato`、`arris:cabbage_rolls`、`arris:salmon_roll`、`arris:cod_roll`、`arris:kelp_roll`、`arris:kelp_roll_slice` | — |
 | `farmersdelight:sweets` | 物品 | 甜食（蛋糕、曲奇、派的切片、冰棍……） | `farmersdelight:sweets` | `farmersdelight:sweets` | `minecraft:cake`、`minecraft:cookie`、`arris:cake_slice`、`arris:apple_pie_slice`、`arris:sweet_berry_cheesecake_slice`、`arris:chocolate_pie_slice`、`arris:pumpkin_pie_slice`、`arris:sweet_berry_cookie`、`arris:honey_cookie`、`arris:melon_popsicle`、`arris:glow_berry_custard`、`arris:fruit_salad` | — |
