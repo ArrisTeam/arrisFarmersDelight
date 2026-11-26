@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""CookingPotBook - 厨锅经典界面的食谱规则：格号、搜索与食谱格、选中食谱的详情（写法轮换）、容器与食材的分辨、补食材的计划（双端，纯规则）
+"""CookingPotBook - 厨锅经典界面的食谱规则：格号、哪些行列出来、选中食谱的详情（写法轮换）、容器与食材的分辨、补食材的计划（双端，纯规则）
 
 厨锅容器是 netease:block_container 的 8 个格子：0-5 食材，6 容器（碗、玻璃瓶……），7 成品。
-食谱表是 Shared/Data/CookingPotRecipes.CookingPotRecipeList，下游模组会在运行时往里追加。搜索结果按搜索词记着（界面画食谱格时每一格都要问一遍），
-表的长度或配方索引重建的次数（CookingPot.revision：联动接口改表、客户端并表之后都重建）变了就重算；容器、食材、写法这些每次现读。
+食谱表是 Shared/Data/CookingPotRecipes.CookingPotRecipeList，下游模组会在运行时往里追加。搜索在 PotSearch（只在看界面的那一端用、按搜索词记着），
+选中的是表里的行号（recipeAt）；容器、食材、写法这些每次现读。
 下游追加的食谱没人校验形状，而这里的函数在服务端界面的定时刷新里跑（出错会让所有开着界面的人都收不到更新），
 所以形状不对的食谱（缺成品、变体不是 (物品名, aux) 的列表）一律当没有，不报错。
 """
@@ -18,15 +18,11 @@ RESULT_SLOT = 7
 POT_SLOTS = 8
 # 选中食谱的详情格：与厨锅格同序，0-5 食材，6 容器（成品画在锅形的预览框里，是另一样界面数据）
 BOOK_CELLS = 7
-# 搜索词最多几个字
-SEARCH_LIMIT = 16
 # 选中的食谱有几种写法时，详情的食材格每这么多秒换成下一种（照旧界面：刚选中先完整显示第一种一个周期）
 VARIANT_SECONDS = 1.0
 # 还没选食谱时详情上方的标题：dolorContainer 的可本地化文字（Data.Lang 的写法 {"t": 语言文件的键}），服务端只给键，
 # 客户端按玩家的语言查（rp/texts 的 zh_CN.lang / en_US.lang）；选了食谱时标题是食谱表里那道菜的 text，原样显示（没写 text 的是成品的显示名，titleOf）
 UNPICKED_TITLE = {"t": "arris_fd.pot_screen.pick_recipe"}
-_MEMO_LIMIT = 32   # 最多记几个搜索词的结果（边打边搜，每改一个字一个）
-_memo = {}         # 搜索词（小写） -> [表的签名, 过滤后的下标, 食谱格的内容（用到时才建）]
 
 try:
     _TEXT = unicode  # noqa: F821 - py2
@@ -68,58 +64,10 @@ def _stack(item, count=1):
     return {"newItemName": item[0], "newAuxValue": item[1], "count": count}
 
 
-def matchesSearch(recipe, search):
-    """搜索框：这道菜比不比得上搜索词。按行里的 text 比、不分大小写——两端同步过来的同一份数据，哪种联机下两端过滤出来的都一样，
-    选中的格号对得上；没写 text 的行 text 记的是成品的物品 ID，按物品 ID 搜得到。显示名只用在标题上（titleOf：各端自己问引擎，
-    联机时两端可能不一样），不参与搜索。搜索词为空时都比得上。旧的原生界面（Client/Ui/CookingPotProxy）也用它。"""
-    word = _chars(search).lower()
-    return not word or word in _chars(recipe.get("text")).lower()
-
-
-def _found(search):
-    """搜索词过滤的结果（记着）：[表的签名, 下标们, 食谱格的内容或 None]。表的签名是长度加索引重建的次数。"""
-    word = _chars(search).lower()
-    signature = (len(CookingPotRecipeList), PotRules.revision())
-    entry = _memo.get(word)
-    if entry is None or entry[0] != signature:
-        if len(_memo) >= _MEMO_LIMIT:
-            _memo.clear()
-        indices = [index for index, recipe in enumerate(CookingPotRecipeList) if isShown(recipe) and matchesSearch(recipe, word)]
-        entry = _memo[word] = [signature, indices, None]
-    return entry
-
-
-def visibleRecipes(search):
-    """搜索词过滤后的食谱：表里的下标，保持表的顺序。搜索词为空是全部；按食谱名包含判断，不分大小写。"""
-    return list(_found(search)[1])
-
-
-def shownCount(search):
-    """搜索词过滤后有几道食谱（食谱格显示几格）。"""
-    return len(_found(search)[1])
-
-
-def gridCells(search):
-    """
-    食谱格的内容 {格号: 物品堆}：过滤后每道食谱的成品，一份，照表的顺序。同一个搜索词（表没变时）给同一个字典：
-    界面每画一格都来要，用的人只读、不改它。
-    """
-    entry = _found(search)
-    if entry[2] is None:
-        entry[2] = dict((slot, _stack(CookingPotRecipeList[index]["CookResult"])) for slot, index in enumerate(entry[1]))
-    return entry[2]
-
-
 def recipeAt(index):
-    """表里第 index 条食谱；越界或形状不对为 None。"""
+    """表里第 index 条食谱（行号就是配方的身份：经典界面选中的就是它）；越界、删掉了（墓碑）或形状不对为 None。"""
     recipe = CookingPotRecipeList[index] if 0 <= index < len(CookingPotRecipeList) else None
     return recipe if isShown(recipe) else None
-
-
-def pickedRecipe(search, picked):
-    """（搜索词，在过滤后的食谱格里选中的格号）-> 食谱字典；没选中或越界为 None。"""
-    shown = _found(search)[1]
-    return recipeAt(shown[picked]) if 0 <= picked < len(shown) else None
 
 
 def setNamePort(port):
@@ -130,7 +78,7 @@ def setNamePort(port):
 
 def titleOf(recipe):
     """选中食谱时详情上方的标题：食谱表里那道菜的 text，原样显示。没写 text（新接口登记时没写，表里记的是成品的物品 ID）的显示成品的
-    显示名（界面所在那一端问引擎，ItemNames），要不到用物品 ID。只管显示，搜索按 text（matchesSearch）。下游写的 text 不一定是字：
+    显示名（界面所在那一端问引擎，ItemNames），要不到用物品 ID。搜索另在 PotSearch（看界面的那一端）。下游写的 text 不一定是字：
     和原来的文字字段一样 str() 一下，界面数据的定时刷新不因为它出错（可本地化的文字只收字、数、列表和 {"t": 键}）。"""
     text = recipe.get("text")
     result = recipe.get("CookResult")

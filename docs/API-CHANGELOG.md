@@ -42,6 +42,8 @@
 
 变更：
 
+- 厨锅配方的 `text`：经典厨锅界面的搜索框照 JEI 按成品、食材的显示名和物品 ID 搜（看界面的那一端自己的语言），不再只按 `text` 比；
+  没写 `text` 的配方也按名字搜得到（EXTENSION-API.md §5.3、RECIPE-JSON.md §2）。
 - 农夫乐事自带的砧板 / 营火配方 ID 和原料绑死：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，否则新的错误码 `input_mismatch`；
   也只能登记回原来那一类配方，否则 `type_mismatch`（EXTENSION-API.md §4、§5.2）。
 - 兼容入口的 `CookingPotRecipeList`：被新接口删掉的配方留一个墓碑（行里多 `"Disabled": True`，`Recipe` / `Slots` 原样留着），遍历这张表的下游包要跳过它；

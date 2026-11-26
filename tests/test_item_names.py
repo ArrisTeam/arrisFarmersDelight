@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""没写 text 的厨锅配方：经典界面的标题显示成品的显示名，搜索框照旧按 text 搜（Shared/Rules/ItemNames.py、CookingPotBook.titleOf /
-matchesSearch / _found）。
+"""没写 text 的厨锅配方：经典界面的标题显示成品的显示名，搜索框也按显示名搜（Shared/Rules/ItemNames.py、CookingPotBook.titleOf、
+PotSearch）。
 
 JE 的配方 JSON 没有 text：别的模组照 RECIPE-JSON.md 搬来的配方，表里 text 记的是成品的物品 ID（"没写"的记号）。显示名要界面用到时
 才问引擎（ready 广播那一刻服务端对自定义物品只给语言键，2026-11-26 实机），这里用假的口：
 - 标题是口给的名字；口给 None、语言键（item.xxx.name / tile.xxx.name）、空、不是文字、抛异常时是物品 ID；没装口时也是物品 ID；
   先要不到、后来要到了，隔 RETRY_EVERY 次再问引擎时标题跟着变；
-- 搜索只按两端同步过来的 text 比（显示名是各端自己问引擎的，联机时两端可能不一样，按它过滤服务端认的格号会对不上）：
-  没写 text 的按物品 ID 搜得到、按显示名搜不到；搜索从不问口；
+- 搜索在看界面的那一端用这一端问到的显示名（联机时两端可以不一样：选中的是行号，服务端不按名字判断）：没写 text 的按显示名、物品 ID
+  都搜得到；每件物品问到名字之后就记住，界面怎么刷新都不再问；
 - 装着几个口时挨个问，第一个给出名字的算数（单机时两端的口都在这一份模块里，各自只在自己那一端的线程里答得出），装的先后都一样；
-- 农夫乐事自带的 28 行（都写了 text）标题一个字不变、不问口，按中文名照样搜得到；py2 里字节串和 unicode 的搜索词都比得上。
+- version() 在名字可能变了的时候加一；农夫乐事自带的 28 行（都写了 text）标题一个字不变、不问口；py2 里字节串和 unicode 的搜索词都比得上。
 """
 from __future__ import print_function
 
@@ -19,6 +19,7 @@ import warnings
 import fdtest
 
 Book = fdtest.load("Shared.Rules.CookingPotBook")
+Search = fdtest.load("Shared.Rules.PotSearch")
 Names = fdtest.load("Shared.Rules.ItemNames")
 Pot = fdtest.load("Shared.Data.CookingPotRecipes")
 CookingPot = fdtest.load("Shared.Rules.CookingPot")
@@ -51,7 +52,7 @@ class Rows(object):
         Pot.CookingPotRecipeList.append(ROW)
         CookingPot.rebuildIndex()
         Names.forget()
-        Book._memo.clear()
+        Search.forget()
         Book.setNamePort(self.port)
         return len(Pot.CookingPotRecipeList) - 1
 
@@ -60,16 +61,16 @@ class Rows(object):
         CookingPot.rebuildIndex()
         Book.setNamePort(None)
         Names.forget()
-        Book._memo.clear()
+        Search.forget()
         return False
 
 
-def testARecipeWithoutTextShowsTheResultsDisplayNameButIsSearchedByItsText():
+def testARecipeWithoutTextShowsAndIsSearchedByTheResultsDisplayName():
     with Rows(Port({INGOT: "铁锭"})) as index:
         assert Book.titleOf(ROW) == "铁锭"
-        assert index not in Book.visibleRecipes(u"铁锭") and index not in Book.visibleRecipes("铁"), "搜索不按显示名"
-        assert index in Book.visibleRecipes("iron") and index in Book.visibleRecipes(u"MINECRAFT:IRON"), "没写 text 的按物品 ID 搜得到"
-        assert index in Book.visibleRecipes(""), "空的搜索词是全部"
+        assert index in Search.rows(u"铁锭") and index in Search.rows("铁"), "搜索也按这一端问到的显示名"
+        assert index in Search.rows("iron") and index in Search.rows(u"MINECRAFT:IRON"), "物品 ID 照样搜得到"
+        assert index in Search.rows(""), "空的搜索词是全部"
 
 
 def testNoUsableNameFallsBackToTheItemId():
@@ -92,26 +93,26 @@ def testANameThatArrivesLaterShowsUpInTheTitle():
         assert Book.titleOf(ROW) == "铁锭" and len(port.asked) == asked == 2, "隔着没问；要到了就记住，不再问"
 
 
-def testTheSearchNeverAsksThePort():
-    """搜索框只按两端同步过来的 text 比（主会话定的：显示名是各端自己问引擎的，联机时两端可能不一样，按它过滤，服务端认的格号会对不上）。
-    所以界面怎么刷新、搜什么词，口都只被标题（titleOf）问；同一个搜索词（表没变时）的食谱格从第一次起就是同一个字典。"""
-    port = Port({INGOT: "item.minecraft:iron_ingot.name"})
+def testTheSearchAsksEachItemOnceAndRemembersTheGrid():
+    """搜索按显示名比（主会话定的 A2：只在看界面的那一端，选中的是行号）：每件物品问到名字之后就记住，界面怎么刷新、同一个词问多少遍，
+    口都不再被问到它；同一个搜索词（记着的没作废时）的食谱格从第一次起就是同一个字典。"""
+    port = Port({INGOT: "铁锭"})
     with Rows(port) as index:
         for word in ("", "iron", u"铁锭", "MINECRAFT"):
             cells = []
-            for _turn in range(40):              # 界面的一次刷新：食谱格、格数、选中的那道
-                cells.append(Book.gridCells(word))
-                Book.shownCount(word)
-                Book.pickedRecipe(word, 0)
+            for _turn in range(40):              # 界面的一次刷新：食谱格、格数、选中的那格
+                cells.append(Search.cells(word))
+                Search.count(word)
+                Search.rowAt(word, 0)
             assert all(found is cells[0] for found in cells), word
-        assert port.asked == [], "搜索不问口"
-        assert (index in Book.visibleRecipes("iron")) and index not in Book.visibleRecipes(u"铁锭")
+        assert port.asked.count(INGOT) == 1, "要到了就记住：只问一次"
+        assert index in Search.rows("iron") and index in Search.rows(u"铁锭")
         Book.titleOf(ROW)
-        assert len(port.asked) == 1, "问口的只有标题"
+        assert port.asked.count(INGOT) == 1, "标题用记着的名字"
         sauce = next(row for row in Pot.CookingPotRecipeList if row.get("Id") == "farmersdelight:cooking/tomato_sauce")
-        for word, expected in ((u"番茄酱", True), ("番茄", True), (u"TOMATO", False)):
-            assert Book.matchesSearch(sauce, word) == expected, word              # 写了 text 的按 text 比，字节串 / unicode 都行
-        assert Book.matchesSearch(ROW, b"iron") and Book.matchesSearch(ROW, None) and not Book.matchesSearch({}, "iron")
+        for word in (u"番茄酱", "番茄", u"TOMATO"):
+            assert Search.matches(sauce, word), word     # 写了的 text、食材（番茄）的物品 ID，字节串 / unicode 都行
+        assert Search.matches(ROW, b"iron") and Search.matches(ROW, None) and not Search.matches({}, "iron")
 
 
 def testSeveralPortsAreAskedInTurn():

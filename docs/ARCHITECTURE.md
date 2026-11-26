@@ -21,7 +21,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
   Rules/                纯规则：CookingPot（厨锅配方匹配 / 出料结算，公共函数都在这里） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
                         PotSlots（厨锅配方的格子：选项的写法、逐格配对、种类的各种摆法、展开成写法）  PotRecipeTable（厨锅配方表的索引和记着的答案，只有 CookingPot 用）
                         RecipeJson（JE 写法的配方 JSON 读成规整的配方：厨锅、砧板、营火烹饪；新联动接口和行为包配方 JSON 共用）
-                        CookingPotBook（厨锅经典界面的食谱：容器格号、搜索与食谱格（按搜索词记着，表变了重算）、详情格与写法轮换、补食材的计划与试写法的先后）
+                        CookingPotBook（厨锅经典界面的食谱：容器格号、哪些行列出来、按行号取配方、详情格与写法轮换、补食材的计划与试写法的先后）、PotSearch（经典界面的搜索：照 JEI，只在看界面的那一端用）
                         CuttingStation（切菜板站点：FD 配方 -> 刀口计划、工具判定、整批产物）
                         PotStation（厨锅站点：槽位声明、什么能放、什么用得上、盛这道菜的容器）  PotLayout（按哪道菜摆料、照书放料的计划）
                         PotLookState（厨锅"看上去是什么样"的广播怎么读）  PotModelMath（方块朝向、勺子骨骼的位移和欧拉角）
@@ -224,7 +224,7 @@ def OnServerSkilletBlockUse(args):
 | `knifeList`、`axeList` | 追加名字（`append`） | `Client/BlockItems.isKnife`（站点和没开站时的展示都问它）、`CuttingStation.isKnifeRecipe / fitsTool`、`BoardStation._tools`（全部配方的工具名）、`GrillStation.opens`（手里拿刀开不开炉灶，`GrillStation.py:78`） |
 | `CanCookedFoodDict` | 追加键 | 都经 `Shared/Rules/Grilling`（先查这张表，查不到问引擎的营火配方）：煎锅 `PanStation.usable / canFry / friedOf / acceptsFryable`（`PanView.py:112,123`）、炉灶 `GrillStation.usable / canGrill / mayPlace / opens`（`GrillView.py:46,49,69`）、手持煎锅"煎还是吃"（`Client/Input.py:42`）；`StationBooks.panPages / grillPages`（`cookGroups`：三种蛋一页）和 JEI 的煎锅 / 炉灶页只列这张表 |
 | `StoveList`、`CanProvideHeatBlockList` | 追加名字 | `GrillStation.STOVE_BLOCKS`（`GrillBlocks.GRILL_BLOCKS`：每次按 `StoveList`（还是那个列表对象）加上熄着的孪生方块现判，`GrillView.py` 交给前置包按"方块名 in 它"认站点方块：客户端先判再请求开站）、`StoveScenes`（哪些方块有场景）、`Client/BlockItems.kindOf`（灶上的东西怎么摆）、`Client/Input._nearHeat`（手持煎锅身边有没有热源，读 `CanProvideHeatBlockList`）。熄着的方块不进这两张表（不烤、不烫脚、不给锅热） |
-| `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 经典界面的食谱格与它的客户端预测（`CookingPotBook` 按搜索词记着过滤结果，表的长度或 `CookingPot.revision`（重建索引的次数）变了就重算：并表之后的 `rebuildIndex` 让它跟上） |
+| `CookingPotRecipeList`（按下标对应） | `interface` 追加配方；`AddCookingPotRecipe` 给已有配方的 `Recipe` 列表就地加一种写法 | 厨锅索引 `CookingPot.rebuildIndex`（`PotStation.usable / mayPlace / isIngredient / isVessel`，`PotView.py:62,65`；`PotLayout`、`vesselOf`、`cookSecondsOf`）、`PotScenes.opensStation`（`:49`，读 `Vessel`）、`StationBooks.potPages / potRecipe / potCurrent`（书页的键就是下标）、dolor 经典界面的食谱格（选中的是行号；`PotSearch` 按搜索词记着过滤结果，表的长度或 `CookingPot.revision`（重建索引的次数）变了就重算：并表之后的 `rebuildIndex` 让它跟上） |
 | `platePackagedFoodDict` | 追加键 | `BoardInv.typeOf`（盘装的盛宴当食物，和服务端 `GetItemType` 一致） |
 | `DishList`（按下标对应） | `interface` 追加一行或几行（写法同 `Shared/Data/Dishes.py`：`result` (物品名, aux)、`count`、`ingredients` 1 到 9 个 (物品名, aux)、`extras`、`keeps`；写坏的行整批拒绝，返回 False） | 摆盘菜的索引 `DishStation.rebuildIndex`（契约追加后服务端当场重建，客户端并表后重建）：托盘里哪些亮、层接不接得上、做成哪道、食谱书的页、工作台拦哪些菜 |
 | `OneSidedList` | 追加名字 | 客户端眼下没有地方读，照旧同步（下游在用这张契约表，两端一样）。服务端的煎法 `PanStation.isOneSided`（`ONE_SIDED` 就是这个列表）：煎锅 / 炉灶站点上只煎一面、不用翻。不管样子：蛋看 `PanStation.isCracked`（`PotSunk.CRACKED`，HoD 的 `cracked`），追加进来的照样画它自己、照染；也不管书上的秒数（`SkilletBook` / `StoveBook` 都写两面的时间，`StationBooks._cookPages`） |
@@ -400,16 +400,30 @@ def OnServerSkilletBlockUse(args):
   （框底的小三角裁掉）、常亮的火焰示意、"+"按钮和下面一行"添加食材"（后两样选了食谱才有）。背后垫一张 `recipe_back_panel`
   （196 × 168，比中间那块左右各多 10），侧栏各压进去 7，三块之间露出 3 宽的深色折缝；折缝和侧栏的空白处吃掉点击，不算点在界面外面。
 - **食谱格**是算出的格子：集合 `recipes`（`Shared/Menus/PotRecipes.py`：库的 `Std/Slots.Choice`，原版切石机的配方按钮），落在 4096 格的
-  虚拟容器上（点得到的格号上限 `MAX_PICK` 一样大），内容由部件 `RecipeGrid` 按这位查看者的搜索词算（`CookingPotBook.gridCells`；显示几格
-  `shownCount`）。点一格发可预测的 `pick(格号)`：键鼠左右键、Shift、手柄照 Choice 按下就选；触屏改成抬起才选（`TapToPick`：手指拖动过、
-  被滚动视图接走、松开在别的格子上都不算，不然拖着滚食谱格时会把开始按到的那道选上；旧界面的配方按钮也是抬起才算）。
-  选中的那格底格换成 `recipe_book_touch_cell_selected`、一直留着，
+  虚拟容器上（`RECIPE_CAPACITY`），内容由部件 `RecipeGrid` 在看界面的那一端按这位查看者的搜索词算（`Shared/Rules/PotSearch.cells` / `count`）：
+  客户端的格子是客户端自己算的（库的 `Client/Mirror` 用本端的查看者状态调部件），服务端那一份给空——联机时两端问到的显示名可以不一样，
+  它不知道客户端过滤出了什么，也用不到（点格子是动作，不是格子操作）。
+- **选中按配方的身份**（2026-11-26 起；以前是"过滤后的第几格"，所以搜索只能按两端同步过来的 `text` 比）：点一格，`TapToPick._select`
+  把这一格换成它在本端过滤结果里是表里的哪一行，发可预测的 `pick(行号)`；服务端只查这一行活着、形状对（`CookingPotBook.recipeAt`），
+  不按搜索词判断任何事。`picked` 记行号（行只打墓碑、不删，站点和 `matchIndex` 也拿它当身份）；选中的那格的底格按"这一格的行是不是选中的
+  那一行"画（`RecipeChoice.decorate`），那一行被过滤掉时哪格都不亮；换搜索词不清选中，详情和"添加食材"照旧。手势：键鼠左右键、Shift、
+  手柄照 Choice 按下就选；触屏改成抬起才选（`TapToPick`：手指拖动过、被滚动视图接走、松开在别的格子上都不算，不然拖着滚食谱格时会把开始
+  按到的那道选上；旧界面的配方按钮也是抬起才算）。选中的那格底格换成 `recipe_book_touch_cell_selected`、一直留着，
   别的是 `recipe_book_item_bg`（旧界面配方按钮平时与按下的两张）；悬停写成品的悬停文本。布局用按行回收的 `scroll_grid_classic`
   （12 个行控件 × 4 格，控件数不随食谱数变；客户端导入库的 `Std/Windowed/Client`），列数固定 4，放不下才出现滚动条（格子右边、压在侧栏的
-  边框上），不画滚动面板的底；28 道正好 7 行，不用滚。界面每画一格都问一遍内容，所以过滤结果按搜索词记着（同一个字典），
-  表的长度或 `CookingPot.revision`（重建索引的次数）变了才重算。
-- 动作：`search(字)`（边打边提交，可预测：客户端的食谱格当场跟着字变；字变了才清掉选中，输入结束时那一次同样的字不动它）、
-  `pick(格号)`（按过滤后的个数核对，记下选中的时刻 `pickedAt`）、`addFood`。搜索词、选中项、选中的时刻是每位查看者的状态。
+  边框上），不画滚动面板的底；28 道正好 7 行，不用滚。
+- **搜索**（`Shared/Rules/PotSearch.py`，照 arrisJei 的 `core/search.py`）：空格分开的条件全部满足；`@模组`（成品或食材的命名空间）、
+  `#标签`（某格写的标签名，或成品 / 食材带的标签，`ItemTags`）、`&` 或 `/`（物品 ID）；`%` 照 arrisJei 关掉的前缀当普通文本。普通文本逐件比：
+  写了的 `text` 标题，或者某一件物品（成品、某个食材，不算盛菜的容器）自己的显示名 / 物品 ID 比得上——不拼成一串（"牛肉"不配分在两件东西上的
+  牛和肉），几个条件可以由不同的物品满足。比法 `FUZZY` 三档：`SUBSTRING`（arrisJei 的缺省）、`CJK`（缺省：含中文的词每个字都在显示名或标题里
+  出现过也算，"牛炖"配得上牛肉炖；字母数字的词、物品 ID 只认子串）、`ALL`（字母也模糊）。和 arrisJei 的差别：它的模糊是设置里的开关、缺省关，
+  开了对字母也生效、拿悬停文本加物品 ID 比，还按拼音比；这里没有设置，不搬拼音（码表 68 KB，它公开的 `api/jei.py` 里也没有匹配函数）。
+  显示名问 `ItemNames`（这一端装的引擎口，问不到时这件物品只比物品 ID）。界面每画一格都问一遍内容，所以每行的记录按表的版本和标签的代数记着，
+  每个词的结果按表的长度 / 版本、标签的代数、显示名的版本（`ItemNames.version`：装卸口、新问到名字时变）和比法记着（同一个词同一个字典）。
+  显示名是界面开着时才问到的话，结果要到下一次重算（再打一个字、表变了）才跟上。没核实：专用服务器上详情的标题（服务端算的 `titleOf`）给什么。
+- 动作：`search(字)`（边打边提交，可预测：客户端的食谱格当场跟着字变；服务端只记着——客户端的预测靠它，应答会盖掉预测）、
+  `pick(行号)`（记下选中的时刻 `pickedAt`）、`addFood`。搜索词上限 32 个字（`PotSearch.SEARCH_LIMIT`；搜索框的上限从这个动作参数取，不用改布局）。
+  搜索词、选中的行、选中的时刻是每位查看者的状态。
   客户端不传位置、玩家、背包下标；`addFood` 在会话的工作副本上从玩家背包搬运，整体成功或整体不做。
 - **写法轮换**（照旧界面的 `FoodRecipeTimerSwitch`）：选中的食谱有几种写法时，详情的食材格每 `CookingPotBook.VARIANT_SECONDS`（1 秒）
   换下一种，从第一种开始（刚选中先完整显示第一种一个周期，再点一次从头来）。服务端在 `viewerValues` 里按钟算（`shownVariant`；

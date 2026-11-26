@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """ItemNames - 物品的显示名：界面用到时问引擎（两端各装一个口），要到了记住（双端，纯规则）
 
-经典厨锅界面里没写 text 的配方（JE 的配方 JSON 本来就没有 text）标题显示成品的显示名（CookingPotBook.titleOf）。只管显示：
-搜索框按两端同步过来的 text 比（CookingPotBook.matchesSearch）——显示名是各端自己问引擎的，联机时两端可能不一样（语言不同、
-专用服务器只给语言键），按它过滤，服务端认的格号和客户端看到的会对不上。
+经典厨锅界面里没写 text 的配方（JE 的配方 JSON 本来就没有 text）标题显示成品的显示名（CookingPotBook.titleOf）；搜索框在看界面的
+那一端按成品、食材的显示名比（PotSearch）。显示名是各端自己问引擎的，联机时两端可能不一样（语言不同、专用服务器只给语言键）：
+所以选中的是配方在表里的行号，服务端不按显示名判断任何事（Shared/Menus/CookingPot 的 pick）。
 引擎的 GetItemBasicInfo(名, aux)["itemName"] 进了世界之后两端都给显示名（utf-8 字节串，aux 也认）；物品没有语言条目时给的是键本身
 （item.xxx.name），物品不存在时整个返回 None；在 ready 广播那一刻服务端对自定义物品给的也是键（2026-11-26 实机）。
 所以不在登记时写进表里，界面用到时才问：

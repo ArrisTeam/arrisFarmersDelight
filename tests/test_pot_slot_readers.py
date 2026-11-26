@@ -19,6 +19,7 @@ import fdtest
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes")
 Rules = fdtest.load("Shared.Rules.CookingPot")
 Book = fdtest.load("Shared.Rules.CookingPotBook")
+Search = fdtest.load("Shared.Rules.PotSearch")
 Books = fdtest.load("Shared.Rules.StationBooks")
 Layout = fdtest.load("Shared.Rules.PotLayout")
 Look = fdtest.load("Shared.Rules.PotPiecesLook")
@@ -100,7 +101,7 @@ class Setup(object):
 def testTheClassicScreenCyclesEachSlotAndFillsFromWhatIsAtHand():
     with Setup() as at:
         assert Book.recipeAt(at) is STEW and Book.recipeAt(at + 1) is None, "只有格子的配方在食谱格里，墓碑不在"
-        assert at in Book.visibleRecipes("") and at + 1 not in Book.visibleRecipes("")
+        assert at in Search.rows("") and at + 1 not in Search.rows("")
         assert Book.variantCount(STEW) == 3, "选项最多的那格（生牛肉：三样）有几个就轮几帧"
         assert [Book.variantOf(STEW, n) for n in range(4)] == [
             [BEEF, ONION, ONION], [("arris:minced_beef", 0), ONION, CARROT], [STEAK, ONION, ONION], [BEEF, ONION, ONION]]
