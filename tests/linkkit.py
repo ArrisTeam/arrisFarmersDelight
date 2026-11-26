@@ -124,11 +124,12 @@ class _Api(object):
     def ImportModule(self, name):
         self.env.asked[self.side].append(name)
         if name in (TABLE_HOOKS, BOOK_HOOKS):         # 前置包的原版工作台接口（服务端 TableHooksLink、客户端 TableClientLink）：另给，缺省没有
-            return self.env.tableHooks.get(self.side)
-        api = self.env.apis[self.side]
-        if isinstance(api, Exception):
-            raise api
-        return api
+            answer = self.env.tableHooks.get(self.side)
+        else:
+            answer = self.env.apis[self.side]
+        if isinstance(answer, Exception):             # 给的是异常对象：模块在、它导入时出错（引擎原样抛给调用的人）
+            raise answer
+        return answer
 
 
 class _Notify(object):
@@ -160,7 +161,8 @@ class _Factory(object):
 
 
 class Env(object):
-    """两端入口的假环境（用 install() 装）。字段：apis（前置包接口模块的回答，没装是 None，给异常对象就抛它）、asked、
+    """两端入口的假环境（用 install() 装）。字段：apis（前置包接口模块的回答，没装是 None，给异常对象就抛它）、
+    tableHooks（{端: 前置包原版工作台那一端登记口的回答}，缺省没有；给异常对象也抛它）、asked、
     listened（[(事件名, 函数)]：@Listen 挂的）、endpoints（[(模块名, 函数名)]：@AllowCall 登记的）、notices、timers。"""
 
     def __init__(self):

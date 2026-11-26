@@ -9,9 +9,11 @@ DishCrafts（拦砧板菜）、Server/CraftReturns（补还无序配方的容器
 - returns（table 那一步登）：成品对上本包的无序配方（Shared/Data/CraftReturns，Crafting.entryFor / returnsOf，一份每格还一件）就把容器
   放回原来那一格（前置包那边：放不回进背包，再放不下掉在脚下）；下游包在 Food.shapedRecipeContainerDict 登记的成品照旧契约每份还一个（进背包）。
 九格是前置包给的配方朝向的物品字典（或 None），这两条规则只看有哪些原料，朝向不要紧。
-前置包太旧、没装它的内容包（ImportModule 拿不到这个模块）：两样都不登，那张工作台本来也不存在。
+前置包太旧、没装它的内容包（ImportModule 拿不到这个模块）：两样都不登，那张工作台本来也不存在；这个模块导入出错（经 Compat/OtherMods，
+打一次日志）也当它不在——board 那一步登否决时不再把异常抛出去，后面收砧板开关、旁观的切菜声照开。
 """
 from . import BoardSwitch
+from .. import OtherMods
 from ...QuModLibs.Server import serverApi
 from ...Shared.Data import Tips
 from ...Shared.Data.CraftReturns import CraftReturns
@@ -23,8 +25,8 @@ API_VERSION = 1                     # 这里用到的接口（addVeto / addRemai
 
 
 def hooks():
-    """前置包的工作台接口模块；没有（前置包太旧、没装内容包）或接口版本不够是 None。"""
-    found = serverApi.ImportModule(HOOKS)
+    """前置包的工作台接口模块；没有（前置包太旧、没装内容包）、它导入出错或接口版本不够是 None。"""
+    found = OtherMods.find(serverApi.ImportModule, HOOKS)
     return found if found is not None and getattr(found, "API_VERSION", 0) >= API_VERSION else None
 
 
