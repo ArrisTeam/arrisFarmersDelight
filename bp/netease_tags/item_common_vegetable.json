@@ -2,10 +2,10 @@
   "type": "item",
   "identifier": "common:vegetable",
   "items": [
-    "minecraft:beetroot",
-    "minecraft:carrot",
-    "arris:onion",
-    "minecraft:potato",
-    "arris:tomato"
+    "#common:beetroot",
+    "#common:carrot",
+    "#common:onion",
+    "#common:potato",
+    "#common:tomato"
   ]
 }

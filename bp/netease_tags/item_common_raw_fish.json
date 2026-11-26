@@ -2,10 +2,8 @@
   "type": "item",
   "identifier": "common:raw_fish",
   "items": [
-    "minecraft:cod",
-    "arris:cod_slice",
-    "minecraft:salmon",
-    "arris:salmon_slice",
+    "#common:raw_cod",
+    "#common:raw_salmon",
     "minecraft:tropical_fish"
   ]
 }

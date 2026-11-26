@@ -4,11 +4,6 @@
   "items": [
     "minecraft:magma",
     "arris:stove",
-    "minecraft:lava",
-    "minecraft:flowing_lava",
-    "minecraft:campfire",
-    "minecraft:soul_campfire",
-    "minecraft:fire",
-    "minecraft:soul_fire"
+    "#farmersdelight:tray_heat_sources"
   ]
 }

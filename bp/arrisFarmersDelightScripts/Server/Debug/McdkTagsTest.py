@@ -3,12 +3,14 @@
 
 不会自动运行，没有 RPC 端点。问的是服务端自己的引擎口（Server/Helpers/Tags.PORT，原样的引擎答案），回答离线定不了的几件事：
 1. mcdk_test_tags_members()：词表（Shared/Data/Tags）里每个标签，引擎反查到的成员和静态表比：extra 是别的包登记进来的，
-   missing 是本包登记了、引擎却没有的（名字写错，或者 netease_tags 没挂上）；口准备好没有。另外看引擎日志：
+   missing 是本包登记了、引擎却没有的（名字写错，或者 netease_tags 没挂上；文件里用 # 引别的标签的那几个——生肉、蔬菜、作物……——
+   missing 非空就是 # 没展开）；口准备好没有。另外看引擎日志：
    进世界 10 秒后不该再有 "netease_tags: apply ... not found"（原版成员只在加载时报一轮，名字写错的会一直报）。
 2. mcdk_test_tags_knives()：五把刀和 knifeList 里每一把的 IsKnife，引擎给它们的物品标签（五把刀应带 arris:knife、common:knife）。
 3. mcdk_test_tags_campfire()：GetRecipesByInput(名字, "campfire", 0, 1) 对原版牛肉、农夫乐事的牛肉末、三种蛋的原始返回值（repr）、
    Shared/Rules/Grilling 解析出来的产物、Grilling.resultOf 的答案（2026-11-26 实机：[{'input': 名字, 'output': 名字}]，解析都对；换引擎版本时再看一遍）。
-4. mcdk_test_tags_heat()：方块标签引擎反查的成员，GetBlockTags 对几种热源方块的回答。
+4. mcdk_test_tags_heat()：方块标签引擎反查的成员（热源标签的文件里用 # 引了托盘标签：反查少了熔岩、营火、火，就是方块标签的 # 引擎没展开），
+   GetBlockTags 对几种热源方块的回答。
 5. mcdk_test_tags_blocks()：农夫乐事自己的方块标签（farmersdelight:，读的地方是"名单 ∪ 标签"）引擎反查的差，和每个成员按方块问
    （GetBlockTags）带不带这个标签：原版方块经 netease_tags 挂上的标签按方块问认不认，离线定不了，不认的列在 notTagged（只报，不算失败，
    反查认得就够用）。分类的物品标签（farmersdelight:meals 等，没有读的地方）在第 1 条里。

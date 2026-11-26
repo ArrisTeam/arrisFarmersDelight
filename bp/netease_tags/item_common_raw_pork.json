@@ -3,6 +3,6 @@
   "identifier": "common:raw_pork",
   "items": [
     "minecraft:porkchop",
-    "arris:bacon"
+    "#common:raw_bacon"
   ]
 }

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """gen_tags - 从词表 Shared/Data/Tags.py 生成行为包的 netease_tags/ 和 docs/TAGS.md 里的词表（开发工具，py -3 运行）
 
-一个标签一个文件：{"type": "item" | "block", "identifier": 标签名, "items": [成员...]}，文件名照机械动力：
+一个标签一个文件：{"type": "item" | "block", "identifier": 标签名, "items": [成员...]}（成员照词表的 ITEM_TAG_FILES / BLOCK_TAG_FILES，
+"#标签" 是照 JE 引的本包另一个标签，引擎展开），文件名照机械动力：
 item_<标签名里的 : 和 / 换成 _>.json、block_<同上>.json。引擎把各模组登记的同名标签（type 和 identifier 都一样）合并去重。
 原版自带的标签（VANILLA_TAGS）不生成文件。目录里不是这里生成的文件也算不一致（--check 失败，生成时删掉），词表是唯一的出处。
 docs/TAGS.md 的词表（两行标记之间）也从词表生成：标签、意思、对应 JE、农夫乐事登记的、农夫乐事在哪里读；"意思"和"在哪里读"写在下面的
@@ -90,7 +91,7 @@ def files(tags=None):
     """{文件名: 内容}"""
     tags = tags or vocabulary()
     found = {}
-    for kind, table in (("item", tags.ITEM_TAGS), ("block", tags.BLOCK_TAGS)):
+    for kind, table in (("item", tags.ITEM_TAG_FILES), ("block", tags.BLOCK_TAG_FILES)):
         for identifier, members in table.items():
             found[fileName(kind, identifier)] = render(kind, identifier, members)
     return found
@@ -138,7 +139,7 @@ def docTable(tags=None):
         raise SystemExit("配方里用了词表里没有的物品标签：%s（加进 Shared/Data/Tags.py，或者改配方）" % "、".join(unknown))
     rows = ["| 标签 | 种类 | 意思 | JE 1.20.1（forge:） | JE 1.21（c:） | 农夫乐事登记的 | 农夫乐事在哪里读 |",
             "| --- | --- | --- | --- | --- | --- | --- |"]
-    groups = (("物品", tags.ITEM_TAGS), ("方块", tags.BLOCK_TAGS), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
+    groups = (("物品", tags.ITEM_TAG_FILES), ("方块", tags.BLOCK_TAG_FILES), ("物品（原版自带，不生成文件）", tags.VANILLA_TAGS),
               ("物品（农夫乐事没有成员，不生成文件）", dict((tag, ()) for tag in tags.WITHOUT_MEMBERS)))
     for kind, table in groups:
         for tag, members in table.items():

@@ -2,7 +2,6 @@
   "type": "item",
   "identifier": "common:leafy_green",
   "items": [
-    "arris:cabbage",
-    "arris:cabbage_leaf"
+    "#common:cabbage"
   ]
 }
