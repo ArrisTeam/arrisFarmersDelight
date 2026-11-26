@@ -242,13 +242,33 @@ def testAttachingRegistersTheTreeAndEveryKindOfHappeningMovesTheRightNode():
 
 
 def testAttachingTwiceDoesNotHookTwice():
-    Bridge._state["listened"] = False
-    api, env = _attached()
-    api2, env2 = _attached()
+    Bridge._state["hooked"] = False
+    registered, real = [], Bridge.registerHandler
+
+    def counting(event, **kwargs):
+        registered.append(event)
+        return real(event, **kwargs)
+
+    Bridge.registerHandler = counting
+    try:
+        api, env = _attached()
+        api2, env2 = _attached()
+    finally:
+        Bridge.registerHandler = real
+    assert len(registered) == 5, registered                                   # 第二次 attach 不再登记处理函数
     assert list(env.listened) == ["InventoryItemChangedServerEvent"] and env2.listened == {}     # 背包事件只动态监听一次
     Deeds.done("p9", Deeds.CUT_ON_BOARD, "arris:cabbage")
     assert [call for call in api2.calls if call[1] == "p9"] == [("setFinish", "p9", _id("use_cutting_board"))] and api.calls == []
     assert len([name for name in Registry.handlerNames("EntityPlaceBlockAfterServerEvent") if name[0].endswith("AdvBridge")]) == 1
+
+
+def testOnlyTheEffectsATableNamesReachTheHandler():
+    # 效果事件很多：按效果名匹配，别的效果到不了处理函数
+    _attached()
+    entries = [entry for entry in Registry._handlers["AddEffectServerEvent"] if entry.ident[1] == "onEffect"]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.test(entry.keyOf({"effectName": "arris:nourishment"})) and not entry.test(entry.keyOf({"effectName": "speed"}))
 
 
 if __name__ == "__main__":
