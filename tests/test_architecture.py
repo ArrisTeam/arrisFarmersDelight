@@ -44,9 +44,11 @@ ENGINE_STDLIB = {"__future__", "abc", "array", "ast", "base64", "binascii", "bis
                  "traceback", "types", "uuid", "warnings", "weakref", "zlib"}
 ENGINE_MISSING = {"numbers", "fractions", "decimal", "unicodedata", "cmath", "sets"}
 _SHARED_RULE = {"forbid": {"Server", "Client", "Compat", "Api", "QuModLibs"}, "engine": False}
-# 联动入口、判定、步骤表只许导入这些（点分路径的前缀）：站点模块在步骤里才导入，没装前置包时它们连同 @Listen / @AllowCall 一个也不会被导入（规则 7）
+# 联动入口、判定、步骤表只许导入这些（点分路径的前缀）：站点模块在步骤里才导入，没装前置包时它们连同 @Listen / @AllowCall 一个也不会被导入（规则 7）。
+# Compat.OtherMods（取别的模组的模块，Presence 用它找前置包的接口）自己什么都不导入（它的规则 only 是空的），放进来不会带进站点模块
 ENTRY_ONLY = ("QuModLibs", "Shared.Rules.HandsOnMode", "Client.Engine", "Compat.Diegesis.ServerBoot", "Compat.Diegesis.ClientBoot",
-              "Compat.Diegesis.Presence", "Compat.Diegesis.Steps", "Compat.Diegesis.ServerSteps", "Compat.Diegesis.ClientSteps")
+              "Compat.Diegesis.Presence", "Compat.Diegesis.Steps", "Compat.Diegesis.ServerSteps", "Compat.Diegesis.ClientSteps",
+              "Compat.OtherMods")
 PACKS = {
     "fd": {
         "dir": os.path.join(fdtest.BP, fdtest.SCRIPTS),
@@ -134,6 +136,8 @@ PACKS = {
             "Compat/Diegesis/StoveScenes.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/FryTints.py": {"forbid": {"Server"}, "engine": True},      # 煎锅 / 炉灶场景里朝上那面的熟色粒子
             "Compat/Diegesis/ClientBoot.py": {"forbid": {"Server"}, "engine": True, "only": ENTRY_ONLY},
+            # 取别的模组的模块（各处联动都用，联动的判定 Presence 也用）：不碰任何一端、不碰引擎，本包的模块一个也不导入（only 是空的）
+            "Compat/OtherMods.py": {"forbid": {"Server", "Client"}, "engine": False, "only": ()},
             # 成就系统联动（服务端）：入口碰引擎；接上以后挂监听的那一层和算推进的那一层不碰引擎（离线拿假接口测）
             "Compat/Advancements/AdvBoot.py": {"forbid": {"Client"}, "engine": True},
             "Compat/Advancements/AdvBridge.py": {"forbid": {"Client"}, "engine": False},

@@ -11,10 +11,10 @@
       （LoadServerAddonScriptsAfter / LoadClientAddonScriptsAfter）里找最后一次，还没有就是 STANDALONE，什么也不联动、不提醒。
       客户端不在导入时找：它的接口模块会带进前置包自己的 QuModLibs。
 判定只做一次，步骤也只跑一次。引擎的东西都由入口模块（ServerBoot / ClientBoot）交进来，这里不碰引擎，离线可测。
+前置包装着、它的接口却导入出错（装坏了、版本混了）：经 Compat/OtherMods 接住、打一次日志，当它没装。
 """
-import traceback
-
 from . import Steps
+from .. import OtherMods
 from ...Shared.Rules import HandsOnMode
 
 REQUIRED_API_VERSION = 3        # 本包要前置包的 API 至少是它：前置包没有发过更低的版本，所以没有按版本分档的登记
@@ -58,12 +58,7 @@ _ON_LOADED = {"server": onServerLoaded, "client": onClientLoaded}
 
 
 def _find(state):
-    try:
-        return state.find(API_MODULE[state.side])
-    except Exception:  # noqa: BLE001 - 前置包装着、它的接口却导入出错（装坏了、版本混了）：记下来，当它没装
-        print("[arrisFarmersDelight] 联动（%s 端）：导入前置包的接口出错，当它没装" % state.side)
-        traceback.print_exc()
-        return None
+    return OtherMods.find(state.find, API_MODULE[state.side])
 
 
 def _look(state, last):
