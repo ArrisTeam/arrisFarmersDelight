@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "identifier": "common:bones",
+  "identifier": "common:bone",
   "items": [
     "minecraft:bone"
   ]

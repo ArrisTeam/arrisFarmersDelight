@@ -46,13 +46,16 @@
 
 变更：
 
-- 标签词表照 JE 的约定定名（名字照 JE 1.21 的 `c:` 名、成员照 1.20.1，见 [TAGS.md](TAGS.md)「名字和成员照什么定」）：`common:mushroom` → `common:mushrooms`、
-  `common:bone` → `common:bones`、`common:fried_egg` → `common:cooked_egg`；两个热源标签 `common:heat_source`、`common:heat_source_lit` 合成 JE 的方块标签
+- 标签词表照 JE 的约定定名（名字照 JE 1.21 的 `c:` 名、成员照 1.20.1，见 [TAGS.md](TAGS.md)「名字和成员照什么定」）：`common:fried_egg` → `common:cooked_egg`；
+  两个热源标签 `common:heat_source`、`common:heat_source_lit` 合成 JE 的方块标签
   `farmersdelight:heat_sources`（方块有点燃状态的要点着才算）；去掉没有成员的 `common:chili`；新增 `common:cooked_meat`、`common:leafy_green`；
   `common:crops`、`common:seeds` 加上原版的作物、种子；几个标签照 JE 用 `#` 引别的标签（登记进 `common:tomato` 的番茄也就算蔬菜、作物）。
-  `ext.tags` 的名字常量跟着改，不留旧名：`HEAT_SOURCE`、`HEAT_SOURCE_LIT` → `HEAT_SOURCES`，`MUSHROOM` → `MUSHROOMS`，`BONE` → `BONES`，
+  `ext.tags` 的名字常量跟着改，不留旧名：`HEAT_SOURCE`、`HEAT_SOURCE_LIT` → `HEAT_SOURCES`，
   `FRIED_EGG` → `COOKED_EGG`，去掉 `CHILI`；新增 `COOKED_MEAT`、`LEAFY_GREEN`。配方 JSON 里 JE 1.21 的 `c:` 标签名（`c:foods/raw_beef`、
   `c:tools/knife`、`c:eggs`……）也认（RECIPE-JSON.md §3、§4）。
+- 蘑菇、骨头的标签名对上团队的烹饪原料标签规范（森罗物语厨房定的，平铺、单数）：`common:mushrooms` → `common:mushroom`、`common:bones` → `common:bone`
+  （这两个复数名只在这一版的开发中用过，没有发过版）；`ext.tags` 的名字常量跟着改，不留旧名：`MUSHROOMS` → `MUSHROOM`，`BONES` → `BONE`。
+  配方 JSON 里 JE 的 `forge:mushrooms` / `c:mushrooms`、`forge:bones` / `c:bones` 换成新名字。
 - 方块标签 `farmersdelight:heat_sources` 多了成员 `minecraft:cauldron`（JE 标签里的熔岩炼药锅：基岩版没有这个方块，是炼药锅盛着熔岩的状态）。
   农夫乐事只在它盛着熔岩（`cauldron_liquid` 是 `lava`、`fill_level` 至少 1）时当热源；按这个标签认热源的模组也要看这两个状态。见 TAGS.md「热源方块」。
 - 厨锅配方的 `text`：经典厨锅界面的搜索框照 JEI 按成品、食材的显示名和物品 ID 搜（看界面的那一端自己的语言），不再只按 `text` 比；

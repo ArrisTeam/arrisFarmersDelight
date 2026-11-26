@@ -12,9 +12,9 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 **名字照 JE 1.21，成员照 JE 1.20.1。** 名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走
 （Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
 
-- 名字是 `common:` 加 `c:` 名的最后一段，单复数照 JE。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
-  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边也是：
-  `c:crops` → `common:crops`、`c:seeds` → `common:seeds`、`c:bones` → `common:bones`、`c:mushrooms` → `common:mushrooms`。
+- 名字是 `common:` 加 `c:` 名的最后一段，一律单数。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
+  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边照团队的规范写单数：
+  `c:bones` → `common:bone`、`c:mushrooms` → `common:mushroom`。团队里已经在用的复数名照旧：`c:crops` → `common:crops`、`c:seeds` → `common:seeds`。
 - 最后一段只是材料名、单拿出来说不清是什么的，照机械动力的写法把类目的单数接在后面：`c:buckets/water` → `common:water_bucket`
   （机械动力的 `c:plates/iron` → `common:iron_plate`、`c:flours/wheat` → `common:wheat_flour` 也是这样来的）。
 - JE 没有对应 `c:` 名的，照物品名：`common:rice_panicle`、`common:mutton_chops`、`common:tomato_seeds`。
@@ -128,7 +128,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 名字怎么来的见开头「名字和成员照什么定」。团队里已经在用的名字照用：`common:crops`、`common:seeds`、`common:flowers`（机械动力附属）、
 `common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。
 
-- `common:mushrooms` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
+- `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
 - 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。别的模组的蛋登记进它就行：`netease_tags` 的 `identifier` 写
   `minecraft:egg`（3.10 实机：引擎把它并进原版标签，反查、按物品问都有它；工作台自检里蛋那一格放它，蛋糕、南瓜派、烤鸡、鸡蛋面团都做出来了）。
@@ -163,7 +163,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:cabbage` | 物品 | 卷心菜（含卷心菜叶） | `forge:crops/cabbage` | `c:crops/cabbage`、`c:foods/cabbage` | `arris:cabbage`、`arris:cabbage_leaf` | 厨锅的格子：饺子、卷心菜卷（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:grilled_salmon`（bp/recipes） |
 | `common:leafy_green` | 物品 | 沙拉用的叶菜（JE 的 salad_ingredients） | `forge:salad_ingredients`、`forge:salad_ingredients/cabbage` | `c:foods/leafy_green` | `#common:cabbage` | 厨锅的格子：蔬菜面、鸡肉汤、蔬菜汤、南瓜汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:chicken_sandwich`、`arris:hamburger`、`arris:mixed_salad`、`arris:mutton_wrap`（bp/recipes） |
 | `common:milk` | 物品 | 奶（奶桶、奶瓶） | `forge:milk` | `c:drinks/milk` | `minecraft:milk_bucket`、`arris:milk_bottle` | 厨锅的格子：南瓜汤、洋葱汤、热可可、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:shepherds_pie_block_stage0`、`arris:stuffed_potato`（bp/recipes） |
-| `common:mushrooms` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `c:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:mushroom` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `c:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:onion` | 物品 | 洋葱 | `forge:crops/onion`、`forge:vegetables/onion` | `c:crops/onion`、`c:foods/onion` | `arris:onion` | 厨锅的格子：炒饭、饺子、蔬菜杂烩、填馅南瓜、鱼肉炖、洋葱汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:barbecue_stick`、`arris:grilled_salmon`、`arris:hamburger`、`arris:mutton_wrap`、`arris:roast_chicken_block_stage0`、`arris:shepherds_pie_block_stage0`、`arris:steak_and_potatoes`（bp/recipes） |
 | `common:carrot` | 物品 | 胡萝卜 | `forge:crops/carrot`、`forge:vegetables/carrot` | `c:crops/carrot` | `minecraft:carrot` | 厨锅的格子：兔肉煲、炒饭、蔬菜面、牛肉炖、鸡肉汤、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:chicken_sandwich`、`arris:roast_chicken_block_stage0`（bp/recipes） |
 | `common:potato` | 物品 | 土豆 | `forge:crops/potato`、`forge:vegetables/potato` | `c:crops/potato` | `minecraft:potato` | 厨锅的格子：兔肉煲、填馅南瓜、牛肉炖、蔬菜汤、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
@@ -172,7 +172,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:bread` | 物品 | 面包 | `forge:bread`、`forge:bread/wheat` | `c:foods/bread` | `minecraft:bread` | 厨锅的格子：洋葱汤（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:bacon_sandwich`、`arris:chicken_sandwich`、`arris:egg_sandwich`、`arris:hamburger`、`arris:mutton_wrap`（bp/recipes） |
 | `common:pasta` | 物品 | 生意面 | `forge:pasta`、`forge:pasta/raw_pasta` | `c:foods/pasta` | `arris:raw_pasta` | 厨锅的格子：肉丸意面、羊排意面、蔬菜面、鱿鱼墨面、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:berry` | 物品 | 浆果 | `forge:berries` | `c:foods/berry` | `minecraft:sweet_berries`、`minecraft:glow_berries` | 厨锅的格子：填馅南瓜（Shared/Data/CookingPotRecipes 的 Slots）；工作台：`arris:fruit_salad`（bp/recipes） |
-| `common:bones` | 物品 | 骨头 | `forge:bones` | `c:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:bone` | 物品 | 骨头 | `forge:bones` | `c:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:raw_cod` | 物品 | 生鳕鱼（含鱼片） | `forge:raw_fishes/cod` | `c:foods/raw_cod` | `minecraft:cod`、`arris:cod_slice` | 厨锅的格子：烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:raw_salmon` | 物品 | 生鲑鱼（含鱼片） | `forge:raw_fishes/salmon` | `c:foods/raw_salmon` | `minecraft:salmon`、`arris:salmon_slice` | — |
 | `common:cooked_fish` | 物品 | 熟鱼（含熟鱼片） | `forge:cooked_fishes` | `c:foods/cooked_fish` | `#common:cooked_cod`、`#common:cooked_salmon` | 工作台：`arris:barbecue_stick`（bp/recipes） |

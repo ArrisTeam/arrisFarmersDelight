@@ -57,13 +57,13 @@ def _dish(path, slots, **fields):
 
 _BEEF, _PORK, _CHICKEN, _MUTTON, _MEAT = _tag(Tags.RAW_BEEF), _tag(Tags.RAW_PORK), _tag(Tags.RAW_CHICKEN), _tag(Tags.RAW_MUTTON), _tag(Tags.RAW_MEAT)
 _FISH, _COD = _tag(Tags.RAW_FISH), _tag(Tags.RAW_COD)
-_CABBAGE, _VEGETABLE, _MUSHROOM, _MILK, _BERRY = (_tag(Tags.CABBAGE), _tag(Tags.VEGETABLE), _tag(Tags.MUSHROOMS), _tag(Tags.MILK),
+_CABBAGE, _VEGETABLE, _MUSHROOM, _MILK, _BERRY = (_tag(Tags.CABBAGE), _tag(Tags.VEGETABLE), _tag(Tags.MUSHROOM), _tag(Tags.MILK),
                                                   _tag(Tags.BERRY))
 _TOMATO, _ONION, _CARROT, _POTATO, _BEETROOT = (_tag(Tags.TOMATO), _tag(Tags.ONION), _tag(Tags.CARROT), _tag(Tags.POTATO),
                                                 _tag(Tags.BEETROOT))
-_RICE, _PASTA, _DOUGH, _BREAD, _BONE, _EGG = (_tag(Tags.RICE), _tag(Tags.PASTA), _tag(Tags.DOUGH), _tag(Tags.BREAD), _tag(Tags.BONES),
+_RICE, _PASTA, _DOUGH, _BREAD, _BONE, _EGG = (_tag(Tags.RICE), _tag(Tags.PASTA), _tag(Tags.DOUGH), _tag(Tags.BREAD), _tag(Tags.BONE),
                                               _tag(Tags.EGG))
-_MUSHROOMS = ["minecraft:brown_mushroom", "minecraft:red_mushroom"]      # JE 在这两格写的是物品，不是 #forge:mushrooms
+_MUSHROOM_ITEMS = ["minecraft:brown_mushroom", "minecraft:red_mushroom"]     # JE 在这两格写的是物品，不是 #forge:mushrooms
 _LEAFY = _tag(Tags.LEAFY_GREEN)          # JE 的 forge:salad_ingredients（鸡肉汤、蔬菜汤、南瓜汤、蔬菜面）；卷心菜卷、饺子写的是 forge:crops/cabbage
 
 _BOWL = ("minecraft:bowl", 0)
@@ -71,11 +71,11 @@ _BOTTLE = ("minecraft:glass_bottle", 0)
 
 # 厨锅配方
 CookingPotRecipeList = [
-    _dish("mushroom_stew", _MUSHROOMS,
+    _dish("mushroom_stew", _MUSHROOM_ITEMS,
           CookResult=("minecraft:mushroom_stew", 0), Vessel=_BOWL, PushItem=[], text="蘑菇煲"),
     _dish("beetroot_soup", [_BEETROOT, _BEETROOT, _BEETROOT],
           CookResult=("minecraft:beetroot_soup", 0), Vessel=_BOWL, PushItem=[], text="甜菜汤"),
-    _dish("rabbit_stew", [_POTATO, "minecraft:rabbit", _CARROT, _MUSHROOMS],
+    _dish("rabbit_stew", [_POTATO, "minecraft:rabbit", _CARROT, _MUSHROOM_ITEMS],
           CookResult=("minecraft:rabbit_stew", 0), Vessel=_BOWL, PushItem=[], text="兔肉煲"),
     _dish("tomato_sauce", [_TOMATO, _TOMATO],
           CookResult=("arris:tomato_sauce", 0), Vessel=_BOWL, PushItem=[], text="番茄酱", CookTime=5.0, Experience=0.35),

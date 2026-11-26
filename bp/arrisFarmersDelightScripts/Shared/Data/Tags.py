@@ -6,8 +6,9 @@
 按展开后的 ITEM_TAGS / BLOCK_TAGS 作答，docs/TAGS.md 写的也是这里。
 
 命名（主会话 2026-11-26 定的，docs/TAGS.md 开头）：名字照 JE 1.21、成员照 JE 1.20.1（移植的基线 FD 1.3.4）。
-- common: + JE 1.21 的 c: 名的最后一段，单复数照 JE（c:crops/tomato -> tomato、c:foods/raw_beef -> raw_beef、c:tools/knife -> knife；
-  只有一层的类目名照 JE 用复数：c:crops -> crops、c:bones -> bones、c:mushrooms -> mushrooms）；
+- common: + JE 1.21 的 c: 名的最后一段（c:crops/tomato -> tomato、c:foods/raw_beef -> raw_beef、c:tools/knife -> knife），一律单数：
+  只有一层的类目名 JE 写复数，这边照团队烹饪原料标签的规范（森罗物语厨房定的，平铺、单数）写单数：c:bones -> bone、c:mushrooms -> mushroom；
+  团队里已经在用的复数名照旧（下面的 crops、seeds、flowers）；
 - 最后一段只是材料名的，照机械动力把类目的单数接在后面（c:buckets/water -> water_bucket；机械动力的 c:plates/iron -> iron_plate、
   c:flours/wheat -> wheat_flour）；JE 没有对应 c: 名的照物品名（rice_panicle、mutton_chops、tomato_seeds）；
 - JE 农夫乐事自己的标签照 JE 原名 farmersdelight:<路径>；不用 / 分层。
@@ -52,7 +53,7 @@ RAW_FISH = "common:raw_fish"
 VEGETABLE = "common:vegetable"
 CABBAGE = "common:cabbage"
 MILK = "common:milk"
-MUSHROOMS = "common:mushrooms"
+MUSHROOM = "common:mushroom"
 # JE 1.21 才有名字、主会话 2026-11-26 定了补上的：熟肉（c:foods/cooked_meat，烤串那一格：JE 1.20.1 写的是熟牛 / 猪 / 鸡 / 羊 / 鱼 / 熟兔肉任一）；
 # 沙拉用的叶菜（c:foods/leafy_green = JE 1.20.1 的 forge:salad_ingredients：三明治、沙拉、四道汤读它，和卷心菜卷、饺子读的"卷心菜"分开）
 COOKED_MEAT = "common:cooked_meat"
@@ -66,7 +67,7 @@ WHEAT = "common:wheat"
 BREAD = "common:bread"
 PASTA = "common:pasta"
 BERRY = "common:berry"
-BONES = "common:bones"
+BONE = "common:bone"
 RAW_COD = "common:raw_cod"
 RAW_SALMON = "common:raw_salmon"
 COOKED_FISH = "common:cooked_fish"
@@ -159,7 +160,7 @@ ITEM_TAG_FILES = {
     CABBAGE: ("arris:cabbage", "arris:cabbage_leaf"),                           # JE 不把卷心菜算进 forge:vegetables，单列
     LEAFY_GREEN: ("#" + CABBAGE,),
     MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-    MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
+    MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
     ONION: ("arris:onion",),
     CARROT: ("minecraft:carrot",),
     POTATO: ("minecraft:potato",),
@@ -168,7 +169,7 @@ ITEM_TAG_FILES = {
     BREAD: ("minecraft:bread",),
     PASTA: ("arris:raw_pasta",),
     BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"),
-    BONES: ("minecraft:bone",),
+    BONE: ("minecraft:bone",),
     RAW_COD: _RAW_COD,
     RAW_SALMON: _RAW_SALMON,
     COOKED_FISH: ("#" + COOKED_COD, "#" + COOKED_SALMON),
@@ -292,7 +293,7 @@ JE_NAMES = {
     CABBAGE: ("forge:crops/cabbage", "c:crops/cabbage", "c:foods/cabbage"),
     LEAFY_GREEN: ("forge:salad_ingredients", "forge:salad_ingredients/cabbage", "c:foods/leafy_green"),
     MILK: ("forge:milk", "c:drinks/milk"),
-    MUSHROOMS: ("forge:mushrooms", "c:mushrooms"),
+    MUSHROOM: ("forge:mushrooms", "c:mushrooms"),
     ONION: ("forge:crops/onion", "forge:vegetables/onion", "c:crops/onion", "c:foods/onion"),
     CARROT: ("forge:crops/carrot", "forge:vegetables/carrot", "c:crops/carrot"),
     POTATO: ("forge:crops/potato", "forge:vegetables/potato", "c:crops/potato"),
@@ -301,7 +302,7 @@ JE_NAMES = {
     BREAD: ("forge:bread", "forge:bread/wheat", "c:foods/bread"),
     PASTA: ("forge:pasta", "forge:pasta/raw_pasta", "c:foods/pasta"),
     BERRY: ("forge:berries", "c:foods/berry"),
-    BONES: ("forge:bones", "c:bones"),
+    BONE: ("forge:bones", "c:bones"),
     RAW_COD: ("forge:raw_fishes/cod", "c:foods/raw_cod"),
     RAW_SALMON: ("forge:raw_fishes/salmon", "c:foods/raw_salmon"),
     COOKED_FISH: ("forge:cooked_fishes", "c:foods/cooked_fish"),

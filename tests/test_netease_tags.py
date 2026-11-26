@@ -386,8 +386,8 @@ def testTheBriefsMembers():
         Tags.RAW_CHICKEN: ("minecraft:chicken", "arris:chicken_cuts"), Tags.RAW_MUTTON: ("minecraft:mutton", "arris:mutton_chops"),
         Tags.RAW_FISH: ("minecraft:cod", "arris:cod_slice", "minecraft:salmon", "arris:salmon_slice", "minecraft:tropical_fish"),
         Tags.VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
-        Tags.MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONES: ("minecraft:bone",),
+        Tags.MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
+        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONE: ("minecraft:bone",),
         Tags.WATER_BUCKET: ("minecraft:water_bucket",),
     }
     for tag, members in expect.items():
