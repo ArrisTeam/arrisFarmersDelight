@@ -18,6 +18,7 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         PotSunk（下锅就沉的料：倒的、打的、化的）  PotPieceTraits（配料切成碎料时算谷物 / 意面 / 肉，还是煮完拣出来）
                         HandsOnConfig（HoD 的配置表：四个站点的开关、工作台合成、搅拌、食谱书、三种烹饪倍率，缺省同 JE；整合包作者改它，不经联动契约；读法在 Rules/HandsOnOptions）
                         Tips（服务端提示说的每一句：(语言文件的键, 中文)，客户端按玩家的语言查，见「砧板和站点的几处补齐」）
+                        Advancements（JE 的 21 条进度：交给成就系统的节点、每条怎么算做到，见「成就系统联动」）
   Rules/                纯规则：CookingPot（厨锅配方匹配 / 出料结算，公共函数都在这里） CropGrowth（催熟阶段表） Placement（朝向 / 放置位置；`directionOfAux` 是读方块 aux 的唯一一处） Ticks（错峰 / 概率）
                         PotSlots（厨锅配方的格子：选项的写法、逐格配对、种类的各种摆法、展开成写法）  PotRecipeTable（厨锅配方表的索引和记着的答案，只有 CookingPot 用）
                         RecipeJson（JE 写法的配方 JSON 读成规整的配方：厨锅、砧板、营火烹饪；新联动接口和行为包配方 JSON 共用）
@@ -137,6 +138,8 @@ Compat/
   Jei/                  arrisJei 配方页（未安装则不做任何事）；BoardAssembly = 联动着、砧板站点开着时多出的"砧板摆盘"分类，并把被拦的工作台配方藏起来；
                         CookPages = 煎锅、炉灶两个分类共用的分页（StationBooks.cookGroups：三种蛋一页）和配方页；厨锅、砧板的配方页轮换标签格的成员
   Create/               机械动力配方（未安装则不做任何事）
+  Advancements/         成就系统（arrisAdvancements）：JE 的 21 条进度（未安装则不做任何事）。AdvBoot 听它的 ready，AdvBridge 登记节点、挂监听，
+                        AdvTriggers 算推进哪一条；见「成就系统联动」
   Diegesis/             沉浸式交互前置（diegesisBp）在场时的亲手做菜站点：ServerBoot / ClientBoot 只挂 Presence（找前置包的接口、定本端的运行模式、跑步骤表，Steps 是执行器），
                         ServerSteps / ClientSteps 是步骤表（只放数据）、每个站点一步，步骤的实现是 BoardServerLink / PotServerLink / PanServerLink / GrillServerLink 和
                         BoardClientLink / PotClientLink / PanClientLink / GrillClientLink（调站点的 register，登记上了再开连带的东西）；站点模块在步骤里才导入，见「联动（沉浸式交互前置）」，
@@ -972,6 +975,40 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - **借来的工具跟着环境光变暗**：砧板站点上借来的那把刀 / 工具（半透明粒子 `arris:board_tool`）加了 `minecraft:particle_appearance_lighting`——JE 是照物品画的（`SceneRenderer.java:848` 的 `renderStatic` 带着站点的光照），
   原来暗处也是满亮度。实机只核过粒子建得出来。
 
+## 成就系统联动：JE 的 21 条进度（arrisAdvancements，可选依赖）
+
+- 接上：`Compat/Advancements/AdvBoot`（`modMain.py` 里 `MOD.Server`）在导入时（引擎加载期）在本包的加载器系统上听成就系统的
+  `("dolorAdvancements", "ExtensionApi", "ServerApiReady")`（它 README 的"方法一"），事件里的 `api` 就是它的 `dolorAdvancementsScripts.Api.Server`；
+  它的系统已经在（热重载以后）就 `ImportModule` 晚接一次（照 `Compat/Create/PotatoCannonAmmo`）。监听不挂在 `Server/ExtensionSystem`：那个系统只用来广播本包自己的 ready。
+  没装成就系统：事件不来，只多了一个空监听；处理函数、`Deeds` 的订阅、背包事件的监听全是接上以后才挂的（`AdvBridge.attach`），平时零开销。
+- 节点：`Shared/Data/Advancements.NODES`，ID 是 JE 的 `farmersdelight:main/<名字>`，父子、框、隐藏、弹窗、全服播报、经验奖励照 JE 的 json，标题和描述照抄 JE 官方中文
+  （`zh_cn.json`），图标换成本包的物品；根节点的背景是基岩原版资源包的 `textures/blocks/brick`（JE 用砖块贴图，16x16，和成就系统自带的背景一样大）。
+  `tests/test_advancements.py` 对着 `.refs` 的 21 个 json 和 `zh_cn.json` 复算。
+- 推进：`Compat/Advancements/AdvTriggers`（纯逻辑）：JE 要求是 OR 的做到一个子条件就 `setFinish`（做到过的不再调），AND 的（轮作 19 种、厨神当道 27 道）
+  每个子条件 `addProgressUnique` 一次，子键是 JE 的子条件名。条件表 `Shared/Data/Advancements.CRITERIA`。
+- 核心模块里没有"成就"：玩法模块在脚本做成某件事的地方调 `Server/Helpers/Deeds.done(玩家, 事, 细节)`（没人订阅时就是一次字典查找），`AdvBridge` 订阅它。
+  引擎自己报的事（放方块、吃、效果、弹射物）由 `AdvBridge` 接上以后在注册表上登记处理函数（ModServer 本来就转这几个），背包变化（ModServer 不转）接上以后动态监听。
+
+| 进度 | JE 的条件 | 这里怎么算 |
+| --- | --- | --- |
+| 农夫乐事（root） | 背包有任何变化 | 玩家的进度装好时（成就系统的 `listenOnPlayerReady`）就给 |
+| 刀耕火种 craft_knife | 背包里有五种刀之一 | `InventoryItemChangedServerEvent` 新那一格的物品；进度装好时再按背包补一遍（进服时的背包事件比进度早，那时加不上） |
+| 救命稻草 / 植物肥料 / 狂野屠夫 / 没这金刚钻的话…… / 野生作物 / 我们当中出了内"菌" | 背包里有草秆 / 沃土 / 火腿或熏火腿 / 下界合金刀 / 四种种子之一 / 两种菌落之一 | 同上 |
+| 先进堆肥 / 点燃营火 / 晚餐上桌喽！ / 一顿盛宴 | 放下有机堆肥 / 营火或灵魂营火 / 厨锅 / 六种盛宴之一 | `EntityPlaceBlockAfterServerEvent` 的 `fullName`（盛宴是各自的 `_stage0`） |
+| 当心伤手…… use_cutting_board | 自定义触发器：砧板上切成一件 | `Deeds.CUT_ON_BOARD`：经典右键 `Server/CuttingBoard._cutOne`，砧板站点最后一刀 `Compat/Diegesis/BoardChop._cutTheStack`（HoD 也是走 FD 的切法给的） |
+| 倾斜稻根 plant_rice | 放下稻米作物 | `Deeds.PLACED_BLOCK`（`Server/Crops._plantRice`，稻米是脚本种的） |
+| 采田艹加 harvest_ropelogged_tomato | 对 0 级的绳上番茄用东西（= 右键摘熟了的） | `Deeds.HARVESTED`（`Server/Crops.OnTomatoUse`，摘的是 `arris:tomatoes_vine_stage3`） |
+| 嘘！去！ hit_raider_with_rotten_tomato | 玩家扔的烂番茄（弹射物伤害）打到袭击者 | `ProjectileDoHitEffectEvent`：弹射物是 `arris:rotten_tomato`、打中实体、实体在 `Advancements.RAIDERS`（唤魔者、掠夺者、劫掠兽、卫道士、女巫），算扔的人 |
+| 轮作 plant_all_crops | 19 种作物各放下一次 | `EntityPlaceBlockAfterServerEvent`；种子类再看 `ItemUseOnAfterServerEvent` 之后点的那一面外面那一格种上没有（`Advancements.PLANTERS`）；脚本种的（稻米、沃土耕地上的原版作物、蘑菇放在有机肥 / 沃土上直接成的菌落）走 `Deeds.PLACED_BLOCK` |
+| 移动厨房 use_skillet | 用完一次手持煎锅 | `Deeds.SKILLET_COOKED`（`Server/SkilletHand._finish`）；放下的煎锅（经典右键、煎锅站点）照 JE 不算 |
+| 滋滋火热！ place_skillet | 放下煎锅方块 | `Deeds.PLACED_BLOCK`（潜行放煎锅是 `Server/ItemToBlock` 脚本放的） |
+| 服务周到 eat_nourishing_food | 身上有了滋养 | `AddEffectServerEvent` 的 `arris:nourishment` |
+| 厨神当道 master_chef | 27 道菜各吃一次 | `PlayerEatFoodServerEvent`（牛肉炖菜是 `arris:cookbeef_stew`） |
+
+没实机验证（`Server/Debug/McdkAdvTest.py` 用脚本把能触发的都触发一遍，真玩的路要手动试）：种子类、营火、厨锅、盛宴的放置引擎发不发 `EntityPlaceBlockAfterServerEvent`
+（种子类另有 `ItemUseOnAfterServerEvent` 那条兜着）；`AddEffectServerEvent` 里自定义效果的名字是不是 `arris:nourishment`；`PlayerEatFoodServerEvent` 对骨头汤这种喝的来不来；
+成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的）。
+
 ## 和 JE 的出入（2026-11-26 审计）
 
 对照 FD 1.3.4 逐类核过一遍（方块属性、掉落、食物、效果、声音、提示、绳子、番茄、烂番茄……）。改掉的在各自的"对照 JE"一节或提交说明里；
@@ -981,7 +1018,9 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 滋养期间"总能吃"（JE `NourishmentAlwaysEatMixin`）：`can_always_eat` 只能写死在物品 JSON 里，没找到按身上的效果临时放开的接口。
 - 原版汤（蘑菇煲、甜菜汤、兔肉煲）叠到 16（JE `SoupItemMixin`）：附加包覆盖不了原版物品的定义（网易有没有改原版堆叠的接口没核实）。
 - 村庄里的堆肥堆、村庄农田种上农夫乐事的作物（JE `VillageStructures`）：附加包加不进原版村庄的拼图池（网易有没有替代接口没核实）。
-- 进度（JE 21 条 advancements）：附加包加不了原版进度（网易的自定义成就能不能用没核实）。
+- 进度（JE 21 条 advancements）：原版的进度界面附加包加不进去；装了团队的成就系统（arrisAdvancements）时 21 条都在它那里（见「成就系统联动」），
+  不装就没有。和 JE 不一样的几处：根节点进游戏就给（JE 是背包第一次变化，实际上也是进游戏就给）；"嘘！去！"的袭击者里没有幻术师（基岩版没有）；
+  "采田艹加"只认右键摘熟了的绳子上的番茄（JE 是"对 0 级的绳上番茄用了东西"，摘完正好回 0 级，别的用法几乎碰不到）；标题和描述只有中文。
 - 拿刀打人击退少 0.1（JE `KnifeItem`）：`DamageEvent` 只能开关击退，改不了大小（煎锅同一个问题，见"煎锅"一节）。
 - 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
@@ -991,7 +1030,6 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
 - 村庄结构（同上一节的限制以外，JE 的五种村庄房子也没搬）。
-- 进度（同上）。
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
 
 暂时和 JE 不一样、等用户定的：
