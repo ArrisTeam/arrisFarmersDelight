@@ -323,7 +323,19 @@ ext.recipes.registerFromJson(文本或字典, recipeId=None)
 ```
 
 JE 农夫乐事写法的配方 JSON（[RECIPE-JSON.md](RECIPE-JSON.md)），物品名写网易的。ID 不给就用 JSON 里的 `"id"`。JE 的标签名（`forge:raw_beef`……）
-自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。
+自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。文本、已经读出来的字典都收（机械动力的 `registerFromJson` 只收文本，那边得先 `json.dumps`）。
+
+没有批量登记的口（机械动力也没有）：一张字典表就一条一条交，记下没登记上的——成就系统 `registerAdvancements(列表)` 那种用法这样写：
+
+```python
+failed = []
+for recipe in RECIPES:                       # 一条一个 JE 写法的字典（也可以是从你自己的 JSON 读出来的）
+    answer = ext.recipes.registerFromJson(recipe)
+    if not answer["ok"]:
+        failed.append(answer)                # {"ok": False, "error": ..., "id": ..., "message": ...}
+if failed:
+    print("[mymod] 农夫乐事的配方有 %d 条没登记上：%r" % (len(failed), failed))
+```
 
 ### 5.5 查询
 
@@ -471,3 +483,27 @@ def register(ext):
 **问：一个标签里没有成员会怎样？** 那一格什么都不收，这条配方配不上；不报错。等有模组登记了成员（或玩家装了那个模组）就能配。
 
 **问：为什么不像机械动力那样在 ready 之后冻结？** 农夫乐事的表从旧接口起就一直允许随时追加，表同步每 5 秒比一次；没有哪里要在某一刻之后才建好的缓存。
+
+---
+
+## 10. 从机械动力过来
+
+对接过机械动力（arrisCreate）扩展接口的，大部分照搬；不一样的地方：
+
+| 机械动力 | 农夫乐事 | 说明 |
+| --- | --- | --- |
+| `ListenForEvent("arrisCreate", "ExtensionApi", "ServerExtensionApiReady", ...)` | `ListenForEvent("arrisFarmersDelight", "ExtensionApi", "ServerExtensionApiReady", ...)` | 载荷一样：`extension`、`side`、`apiVersion`（§2） |
+| `ext.hasCapability`、`ext.hostVersion`、`ext.apiVersion` | 一样 | 能力名各是各的（§3） |
+| ready 的处理函数一返回就冻结 | 不冻结 | 表一直是活的，进服之后改了调 `syncToClients`（§1.3、§5.8） |
+| `ImportModule("arrisCreateScripts.Api.ExtensionApi").getExtensionApi(side)` | `ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi").getExtensionApi(side)` | 兜底入口，写法一样（§1.4） |
+| 行为包的 `create_recipes/` | 行为包的 `farmersdelight_recipes/` | 一个文件一条、能写注释。没写 `id` 时机械动力落进 `create:<路径>`，这里取第一层目录当命名空间（RECIPE-JSON.md §1） |
+| `createBuilder(id, "milling")`、`ingredient(item, count, data)`、`ingredientTag(tag, count)`、`output(item, count, data, chance)`、`processingTime(t)` | `createBuilder(id, "cooking")`，`ingredient` / `ingredientTag` / `output` 的写法一样，时间是 `cookingTime(刻)` | 厨锅一格一件：`count=2` 是两格；位置参数是这一格的几个选项（§5.3） |
+| `register()` 返回配方对象，格式不对抛 `ValueError` | `register()` 返回 `{"ok", "error", "id"}`，从不抛 | 看 `ok`（§4） |
+| `registerFromJson(文本)`，失败返回 `None` | `registerFromJson(文本或字典)`，返回回答字典 | 字典不用先 `json.dumps`（§5.4） |
+| JSON 的 `results`、`processingTime` | 厨锅、营火写 `result`，砧板的 `result` 是列表；时间写 `cookingtime`（`cookingTime` 也认） | 照 JE 农夫乐事的写法（RECIPE-JSON.md） |
+| `"minecraft:wool:3"`、`{"id": ...}` | 一样认 | RECIPE-JSON.md §3 |
+| `getRecipeById` / `getRecipesOfType` 给配方对象 | 给 JE 配方 JSON 的样子（带 `"id"`） | 改几个字段交回 `registerFromJson` 就是覆盖（§5.5） |
+| `findRecipe(类型, 物品, data)` | `findRecipe(类型, 物品, aux)`：砧板、营火；厨锅用 `matchCooking` | §5.5、§5.7 |
+| `removeRecipe` 返回布尔，`removeAllOfType` | `removeRecipe` 返回回答字典；没有 `removeAllOfType` | 厨锅删了留墓碑（§5.6） |
+| 客户端调 `ext.recipes` 的任何方法抛 `RuntimeError` | 客户端能查；登记类的答 `server_only`，不抛 | 两端可以共用一份登记代码（§4） |
+| `syncToClients(类型, ID)`、`onRecipesChanged(handler)` | 一样 | 不调也会在 5 秒内补发（§5.8） |
