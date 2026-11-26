@@ -34,7 +34,7 @@ LOOKALIKES = (ImportError("No module named broken_dependency"),   # 缺的不是
 
 
 def _other(text):
-    """同一段文字换成另一种字符串（py2 的 unicode、py3 的 bytes；原生的 str 是引擎给的文字、本包写的路径的那一种）。"""
+    """同一段文字换成另一种字符串（py2 的 unicode、py3 的 bytes；原生的 str 是本包写的路径、实机引擎文字最可能的那一种）。"""
     return text.decode("utf-8") if str is bytes else text.encode("utf-8")
 
 
@@ -79,17 +79,21 @@ def testOtherImportErrorsAndLookalikesAreStillLogged():
     assert OtherMods.isMissing(PATH, ImportError("No module named Server")) is True
 
 
-def testTextOrPathOfTheOtherStringTypeIsNotComparedAndNeverRaises():
-    """py2 的字节串和 unicode 不混着比（非 ASCII 的字节串和 unicode 混着比会抛 UnicodeDecodeError）：两样都是原生的 str 才比，
-    别的不算没有这个模块（照出错打日志），也不抛。"""
-    path, text = "someModScripts.\xe4\xb8\xad", "No module named \xe4\xb8\xad"
+def testUnicodeIsComparedAsUtf8BytesInPy2AndNothingEverRaises():
+    """py2 里引擎给的文字、本包写的路径都是字节串（实机只看到了文字，没看到是哪一种字符串）：文字或路径是 unicode 时先转成 utf-8 字节串再比，
+    不和字节串混着比（非 ASCII 的字节串和 unicode 混着比会抛 UnicodeDecodeError）。py3 的 bytes 不比，不算没有这个模块（照出错打日志）。都不抛。"""
+    py2 = str is bytes
+    path, text = "someModScripts.\xe4\xb8\xad", "No module named \xe4\xb8\xad"      # 非 ASCII（py2 里是 utf-8 字节串）
     assert OtherMods.isMissing(path, ImportError(text)) is True, "都是原生的 str：非 ASCII 也照样比"
-    for args in ((path, ImportError(_other(text))), (_other(path), ImportError(text)), (PATH, ImportError(_other("No module named Server")))):
-        assert OtherMods.isMissing(*args) is False, args
+    for args in ((path, ImportError(_other(text))), (_other(path), ImportError(text)), (_other(path), ImportError(_other(text))),
+                 (PATH, ImportError(_other("No module named Server")))):
+        assert OtherMods.isMissing(*args) is py2, args
+    assert OtherMods.isMissing(PATH, ImportError(_other(text))) is False, "转过来比了，结尾对不上"
     otherkit.fresh()
     with Captured() as out:
         assert OtherMods.find(Importer({path: ImportError(_other(text))}), path) is None
-    assert out.logged(path) == 1 and out.tracebacks() == 1, out.text
+    loud = 0 if py2 else 1
+    assert out.logged(path) == loud and out.tracebacks() == loud, out.text
 
 
 def testTheSameBrokenModuleIsLoggedOnceButAskedAgainEveryTime():

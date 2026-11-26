@@ -21,6 +21,7 @@
 import traceback
 
 NO_MODULE = "No module named "      # 引擎（Python 2.7 的导入）说"没有这个模块"的文字，后面是缺的那一截
+_UNICODE = type(u"")                # py2 的 unicode（py3 里 str 就是它）
 _failed = {}        # 出过错的名字（模块路径，或 call 的 模块.函数名）-> 第一次的异常（repr）：打过日志的，不再打
 
 
@@ -38,12 +39,22 @@ def find(importModule, path):
 def isMissing(path, error):
     """error 是不是引擎说"对方的脚本根在、下面没有 path 这个模块"的那一种：ImportError、只有一个参数，文字正好是 "No module named " + T，
     path 以 "." + T 结尾（T 可以带点：缺中间的包时是从它起的整截）。T 等于整个 path 不算（第一段不在时引擎给 None，走不到异常）。
-    文字和 path 都是原生的 str 才比（py2 里引擎给的文字、本包写的路径都是字节串）：py2 的 unicode、py3 的 bytes 不和它混着比，不算。"""
+    py2 里本包写的路径是字节串，引擎给的文字实机只看到了内容、没看到是哪一种字符串：哪个是 unicode 就先转成 utf-8 字节串再比，
+    不和字节串混着比（非 ASCII 的混着比会抛 UnicodeDecodeError）；py3 的 bytes 不比，不算。"""
     args = error.args if isinstance(error, ImportError) else ()
-    if len(args) != 1 or not isinstance(args[0], str) or not isinstance(path, str) or not args[0].startswith(NO_MODULE):
+    text = _native(args[0]) if len(args) == 1 else None
+    where = _native(path)
+    if text is None or where is None or not text.startswith(NO_MODULE):
         return False
-    tail = args[0][len(NO_MODULE):]
-    return bool(tail) and path.endswith("." + tail)
+    tail = text[len(NO_MODULE):]
+    return bool(tail) and where.endswith("." + tail)
+
+
+def _native(text):
+    """原生的 str 原样给；py2 的 unicode 转成 utf-8 字节串；别的（py3 的 bytes、不是字符串的）给 None。"""
+    if isinstance(text, str):
+        return text
+    return text.encode("utf-8") if isinstance(text, _UNICODE) else None
 
 
 def call(func, *args):
