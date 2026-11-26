@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""取别的模组的模块（Compat/OtherMods）：引擎的 ImportModule 在模块不存在时给 None，模块在、它自己导入时出错就把异常原样抛给调用的人
-（3.10 实机）。find / call 接住异常、当它没装（返回 None），打一行日志连同调用栈——同一个名字只打一次，之后照样再取（不记成永远没装）。
+"""取别的模组的模块（Compat/OtherMods）。引擎的 ImportModule（3.10 实机，两端）：路径的第一段不是已加载的脚本根给 None；脚本根在、下面没有
+这个模块抛 ImportError("No module named <缺的那一截>")；模块在、它自己导入时出错就把异常原样抛给调用的人。find 把前两种都安静地当没装
+（返回 None，不打日志、不记进 failures），第三种接住、当它没装，打一行日志连同调用栈——同一个名字只打一次，之后照样再取（不记成永远没装）。
+第二种怎么认是 isMissing；call 包的是函数调用、没有所取的路径，抛什么都照第三种。
 沉浸式交互前置的判定（Compat/Diegesis/Presence）找它的接口也走 find。各处联动怎么用它见 test_other_mods_entries / _links / _views。
 """
 from __future__ import print_function
@@ -19,19 +21,75 @@ Mode = linkkit.Mode
 PATH, OTHER = "someModScripts.Api.Server", "anotherModScripts.api"
 MODULE = types.ModuleType(PATH)
 SERVER_API = Presence.API_MODULE["server"]
+MEASURED = (("fdprobe3Scripts.Deep.NoSuch", "No module named NoSuch"),                  # 3.10 实机量到的：缺最后一段，文字就是那一段
+            ("arrisJeiScripts.api.nothing", "No module named nothing"),
+            ("arrisDiegesisScripts.Vanilla.Server.NoHooks", "No module named NoHooks"),
+            ("arrisDiegesisScripts.NoSuchPkg.Thing", "No module named NoSuchPkg.Thing"))  # 缺中间的包：从它起的整截
+LOOKALIKES = (ImportError("No module named broken_dependency"),   # 缺的不是所取路径的结尾：对方的模块在、它 import 的东西不在（实机文字也是这一种）
+              ImportError("No module named " + PATH),             # T 等于整个路径：第一段不在时引擎给 None，走不到异常
+              ImportError("No module named erver"),               # 路径的结尾对上了，但不是 "." + T
+              ImportError("No module named "),                    # T 是空的
+              ValueError("No module named Server"),               # 文字对，类型不是 ImportError
+              ImportError("cannot import name Server"))           # ImportError，文字不是这一种
+
+
+def _other(text):
+    """同一段文字换成另一种字符串（py2 的 unicode、py3 的 bytes；原生的 str 是引擎给的文字、本包写的路径的那一种）。"""
+    return text.decode("utf-8") if str is bytes else text.encode("utf-8")
 
 
 def testFindGivesTheModuleOrNoneAndNeverRaises():
-    for name, answer, absent in otherkit.kinds(MODULE):
+    for name, answer, absent, loud in otherkit.kinds(MODULE, PATH):
         otherkit.fresh()
         importer = Importer({PATH: answer})
         with Captured() as out:
             got = OtherMods.find(importer, PATH)
         assert got is (None if absent else MODULE), name
         assert importer.asked == [PATH], name
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(PATH) == raised and out.tracebacks() == raised, (name, out.text)
         assert type(answer).__name__ in out.text or not raised, "日志里有是什么错"
+        assert (PATH in OtherMods.failures()) is loud, name
+
+
+def testAModuleMissingUnderAnInstalledScriptRootIsQuietlyAbsent():
+    """对方的脚本根在、下面没有这个模块（装的是还没有它的旧版本）：引擎抛 ImportError，这不是出错——和引擎给 None 一样安静：
+    返回 None、不打日志、不打调用栈、不记进 failures；每次照样再取。文字是实机量到的四对。"""
+    for path, text in MEASURED:
+        otherkit.fresh()
+        importer = Importer({path: ImportError(text)})
+        with Captured() as out:
+            assert OtherMods.find(importer, path) is None, path
+            assert OtherMods.find(importer, path) is None, path
+        assert importer.asked == [path, path], path
+        assert out.text == "" and OtherMods.failures() == {}, (path, out.text)
+        assert OtherMods.isMissing(path, ImportError(text)) is True, path
+
+
+def testOtherImportErrorsAndLookalikesAreStillLogged():
+    """只有"ImportError、文字正好是 No module named T、所取路径以 .T 结尾"算没有这个模块；别的照旧当出错：打一行日志加调用栈、记进 failures。"""
+    for error in LOOKALIKES:
+        otherkit.fresh()
+        with Captured() as out:
+            assert OtherMods.find(Importer({PATH: error}), PATH) is None, repr(error)
+        assert out.logged(PATH) == 1 and out.tracebacks() == 1, (repr(error), out.text)
+        assert OtherMods.failures() == {PATH: repr(error)}, repr(error)
+    for error in LOOKALIKES + (ImportError("No module named Server", "more"), ImportError()):    # 参数不是一个：不是引擎给的那一种
+        assert OtherMods.isMissing(PATH, error) is False, repr(error)
+    assert OtherMods.isMissing(PATH, ImportError("No module named Server")) is True
+
+
+def testTextOrPathOfTheOtherStringTypeIsNotComparedAndNeverRaises():
+    """py2 的字节串和 unicode 不混着比（非 ASCII 的字节串和 unicode 混着比会抛 UnicodeDecodeError）：两样都是原生的 str 才比，
+    别的不算没有这个模块（照出错打日志），也不抛。"""
+    path, text = "someModScripts.\xe4\xb8\xad", "No module named \xe4\xb8\xad"
+    assert OtherMods.isMissing(path, ImportError(text)) is True, "都是原生的 str：非 ASCII 也照样比"
+    for args in ((path, ImportError(_other(text))), (_other(path), ImportError(text)), (PATH, ImportError(_other("No module named Server")))):
+        assert OtherMods.isMissing(*args) is False, args
+    otherkit.fresh()
+    with Captured() as out:
+        assert OtherMods.find(Importer({path: ImportError(_other(text))}), path) is None
+    assert out.logged(path) == 1 and out.tracebacks() == 1, out.text
 
 
 def testTheSameBrokenModuleIsLoggedOnceButAskedAgainEveryTime():
@@ -66,6 +124,8 @@ def getExtensionApi(side):
     """像机械动力的门面：取的时候才导入它自己的门面模块。"""
     if side == "broken":
         raise ImportError("No module named _facade")
+    if side == "missing":
+        raise ImportError("No module named getExtensionApi")      # 文字像"没有这个模块"，结尾又正好是函数名
     return {"side": side}
 
 
@@ -78,11 +138,16 @@ def testCallGuardsAFunctionOfAnotherModTheSameWay():
         assert OtherMods.call(getExtensionApi, "broken") is None
     assert out.logged(label) == 1 and out.tracebacks() == 1, out.text
     assert list(OtherMods.failures()) == [label]
+    otherkit.fresh()
+    with Captured() as out:
+        assert OtherMods.call(getExtensionApi, "missing") is None
+    assert out.logged(label) == 1 and out.tracebacks() == 1, "call 没有所取的路径：抛什么都当出错"
 
 
 def testThePrerequisitesApiIsFoundThroughItAndABrokenOneIsLoggedOnce():
-    """Presence 在服务端导入时找一次、"全部 Addon 脚本加载完成"时再找一次：接口导入出错两次都当没装（最后是 STANDALONE），日志只打一次。"""
-    for name, answer, absent in otherkit.kinds(type("Api", (object,), {"API_VERSION": 3})):
+    """Presence 在服务端导入时找一次、"全部 Addon 脚本加载完成"时再找一次：接口导入出错、不在、没有这个模块两次都当没装（最后是 STANDALONE），
+    出错的日志只打一次，另外两种不打。"""
+    for name, answer, absent, loud in otherkit.kinds(type("Api", (object,), {"API_VERSION": 3}), SERVER_API):
         otherkit.fresh()
         linkkit.unlink()
         Presence._sides.clear()
@@ -95,7 +160,7 @@ def testThePrerequisitesApiIsFoundThroughItAndABrokenOneIsLoggedOnce():
         expected = Mode.STANDALONE if absent else Mode.LINKED
         assert Mode.mode("server") == expected, (name, Mode.mode("server"))
         assert importer.asked == [SERVER_API] * (2 if absent else 1), (name, importer.asked)
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(SERVER_API) == raised and out.tracebacks() == raised, (name, out.text)
 
 

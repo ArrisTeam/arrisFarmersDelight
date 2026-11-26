@@ -2,9 +2,9 @@
 # runner: both
 """取别的模组的模块：四个站点的客户端表现登记时取前置包的声明模块（arrisDiegesisScripts.Shared.Schema；BoardView / PotView / PanView /
 GrillView 的 register 经 Compat/Diegesis/SchemaKit，再经 Compat/OtherMods）。前置包真的客户端 Api 上没有 Schema 这个名字，四个站点都去取它。
-四种回答（抛 ImportError、抛别的异常、返回 None、返回正常的模块）：它导入出错或者不在，这个站点的表现不登记、这一步 skipped
-（原来异常从 register 里抛出去、或者拿 None 去建声明时抛 AttributeError，这一步记 failed）；四个站点取的是同一个模块，日志只打一次；
-正常的模块登记的和接口上带着 Schema 时一样。真的入口、真的站点模块和前置包（bootkit；旁边没有前置包工程就跳过）。
+五种回答（抛 ImportError、抛别的异常、返回 None、前置包装着却没有这个模块、返回正常的模块）：它导入出错、不在或者没有，这个站点的表现不登记、
+这一步 skipped（原来异常从 register 里抛出去、或者拿 None 去建声明时抛 AttributeError，这一步记 failed）；四个站点取的是同一个模块，
+出错的日志只打一次，没有这个模块不打；正常的模块登记的和接口上带着 Schema 时一样。真的入口、真的站点模块和前置包（bootkit；旁边没有前置包工程就跳过）。
 """
 from __future__ import print_function
 
@@ -30,7 +30,7 @@ def testTheKitAsksTheClientEngineOnlyWhenTheApiHasNoSchema():
 def testTheFourStationsTakeTheSchemaModuleThroughOtherMods():
     expected = B.bootClient().stations               # 接口上带着 Schema（替身）时登记的
     assert len(expected) == 4, expected
-    for name, answer, absent in otherkit.kinds(B.Schema):
+    for name, answer, absent, loud in otherkit.kinds(B.Schema, SchemaKit.SCHEMA_MODULE):
         otherkit.fresh()
         importer = Importer({SchemaKit.SCHEMA_MODULE: answer})
         Engine.clientApi.ImportModule = importer
@@ -40,7 +40,7 @@ def testTheFourStationsTakeTheSchemaModuleThroughOtherMods():
         assert booted.stations == ([] if absent else expected), (name, booted.stations)
         assert [booted.steps[station] for station in STATIONS] == ["skipped" if absent else "ok"] * 4, (name, booted.steps)
         assert booted.looks == dict((look, not absent) for look in booted.looks), (name, booted.looks)
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(SchemaKit.SCHEMA_MODULE) == raised and out.tracebacks() == raised, (name, out.text)
 
 

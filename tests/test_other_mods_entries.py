@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""取别的模组的模块：联动入口那几处（Compat/OtherMods 接住引擎 ImportModule 原样抛出来的异常）。每一处用假的 ImportModule 的四种回答
-（抛 ImportError、抛别的异常、返回 None、返回正常的模块）：异常不漏出来、当它没装、日志只打一次；正常的模块照旧接上。
+"""取别的模组的模块：联动入口那几处（Compat/OtherMods 接住引擎 ImportModule 原样抛出来的异常）。每一处用假的 ImportModule 的五种回答
+（抛 ImportError、抛别的异常、返回 None、对方装着却没有这个模块、返回正常的模块）：异常不漏出来、当它没装，出错的日志只打一次、
+没有这个模块不打日志；正常的模块照旧接上。
 - 成就系统（Compat/Advancements/AdvBoot）：它的 ExtensionApi 系统已经在（已经广播过）时，导入 AdvBoot 就晚接一次——这个入口的导入不能失败；
   接不上的时候 ready 事件那条路照样能用。
 - 机械动力的土豆加农炮（Compat/Create/PotatoCannonAmmo；两端的入口 PotatoCannonServer / PotatoCannonClient 导入时就调 hook）：取模块、
@@ -139,11 +140,11 @@ def bootAdvancements(answer, ready=True):
 
 
 def testAdvBootImportsWhateverTheAdvancementsApiAnswersAndOnlyAGoodOneIsAttached():
-    for name, answer, absent in otherkit.kinds(AdvApi()):
+    for name, answer, absent, loud in otherkit.kinds(AdvApi(), ADV_API):
         module, out = bootAdvancements(answer)
         assert serverApi.importer.asked == [ADV_API], name
         assert Bridge.api() is (None if absent else answer), name
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(ADV_API) == raised and out.tracebacks() == raised, (name, out.text)
         with Captured() as again:
             module.hook(systems["server"])          # 再晚接一次（热重载以后）：再出错也不再打一大段
@@ -213,11 +214,11 @@ def _cannonModule(facade=None, error=None):
 def testBothCannonEntriesImportWhateverCreatesFacadeModuleAnswers():
     for side in ("server", "client"):
         facade = Facade()
-        for name, answer, absent in otherkit.kinds(_cannonModule(facade)):
+        for name, answer, absent, loud in otherkit.kinds(_cannonModule(facade), Ammo.FACADE_MODULE):
             out = bootCannon(side, answer)
             assert API_OF[side].importer.asked == [Ammo.FACADE_MODULE], (side, name)
             assert bool(Ammo._attached.get(side)) is (not absent), (side, name)
-            raised = 1 if isinstance(answer, Exception) else 0
+            raised = 1 if loud else 0
             assert out.logged(Ammo.FACADE_MODULE) == raised and out.tracebacks() == raised, (side, name, out.text)
         assert len(facade.potatoCannon.calls) == 7, "正常的门面：七种弹药照旧登记"
 
@@ -270,7 +271,7 @@ class RecipeApi(object):
 def testCreateRecipesAreRegisteredOnlyWithAGoodRecipeApiAndTheEventNeverRaises():
     (onLoaded,) = [func for event, func in listened if event == "LoadServerAddonScriptsAfter" and func.__module__ == Recipes.__name__]
     good = RecipeApi()
-    for name, answer, absent in otherkit.kinds(good):
+    for name, answer, absent, loud in otherkit.kinds(good, Recipes.RECIPE_API):
         otherkit.fresh()
         Recipes._REGISTERED = False
         serverApi.importer = Importer({Recipes.RECIPE_API: answer})
@@ -279,7 +280,7 @@ def testCreateRecipesAreRegisteredOnlyWithAGoodRecipeApiAndTheEventNeverRaises()
             onLoaded({})                                   # 事件再来一次（热重载以后）
         assert Recipes._REGISTERED is (not absent), name
         assert serverApi.importer.asked == [Recipes.RECIPE_API] * (2 if absent else 1), (name, serverApi.importer.asked)
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(Recipes.RECIPE_API) == raised and out.tracebacks() == raised, (name, out.text)
     assert len(good.registered) == 12, "石磨 8 + 搅拌 3 + 灌注 1，只登记一次"
 
@@ -290,12 +291,12 @@ def testEveryJeiCategoryTakesArrisJeiThroughOtherModsAndABrokenOneIsLoggedOnce()
     registry = object()
     good = types.ModuleType(Registry.JEI_MODULE)
     good.JeiRecipeRegistry = type("JeiRecipeRegistry", (object,), {"getInstance": staticmethod(lambda: registry)})
-    for name, answer, absent in otherkit.kinds(good):
+    for name, answer, absent, loud in otherkit.kinds(good, Registry.JEI_MODULE):
         otherkit.fresh()
         clientApi.importer = Importer({Registry.JEI_MODULE: answer})
         with Captured() as out:
             assert Registry.GetJeiApiModule() is (None if absent else registry), name
-        raised = 1 if isinstance(answer, Exception) else 0
+        raised = 1 if loud else 0
         assert out.logged(Registry.JEI_MODULE) == raised and out.tracebacks() == raised, (name, out.text)
     (onUiInit,) = [func for event, func in listened if event == "UiInitFinished" and func.__module__ == JeiClient.__name__]
     otherkit.fresh()

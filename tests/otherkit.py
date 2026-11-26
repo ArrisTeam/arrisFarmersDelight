@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """otherkit - "取别的模组的模块"（Compat/OtherMods）离线测试的共用小工具（不是测试本身，跑器只收 test_*.py）
 
-- Importer：假的引擎 ImportModule。answers 按路径回答：异常对象就抛它（模块在、它自己导入时出错——3.10 实机的引擎就是原样抛给调用的人），
-  别的原样给（没写的路径、写 None 都是没装）；asked 记下问过什么。
-- kinds(module)：每一处都要测的四种回答——抛 ImportError、抛别的异常、返回 None、返回正常的模块（就是 module）。
+- Importer：假的引擎 ImportModule。answers 按路径回答：异常对象就抛它（3.10 实机的引擎：对方的脚本根在、下面没有这个模块时抛 ImportError，
+  模块在、它自己导入时出错就把那个异常原样抛给调用的人），别的原样给（没写的路径、写 None 都是没装）；asked 记下问过什么。
+- missing(path, segments)：引擎在"对方的脚本根在、下面没有 path 这个模块"时抛的那个 ImportError（文字照实机）。
+- kinds(module, path)：每一处都要测的五种回答——抛 ImportError（对方的模块在、它依赖的东西不在）、抛别的异常、返回 None、
+  对方装着却没有 path 这个模块（missing(path)）、返回正常的模块（就是 module）。
 - Captured：with 里打印的东西（stdout、stderr 都收）记下来；logged(名字) 数 OtherMods 那行日志为这个名字打了几次，tracebacks() 数几段调用栈。
 """
 from __future__ import print_function
@@ -30,12 +32,19 @@ class Importer(object):
         return answer
 
 
-def kinds(module):
-    """[(名字, 回答, 当不当没装)]：四种回答，最后一种是正常的模块。"""
-    return [("ImportError", ImportError("No module named broken_dependency"), True),
-            ("NameError", NameError("name 'oops' is not defined"), True),
-            ("None", None, True),
-            ("module", module, False)]
+def missing(path, segments=1):
+    """引擎在"对方的脚本根在、下面没有 path 这个模块"时抛的 ImportError（3.10 实机，两端）：文字是 No module named 加上缺的那一截——
+    缺最后一段（segments 是 1）就是那一段，缺中间的包是从它起到结尾的整截（segments 是那一截有几段）。"""
+    return ImportError("No module named " + ".".join(path.split(".")[-segments:]))
+
+
+def kinds(module, path):
+    """[(名字, 回答, 当不当没装, OtherMods 打不打日志)]：五种回答，最后一种是正常的模块。path 是这一处取的模块路径（第四种按它造）。"""
+    return [("ImportError", ImportError("No module named broken_dependency"), True, True),
+            ("NameError", NameError("name 'oops' is not defined"), True, True),
+            ("None", None, True, False),
+            ("missing", missing(path), True, False),
+            ("module", module, False, False)]
 
 
 def fresh():
