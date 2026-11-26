@@ -24,6 +24,7 @@
    用 # 引了牛、鸡、羊、猪），农夫乐事登记进那四个的肉有没有并进去（没人登记是 None）。装了森罗时 kaleidoscope 再报：它服务端模糊配方认料用的
    item_matches_ingredient 认不认农夫乐事登记进去的每件东西（refused 是不认的）、反例（火腿当猪肉、河豚当鱼、生意面当面条）认没认（acceptedWrongly）、
    它按标签名缓存的成员（第一次问时建、之后不再问引擎）调之前有哪些、和引擎现在的对不上的（stale）。客户端另有同名函数报客户端引擎和森罗 JEI 的缓存。
+8. 反方向（森罗把自己的十样东西登记进农夫乐事读的细标签以后，农夫乐事认不认）在 Server/Debug/McdkKcTagsTest.mcdk_test_kc_tags()。
     from arrisFarmersDelightScripts.Server.Debug import McdkTagsTest as T
     return T.mcdk_test_tags_members()
 """

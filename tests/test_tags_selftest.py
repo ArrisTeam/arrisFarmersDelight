@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""标签的游戏内自检（Server/Debug/McdkTagsTest.py、Client/Debug/McdkTagsTest.py）离线能跑通、报得出差：引擎口换成假的（答的是静态表，
-外加别的包登记的一件），全部 ok；口少了本包登记的成员时 ok 是假、报出是哪个标签。真正的数在游戏里跑（见两个文件的说明）。"""
+"""标签的游戏内自检（Server/Debug/McdkTagsTest.py、Client/Debug/McdkTagsTest.py、Server/Debug/McdkKcTagsTest.py）离线能跑通、报得出差：
+引擎口换成假的（答的是静态表，外加别的包登记的一件），全部 ok；口少了本包登记的成员时 ok 是假、报出是哪个标签。森罗登记进农夫乐事读的标签的
+反方向（McdkKcTagsTest）用装着森罗的假口：登记了、没登记、# 没展开几种样子。真正的数在游戏里跑（见几个文件的说明）。"""
 from __future__ import print_function
 
 import sys
@@ -16,6 +17,7 @@ ItemTags = fdtest.load("Shared.Rules.ItemTags")
 Grilling = fdtest.load("Shared.Rules.Grilling")
 ServerTest = fdtest.load("Server.Debug.McdkTagsTest")
 ServerPort = fdtest.load("Server.Helpers.Tags")
+KcTest = fdtest.load("Server.Debug.McdkKcTagsTest")
 
 
 def _loadClient():
@@ -267,6 +269,106 @@ def testTheClientStandardSelfTestReadsTheJeiCacheOnly():
         assert sorted(jei._ITEM_TAG_CACHE) == [Tags.RICE, Tags.TOMATO], "只读，不替它问"
     finally:
         ClientPort.PORT, ClientTest.clientApi = saved
+        _reset()
+
+
+class KcPort(FullPort):
+    """装着森罗时服务端的引擎口：registered 为真是森罗的包登记了那十样东西（它的提交 9ea2b05），细标签里有它们；nested 为真时引擎还把
+    农夫乐事文件里的 # 展开了（生肉、熟肉、粗标签里也有它们），为假时只在细标签里；noodles 为真时引擎里森罗的生面条进了 common:pasta（不该有）。"""
+
+    def __init__(self, registered=True, nested=True, noodles=False):
+        FullPort.__init__(self)
+        pairs = list(KcTest.KC_ITEMS) + [(knife, Tags.KNIFE) for knife in KcTest.KC_KNIVES] if registered else []
+        files = dict(Tags.ITEM_TAG_FILES)
+        self.members = dict(Tags.ITEM_TAGS)
+        for name, tag in pairs:
+            files[tag] = files[tag] + (name,)
+            self.members[tag] = self.members[tag] + (name,)
+        if nested:
+            self.members = Tags._expanded(files)
+        if noodles:
+            self.members[Tags.PASTA] = self.members[Tags.PASTA] + (KcTest.KC + "raw_noodles",)
+        self.stove = registered
+
+    def itemsOf(self, tag):
+        return self.members.get(tag) or Tags.VANILLA_TAGS.get(tag) or ()
+
+    def tagsOf(self, itemName, aux=0):
+        return tuple(tag for tag, members in self.members.items() if itemName in members)
+
+    def blocksOf(self, tag):
+        return tuple(Tags.BLOCK_TAGS.get(tag, ())) + ((KcTest.KC_STOVE,) if self.stove and tag == Tags.HEAT_SOURCES else ())
+
+    def blockTagsOf(self, blockName):
+        return tuple(tag for tag in Tags.BLOCK_TAGS if blockName in self.blocksOf(tag))
+
+
+class KcFactory(object):
+    """McdkKcTagsTest 的 compFactory 替身：认得 items 里的物品（GetItemBasicInfo）；炉灶的方块状态 aux 0–3 点着、4–7 没点着（四个朝向），
+    8 起给缺省状态（同 aux 0，引擎对越界的 aux 就是这样给的）。"""
+
+    def __init__(self, items):
+        self.items = items
+
+    def CreateItem(self, _levelId):
+        return self
+
+    def CreateBlockState(self, _levelId):
+        return self
+
+    def GetItemBasicInfo(self, name, aux=0):
+        return {"itemName": name} if name in self.items else None
+
+    def GetBlockStatesFromAuxValue(self, name, aux):
+        if name != KcTest.KC_STOVE:
+            return None
+        aux = aux if aux < 8 else 0
+        return {"kaleidoscope_cookery:lit": aux < 4, "minecraft:cardinal_direction": ("south", "west", "north", "east")[aux % 4]}
+
+
+def _kcRun(port):
+    ServerPort.PORT = port
+    ItemTags.setPort("server", port)
+    return KcTest.mcdk_test_kc_tags()
+
+
+def testTheKaleidoscopeSelfTestReportsTheOtherDirection():
+    """mcdk_test_kc_tags（服务端）：森罗登记进农夫乐事读的标签的十样东西。没装森罗：说明没装、算通过。装着、登记了：引擎里有、规则认、
+    # 嵌了的标签（生肉、粗标签……）跟着有，四把菜刀是刀，炉灶点着时锅下面热、没点着不热，手持煎锅身边、客户端按 aux 判都热（不看点燃状态），
+    读不到状态时照规则算热；厨锅拿森罗的原料凑得出那几道菜；生面条、生意面互不认。森罗还是 9ea2b05 之前的包、# 没展开、生面条进了意面时报出来。"""
+    saved = ServerPort.PORT, KcTest.compFactory
+    kc = KcTest.KC
+    things = [name for name, _tag in KcTest.KC_ITEMS] + list(KcTest.KC_KNIVES) + [KcTest.KC_STOVE, KcTest.PROBE]
+    try:
+        _reset()
+        KcTest.compFactory = KcFactory(())
+        alone = KcTest.mcdk_test_kc_tags()
+        assert alone["ok"] and "没装" in alone["skipped"], alone
+        KcTest.compFactory = KcFactory(things)
+        both = _kcRun(KcPort())
+        assert both["ok"] and both["problems"] == [], both["problems"]
+        assert all(row["inEngine"] and row["rule"] and row["nestedLost"] == [] for row in both["items"].values()), both["items"]
+        assert both["items"][kc + "raw_cow_offal"]["nested"] == [Tags.BEEF, Tags.RAW_MEAT]
+        assert both["items"][kc + "cooked_pork_belly"]["nested"] == [Tags.COOKED_MEAT, Tags.PORK]
+        assert all(row["inEngine"] and row["isKnife"] and Tags.KNIFE in row["engineTags"] for row in both["knives"].values())
+        stove = both["stove"]
+        assert stove["inEngine"] and stove["rule"] and stove["blockTags"] == [Tags.HEAT_SOURCES], stove
+        assert (stove["lit"]["aux"], stove["unlit"]["aux"]) == (0, 4) and stove["lit"]["underPot"] and not stove["unlit"]["underPot"], stove
+        assert all(stove[key]["nearHand"] and stove[key]["clientByAux"] for key in ("lit", "unlit")), "手持煎锅身边不看点燃状态"
+        assert stove["unreadable"] is True, "读不到状态：没有点燃状态就算热"
+        assert [row["made"] for row in both["pot"]] == [row["expected"] for row in both["pot"]] and len(both["pot"]) == 5
+        assert both["apart"] == {kc + "raw_noodles common:pasta": False, "arris:raw_pasta common:noodle": False}
+        old = _kcRun(KcPort(registered=False))
+        assert not old["ok"] and set(old["problems"]) >= set(things[:-1]), old["problems"]
+        assert all(row["made"] is None for row in old["pot"]) and old["stove"]["rule"] is False
+        flat = _kcRun(KcPort(nested=False, noodles=True))
+        assert not flat["ok"] and flat["items"][kc + "raw_cow_offal"]["nestedLost"] == [Tags.BEEF, Tags.RAW_MEAT], flat["items"]
+        assert flat["items"][kc + "raw_cow_offal"]["inEngine"] and flat["items"][kc + "raw_cow_offal"]["rule"]
+        made = dict((row["tag"], row["made"]) for row in flat["pot"])
+        assert made[Tags.RAW_BEEF] == "arris:cookbeef_stew" and made[Tags.RAW_MEAT] is None, "卷心菜卷经 common:raw_meat：# 没展开就做不成"
+        assert flat["apart"][kc + "raw_noodles common:pasta"] is True and kc + "raw_noodles common:pasta" in flat["problems"]
+    finally:
+        ServerPort.PORT, KcTest.compFactory = saved
         _reset()
 
 

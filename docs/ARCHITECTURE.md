@@ -301,7 +301,10 @@ def OnServerSkilletBlockUse(args):
   厨锅的标签格、砧板按标签的配方也问 `ItemTags`（见下一节）。
 - **自检**：两端的 `McdkTagsTest`（`Server/Debug`、`Client/Debug`：口准备好没有、词表每个标签引擎反查到的成员和静态表比、刀、营火配方的原始返回值和解析、
   热源标签；`mcdk_test_tags_standard` 报团队规范的 18 个标签引擎里现在的成员、`#` 嵌套并没并上，装了森罗物语厨房时服务端那份再问它的认料函数
-  `item_matches_ingredient` 认不认农夫乐事的东西、两端看它按标签名记的缓存过没过时；怎么调写在文件头）。
+  `item_matches_ingredient` 认不认农夫乐事的东西、两端看它按标签名记的缓存过没过时；怎么调写在文件头）。反方向是 `Server/Debug/McdkKcTagsTest`：
+  森罗把十样东西登记进农夫乐事读的细标签以后（它 2026-11-26 的提交 `9ea2b05`，TAGS.md「森罗已经登记了」），引擎里有没有、`ItemTags` / `Knives` /
+  `HeatSources`（炉灶点着 / 没点着）认不认、厨锅拿森罗的原料凑不凑得出菜；没装森罗时说明没装。`tests/test_netease_tags.py` 的
+  `testTheStandardIsKaleidoscopesOwnFiles` 对着森罗工程里的文件核对对照表和那张表，森罗进那次提交之前、之后两种样子都认（`FD_KC_DIR` 指定森罗工程）。
 
 ## 新联动接口与配方的登记
 

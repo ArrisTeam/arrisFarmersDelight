@@ -72,11 +72,12 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 
 挂上 `common:knife` 就是刀。农夫乐事的老标签 `arris:knife` 照旧有效（`linkage.md` 教的是在物品 JSON 里写它）。
 `linkage.md` 里往 `knifeList` 追加名字的办法也照旧有效。三样任一个说是刀，农夫乐事就当它是刀：砧板上刀切的配方、借刀、插刀，刀杀生物的额外掉落，
-刀切蛋糕和派，刀收稻穗，蘑菇菌落，炉灶站点开不开。
+刀切蛋糕和派，刀收稻穗，蘑菇菌落，炉灶站点开不开；还有刀掉耐久：一次掉的多于 1 点时只扣 1 点（`Server/Tools.OnKnifeDurability`，
+为的是农夫乐事的刀：它们是剑类的自定义武器，拆一块方块引擎扣 2 点，JE 的刀只扣 1 点；别的模组的刀是刀，也照这一条）。
 
 ### 热源方块
 
-热源照 JE 用农夫乐事自己的方块标签 `farmersdelight:heat_sources`（JE 的森罗物语也把炉灶登记进这个名字）。方块在这个标签里，放在它上面的厨锅、煎锅就会热；
+热源照 JE 用农夫乐事自己的方块标签 `farmersdelight:heat_sources`（JE 的森罗物语也把炉灶登记进这个名字，网易版的森罗也登记了，见下面「森罗已经登记了」）。方块在这个标签里，放在它上面的厨锅、煎锅就会热；
 方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
 或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
@@ -169,23 +170,39 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
   卷心菜写 `c:crops/cabbage`（如 `data/kaleidoscope_cookery/recipe/stockpot/dumplings.json:15`），卷心菜不当生菜用；`forge:flour` 只有森罗的面粉（`TagItem.java:216`）；肉丸 JE 森罗写物品。肉（`common:meat`）森罗自己的文件用 `#` 引了牛、鸡、羊、猪四个，
   农夫乐事的肉登记进那四个就跟着进去了，不用再登记。
 
-### 给森罗那边的建议：森罗的东西进农夫乐事的配方
+### 森罗已经登记了：森罗的东西进农夫乐事的配方
 
-农夫乐事的配方读的是细标签。森罗把自己的东西登记进下面这些标签，农夫乐事这边一行不用改就认（只写森罗自己的物品）。依据是 JE 森罗把它放进的
-`forge:` 标签，就是农夫乐事读的那个（`TagItem.java` 的行号）。
+农夫乐事的配方读的是细标签。森罗 2026-11-26 在它自己的行为包里把下面十样东西登记进了这些标签（用户定的；森罗的提交 `9ea2b05`：
+`kaleidoscope_cookery_bp/netease_tags/` 下九个物品标签文件、一个方块标签文件，只写森罗自己的东西）。农夫乐事这边一行配方没改：
+两个模组都装着时引擎把同名标签两边的成员并起来，农夫乐事按标签认的地方就认得它们，农夫乐事用 `#` 嵌了这些细标签的标签（生肉、熟肉、粗标签）里也有它们。
+"农夫乐事哪里因此能用上它"照现在的配方数（厨锅每道菜的 `Slots`、`bp/recipes` 里写标签的工作台配方，`tests/test_netease_tags.py` 照配方重新数一遍）；
+依据是 JE 森罗把它放进的 `forge:` 标签，就是农夫乐事读的那个（`TagItem.java` 的行号）。
 
 | 森罗的东西 | 登记进 | 农夫乐事哪里因此能用上它 | JE 依据 |
 | --- | --- | --- | --- |
-| `kaleidoscope_cookery:raw_cow_offal` | `common:raw_beef` | 厨锅：饺子、牛肉炖；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_beef`（`:194`） |
-| `kaleidoscope_cookery:raw_pork_belly` | `common:raw_pork` | 厨锅：饺子、南瓜汤、面条汤；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_pork`（`:196`） |
-| `kaleidoscope_cookery:raw_lamb_chops` | `common:raw_mutton` | 厨锅：羊排意面；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_mutton`（`:197`） |
-| `kaleidoscope_cookery:cooked_cow_offal` | `common:cooked_beef` | 工作台：填馅马铃薯；经 `common:cooked_meat`：烧烤串 | `forge:cooked_beef`（`:186`） |
-| `kaleidoscope_cookery:cooked_pork_belly` | `common:cooked_pork` | 经 `common:cooked_meat`：烧烤串 | `forge:cooked_pork`（`:187`） |
-| `kaleidoscope_cookery:cooked_lamb_chops` | `common:cooked_mutton` | 工作台：羊肉卷饼、牧羊人派；经 `common:cooked_meat`：烧烤串 | `forge:cooked_mutton`（`:188`） |
-| `kaleidoscope_cookery:sashimi` | `common:raw_fish` | 厨锅：鱿鱼墨面、卷心菜卷、鱼肉炖 | `forge:raw_fishes/tropical_fish`，引进 `forge:raw_fishes`（`:199`、`:203-205`） |
-| `kaleidoscope_cookery:fried_egg` | `common:cooked_egg` | 工作台：培根蛋、夹蛋三明治 | `forge:cooked_eggs`（`:189`） |
-| 四把菜刀 `kaleidoscope_cookery:iron_kitchen_knife` 等 | `common:knife` | 认作刀的地方都认（见上面「刀」） | `forge:tools/knives`、`farmersdelight:tools/knives`（`:53-62`） |
-| 炉灶（方块 `kaleidoscope_cookery:kaleidoscope_cookery_stove`） | 方块标签 `farmersdelight:heat_sources` | 放在上面的厨锅、煎锅会热（它的 `kaleidoscope_cookery:lit` 是点燃状态，点着才热） | JE 森罗生成的 `data/farmersdelight/tags/blocks/heat_sources.json:3` |
+| `kaleidoscope_cookery:raw_cow_offal`（生牛杂） | `common:raw_beef` | 厨锅：饺子、牛肉炖；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_beef`（`:194`） |
+| `kaleidoscope_cookery:raw_pork_belly`（生五花肉） | `common:raw_pork` | 厨锅：饺子、南瓜汤、面条汤；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_pork`（`:196`） |
+| `kaleidoscope_cookery:raw_lamb_chops`（生羊排） | `common:raw_mutton` | 厨锅：羊排意面；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_mutton`（`:197`） |
+| `kaleidoscope_cookery:cooked_cow_offal`（熟牛杂） | `common:cooked_beef` | 工作台：填馅马铃薯；经 `common:cooked_meat`：烧烤串 | `forge:cooked_beef`（`:186`） |
+| `kaleidoscope_cookery:cooked_pork_belly`（熟五花肉） | `common:cooked_pork` | 经 `common:cooked_meat`：烧烤串 | `forge:cooked_pork`（`:187`） |
+| `kaleidoscope_cookery:cooked_lamb_chops`（熟羊排） | `common:cooked_mutton` | 工作台：羊肉卷饼、牧羊人派；经 `common:cooked_meat`：烧烤串 | `forge:cooked_mutton`（`:188`） |
+| `kaleidoscope_cookery:sashimi`（刺身） | `common:raw_fish` | 厨锅：鱿鱼墨面、卷心菜卷、鱼肉炖 | `forge:raw_fishes/tropical_fish`，引进 `forge:raw_fishes`（`:199`、`:203-205`） |
+| `kaleidoscope_cookery:fried_egg`（煎蛋） | `common:cooked_egg` | 工作台：培根蛋、夹蛋三明治 | `forge:cooked_eggs`（`:189`） |
+| `kaleidoscope_cookery:iron_kitchen_knife`、`kaleidoscope_cookery:gold_kitchen_knife`、`kaleidoscope_cookery:diamond_kitchen_knife`、`kaleidoscope_cookery:netherite_kitchen_knife`（四把菜刀） | `common:knife` | 认作刀的地方都认（见上面「刀」） | `forge:tools/knives`、`farmersdelight:tools/knives`（`:53-62`） |
+| `kaleidoscope_cookery:kaleidoscope_cookery_stove`（炉灶） | 方块标签 `farmersdelight:heat_sources` | 放在上面的厨锅、煎锅会热，点着才算（它的 `kaleidoscope_cookery:lit` 是点燃状态）；手持煎锅站在它旁边也算身边有热源（和 JE 一样不看点没点着） | JE 森罗生成的 `data/farmersdelight/tags/blocks/heat_sources.json:3` |
+
+- 工作台那几样（填馅马铃薯、羊肉卷饼、牧羊人派、烧烤串、培根蛋、夹蛋三明治）都是砧板菜。装了沉浸式交互前置、砧板站点开着时，工作台不出砧板菜、要在砧板上拼；
+  砧板的菜谱按词表里农夫乐事登记的成员展开（`DishList`），认不出森罗的东西：格子里有森罗的东西时工作台拦不住、照样做得出，砧板上却拼不了
+  （已知的口子，见 ARCHITECTURE.md「和 JE 的出入」里"工作台配方按标签"那一条）。没装前置包时就是工作台照常做。
+- 森罗的炉灶只登记方块名就够了：农夫乐事看"点没点着"认的是名字是 `lit` 或以 `:lit` 结尾的状态（上面「热源方块」）。
+- 游戏内自检：`Server/Debug/McdkKcTagsTest.mcdk_test_kc_tags()`（两个包都装着时报这十样在不在引擎的标签里、农夫乐事的规则认不认、厨锅凑不凑得出菜）。
+
+### 给森罗那边的建议
+
+下面这些还是建议，森罗定要不要登记；农夫乐事这边照旧一行不用改。
+
+| 森罗的东西 | 登记进 | 农夫乐事哪里因此能用上它 | JE 依据 |
+| --- | --- | --- | --- |
 | `kaleidoscope_cookery:cooked_rice` | `common:cooked_rice` | 农夫乐事现在不读（JEI 里算同一类） | `forge:cooked_rice`（`:190`） |
 | `kaleidoscope_cookery:tomato_seed` | `common:tomato_seed` | 不读 | `forge:seeds/tomato`（`:180`） |
 | `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chop`、`common:cooked_mutton_chop` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |

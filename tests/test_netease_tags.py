@@ -12,9 +12,12 @@
      （本机没装游戏时这一项跳过）
   3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时；JE 的熔岩炼药锅对到炼药锅 + 状态条件）；
      热源标签就是现在的热源方块表加上写了状态条件的方块；
-     一个 JE 物品标签名只对应一个标签（JE 配方的标签名 → 这里的名字，做别名表时不能有歧义）；准备好的探针在表里；没有成员的名字不生成文件
+     一个 JE 物品标签名只对应一个标签（JE 配方的标签名 → 这里的名字，做别名表时不能有歧义）；准备好的探针在表里；没有成员的名字不生成文件；
+     common: 名一律单数（团队 2026-11-26 定），改过名的旧名字、旧常量不留
   4. 团队烹饪原料标签的规范（森罗物语厨房网易版的 18 个，Tags.COOKING_STANDARD）：农夫乐事登记的粗标签只用 # 嵌自己的细标签，自己的配方不读粗标签；
      docs/TAGS.md 的对照表和词表一致；本机有森罗的工程时（FD_KC_DIR，或者旁边的 KaleidoscopeCookeryNetease-main）对照表和它的文件一致
+  5. docs/TAGS.md「森罗已经登记了」那张表（森罗的东西登记进农夫乐事读的标签）："哪里能用上"照配方重新数，和游戏内自检 McdkKcTagsTest 问的一样；
+     森罗工程里另外登记的标签都在这张表里（森罗进那次提交之前、之后两种样子都认）
 """
 from __future__ import print_function
 
@@ -496,15 +499,115 @@ def testTheDocComparesTheStandardWithWhatWeRegister():
         assert rows[tag][1] == _codes(Tags.ITEM_TAG_FILES.get(tag, ())), (tag, rows[tag][1])
 
 
+KC_REGISTERED = "### 森罗已经登记了"      # docs/TAGS.md 里那一节的标题开头
+KC_THING = re.compile(r"`(kaleidoscope_cookery:[a-z0-9_]+)`")
+TAG_NAME = re.compile(r"`([a-z_]+:[a-z0-9_/]+)`")
+
+
+def _kcRegistered():
+    """docs/TAGS.md「森罗已经登记了」那张表：[(种类 item / block, 标签, [森罗的东西], "农夫乐事哪里因此能用上它"那一格)]，照表里的先后。"""
+    with io.open(os.path.join(fdtest.ROOT, "docs", "TAGS.md"), encoding="utf-8") as handle:
+        text = handle.read()
+    section = text[text.index(KC_REGISTERED):]
+    section = section[:section.index("\n#", 1)]
+    rows = []
+    for line in section.splitlines():
+        if line.startswith("| `"):
+            cells = [cell.strip() for cell in line.split("|")[1:-1]]
+            tags = TAG_NAME.findall(cells[1])
+            assert len(cells) == 4 and len(tags) == 1, line
+            rows.append(("block" if "方块标签" in cells[1] else "item", tags[0], KC_THING.findall(cells[0]), cells[2]))
+    return rows
+
+
+def _langNames():
+    """rp/texts/zh_CN.lang 里物品 / 方块的中文名：{名字: 中文名}。"""
+    found = {}
+    with io.open(os.path.join(fdtest.ROOT, "rp", "texts", "zh_CN.lang"), encoding="utf-8-sig") as handle:
+        for line in handle:
+            match = re.match(r"^(?:item|tile)\.([a-z_]+:[a-z0-9_]+)\.name=(.+?)\s*$", line)
+            if match:
+                found.setdefault(match.group(1), match.group(2))
+    return found
+
+
+def _dishNames():
+    """{物品标签: [读它的菜（中文名，按先后、不重复）]}：厨锅每道菜 Slots 里写的 #标签（菜名是配方的 text），bp/recipes 里工作台配方写的
+    {"tag": ...}（菜名照 zh_CN.lang，没有中文名的写物品名）。"""
+    found, names = {}, _langNames()
+
+    def add(tag, dish):
+        if dish not in found.setdefault(tag, []):
+            found[tag].append(dish)
+    for row in fdtest.load("Shared.Data.CookingPotRecipes").CookingPotRecipeList:
+        for option in (option for slot in row["Slots"] for option in slot):
+            if isinstance(option, str) and option.startswith("#"):
+                add(option[1:], row["text"])
+    folder = os.path.join(fdtest.BP, "recipes")
+    for name in sorted(os.listdir(folder)):
+        for body in _json(os.path.join(folder, name)).values():
+            if isinstance(body, dict) and ("key" in body or "ingredients" in body):
+                result = body["result"][0] if isinstance(body["result"], list) else body["result"]
+                for entry in list(body.get("key", {}).values()) + list(body.get("ingredients", [])):
+                    if isinstance(entry, dict) and entry.get("tag"):
+                        add(entry["tag"], names.get(result["item"], result["item"]))
+    return found
+
+
+def _outerTags(tag):
+    """词表里用 # 嵌了 tag 的物品标签（一层一层往外找）：别的模组登记进 tag 的东西也跟着进了它们。"""
+    found, todo = [], [tag]
+    while todo:
+        inner = "#" + todo.pop()
+        for outer, written in sorted(Tags.ITEM_TAG_FILES.items()):
+            if inner in written and outer not in found:
+                found.append(outer)
+                todo.append(outer)
+    return found
+
+
+def testTheKaleidoscopeRegisteredTable():
+    """docs/TAGS.md「森罗已经登记了」那张表（森罗 2026-11-26 的提交 9ea2b05 在它自己的包里登记的十样东西，农夫乐事的配方没改）：
+    登记进的都是农夫乐事读的标签（九个物品标签、方块标签 farmersdelight:heat_sources），东西都是森罗的；"农夫乐事哪里因此能用上它"那一格
+    照现在的配方重新数：厨锅的 Slots、工作台配方直接读这个标签的菜，加上经 # 嵌了它的标签（生肉、熟肉……）读到的菜（格子里写"经 `标签`"），
+    不多不少；游戏内自检 Server/Debug/McdkKcTagsTest 问的就是这几行。"""
+    rows = _kcRegistered()
+    assert len(rows) == 10 and len(set((kind, tag) for kind, tag, _things, _cell in rows)) == 10, rows
+    readers = _dishNames()
+    every = set(name for names in readers.values() for name in names)
+    for kind, tag, things, cell in rows:
+        assert things and tag in (Tags.ITEM_TAGS if kind == "item" else Tags.BLOCK_TAGS), (kind, tag, things)
+        expected = set(readers.get(tag, ()))
+        for outer in _outerTags(tag) if kind == "item" else ():
+            if readers.get(outer):
+                assert "经 `%s`" % outer in cell, "%s：经 %s 也读得到（%s）" % (tag, outer, cell)
+                expected |= set(readers[outer])
+        assert set(name for name in every if name in cell) == expected, (tag, cell, sorted(expected))
+    assert [tag for kind, tag, _things, _cell in rows if kind == "block"] == [Tags.HEAT_SOURCES]
+    import fakeengine
+    fakeengine.install()
+    test = fdtest.load("Server.Debug.McdkKcTagsTest")
+    mine = {("item", Tags.KNIFE): list(test.KC_KNIVES), ("block", Tags.HEAT_SOURCES): [test.KC_STOVE]}
+    for name, tag in test.KC_ITEMS:
+        mine.setdefault(("item", tag), []).append(name)
+    assert dict(((kind, tag), things) for kind, tag, things, _cell in rows) == mine, "自检问的和文档的表一行一行对上"
+
+
 # 森罗物语厨房网易版的工程（只读）：FD_KC_DIR 给了就只认它（指向不存在的目录 = 当作没有），没给就找本仓库旁边的（开发机上并排放在 AddOn/ 下）
 KC_DIR = os.environ.get("FD_KC_DIR") or os.path.join(os.path.dirname(fdtest.ROOT), "KaleidoscopeCookeryNetease-main")
 KC_TAGS = os.path.join(KC_DIR, "kaleidoscope_cookery_bp", "netease_tags")
 
 
 def testTheStandardIsKaleidoscopesOwnFiles():
-    """本机有森罗的工程时：它 netease_tags 里的 common: 物品标签就是规范的 18 个，对照表"森罗登记的"一列照它的文件抄（含先后）；
-    农夫乐事靠得上的一条：它的 common:meat 用 # 引了牛、鸡、羊、猪四个（农夫乐事的肉登记进那四个就算肉，所以 common:meat 不用登记）。
-    森罗改了规范时这里先红：对照表、词表、这条用例跟着改。"""
+    """本机有森罗的工程时对着它 netease_tags 里的文件核对，两种样子都认：
+    1. 规范的 18 个 common: 物品标签都在，对照表"森罗登记的"一列照它的文件抄（含先后）；农夫乐事靠得上的一条：它的 common:meat 用 # 引了
+       牛、鸡、羊、猪四个（农夫乐事的肉登记进那四个就算肉，所以 common:meat 不用登记）；
+    2. 森罗另外登记的、和农夫乐事有关的标签（规范以外的 common: / farmersdelight: 标签，物品、方块都算，还有农夫乐事词表里的别的名字）
+       都在「森罗已经登记了」那张表里，成员一样（森罗自己命名空间里的标签不管）。
+       一个都没有也行：森罗 2026-11-26 的提交 9ea2b05（十样东西登记进农夫乐事读的标签）进它的 main 以前就是这样，进了以后那十个文件都在。
+    所以全量要跑两种样子：平常读旁边的森罗工程（它的 main），再用 FD_KC_DIR 指向进了这批改动的森罗工作目录跑一遍，两种都得绿。
+    森罗改了规范、多登记了什么时这里先红：对照表、「森罗已经登记了」那张表、这条用例跟着改。"""
+    registered = dict(((kind, tag), things) for kind, tag, things, _cell in _kcRegistered())
     if not os.path.isdir(KC_TAGS):
         print("跳过：本机没有森罗物语厨房的工程（%s；可以用 FD_KC_DIR 指定）" % KC_DIR)
         return
@@ -512,13 +615,20 @@ def testTheStandardIsKaleidoscopesOwnFiles():
     for name in sorted(os.listdir(KC_TAGS)):
         if name.endswith(".json"):
             doc = _json(os.path.join(KC_TAGS, name))
-            if doc.get("type") == "item" and doc.get("identifier", "").startswith("common:"):
-                found[doc["identifier"]] = doc["items"]
-    assert sorted(found) == sorted(Tags.COOKING_STANDARD), sorted(found)
+            found.setdefault((doc.get("type"), doc.get("identifier", "")), []).extend(doc.get("items") or ())
+    standard = dict((tag, items) for (kind, tag), items in found.items() if kind == "item" and tag in Tags.COOKING_STANDARD)
+    assert sorted(standard) == sorted(Tags.COOKING_STANDARD), sorted(standard)
     rows = _standardRows()
-    for tag, items in found.items():
+    for tag, items in standard.items():
         assert rows[tag][0] == _codes(items), (tag, rows[tag][0], items)
-    assert {"#" + tag for tag in (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK)} <= set(found["common:meat"]), found["common:meat"]
+    assert {"#" + tag for tag in (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK)} <= set(standard["common:meat"]), standard["common:meat"]
+    ours = set(Tags.ITEM_TAGS) | set(Tags.BLOCK_TAGS)
+    extra = dict(((kind, tag), items) for (kind, tag), items in found.items() if (kind, tag) not in set(("item", name) for name in standard)
+                 and (tag.startswith(("common:", "farmersdelight:")) or tag in ours))
+    for key, items in sorted(extra.items()):
+        assert key in registered, "森罗另外登记了 %s 标签 %s，「森罗已经登记了」那张表里没有" % key
+        assert sorted(items) == sorted(registered[key]), (key, items, registered[key])
+    print("森罗另外登记的：%d 个（%s）" % (len(extra), "、".join(tag for _kind, tag in sorted(extra)) or "没有：还是 9ea2b05 之前的样子"))
 
 
 if __name__ == "__main__":
