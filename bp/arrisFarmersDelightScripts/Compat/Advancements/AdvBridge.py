@@ -21,7 +21,7 @@ from . import AdvTriggers as Triggers
 
 ROTTEN_TOMATO = "arris:rotten_tomato"
 _REQUIRED = ("registerAdvancements", "listenOnPlayerReady", "setFinish", "addProgressUnique", "isDone")
-_state = {"api": None, "env": None, "listened": False}
+_state = {"api": None, "env": None, "hooked": False}
 
 
 def api():
@@ -93,22 +93,28 @@ def _itemName(args):
     return (args.get("itemDict") or {}).get("newItemName")
 
 
+def _effectName(args):
+    return args.get("effectName")
+
+
 def _hook(env):
+    """挂监听，只挂一次（attach 再来只换接口）：引擎事件按名字匹配，不相干的到不了处理函数。"""
+    if _state["hooked"]:
+        return
+    _state["hooked"] = True
     registerHandler("EntityPlaceBlockAfterServerEvent", match=Triggers.keysOf("placed"))(onBlockPlaced)
     registerHandler("ItemUseOnAfterServerEvent", match=Data.PLANTERS, keyOf=_itemName)(onPlanted)
     registerHandler("PlayerEatFoodServerEvent", match=Triggers.keysOf("eaten"))(onEaten)
-    registerHandler("AddEffectServerEvent")(onEffect)
+    registerHandler("AddEffectServerEvent", match=Triggers.keysOf("effect"), keyOf=_effectName)(onEffect)
     registerHandler("ProjectileDoHitEffectEvent")(onProjectileHit)
     for deed, func in ((Deeds.CUT_ON_BOARD, onCut), (Deeds.SKILLET_COOKED, onSkilletCooked),
                        (Deeds.PLACED_BLOCK, onPlacedByScript), (Deeds.HARVESTED, onHarvested)):
         Deeds.subscribe(deed, func)
-    if not _state["listened"]:
-        _state["listened"] = True
-        env.listen("InventoryItemChangedServerEvent", onInventoryChanged)
+    env.listen("InventoryItemChangedServerEvent", onInventoryChanged)
 
 
 def attach(module, env):
-    """成就系统的接口模块来了：登记节点、挂监听（再来一次只换接口、重新登记节点）。返回登记上的节点数；不像它的接口是 None。"""
+    """成就系统的接口模块来了：登记节点、挂监听（再来一次只换接口、重新登记节点，监听不再挂）。返回登记上的节点数；不像它的接口是 None。"""
     if module is None or any(not hasattr(module, name) for name in _REQUIRED):
         print("[arrisFarmersDelight] 成就系统的接口不对（%r），不接" % (module,))
         return None
