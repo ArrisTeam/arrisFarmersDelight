@@ -401,21 +401,22 @@ def testTheBriefsMembers():
 
 
 # 团队烹饪原料标签的规范（Tags.COOKING_STANDARD，森罗物语厨房网易版的 18 个）：农夫乐事登记进去的粗标签 -> 用 # 嵌进去的细标签
-# （每一条的 JE 依据写在 docs/TAGS.md「和森罗物语的标签对照」）；本来就同名的；农夫乐事不登记的
+# （每一条的 JE 依据写在 docs/TAGS.md「和森罗物语的标签对照」）；本来就同名的；农夫乐事不登记的（面条：用户 2026-11-26 定，意面和面条不是一种）
 COARSE = {
     Tags.BEEF: (Tags.RAW_BEEF, Tags.COOKED_BEEF), Tags.CHICKEN: (Tags.RAW_CHICKEN, Tags.COOKED_CHICKEN),
     Tags.LAMB: (Tags.RAW_MUTTON, Tags.COOKED_MUTTON), Tags.PORK: (Tags.RAW_PORK, Tags.COOKED_PORK),
-    Tags.FISH: (Tags.RAW_FISH, Tags.COOKED_FISH), Tags.NOODLE: (Tags.PASTA,), Tags.ANY_EGG: (Tags.COOKED_EGG,),
+    Tags.FISH: (Tags.RAW_FISH, Tags.COOKED_FISH), Tags.ANY_EGG: (Tags.COOKED_EGG,),
     Tags.SEED: (Tags.CABBAGE_SEEDS, Tags.RICE, Tags.TOMATO_SEEDS),
 }
 SAME_NAME = (Tags.DOUGH, Tags.MUSHROOM, Tags.RICE, Tags.TOMATO, Tags.VEGETABLE)
-NOT_OURS = ("common:chili", "common:flour", "common:lettuce", "common:meat", "common:meatball")
+NOT_OURS = ("common:chili", "common:flour", "common:lettuce", "common:meat", "common:meatball", "common:noodle")
 
 
 def testTheTeamStandard():
-    """团队烹饪原料标签的规范：18 个平铺、单数的 common: 名（照森罗的文件名排）。农夫乐事登记了 13 个：粗标签只用 # 嵌自己的细标签
-    （别的模组登记进细标签的也跟着算，展开就是细标签的并集，没有 JE 名——JE 里没有对应的单个标签），同名的本来就有；没有依据的 5 个
-    不登记、不进词表。农夫乐事自己的配方（厨锅的格子、砧板、工作台）不读粗标签：生 / 熟分开是 JE 配方的原意，蛋读原版的 minecraft:egg。"""
+    """团队烹饪原料标签的规范：18 个平铺、单数的 common: 名（照森罗的文件名排）。农夫乐事登记了 12 个：粗标签只用 # 嵌自己的细标签
+    （别的模组登记进细标签的也跟着算，展开就是细标签的并集，没有 JE 名——JE 里没有对应的单个标签），同名的本来就有；不登记的 6 个
+    不进词表、没有名字常量（五个没有依据，面条是用户 2026-11-26 定的：意面和面条不是一种，生意面不进 common:noodle）。
+    农夫乐事自己的配方（厨锅的格子、砧板、工作台）不读粗标签：生 / 熟分开是 JE 配方的原意，蛋读原版的 minecraft:egg。"""
     standard = Tags.COOKING_STANDARD
     assert len(standard) == 18 == len(set(standard)) and list(standard) == sorted(standard), standard
     assert all(re.match(r"^common:[a-z]+$", tag) for tag in standard), "平铺、一个词"
@@ -435,7 +436,8 @@ def testTheTeamStandard():
     assert "minecraft:pufferfish" not in Tags.ITEM_TAGS[Tags.FISH]
     assert Tags.ITEM_TAGS[Tags.ANY_EGG] == ("arris:fried_egg",) and Tags.ANY_EGG != Tags.EGG
     assert Tags.ITEM_TAGS[Tags.SEED] == ("arris:cabbage_seeds", "arris:rice", "arris:tomato_seeds")
-    assert Tags.ITEM_TAGS[Tags.NOODLE] == ("arris:raw_pasta",)
+    assert not hasattr(Tags, "NOODLE"), "没登记的不给常量"
+    assert [tag for tag, members in Tags.ITEM_TAGS.items() if "arris:raw_pasta" in members] == [Tags.PASTA], "生意面只在 common:pasta 里"
     reads = _docReads()
     for tag in COARSE:
         assert reads[tag] == "—", "%s：农夫乐事自己的配方不读粗标签（%s）" % (tag, reads[tag])

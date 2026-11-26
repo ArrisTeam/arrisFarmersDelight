@@ -40,9 +40,9 @@
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。
   能力 `item_tags`（两端）。见 EXTENSION-API.md §7、[TAGS.md](TAGS.md)。
 - **团队烹饪原料标签的规范**（森罗物语厨房网易版定的 18 个平铺、单数的 `common:` 标签，生的熟的都算）：农夫乐事把自己的东西登记进其中的
-  `common:beef`、`common:chicken`、`common:lamb`、`common:pork`、`common:fish`（都是 `#` 嵌生、熟两个细标签）、`common:noodle`（生意面）、
+  `common:beef`、`common:chicken`、`common:lamb`、`common:pork`、`common:fish`（都是 `#` 嵌生、熟两个细标签）、
   `common:egg`（煎蛋）、`common:seed`（卷心菜种子、米、番茄种子），森罗物语的模糊配方就认农夫乐事的这些原料；农夫乐事自己的配方照旧读细标签。
-  `ext.tags` 新增常量 `BEEF`、`CHICKEN`、`LAMB`、`PORK`、`FISH`、`NOODLE`、`SEED`、`ANY_EGG`（`"common:egg"`；`EGG` 照旧是原版的 `"minecraft:egg"`）。
+  `ext.tags` 新增常量 `BEEF`、`CHICKEN`、`LAMB`、`PORK`、`FISH`、`SEED`、`ANY_EGG`（`"common:egg"`；`EGG` 照旧是原版的 `"minecraft:egg"`）。
   见 TAGS.md「和森罗物语的标签对照」。
 - **行为包里的配方 JSON**：任何行为包根下的 `farmersdelight_recipes/**.json`，开服时在 ready 广播之后读，写法同 `registerFromJson`。
   跨行为包读文件 2026-11-26 在游戏里核过。能力 `recipe_json_files`（服务端）。见 [RECIPE-JSON.md](RECIPE-JSON.md)。
@@ -61,6 +61,8 @@
 - 蘑菇、骨头的标签名对上团队的烹饪原料标签规范（森罗物语厨房定的，平铺、单数）：`common:mushrooms` → `common:mushroom`、`common:bones` → `common:bone`
   （这两个复数名只在这一版的开发中用过，没有发过版）；`ext.tags` 的名字常量跟着改，不留旧名：`MUSHROOMS` → `MUSHROOM`，`BONES` → `BONE`。
   配方 JSON 里 JE 的 `forge:mushrooms` / `c:mushrooms`、`forge:bones` / `c:bones` 换成新名字。
+- 生意面不再登记进团队规范的 `common:noodle`（用户 2026-11-26 定：意面和面条不是一种；生意面只在 `common:pasta` 里，和 JE 一样），
+  农夫乐事不再生成 `common:noodle` 的标签文件；`ext.tags` 去掉常量 `NOODLE`（只在这一版的开发中有过，没有发过版）。见 TAGS.md「和森罗物语的标签对照」。
 - 方块标签 `farmersdelight:heat_sources` 多了成员 `minecraft:cauldron`（JE 标签里的熔岩炼药锅：基岩版没有这个方块，是炼药锅盛着熔岩的状态）。
   农夫乐事只在它盛着熔岩（`cauldron_liquid` 是 `lava`、`fill_level` 至少 1）时当热源；按这个标签认热源的模组也要看这两个状态。见 TAGS.md「热源方块」。
 - 厨锅配方的 `text`：经典厨锅界面的搜索框照 JEI 按成品、食材的显示名和物品 ID 搜（看界面的那一端自己的语言），不再只按 `text` 比；

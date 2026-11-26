@@ -48,7 +48,7 @@ MEANINGS = {
     "common:beef": "牛肉，生的熟的都算（团队规范的粗标签，见「和森罗物语的标签对照」）",
     "common:chicken": "鸡肉，生的熟的都算（团队规范的粗标签）", "common:lamb": "羊肉，生的熟的都算（团队规范的粗标签）",
     "common:pork": "猪肉，生的熟的都算，含培根（团队规范的粗标签）",
-    "common:fish": "鱼，生的熟的都算，含鱼片，不含河豚（团队规范的粗标签）", "common:noodle": "面条（团队规范的粗标签）",
+    "common:fish": "鱼，生的熟的都算，含鱼片，不含河豚（团队规范的粗标签）",
     "common:egg": "蛋，做熟的也算（团队规范的粗标签；农夫乐事的鸡蛋格子读的是原版的 minecraft:egg）",
     "common:seed": "种子（团队规范的名字；common:seeds 是机械动力附属在用的复数名，两个都登记）",
     "farmersdelight:heat_sources": "热源：给上面的锅 / 煎锅加热（有点燃状态的要点着；炼药锅要盛着熔岩）",

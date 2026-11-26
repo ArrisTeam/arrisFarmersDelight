@@ -119,10 +119,12 @@ def testTagsAreItemTagsWithTheVocabularyNames():
     assert isinstance(tags.generation(), int) and CLIENT.tags.has("arris:minced_beef", tags.RAW_BEEF)
     # 团队规范的名字（单数）：蘑菇、骨头改过名，不留旧名；农夫乐事登记了的粗标签有常量，蛋的粗标签叫 ANY_EGG（EGG 是原版的）
     assert tags.MUSHROOM == "common:mushroom" and tags.BONE == "common:bone" and not hasattr(tags, "MUSHROOMS") and not hasattr(tags, "BONES")
-    assert (tags.BEEF, tags.PORK, tags.FISH, tags.NOODLE, tags.SEED, tags.ANY_EGG) == (
-        "common:beef", "common:pork", "common:fish", "common:noodle", "common:seed", "common:egg")
+    assert (tags.BEEF, tags.PORK, tags.FISH, tags.SEED, tags.ANY_EGG) == (
+        "common:beef", "common:pork", "common:fish", "common:seed", "common:egg")
     assert tags.has("arris:beef_patty", tags.BEEF) and "common:egg" in tags.names() and not hasattr(tags, "COOKING_STANDARD")
-    assert not [name for name in ("CHILI", "FLOUR", "LETTUCE", "MEAT", "MEATBALL") if hasattr(tags, name)], "规范里农夫乐事不登记的不给常量"
+    # 面条：用户 2026-11-26 定，意面和面条不是一种，农夫乐事不登记 common:noodle
+    assert not [name for name in ("CHILI", "FLOUR", "LETTUCE", "MEAT", "MEATBALL", "NOODLE") if hasattr(tags, name)], "规范里农夫乐事不登记的不给常量"
+    assert "common:noodle" not in tags.names() and not tags.has("arris:raw_pasta", "common:noodle")
     odd = sorted(name for name, value in vars(tags).items() if name.isupper() and value.split(":", 1)[1].upper() != name)
     assert odd == ["ANY_EGG", "LEGACY_KNIFE"], "EXTENSION-API.md §7：常量名是冒号后那段的大写，例外就这两个（%s）" % odd
 

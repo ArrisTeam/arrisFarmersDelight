@@ -22,7 +22,7 @@
    进游戏看两边并没并上：tags 里每个标签的 members（引擎反查到的全部）、missing（农夫乐事登记了引擎却没有）、extra（别的包登记的，森罗的东西在这里）；
    nestedLost：农夫乐事用 # 嵌的细标签，引擎里的成员（含别的包登记进细标签的）有没有漏出粗标签；meatLost：有人登记了 common:meat 时（森罗的文件
    用 # 引了牛、鸡、羊、猪），农夫乐事登记进那四个的肉有没有并进去（没人登记是 None）。装了森罗时 kaleidoscope 再报：它服务端模糊配方认料用的
-   item_matches_ingredient 认不认农夫乐事登记进去的每件东西（refused 是不认的）、反例（火腿当猪肉、河豚当鱼）认没认（acceptedWrongly）、
+   item_matches_ingredient 认不认农夫乐事登记进去的每件东西（refused 是不认的）、反例（火腿当猪肉、河豚当鱼、生意面当面条）认没认（acceptedWrongly）、
    它按标签名缓存的成员（第一次问时建、之后不再问引擎）调之前有哪些、和引擎现在的对不上的（stale）。客户端另有同名函数报客户端引擎和森罗 JEI 的缓存。
     from arrisFarmersDelightScripts.Server.Debug import McdkTagsTest as T
     return T.mcdk_test_tags_members()
@@ -39,7 +39,8 @@ PROBE_GRILL = ("fdprobe:tomato", "minecraft:iron_nugget")    # 探针包的番�
 BLOCK_PROBES = ("arris:stove", "arris:stove_extinguish", "minecraft:magma", "minecraft:campfire", "minecraft:fire", "minecraft:lava")
 KC_MATCHER = "kcookery_scripts.server.register.recipes.cooking_tags"   # 森罗物语厨房服务端认料的模块（它的模糊配方经 item_matches_ingredient 认）
 MEAT_PARTS = (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK)           # 森罗的 common:meat 用 # 引的四个（它的 netease_tags/meat.json）
-NOT_THEIRS = (("arris:ham", Tags.PORK), ("arris:smoked_ham", Tags.PORK), ("minecraft:pufferfish", Tags.FISH))    # 不该认的
+# 不该认的：火腿不算猪肉、河豚不算鱼（JE 依据见 docs/TAGS.md）；生意面不算面条（用户 2026-11-26 定：意面和面条不是一种）
+NOT_THEIRS = (("arris:ham", Tags.PORK), ("arris:smoked_ham", Tags.PORK), ("minecraft:pufferfish", Tags.FISH), ("arris:raw_pasta", "common:noodle"))
 
 
 def _diff(static, engine):

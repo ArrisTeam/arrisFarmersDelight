@@ -235,7 +235,8 @@ def testTheStandardSelfTestReportsBothPacks():
         kc = both["kaleidoscope"]
         assert kc["refused"] == [] and kc["acceptedWrongly"] == [] and kc["stale"] == [] and kc["cachedBefore"] == [Tags.BEEF], kc
         assert kc["asked"] > 40
-        port = StandardPort(lose=("common:meat", "arris:minced_beef"), extra={Tags.RAW_BEEF: ("mymod:steak",)})
+        # 引擎里生意面进了 common:noodle（用户 2026-11-26 定了不进：意面和面条不是一种）：森罗认了它就是认错了
+        port = StandardPort(lose=("common:meat", "arris:minced_beef"), extra={Tags.RAW_BEEF: ("mymod:steak",), "common:noodle": ("arris:raw_pasta",)})
         ServerPort.PORT = port
         ServerTest.serverApi = ModuleApi({ServerTest.KC_MATCHER: KaleidoscopeMatcher(port, {Tags.FISH: ["minecraft:cod"]})})
         broken = ServerTest.mcdk_test_tags_standard()
@@ -244,6 +245,7 @@ def testTheStandardSelfTestReportsBothPacks():
         refused = broken["kaleidoscope"]["refused"]
         assert broken["kaleidoscope"]["stale"] == [Tags.FISH] and "arris:minced_beef common:meat" in refused, broken["kaleidoscope"]
         assert "arris:cod_slice common:fish" in refused and "minecraft:cod common:fish" not in refused, "缓存过时：鱼片它不认了"
+        assert broken["kaleidoscope"]["acceptedWrongly"] == ["arris:raw_pasta common:noodle"], broken["kaleidoscope"]
     finally:
         ServerPort.PORT, ServerTest.serverApi = saved
         _reset()

@@ -97,7 +97,6 @@ CHICKEN = "common:chicken"
 LAMB = "common:lamb"
 PORK = "common:pork"
 FISH = "common:fish"
-NOODLE = "common:noodle"
 ANY_EGG = "common:egg"          # 规范的"蛋"（森罗登记了三种鸡蛋、海龟蛋、嗅探兽蛋、煎蛋）；原版的 minecraft:egg 是 EGG，农夫乐事的配方读那个
 SEED = "common:seed"            # 规范的"种子"；机械动力附属在用的复数名 common:seeds 照旧另外登记
 # 农夫乐事自己的老标签：linkage.md 让下游给自己的刀挂它（Server/Helpers/Items.IsKnife 认），农夫乐事的五把刀以前没挂
@@ -138,10 +137,11 @@ WHEAT_FLOUR = "common:wheat_flour"      # 机械动力的小麦粉
 WITHOUT_MEMBERS = (FRUIT, WHEAT_FLOUR)
 
 # ---- 团队烹饪原料标签的规范（森罗物语厨房网易版 2026-11-26 的提交 2df8e1c：它 netease_tags 下的 18 个文件，照名字排）----
-# 农夫乐事登记了其中 13 个（上面的常量）。剩下 5 个农夫乐事不登记、不进词表、没有名字常量：辣椒、面粉、生菜、肉丸（农夫乐事没有这些东西，
-# JE 里也没有把农夫乐事的东西算进去的依据），肉（common:meat：森罗自己的文件用 # 引了牛、鸡、羊、猪四个，农夫乐事的肉登记进那四个就跟着进去了）
+# 农夫乐事登记了其中 12 个（上面的常量）。剩下 6 个农夫乐事不登记、不进词表、没有名字常量：辣椒、面粉、生菜、肉丸（农夫乐事没有这些东西，
+# JE 里也没有把农夫乐事的东西算进去的依据），肉（common:meat：森罗自己的文件用 # 引了牛、鸡、羊、猪四个，农夫乐事的肉登记进那四个就跟着进去了），
+# 面条（common:noodle：用户 2026-11-26 定，意面和面条不是一种，农夫乐事的生意面不进去；JE 里两个模组也是两样）
 COOKING_STANDARD = (BEEF, CHICKEN, "common:chili", DOUGH, ANY_EGG, FISH, "common:flour", LAMB, "common:lettuce", "common:meat",
-                    "common:meatball", MUSHROOM, NOODLE, PORK, RICE, SEED, TOMATO, VEGETABLE)
+                    "common:meatball", MUSHROOM, "common:noodle", PORK, RICE, SEED, TOMATO, VEGETABLE)
 
 _KNIVES = ("arris:flint_knife", "arris:golden_knife", "arris:iron_knife", "arris:diamond_knife", "arris:netherite_knife")
 _RAW_BEEF = ("minecraft:beef", "arris:minced_beef")
@@ -213,7 +213,6 @@ ITEM_TAG_FILES = {
     LAMB: ("#" + RAW_MUTTON, "#" + COOKED_MUTTON),
     PORK: ("#" + RAW_PORK, "#" + COOKED_PORK),
     FISH: ("#" + RAW_FISH, "#" + COOKED_FISH),              # 含鱼片（JE 的 forge:raw_fishes/cod 等有鱼片）、热带鱼，不含河豚
-    NOODLE: ("#" + PASTA,),                                 # 生意面：主会话定的，JE 里没有直接依据（docs/TAGS.md）
     ANY_EGG: ("#" + COOKED_EGG,),                           # 煎蛋：规范把森罗的煎蛋算进蛋里，JE 的合并表把两边的煎蛋当成一种东西
     SEED: ("#" + CABBAGE_SEEDS, "#" + RICE, "#" + TOMATO_SEEDS),     # JE 的 forge:seeds 里农夫乐事的三样；原版的种子森罗登记了
     # 分类（JE 的 farmersdelight: 物品标签）。炖牛肉这边叫 cookbeef_stew；派的物品是 *_item（方块名是派本身）；
