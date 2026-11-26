@@ -22,6 +22,9 @@
   `onRecipesChanged(handler)`：`syncToClients` 之后、开服读完行为包配方 JSON 之后调。
   能力 `cooking_recipes`、`cutting_recipes`、`campfire_recipes`、`recipe_json_registration`、`recipe_client_sync`、`recipe_change_events`（服务端），
   `recipe_queries`、`cooking_match`（两端）。见 EXTENSION-API.md §4、§5。
+- **Builder 认机械动力的写法**：`ingredient(..., data=aux, count=格数)`（只收关键字）、`ingredientTag(标签, count=1)`，`output(物品, count, data, chance)`、
+  `container(物品, data)` 的参数次序和机械动力一样（`output` 的第三个位置参数是 `data`，概率写 `chance=`）；写法上的错不抛，`register()` 答
+  `invalid_recipe` 并说哪里不对。见 EXTENSION-API.md §5.3。
 - **配方以外的登记口**：`ext.registerKnife`、`ext.registerHeatSource`、`ext.registerStove`（点着的炉灶）、`ext.registerCompostable`。
   能力 `knives`、`heat_sources`、`stoves`、`compostables`（服务端）。见 EXTENSION-API.md §6。
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。

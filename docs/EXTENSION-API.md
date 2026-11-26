@@ -288,9 +288,10 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 
 | 方法 | 用在 | 说明 |
 | --- | --- | --- |
-| `ingredient(*选项)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项 |
-| `output(物品, count=1, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出） |
-| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
+| `ingredient(*选项, count=1, data=None)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项。两个关键字照机械动力：`data` 是 aux（只给一样写成 `"ns:name"` 的物品时），`count` 是几格（厨锅一格一件，`count=2` 是两格同样的；砧板、营火只能是 1）。数量、aux 只收关键字：位置参数都是这一格的选项 |
+| `ingredientTag(标签, count=1)` | 三类 | 机械动力的写法：加 `count` 格这个标签，和 `ingredient("#标签")` 一样（标签名写不写 `#` 都行） |
+| `output(物品, count=1, data=0, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出）。参数的次序和机械动力一样：第三个位置参数是 `data`，概率写 `chance=` |
+| `container(物品, data=0)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |
@@ -300,6 +301,18 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 
 物品写 `"命名空间:名字"`（aux 0）或 `("命名空间:名字", aux)`，标签写 `"#标签名"`（标签没有 aux）。Builder 写出来的就是一份 JSON，
 `register()` 和 `registerFromJson` 走同一条路：两种写法的规矩一模一样。
+
+写错了不抛异常：不认识的关键字、把数量写成位置参数（`ingredient("minecraft:carrot", 2)`）、`data` 用在标签或几个选项上、`count` 不是正整数，
+都记下来，`register()` 答 `invalid_recipe`，`message` 说哪里不对（客户端照旧先答 `server_only`）。照机械动力的手感写的：
+
+```python
+recipes.createBuilder("mymod:cooking/potion_soup", "cooking") \
+    .ingredient("minecraft:potion", data=4) \
+    .ingredientTag("common:tomato", count=2) \
+    .output("mymod:potion_soup", count=2) \
+    .register()
+# 等于 .ingredient(("minecraft:potion", 4)).ingredient("#common:tomato").ingredient("#common:tomato")
+```
 
 ### 5.4 registerFromJson
 

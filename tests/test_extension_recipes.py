@@ -188,7 +188,7 @@ def testIdRules():
 
 def testCuttingAndCampfireRecipes():
     with Sandbox():
-        cut = SERVER.createBuilder("mymod:cutting/tofu", "cutting").ingredient("mymod:tofu").output("mymod:tofu_cube", 4).output("minecraft:bone_meal", 1, 0.5).tool("knife")
+        cut = SERVER.createBuilder("mymod:cutting/tofu", "cutting").ingredient("mymod:tofu").output("mymod:tofu_cube", 4).output("minecraft:bone_meal", 1, chance=0.5).tool("knife")
         assert cut.register()["ok"]
         entry = Cutting.CuttingBoardDict[("mymod:tofu", 0)]
         assert entry["tool"] is Cutting.knifeList and entry["itemList"] == [{"itemName": "mymod:tofu_cube", "count": 4}, {"itemName": "minecraft:bone_meal", "count": 1, "chance": 0.5}]

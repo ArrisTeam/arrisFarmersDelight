@@ -91,13 +91,16 @@ class Recipes(object):
                 return RecipeTables.answer(False, "invalid_json", recipeId, message=str(error))
         return self._register(data, recipeId if recipeId is not None else (data.get("id") if isinstance(data, dict) else None))
 
-    def _register(self, data, recipeId):
+    def _register(self, data, recipeId, problem=None):
+        """登记一份 JE 写法的字典；problem 是 Builder 记下的写法上的错（有就答 invalid_recipe，不去读 data）。"""
         refused = self._refused(recipeId)
         if refused is not None:
             return refused
         recipeId = RecipeJson.text(recipeId)
         if RecipeIds.split(recipeId) is None:
             return RecipeTables.answer(False, "invalid_id", recipeId)
+        if problem is not None:
+            return RecipeTables.answer(False, "invalid_recipe", recipeId, message=problem)
         spec, problem = RecipeJson.parse(data)
         if problem is not None:
             return RecipeTables.answer(False, "invalid_recipe", recipeId, message=problem)
