@@ -8,7 +8,9 @@
 - 本机原版行为包（找不到游戏目录时跳过）：算出来的每一处 = 原版那一处 + 本包的条目接在后面，别的字段一个不动；
   2026-11-26 删掉六份整文件覆盖之前，拿那六份当参照逐处核过（18 处一样；兔子的吸引和原来 Mobs 里写死的 JSON 一样）。
 - 别的包改过的定义：在改过的那份上追加，不换回原版。
-- 服务端：只认这六种、晚一拍下发、换组事件按定义里的名字认、读不到定义记一次日志不再试、定义栈读不懂只给顶层的。
+- 服务端：只认这六种、晚两拍下发、换组事件按定义里的名字认、读不到定义记一次日志不再试、定义栈读不懂只给顶层的。
+- 和别的模组共存（Rules.merged）：GetComponents 读回的现值里本包的条目都在了就不发；要发的接上别的模组加的条目（{"item": …} 接成名字，
+  带别的键的原样接，minecraft: 前缀不算外来）；读回看不懂就照拼好的发。
 """
 from __future__ import print_function
 
@@ -218,7 +220,12 @@ class _Resource(object):
         return sorted(set(prefix + rest.split("/")[0] for rest in (name[len(prefix):] for name in self.files if name.startswith(prefix))))
 
 
-def _server(files, stacks):
+SENT = []          # 每一次 AddActorComponent：(实体, 组件)
+
+
+def _server(files, stacks, before=None):
+    """假的 server_resource 放这些文件；GetEntityDefinitions 给 stacks 里的栈；GetComponents 给 before 里预先有的组件（别的模组打过的）
+    加上我们发下去的（照发下去的写法读回，2026-11-26 实机就是这样）。"""
     resource = _Resource(files)
     module = types.ModuleType("server_resource")
     module.load_server_file, module.list_server_directory = resource.load_server_file, resource.list_server_directory
@@ -228,7 +235,22 @@ def _server(files, stacks):
     world.entities.clear()
     world.components.clear()
     world.timers = []
+    del SENT[:]
     world._EntityDefinitions = lambda target: {"GetEntityDefinitions": lambda: stacks.get(target)}
+
+    def entityEvent(target):
+        def add(name, value):
+            SENT.append((target, name))
+            world.components.setdefault(target, {})[name] = value
+            return True
+
+        def read():
+            now = dict((before or {}).get(target, {}))
+            now.update((name, json.loads(value)) for name, value in world.components.get(target, {}).items())
+            return now
+        return {"AddActorComponent": add, "GetComponents": read}
+
+    world._EntityEvent = entityEvent
     return resource
 
 
@@ -237,12 +259,12 @@ def _add(entityId, entityType):
     Registry.dispatch("AddEntityServerEvent", {"id": entityId, "engineTypeStr": entityType}, entityType)
 
 
-def testOnlyTheSixAnimalsAreTouchedAndOnlyOneTickLater():
+def testOnlyTheSixAnimalsAreTouchedAndOnlyTwoTicksLater():
     resource = _server({"entities/chicken.json": json.dumps(CHICKEN)}, {"c1": ["+minecraft:chicken", "+minecraft:chicken_baby"]})
     _add("z1", "minecraft:zombie")
     assert world.timers == [] and resource.loads == []
     _add("c1", "minecraft:chicken")
-    assert world.components == {} and len(world.timers) == 1                 # 出现那一拍不打，晚一拍
+    assert world.components == {} and [seconds for seconds, _func, _args in world.timers] == [0.1]     # 晚两拍：排在森罗物语后面
     world.runTimers()
     assert sorted(world.components["c1"]) == ["minecraft:ageable", "minecraft:behavior.tempt"]
     assert json.loads(world.components["c1"]["minecraft:ageable"])["feed_items"][-3:] == list(SEEDS)
@@ -293,6 +315,50 @@ def testTheEntityCanBeGoneBeforeTheTick():
     del world.entities["c1"]
     world.runTimers()
     assert world.components == {}
+
+
+# ---- 和别的模组共存：读现值、合并、本包的都在了就不发 ----
+
+ADULT = ["+minecraft:chicken", "+minecraft:chicken_adult"]
+
+
+def testWhatIsAlreadyThereIsNotSentAgain():
+    # 读档、区块加载每次都来 AddEntityServerEvent：本包的条目还在（存档里的 ##netease:: 组件、别的模组合并过的），就不再打（不重建 AI 目标）
+    _server({"entities/chicken.json": json.dumps(CHICKEN)}, {"c1": ADULT})
+    _add("c1", "minecraft:chicken")
+    world.runTimers()
+    assert sorted(name for _entity, name in SENT) == ["minecraft:behavior.tempt", "minecraft:breedable"]
+    del SENT[:]
+    Registry.dispatch("AddEntityServerEvent", {"id": "c1", "engineTypeStr": "minecraft:chicken"}, "minecraft:chicken")
+    world.runTimers()
+    assert SENT == []
+
+
+def testAnotherModsItemsAreKeptWhenWeSend():
+    # 森罗物语厨房在下一帧照定义整份打鸡的 tempt（带它的种子），我们晚两拍读回、合并：两家的种子都在；规整过的 {"item": …} 也认
+    kitchen = {"priority": 4, "items": ["wheat_seeds", "kaleidoscope_cookery:tomato_seed"]}
+    breedable = {"require_tame": False, "breed_items": [{"item": "minecraft:wheat_seeds"}, {"item": "mymod:corn", "growth": 0.5}]}
+    _server({"entities/chicken.json": json.dumps(CHICKEN)}, {"c1": ADULT},
+            before={"c1": {"minecraft:behavior.tempt": kitchen, "minecraft:breedable": breedable}})
+    _add("c1", "minecraft:chicken")
+    world.runTimers()
+    tempt = json.loads(world.components["c1"]["minecraft:behavior.tempt"])
+    assert tempt["items"] == ["wheat_seeds"] + list(SEEDS) + ["kaleidoscope_cookery:tomato_seed"] and tempt["priority"] == 4
+    breed = json.loads(world.components["c1"]["minecraft:breedable"])["breed_items"]
+    assert breed == ["wheat_seeds"] + list(SEEDS) + [{"item": "mymod:corn", "growth": 0.5}]     # minecraft: 前缀不算外来
+
+
+def testMergedComparesWithTheCurrentValueAndSendsAsIsWhenItCannotReadIt():
+    plan = _plan()
+    sends = Rules.send(plan, ADULT)
+    ours = dict(sends)
+    assert Rules.merged(plan, sends, None) == sends and Rules.merged(plan, sends, {}) == sends
+    for odd in ({"minecraft:behavior.tempt": 5}, {"minecraft:behavior.tempt": {"items": {"bad": 1}}}):
+        assert dict(Rules.merged(plan, sends, odd))["minecraft:behavior.tempt"] == ours["minecraft:behavior.tempt"]
+    done = {"minecraft:behavior.tempt": {"items": [{"item": "wheat_seeds"}] + [{"item": name} for name in SEEDS]}}
+    assert [name for name, _text in Rules.merged(plan, sends, done)] == ["minecraft:breedable"]      # 规整过的写法也认得本包的都在
+    single = {"minecraft:breedable": {"breed_items": "mymod:corn"}}                                    # 单个字符串（原版牛就是 "wheat"）
+    assert json.loads(dict(Rules.merged(plan, sends, single))["minecraft:breedable"])["breed_items"][-1] == "mymod:corn"
 
 
 if __name__ == "__main__":

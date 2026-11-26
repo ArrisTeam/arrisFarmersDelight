@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """McdkAnimalsTest - 原版六种动物认农夫乐事的食物（运行时加组件，Server/AnimalFood.py）的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
-不会自动运行，没有 RPC 端点。分两步，中间等约 5 秒（加减组件组下一帧才生效、补丁晚一拍才打，驯服 / 长大也要几拍）：
+不会自动运行，没有 RPC 端点。分两步，中间等约 5 秒（加减组件组下一帧才生效、补丁晚两拍才打，驯服 / 长大也要几拍）：
     from arrisFarmersDelightScripts.Server.Debug import McdkAnimalsTest as T
     T.mcdk_test_animals_start()     # /summon 带出生事件生成成年、幼年各一只（鹦鹉只有成年）：鸡、猪、兔、鹦鹉在第一个玩家东边一排，
                                     # 猫、狼在西边一排、关掉 AI（不然兔子、鸡被吃掉）
@@ -9,6 +9,7 @@
     T.mcdk_test_animals_collect()   # 交回结果，删掉生成的动物，主手物品换回去
 0.6 秒读每只的定义栈、GetComponents 里那几个组件带没带本包的物品、规则现在会下发哪几个；0.8 秒拿本包的食物真喂（PlayerUseItemToEntity）：
 成年 / 幼年各喂一次，记 PlayerFeedEntityServerEvent；野猫、鹦鹉喂到驯服（最多 12 次）；狼脚本驯服，狼和猫打掉几点血再喂看回没回血；
+1.0 秒给成年鸡的 tempt 手工打一个只带外来物品（苹果）的值，1.3 秒对它 apply，1.7 秒读回：苹果和本包的种子都要在（和别的模组共存）；
 2 秒让幼年长大，3.5 秒再读一遍。读不到的（死了、没了）、规则该下发却没看到本包物品的、长大后不对的都进 problems。plans 是服务端读到的定义算出的补丁。
 """
 import json
@@ -38,8 +39,10 @@ CASES = (
 PREDATORS = ("minecraft:cat", "minecraft:wolf")
 GROW_UP = {"minecraft:rabbit": "grow_up"}
 TAME_TRIES = 12
+TEMPT = "minecraft:behavior.tempt"
+FOREIGN = {"priority": 4, "speed_multiplier": 1.0, "items": ["minecraft:apple"]}     # "别的模组"打的 tempt：只有一个外来物品
 _state = {"entities": {}, "results": {}, "feeds": [], "events": [], "watching": False, "player": None, "hand": None, "started": 0.0,
-          "feedListened": False}
+          "feedListened": False, "merge": None}
 
 
 def _key(entityType, age):
@@ -142,6 +145,21 @@ def _heal():
             _state["results"].setdefault(key, {})["heal"] = {"full": full, "hurt": hurt, "fed": _health(entityId), "used": used}
 
 
+def _merge(step):
+    """和别的模组共存：先打一个只带外来物品的 tempt（step 0），晚几拍 apply（step 1），再读回（step 2）：外来的和本包的都要在。"""
+    entityId = _state["entities"].get("chicken:adult")
+    if not entityId:
+        return
+    eventComp = compFactory.CreateEntityEvent(entityId)
+    if step == 0:
+        eventComp.AddActorComponent(TEMPT, json.dumps(FOREIGN))
+    elif step == 1:
+        AnimalFood.apply(entityId)
+    else:
+        text = json.dumps((eventComp.GetComponents() or {}).get(TEMPT))
+        _state["merge"] = {"foreign": "apple" in text, "ours": "arris:rice" in text, "tempt": text}
+
+
 def _grow():
     for entityType, age, _event, _food in CASES:
         entityId = _state["entities"].get(_key(entityType, age))
@@ -152,13 +170,13 @@ def _grow():
 
 
 def mcdk_test_animals_start():
-    """生成、排好之后的读 / 喂 / 长大 / 再读；约 5 秒后调 mcdk_test_animals_collect()。"""
+    """生成、排好之后的读 / 喂 / 合并 / 长大 / 再读；约 5 秒后调 mcdk_test_animals_collect()。"""
     players = serverApi.GetPlayerList()
     if not players:
         return {"case": "animals", "ok": False, "error": "no player"}
     playerId = players[0]
     x, y, z = compFactory.CreatePos(playerId).GetFootPos()
-    _state.update(entities={}, results={}, feeds=[], events=[], watching=True, player=playerId,
+    _state.update(entities={}, results={}, feeds=[], events=[], watching=True, player=playerId, merge=None,
                   hand=GetCarriedItem(playerId, True), started=time.time())
     if not _state["feedListened"]:
         _state["feedListened"] = True
@@ -172,8 +190,8 @@ def mcdk_test_animals_start():
             entityType, posX, int(y), int(z) + 3, event, _key(entityType, age).replace(":", "_")), playerId)
     _findAll()
     game = compFactory.CreateGame(levelId)
-    for seconds, func, args in ((0.3, _findAll, ()), (0.6, _read, ("before",)), (0.8, _feed, ()),
-                                (2.0, _grow, ()), (3.5, _read, ("after",))):
+    for seconds, func, args in ((0.3, _findAll, ()), (0.6, _read, ("before",)), (0.8, _feed, ()), (1.0, _merge, (0,)),
+                                (1.3, _merge, (1,)), (1.7, _merge, (2,)), (2.0, _grow, ()), (3.5, _read, ("after",))):
         game.AddTimer(seconds, func, *args)
     return {"case": "animals", "started": True, "summoned": summoned, "found": sorted(_state["entities"])}
 
@@ -192,11 +210,14 @@ def _checks(results):
         if key.endswith(":baby") and after:
             if after.get("minecraft:ageable", {}).get("present") or not after.get("minecraft:breedable", {}).get("ours"):
                 problems.append("%s 长大以后：ageable 还在或 breedable 没有本包的物品" % key)
+    merge = _state["merge"] or {}
+    if not (merge.get("foreign") and merge.get("ours")):
+        problems.append("和别的模组共存：成年鸡的 tempt 里外来的苹果和本包的种子没有都在（%r）" % (merge,))
     return problems
 
 
 def mcdk_test_animals_collect():
-    """交回结果（每只的读数、喂食、长大，PlayerFeedEntityServerEvent、定义事件的记录，服务端读到的补丁），删掉生成的动物。"""
+    """交回结果（每只的读数、喂食、长大，PlayerFeedEntityServerEvent、定义事件的记录，共存那一例，服务端读到的补丁），删掉生成的动物。"""
     _state["watching"] = False
     feeds, events = {}, {}
     names = dict((entityId, key) for key, entityId in _state["entities"].items())
@@ -215,5 +236,5 @@ def mcdk_test_animals_collect():
     if _state["player"]:
         SetCarriedItem(_state["player"], _state["hand"] or {"newItemName": "minecraft:air", "count": 0})
     problems = _checks(_state["results"])
-    return {"case": "animals", "ok": not problems, "problems": problems, "results": _state["results"],
+    return {"case": "animals", "ok": not problems, "problems": problems, "results": _state["results"], "merge": _state["merge"],
             "feedEvents": feeds, "definitionEvents": events, "plans": plans, "seconds": round(time.time() - _state["started"], 2)}

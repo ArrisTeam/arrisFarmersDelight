@@ -4,12 +4,14 @@
 服务端（Server/AnimalFood.py）读包栈里生效的实体定义，plan() 算一次"每个要补的组件在它的每个出处（顶层 components 或某个组件组）
 在列表末尾追加了本包的条目以后的 JSON 串"，按实体类型记着；实体出现、换了组件组以后，拿 GetEntityDefinitions 给的定义栈折出
 "现在每个组件由谁提供"，send() 给出要 AddActorComponent 的那几个——只给实体现在真有的组件、用它现在那个出处的值
-（给成年的鸡加 ageable 会让它重新变成能长大的，野猫的 tempt 换成驯服猫那一组的值也不对）。
+（给成年的鸡加 ageable 会让它重新变成能长大的，野猫的 tempt 换成驯服猫那一组的值也不对）；merged() 再对着 GetComponents 读回的现值过一遍：
+本包的条目已经都在的不发，要发的接上别的模组加的条目（和同样运行时加组件的模组共存）。
 组件写在哪、哪些事件会换这些组件组，一律从定义里读：别的包改过的定义，就在改过的那份上追加。
 
 定义栈的折法照引擎（Strata 引擎研究 11_entities/ENTITY_ENGINE.md §3、§10，3.9 / 3.10 实测）：栈从底往上，"+组"加上组里的组件、
 盖掉同名的；"-组"拿掉组里有的组件，连顶层的同名组件一起拿掉；顶层（实体自己的 identifier）一直在，除非被"-组"拿掉。
-栈里我们认不得的条目（AddActorComponent 自己压的 "##netease::组件名"、别的包的东西）不管。
+栈里我们认不得的条目（AddActorComponent 自己压的 "##netease::组件名"、别的包的东西）不管。实机读到的栈（2026-11-26）：
+["+minecraft:cat", "+minecraft:cat_adult", "-minecraft:cat_wild", "+minecraft:cat_tame", "+##netease::minecraft:behavior.tempt", ...]。
 """
 import json
 import re
@@ -87,8 +89,8 @@ def patched(component, field, extra):
 class Plan(object):
     """一种实体的补丁。identifier；base：顶层带着的、要补的组件；groups：{组件组: 组里带着的、要补的组件}；
     jsons：{(组件, 出处): 拼好的 JSON 串}（看不懂的那一处没有）；events：会加 / 减这些组件组的事件名（含经 trigger 转过去的）；
-    missing：定义里哪儿都没有的组件；unreadable：[(组件, 出处)] 形状看不懂、不下发的。"""
-    __slots__ = ("identifier", "base", "groups", "jsons", "events", "missing", "unreadable")
+    fields：{组件: (列表字段, 追加的条目)}；missing：定义里哪儿都没有的组件；unreadable：[(组件, 出处)] 形状看不懂、不下发的。"""
+    __slots__ = ("identifier", "base", "groups", "jsons", "events", "fields", "missing", "unreadable")
 
 
 def _places(entity):
@@ -108,6 +110,7 @@ def plan(definition, patches):
     fields = dict((name, (field, extra)) for name, field, extra in patches)
     result = Plan()
     result.identifier, result.base, result.groups, result.jsons, result.unreadable = identifierOf(definition), frozenset(), {}, {}, []
+    result.fields = fields
     seen = set()
     for provider, components in _places(entity):
         found = frozenset(name for name in fields if name in components)
@@ -196,3 +199,46 @@ def send(thePlan, stack):
     if where is None:
         where = dict((name, BASE) for name in thePlan.base)
     return [(name, thePlan.jsons[(name, provider)]) for name, provider in sorted(where.items()) if (name, provider) in thePlan.jsons]
+
+
+def _key(entry):
+    """比条目时用的物品名：{"item": 名字} 取名字，minecraft: 前缀不算（定义里多半不写，读回来可能写）；不是名字是 None。"""
+    name = _itemName(entry)
+    return name[len("minecraft:"):] if isinstance(name, _TEXT) and name.startswith("minecraft:") else name
+
+
+def _listOf(value, field):
+    """组件的值里 field 那个列表；单个字符串当一项的列表；读不懂是 None。"""
+    items = value.get(field) if isinstance(value, dict) else None
+    return [items] if isinstance(items, _TEXT) else (items if isinstance(items, list) else None)
+
+
+def _plain(entry):
+    """读回来的条目：引擎规整过的 {"item": 名字}（只有这一个键）还原成名字；带别的键的原样。"""
+    return entry["item"] if isinstance(entry, dict) and list(entry) == ["item"] and isinstance(entry["item"], _TEXT) else entry
+
+
+def merged(thePlan, sends, current):
+    """send() 给的 [(组件, JSON 串)] 对着引擎现在的组件（GetComponents 读回的 {组件: 值}）再过一遍，返回真要发的 [(组件, JSON 串)]：
+    现在的值里本包要追加的条目都在了 -> 不发（读档、区块加载时不再重建 AI 目标、清组件状态）；要发的，在拼好的列表末尾接上现在的值里有、
+    拼好的里没有的条目（别的模组加的：{"item": 名字} 接成名字，带别的键的原样接）；现在的值读不懂（不是 dict、没有这一项、列表看不懂）照拼好的发。
+    实机读回（2026-11-26）：补过的组件是照发下去的写法，没补过的原版组件是引擎规整过的 [{"item": 名字}]。"""
+    result = []
+    for name, text in sends:
+        field, extra = thePlan.fields[name]
+        now = _listOf(current.get(name), field) if isinstance(current, dict) else None
+        if now is None:
+            result.append((name, text))
+            continue
+        have = set(_key(item) for item in now)
+        if all(_key(entry) in have for entry in extra):
+            continue
+        value = json.loads(text)
+        items = value[field]
+        ours = set(_key(entry) for entry in items)
+        for entry in now:
+            if _key(entry) is not None and _key(entry) not in ours:
+                items.append(_plain(entry))
+                ours.add(_key(entry))
+        result.append((name, json.dumps(value, sort_keys=True, separators=(",", ":"))))
+    return result

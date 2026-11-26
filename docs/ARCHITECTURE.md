@@ -48,7 +48,8 @@ Shared/                 双端共用；不导入引擎、QuModLibs、Server、Cl
                         BoardSupport（砧板下面撑不撑得住：JE 的 canSurvive，下面那格的顶面要盖住正中 2x2 像素——按引擎给的碰撞盒判，包围盒说不准的按名字）
                         MobLoot（刀杀死生物的额外掉落、洋葱掉落的概率结算） Slicing（刀切派 / 蛋糕 / 南瓜：剩几片、切片单） Eating（吃一份食物的饥饿 / 饱和度）
                         Livestock（马饲料 / 狗粮喂给谁、有什么效果） ChestLoot（战利品箱追加物品的掷骰）
-                        AnimalFood（原版六种动物认本包的食物：生效的实体定义 -> 每个组件每个出处追加以后的 JSON、换组的事件、定义栈折成现在该下发哪几个）
+                        AnimalFood（原版六种动物认本包的食物：生效的实体定义 -> 每个组件每个出处追加以后的 JSON、换组的事件、定义栈折成现在该下发哪几个、
+                        对着读回的现值合并：本包的都在就不发、接上别的模组加的）
                         GrowthRates（JE 作物的生长概率 -> 基岩随机刻的概率，换算只在这里） CropTick（一次随机刻长不长、长几级）
                         FarmEdits（随机刻 / 骨粉要改哪些方块） BoneMealRules（骨粉照 JE） WildSpread（野生作物骨粉蔓延）
                         CompostRules（有机肥堆沤） ColonyRules（蘑菇菌落） RichSoilRules（沃土催熟与湿度） StrawRules（刀收草秆）
@@ -112,7 +113,7 @@ Server/                 服务端
   CookingPotItem        厨锅拆下来带着锅里的菜、放回去菜还在（JE 的 copy_meal；规则在 Shared/Rules/PotItem.py）
   PotSupport            厨锅的支架：挂在天花板下面放下就是吊把手（放置前事件记点的面），潜行空手右键在吊把手和托盘 / 没有之间切（见"厨锅的支架"）
   FoodBlocks Storage RopeAndNet FoodEffects Livestock Tools DisplayGuard PlayerSession LegacyApi
-  AnimalFood            原版猫 / 鸡 / 猪 / 兔子 / 鹦鹉 / 狼认本包的食物：读生效的实体定义、实体出现和换组以后晚一拍 AddActorComponent（见"战利品、刀与喂养"）
+  AnimalFood            原版猫 / 鸡 / 猪 / 兔子 / 鹦鹉 / 狼认本包的食物：读生效的实体定义、实体出现和换组以后晚两拍读现值、合并、AddActorComponent（见"战利品、刀与喂养"）
   TableSync             下游在服务端追加的表发给客户端：玩家进服发一次累计的差异，之后每 5 秒看表变没变、补发（客户端的站点表现读的是客户端那一份表）
   Basket                篮子吸掉落物（事件 + 每 0.25 秒轮询，由 Storage 导入来登记）；RopeAndNet 另管卷绳子、安全网弹跳，Stove 另管站上去的烫伤
   KnifeSlicing          刀切蛋糕、用刀拆派 / 蛋糕 / 南瓜掉切片（拆的时候先记切片单、方块真没了才兑现）
@@ -612,20 +613,28 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
   喂小崽 / 治疗（一片回 1 点），鸡（两种种子、稻米）、猪（卷心菜、番茄）、兔子（卷心菜、卷心菜叶）的吸引 / 繁殖 / 喂小崽，鹦鹉（三种种子）的驯服，
   狼（十种肉）的繁殖 / 喂小崽 / 治疗（治疗量照原版狼 = 饱食度 × 2）。2026-11-26 起**不覆盖原版实体文件**，照森罗物语（厨房）的做法运行时加组件
   （`Server/AnimalFood.py`，规则 `Shared/Rules/AnimalFood.py`，数据 `Shared/Data/Mobs.ANIMAL_FOOD`；离线 `tests/test_animal_food.py`，实机 `Server/Debug/McdkAnimalsTest.py`）：
-  - 读哪份定义：经 `Server/Helpers/PackJson.read`（引擎内部的 `server_resource`）读 `entities/<短名>.json`，几个包都有这个路径时是包栈里优先级最高的那份
-    [推断：照 `LoadServerFile` 的反编译，没实测两份同路径]；identifier 对不上（别的包在这个路径放了别的实体）时退一步列 `entities/`（子目录也进）找。
-    第一次碰到这种动物时读、按类型记着，读不到 / 看不懂这只动物不做，记一次日志不再试。去掉注释和对象 / 数组末尾多余的逗号再解析。
+  - 读哪份定义：经 `Server/Helpers/PackJson.read`（引擎内部的 `server_resource`）读 `entities/<短名>.json`（2026-11-26 实机：单机开发版里六种都读到了）；
+    几个包都有这个路径时是包栈里优先级最高的那份 [推断：照 `LoadServerFile` 的反编译，没实测两份同路径]；identifier 对不上（别的包在这个路径放了别的实体）时
+    退一步列 `entities/`（子目录也进）找。第一次碰到这种动物时读、按类型记着，读不到 / 看不懂这只动物不做，记一次日志不再试。去掉注释和对象 / 数组末尾多余的逗号再解析。
   - 补什么：定义里凡是带这个组件的地方（顶层 `components` 或哪个组件组）都在列表末尾追加本包的条目（已经有的不重复加），别的字段原样；
-    组件在哪、哪些事件会加减这些组件组（连 `trigger` 转过去的）都从定义里读，不写死。
+    组件在哪、哪些事件会加减这些组件组（连 `trigger` 转过去的）都从定义里读，不写死。原版定义里的列表也可能是单个字符串（牛的 `breed_items` 是 `"wheat"`），当一项的列表。
   - 什么时候打：实体出现（`AddEntityServerEvent`，读档、区块加载也来）之后、定义里那些换组事件（`EntityDefinitionsEventServerEvent`：出生、长大、驯服……）之后，
-    都晚一拍（`AddTimer(0)`）——加减组件组下一帧才生效，换组以后组件回到定义里的值（森罗物语实机复现过）。打的时候读 `GetEntityDefinitions` 的定义栈，
-    照引擎的折法（后加的组盖掉同名组件；减组拿掉组里有的组件，连顶层同名的一起）只下发实体**现在真有**的组件、用它现在那个出处的值：
-    给成年的加 `ageable` 会让它重新能长大，野猫的 `tempt` 用驯服猫那组的值也不对。定义栈读不懂时只下发顶层的。
-  - 和别的包怎么共存：别的包整份覆盖了这只动物（同路径），我们读到的就是它那份，在它上面追加；别的包用别的文件名覆盖同一个 identifier 时，
-    我们读到的还是 `entities/<短名>.json`（多半是原版），下发的几个组件会盖掉那个包对这几个组件的改动。两个模组都用 `AddActorComponent` 改同一个组件时，
-    引擎按组件名替换（官方文档："重复添加会覆盖原有的值"），后打的赢——和森罗物语（它补鸡的 tempt / ageable / breedable）同时装时，鸡只认后打的那一家的种子 [没实测]。
-  - 代价：每次下发 `behavior.tempt` 这种 AI 目标组件，实体的 AI 目标整套重建（Strata 引擎研究 GOAL_ENGINE §7）；重新加上的组件状态清零（ENT-04）。
-    读档 / 区块加载每次都重打（照森罗物语）；`AddActorComponent` 加的组件随存档存进 `neteaseComponents`，读档以后要不要重打没实测。
+    都晚两拍（0.1 秒，`Server/AnimalFood.DELAY`）——加减组件组下一帧才生效，换组以后组件回到定义里的值（森罗物语实机复现过）。打的时候读 `GetEntityDefinitions` 的定义栈
+    （实机：`["+minecraft:cat", "+minecraft:cat_adult", "-minecraft:cat_wild", "+minecraft:cat_tame", "+##netease::minecraft:behavior.tempt", …]`，
+    `AddActorComponent` 加的每个组件是栈上一项 `+##netease::组件名`），照引擎的折法（后加的组盖掉同名组件；减组拿掉组里有的组件，连顶层同名的一起）
+    只下发实体**现在真有**的组件、用它现在那个出处的值：给成年的加 `ageable` 会让它重新能长大，野猫的 `tempt` 用驯服猫那组的值也不对。定义栈读不懂时只下发顶层的。
+    实机（`McdkAnimalsTest`）：成年喂本包的食物进求爱、幼年喂了能用、野猫 / 鹦鹉驯服、驯服的猫 / 狼回血、幼年长大以后 `breedable` 带本包的物品、`ageable` 没了。
+  - 发之前对着现值（`Shared/Rules/AnimalFood.merged`，`GetComponents` 读回）：实机读回时，我们（或别的模组）打过的组件是照发下去的写法（鸡的 tempt：一串名字），
+    没人打过的原版组件是引擎规整过的写法（牛的 breedable：`[{'item': 'wheat'}]`）。现值里本包的条目都在了就**不发**（读档、区块加载不再每次重建 AI 目标、清组件状态）；
+    要发的，在拼好的列表末尾接上现值里有、我们没有的条目（别的模组加的：`{"item": 名字}` 接成名字，带别的键的原样接，`minecraft:` 前缀不算外来）；现值读不懂照拼好的发。
+  - 和别的模组共存：别的包整份覆盖了这只动物（同路径），我们读到的就是它那份，在它上面追加；别的包用别的文件名覆盖同一个 identifier 时，
+    我们读到的还是 `entities/<短名>.json`（多半是原版），下发的几个组件会盖掉那个包对这几个组件的改动。同样运行时 `AddActorComponent` 的模组：引擎按组件名替换
+    （官方文档："重复添加会覆盖原有的值"），所以我们晚两拍、读回它打的值合并再打——森罗物语厨房在下一帧照定义整份打鸡的 tempt / ageable / breedable，
+    排在它后面两家的种子鸡都认（自检里手工打一个只带外来物品的 tempt 再 apply，读回两家都在；和森罗物语一起装着实测还没做）；比我们更晚、又不合并的模组会盖掉我们的。
+  - 代价：真下发 `behavior.tempt` 这种 AI 目标组件时，实体的 AI 目标整套重建（Strata 引擎研究 GOAL_ENGINE §7）；重新加上的组件状态清零（ENT-04）。
+    `AddActorComponent` 加的组件随不随实体存盘没量成（2026-11-26：传到 2000 格外 6 秒区块没卸）；存了的话读档时现值里本包的都在、不再发。
+    还没量的：存盘；专用服务器、打包发布以后 `server_resource` 读不读得到定义；触屏下拿着本包的食物对着动物交互按钮出不出（引擎研究说按钮文字是服务端每刻
+    用同一段判定算好、经玩家同步数据 #100 发给客户端的，INTERACTION_ENGINE §2.1，3.9 读的代码）。
   马、驴、骡被马饲料吸引、狼的讨食和马 / 狼的喂食记号还是 `Shared/Data/Mobs.py` 里写死的 JSON 串、在实体出现时加（`horseComponentsDict` / `wolfComponentsDict` 是联动契约）。
   村民没做：拾取（`shareables`）是数据，但要整份覆盖很大的 `villager_v2.json`，JE 的 `FOOD_POINTS`（作物算几点繁殖食物）在基岩没找到对应的数据。
 - 覆盖原版文件（农民与流浪商人的交易表）：附加包里同路径的文件整份替换原版、不合并，所以是"原版整份拷来，只在列表末尾追加"，
@@ -648,8 +657,8 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 2. 用刀右键原版蛋糕：不再吃蛋糕、掉一片蛋糕片，`bite_counter` 读写正常；插蜡烛的蛋糕变成少一片的蛋糕并掉出蜡烛。用刀拆派 / 蛋糕 / 南瓜掉的切片数。
 3. 用刀杀着火的猪 / 疣猪兽掉烟熏火腿；抢夺等级是否读得到。
 4. `OnContainerFillLoottableServerEvent` 的 `loottable` 字符串长什么样（`Rules.ChestLoot.tableKey` 兼容几种写法）、追加的物品进了箱子。
-5. 引擎采用了两张交易表（农民收洋葱、流浪商人卖种子）；六种动物运行时加的组件生效（`Server/Debug/McdkAnimalsTest.py`：读到定义没有、
-   定义栈长什么样、`GetComponents` 里带没带本包的物品、真喂一次繁殖 / 驯服 / 长大 / 回血、长大以后再读）。
+5. 引擎采用了两张交易表（农民收洋葱、流浪商人卖种子）。（六种动物运行时加的组件 2026-11-26 用 `Server/Debug/McdkAnimalsTest.py` 实机核过，
+   见上面"原版动物"那一条；读现值合并、只带外来物品的 tempt 那一例在这之后加的，还要再跑一次。）
 6. 南瓜派：对着方块（含潜行）按住右键拿原版南瓜派，只放下一个、不开始吃（`ServerItemUseOnEvent` 的 `ret` 压不压得住"吃"；压不住要再在
    `ServerItemTryUseEvent` / `ClientItemTryUseEvent` 里拦）；对着空气右键照常吃。放下的方块图集、四口动画、拿刀切 / 拆掉的切片数、饥饿值满时点派没反应、
    创造模式中键拾取给什么（JE 是原版南瓜派，这边多半给 `arris:pumpkin_pie` 方块物品）。
@@ -1020,9 +1029,11 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 | 服务周到 eat_nourishing_food | 身上有了滋养 | `AddEffectServerEvent` 的 `arris:nourishment` |
 | 厨神当道 master_chef | 27 道菜各吃一次 | `PlayerEatFoodServerEvent`（牛肉炖菜是 `arris:cookbeef_stew`） |
 
-没实机验证（`Server/Debug/McdkAdvTest.py` 用脚本把能触发的都触发一遍，真玩的路要手动试）：种子类、营火、厨锅、盛宴的放置引擎发不发 `EntityPlaceBlockAfterServerEvent`
-（种子类另有 `ItemUseOnAfterServerEvent` 那条兜着）；`AddEffectServerEvent` 里自定义效果的名字是不是 `arris:nourishment`；`PlayerEatFoodServerEvent` 对骨头汤这种喝的来不来；
-成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的）。
+实机（2026-11-26，带成就系统的包）：`Server/Debug/McdkAdvTest.py` 接上了、21 个节点都登记了，脚本把能触发的都触发一遍全部推进（轮作 3 / 19、厨神当道 1 / 27），
+测完 revoke 掉了；真放营火、真放厨锅（`PlayerUseItemToPos`）进度完成，真种小麦种子轮作 +1（是放置事件还是种子那条兜底推进的没分开看），真往水里种稻米"倾斜稻根"完成。
+还没在游戏里走真路的：放盛宴 / 有机堆肥 / 煎锅；`AddEffectServerEvent` 里自定义效果的名字（自检是直接调处理函数的）；`PlayerEatFoodServerEvent` 对骨头汤这种喝的来不来；
+真扔烂番茄打袭击者；根节点的砖块背景显不显示。成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的），不支持多语言：英文客户端里也是中文。
+`AdvBridge` 的处理函数只挂一次（attach 再来只换接口），效果事件按效果名匹配。
 
 ## 和 JE 的出入（2026-11-26 审计）
 
@@ -1055,7 +1066,7 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 2026-11-26 四轮实机量过、照着改了或核过的：刀打一下掉 1 点耐久（和 JE 一样）、拆方块掉 2 点（改回 1 点）、`attack_damage` 加在基础 1 点之上（五把刀各减 1）；
 原版堆肥桶空桶第一件必成、7 层不收不扣（脚本堆肥照做）；原版成熟作物的掉落分布和时运（沃土上的原版作物照它改）；番茄藤放回绳子、舒适回血、
 滋养清消耗度、鸡 / 猪 / 兔子认本包的东西、沃土作物的分布、农夫乐事作物的时运也核过，五份覆盖的实体文件加载没报错
-（这几份覆盖文件当天晚些时候删了，六种动物改成运行时加组件，动物认本包食物的那几条要用 `McdkAnimalsTest` 重新量）。
+（这几份覆盖文件当天晚些时候删了，六种动物改成运行时加组件，同一天用 `McdkAnimalsTest` 重新量过：喂、驯服、回血、长大都对）。
 第四轮又核了：狼和鹦鹉的喂食（脚本驯服的狼掉血后喂肉末、熟培根、火腿各扣 1 件、回了血，回多少被野狼 8 点的血量上限截住没量出来，野狼不收；
 鹦鹉收番茄种子、卷心菜种子、稻米）；派、菌落、填馅南瓜、野生作物点堆肥桶（3 层入桶、不放成方块，7 层不扣不放，8 层取骨粉、不放）；
 装了机械动力时七种土豆加农炮弹药两端都登记上了（没开炮）；锻造台配方引擎收了（没在锻造台界面里做）。
