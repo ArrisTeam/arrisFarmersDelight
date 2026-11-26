@@ -42,14 +42,11 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 
 ### 热源方块
 
-方块标签不带方块状态，所以热源分两个：
+热源照 JE 用农夫乐事自己的方块标签 `farmersdelight:heat_sources`（JE 的森罗物语也把炉灶登记进这个名字）。方块在这个标签里，放在它上面的厨锅、煎锅就会热；
+方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
+或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
-- `common:heat_source`：方块名本身就说明在发热，比如火、熔岩、岩浆块、点着的炉灶（农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个）。
-  方块在这个标签里，放在它上面的厨锅、煎锅就会热。
-- `common:heat_source_lit`：同一个方块名有点着和没点着两种，要看方块状态。农夫乐事认的"点着"是：方块状态里有名字是 `lit` 或以 `:lit` 结尾的状态，
-  值为真；或者有 `extinguished` 状态，值为假。两种都没有就不算点着。营火在这个标签里。
-
-手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样），两个标签里的方块都算。
+手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。
 
 ### 能煎烤什么
@@ -66,11 +63,12 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字，`#` 引用展开写全；
 只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
 
-方块标签有六个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
-这六张名单不在 `linkage.md` 的接口里，别的模组要加进来就用标签。
+方块标签有七个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
+热源的名单 `CanProvideHeatBlockList` 在 `linkage.md` 的接口里，另外六张不在，别的模组要加进来就用标签。
 
 | 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
 | --- | --- | --- |
+| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火 |
 | `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
 | `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
 | `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
@@ -156,8 +154,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `farmersdelight:mushroom_colonies` | 物品 | 蘑菇菌落 | `farmersdelight:mushroom_colonies` | `arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | — |
 | `farmersdelight:cabinets` | 物品 | 橱柜 | `farmersdelight:cabinets` | `arris:oak_cabinet`、`arris:spruce_cabinet`、`arris:birch_cabinet`、`arris:jungle_cabinet`、`arris:acacia_cabinet`、`arris:dark_oak_cabinet`、`arris:mangrove_cabinet`、`arris:cherry_cabinet`、`arris:bamboo_cabinet`、`arris:crimson_cabinet`、`arris:warped_cabinet` | — |
 | `farmersdelight:serving_containers` | 物品 | 盛饭菜的容器（碗、玻璃瓶、桶） | `farmersdelight:serving_containers` | `minecraft:bowl`、`minecraft:glass_bottle`、`minecraft:bucket` | — |
-| `common:heat_source` | 方块 | 热源：方块名就说明在发热 | `farmersdelight:heat_sources` | `minecraft:fire`、`minecraft:soul_fire`、`minecraft:lava`、`minecraft:flowing_lava`、`minecraft:magma`、`arris:stove` | 热源（Shared/Rules/HeatSources） |
-| `common:heat_source_lit` | 方块 | 热源：要看方块状态点没点着 | `minecraft:campfires` | `minecraft:campfire`、`minecraft:soul_campfire` | 热源（Shared/Rules/HeatSources，锅底下要点着） |
+| `farmersdelight:heat_sources` | 方块 | 热源：给上面的锅 / 煎锅加热（有点燃状态的要点着） | `farmersdelight:heat_sources` | `minecraft:magma`、`arris:stove`、`minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看） |
 | `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
 | `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
 | `farmersdelight:compost_activators` | 方块 | 有机肥周围的催化剂 | `farmersdelight:compost_activators` | `minecraft:brown_mushroom`、`minecraft:red_mushroom`、`minecraft:podzol`、`minecraft:mycelium`、`arris:organic_compost_stage0`、`arris:organic_compost_stage1`、`arris:organic_compost_stage2`、`arris:organic_compost_stage3`、`arris:rich_soil`、`arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | 有机肥堆沤的概率（Server/OrganicCompost） |

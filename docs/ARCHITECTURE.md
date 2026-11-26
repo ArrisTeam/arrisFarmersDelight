@@ -273,7 +273,7 @@ def OnServerSkilletBlockUse(args):
   静态表 ∪ 引擎的答案，按标签 / 物品缓存；准备好的那一刻、装卸口、`refresh()` 时换代（`generation` 加一），按标签建了索引的地方据此重建
   （厨锅的 `PotRecipeTable` 准备好之前一个答案都不记，见下一节）。
 - **判断点**：`Shared/Rules/Knives`（是不是刀：`knifeList` ∪ `arris:knife` ∪ `common:knife`）、`HeatSources`（热源方块：`CanProvideHeatBlockList` ∪
-  `common:heat_source` ∪ 点着的 `common:heat_source_lit`）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
+  JE 的 `farmersdelight:heat_sources`，有点燃状态的要点着）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
   厨锅的标签格、砧板按标签的配方也问 `ItemTags`（见下一节）。
 - **自检**：两端的 `McdkTagsTest`（`Server/Debug`、`Client/Debug`：口准备好没有、词表每个标签引擎反查到的成员和静态表比、刀、营火配方的原始返回值和解析、
   热源标签；怎么调写在文件头）。

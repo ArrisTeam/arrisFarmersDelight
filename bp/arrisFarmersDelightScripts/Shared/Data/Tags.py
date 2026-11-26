@@ -85,12 +85,11 @@ CABINETS = "farmersdelight:cabinets"
 SERVING_CONTAINERS = "farmersdelight:serving_containers"
 
 # ---- 方块标签 ----
-# 热源分两个，因为方块标签不带方块状态：HEAT_SOURCE 是方块名本身就说明在发热的（农夫乐事点着和熄着的炉灶是两个方块名，登记点着的那个）；
-# HEAT_SOURCE_LIT 是要看点燃状态的（营火的 extinguished；别的模组一个方块 + lit 状态的炉灶）
-HEAT_SOURCE = "common:heat_source"
-HEAT_SOURCE_LIT = "common:heat_source_lit"
 # 农夫乐事自己的方块标签，名字照 JE 的 farmersdelight:<路径>。读的地方是"名单 ∪ 标签"：原来的名单原样留着，不在名单里的再看标签；
 # 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
+# 热源照 JE 只有一个标签：在里面就算热，方块有"点没点着"这类状态（lit、*:lit、extinguished）的要点着（JE 的 HeatableBlockEntity：带 LIT 的看 LIT；
+# 规则在 Shared/Rules/HeatSources）。农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个
+HEAT_SOURCES = "farmersdelight:heat_sources"               # 给上面的锅 / 煎锅加热：Cooking.CanProvideHeatBlockList
 HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
@@ -196,8 +195,9 @@ ITEM_TAGS = {
 
 # 方块标签 → 农夫乐事登记的成员
 BLOCK_TAGS = {
-    HEAT_SOURCE: ("minecraft:fire", "minecraft:soul_fire", "minecraft:lava", "minecraft:flowing_lava", "minecraft:magma", "arris:stove"),
-    HEAT_SOURCE_LIT: ("minecraft:campfire", "minecraft:soul_campfire"),
+    # JE：岩浆块、熔岩炼药锅（基岩版是炼药锅的 cauldron_liquid 状态，没有这个方块名：Server/Helpers/Heat 另认）、炉灶、#tray_heat_sources
+    HEAT_SOURCES: ("minecraft:magma", "arris:stove", "minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire",
+                   "minecraft:fire", "minecraft:soul_fire"),
     HEAT_CONDUCTORS: ("minecraft:hopper",),               # JE 还有可选的 create:chute：别的模组的名字不写，机械动力那边登记
     # JE：熔岩、#minecraft:campfires、#minecraft:fire（基岩版熔岩是两个方块名）
     TRAY_HEAT_SOURCES: ("minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:fire",
@@ -228,8 +228,7 @@ VANILLA_TAGS = {
 }
 
 # 每个标签对应的 JE 标签名（docs/TAGS.md 用；也是"JE 配方里的标签名 → 这里的名字"的别名表：一个 JE 物品标签名只对应这里的一个物品标签）。
-# JE 1.20 的农夫乐事用 forge:；cooked_rice 是 JE 森罗厨房定义的（它把两边的米饭都放进去）；heat_source 是 farmersdelight:heat_sources 里
-# 不看状态的那部分，heat_source_lit 是里面要看点燃状态的 #minecraft:campfires（JE 的 HeatableBlockEntity：带 LIT 的看 LIT）
+# JE 1.20 的农夫乐事用 forge:；cooked_rice 是 JE 森罗厨房定义的（它把两边的米饭都放进去）
 JE_NAMES = {
     TOMATO: ("forge:crops/tomato", "forge:vegetables/tomato"),
     TOMATO_SEEDS: ("forge:seeds/tomato",),
@@ -284,8 +283,7 @@ JE_NAMES = {
     CABINETS: (CABINETS,),
     SERVING_CONTAINERS: (SERVING_CONTAINERS,),
     EGG: ("forge:eggs",),
-    HEAT_SOURCE: ("farmersdelight:heat_sources",),
-    HEAT_SOURCE_LIT: ("minecraft:campfires",),
+    HEAT_SOURCES: (HEAT_SOURCES,),
     HEAT_CONDUCTORS: (HEAT_CONDUCTORS,),
     TRAY_HEAT_SOURCES: (TRAY_HEAT_SOURCES,),
     COMPOST_ACTIVATORS: (COMPOST_ACTIVATORS,),

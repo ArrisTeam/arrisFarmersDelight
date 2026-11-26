@@ -8,7 +8,7 @@
 2. mcdk_test_tags_knives()：五把刀和 knifeList 里每一把的 IsKnife，引擎给它们的物品标签（五把刀应带 arris:knife、common:knife）。
 3. mcdk_test_tags_campfire()：GetRecipesByInput(名字, "campfire", 0, 1) 对原版牛肉、农夫乐事的牛肉末、三种蛋的原始返回值（repr）、
    Shared/Rules/Grilling 解析出来的产物、Grilling.resultOf 的答案（2026-11-26 实机：[{'input': 名字, 'output': 名字}]，解析都对；换引擎版本时再看一遍）。
-4. mcdk_test_tags_heat()：两个热源标签引擎反查的成员，GetBlockTags 对几种热源方块的回答。
+4. mcdk_test_tags_heat()：方块标签引擎反查的成员，GetBlockTags 对几种热源方块的回答。
 5. mcdk_test_tags_blocks()：农夫乐事自己的方块标签（farmersdelight:，读的地方是"名单 ∪ 标签"）引擎反查的差，和每个成员按方块问
    （GetBlockTags）带不带这个标签：原版方块经 netease_tags 挂上的标签按方块问认不认，离线定不了，不认的列在 notTagged（只报，不算失败，
    反查认得就够用）。分类的物品标签（farmersdelight:meals 等，没有读的地方）在第 1 条里。
@@ -77,7 +77,7 @@ def mcdk_test_tags_campfire():
 
 
 def mcdk_test_tags_heat():
-    """测试函数：两个热源标签引擎反查的成员、GetBlockTags 对几种方块的回答。"""
+    """测试函数：方块标签引擎反查的成员（每个都要含词表展开后的成员）、GetBlockTags 对几种方块的回答。"""
     port = EngineTags.PORT
     members = dict((tag, sorted(port.blocksOf(tag) or ())) for tag in Tags.BLOCK_TAGS)
     blockTags = {}
@@ -85,7 +85,7 @@ def mcdk_test_tags_heat():
         found = port.blockTagsOf(name)
         blockTags[name] = sorted(found) if found is not None else None
     ok = all(set(Tags.BLOCK_TAGS[tag]) <= set(members[tag]) for tag in Tags.BLOCK_TAGS) \
-        and Tags.HEAT_SOURCE in (blockTags["arris:stove"] or ()) and Tags.HEAT_SOURCE not in (blockTags["arris:stove_extinguish"] or ())
+        and Tags.HEAT_SOURCES in (blockTags["arris:stove"] or ()) and Tags.HEAT_SOURCES not in (blockTags["arris:stove_extinguish"] or ())
     return {"case": "tags_heat", "ok": ok, "members": members, "blockTags": blockTags}
 
 

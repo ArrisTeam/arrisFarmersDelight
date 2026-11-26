@@ -5,7 +5,7 @@
 带 LIT 状态的要点着才算）就热；正下方是传热方块（标签 heat_conductors：漏斗）时，改看再下面一格是不是热源，所以漏斗下面的火也烧得热上面的锅。
 基岩版里的对应：熔岩炼药锅没有自己的方块（引擎里没有 lava_cauldron），是 cauldron 的状态 cauldron_liquid = lava；营火的 LIT 是 extinguished 取反；
 炉灶的 LIT 是两个方块（点着的 arris:stove 在 CanProvideHeatBlockList 里，熄着的孪生方块不在）。
-不在名单里的方块再看方块标签（Shared/Rules/HeatSources）：common:heat_source 就算，common:heat_source_lit 要方块状态算点着（lit 为真 / extinguished 为假）。
+不在名单里的方块再看方块标签 farmersdelight:heat_sources（Shared/Rules/HeatSources）：有点燃状态的要点着（lit 为真 / extinguished 为假），没有的就算。
 支架（托盘）只认正下方那一格：CookingPotBlock.getTrayState / SkilletBlock 只看 pos.below() 是不是 tray_heat_sources（熔岩、营火、火），
 所以漏斗再下面有火也不画托盘，和 JE 一样；传热的那一格变了没有邻居事件，由 Server/HeatConduct.py 隔一会儿去看。
 托盘看的是 ShelfBlockSet ∪ 方块标签 farmersdelight:tray_heat_sources（名单原样留着，不在名单里的再看标签）。
@@ -39,7 +39,7 @@ def _holdsLava(blockPos, dimensionId):
 
 def IsHeatSource(blockPos, dimensionId, blockName=None):
     """该位置的方块能否提供热量：在 CanProvideHeatBlockList 里（下游可追加），营火还要是点燃的；盛着熔岩的炼药锅也是；
-    不在名单里的看方块标签（HeatSources.sourceByTag：common:heat_source，或 common:heat_source_lit 且点着）。"""
+    不在名单里的看方块标签（HeatSources.sourceByTag：带 farmersdelight:heat_sources，有点燃状态的还要点着）。"""
     if blockName is None:
         blockName = GetBlockName(blockPos, dimensionId)
     if blockName in CanProvideHeatBlockList:

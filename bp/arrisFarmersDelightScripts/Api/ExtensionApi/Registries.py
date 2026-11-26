@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Registries - 门面上配方以外的登记口（刀、热源方块、炉灶方块、可堆肥的物品）和标签的只读查询 ext.tags（双端，不碰引擎）
 
-刀、热源优先用标签：把自己的刀登记进 common:knife、热源方块登记进 common:heat_source / common:heat_source_lit（docs/TAGS.md），
+刀、热源优先用标签：把自己的刀登记进 common:knife、热源方块登记进 farmersdelight:heat_sources（docs/TAGS.md），
 这几个登记口是给没法用标签的情况。登记就是往旧接口的那几张表里追加（knifeList、CanProvideHeatBlockList、StoveList、ComposterItemDict），
 表同步照旧发给客户端（堆肥表只有服务端读，不同步）；已经在表里的不重复加，照样返回 ok。只在服务端（客户端返回 server_only，不抛）。
 炉灶只登记点着的那个方块（会烤东西、给热）：熄灭的孪生方块和点火 / 灭火的换方块是另一回事，以后再开。
@@ -57,7 +57,7 @@ class Registries(object):
         return answer
 
     def registerHeatSource(self, blockName):
-        """这个方块给厨锅、煎锅加热（不看方块状态；要看点燃状态的方块用标签 common:heat_source_lit）：追加进 CanProvideHeatBlockList。"""
+        """这个方块给厨锅、煎锅加热（不看方块状态；要看点燃状态的方块用标签 farmersdelight:heat_sources）：追加进 CanProvideHeatBlockList。"""
         return self._append(blockName, CanProvideHeatBlockList)
 
     def registerStove(self, blockName):

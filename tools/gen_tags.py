@@ -41,7 +41,7 @@ MEANINGS = {
     "common:cooked_fish": "熟鱼（含熟鱼片）", "common:cooked_cod": "熟鳕鱼（含熟鱼片）", "common:cooked_salmon": "熟鲑鱼（含熟鱼片）",
     "common:raw_bacon": "生培根", "common:cooked_bacon": "熟培根", "common:cabbage_seeds": "卷心菜种子", "common:water_bucket": "水桶",
     "common:crops": "作物（团队已有的名字）", "common:seeds": "种子（团队已有的名字）", "common:flowers": "花（团队已有的名字）",
-    "common:heat_source": "热源：方块名就说明在发热", "common:heat_source_lit": "热源：要看方块状态点没点着",
+    "farmersdelight:heat_sources": "热源：给上面的锅 / 煎锅加热（有点燃状态的要点着）",
     "minecraft:egg": "蛋（原版自带的标签）", "common:chili": "辣椒", "common:fruit": "水果", "common:wheat_flour": "小麦粉（机械动力的）",
     "farmersdelight:heat_conductors": "把热传给上面一格的方块",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅放在上面要画托盘的方块",
@@ -57,7 +57,7 @@ MEANINGS = {
 }
 READS = {
     "common:knife": "是不是刀（Shared/Rules/Knives）", "arris:knife": "是不是刀（Shared/Rules/Knives）",
-    "common:heat_source": "热源（Shared/Rules/HeatSources）", "common:heat_source_lit": "热源（Shared/Rules/HeatSources，锅底下要点着）",
+    "farmersdelight:heat_sources": "热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看）",
     "farmersdelight:heat_conductors": "锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts）",
     "farmersdelight:tray_heat_sources": "锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat）",
     "farmersdelight:compost_activators": "有机肥堆沤的概率（Server/OrganicCompost）",
