@@ -43,17 +43,18 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 - 只写你自己的物品和原版物品。写别的模组的物品名，对方没装时引擎会一直往日志里写 ERROR。
 - 只写物品名，没有 aux。
 - `#标签名` 引用另一个同一类的标签。引原版标签（`#minecraft:egg`）、引别的包用 `netease_tags` 登记的标签（`#common:tomato`），引擎都展开，
-  按标签反查、按物品问、配方匹配三处都认（3.10 实机）。不要引只在物品 JSON 里声明的标签：引擎展开这种引用时只拿到经 `netease_tags` 加进去的成员。
+  按标签反查、按物品问、配方匹配三处都认；方块标签里的 `#` 也展开（3.10 实机）。不要引只在物品 JSON 里声明的标签：引擎展开这种引用时只拿到经 `netease_tags` 加进去的成员。
 - 农夫乐事的文件照 JE 的标签文件写 `#`：JE 用 `#` 引了别的标签、那个标签这边也登记的地方，这边也引。比如 `common:vegetable` 写的是
   `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato`，你把番茄登记进 `common:tomato`，它也就算蔬菜、
-  算作物，和 JE 一样。下面词表"农夫乐事登记的"一列照文件列（含 `#`）。
+  算作物，和 JE 一样（3.10 实机：别的包登记进 `common:tomato` 的番茄，反查 `common:vegetable`、`common:crops` 都有它）。
+  下面词表"农夫乐事登记的"一列照文件列（含 `#`）。
 - 你自己的物品也可以继续在物品 JSON 的 `minecraft:tags` 里写标签，引擎两种写法都认；原版物品只能用 `netease_tags`。
 
 ### 配方里的标签原料
 
 农夫乐事自带的厨锅菜照 JE 按标签认料，砧板切生意面也收 `common:dough` 里的面团，工作台配方里 JE 写标签的格子这边也写标签
 （`{"tag": "common:tomato"}` 这种，31 条 JE 配方）：哪几道菜、哪条砧板配方、哪些工作台配方读哪个标签，见下面词表的最后一列。
-把你的东西登记进那个标签，它就能进这些配方（工作台配方 3.10 实机：别的包并进同一标签的物品，有序、无序配方都认）。
+把你的东西登记进那个标签，它就能进这些配方（工作台配方 3.10 实机：别的包并进同一标签的物品，有序、无序配方都认；31 条配方都在工作台里做过，标签不止一个成员的换着成员各做一次）。
 例外：有序的工作台配方里会剩容器的格子写的是具体物品——蛋糕、巧克力派、芝士蛋糕、派皮的奶（奶桶、奶瓶每种摆法一份配方），厨锅配方的水桶，
 所以别的模组的奶进不了这四样有序配方；铁锭照团队的写法写 `minecraft:iron_ingot`。你自己的厨锅、砧板配方也可以把一格写成标签，写法见
 [EXTENSION-API.md](EXTENSION-API.md) §5（代码里登记）和 [RECIPE-JSON.md](RECIPE-JSON.md) §3（行为包里的配方 JSON）。
@@ -70,6 +71,10 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
 或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
+JE 的这个标签里还有熔岩炼药锅。基岩版没有这个方块（3.10 实机：`minecraft:lava_cauldron` 放出来的是盛水、0 级的 `minecraft:cauldron`），
+熔岩炼药锅是炼药锅盛着熔岩的状态（`cauldron_liquid` = `lava`），标签表达不了，所以这边的标签里没有它，农夫乐事按状态认：
+盛着熔岩的炼药锅上面的锅、煎锅会热，站在它旁边能手持煎锅，和 JE 一样。往这个标签里写 `minecraft:lava_cauldron` 不起作用。
+
 手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。
 
@@ -85,15 +90,15 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 ## JE 农夫乐事自己的标签（farmersdelight:）
 
 JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字；JE 用 `#` 引的标签这边也登记的
-照写 `#`（`farmersdelight:heat_sources` 引 `#farmersdelight:tray_heat_sources`；方块标签里的 `#` 还没在游戏里量过，农夫乐事读热源先看名单，
-自己的方块不受影响），引的是这边没有的（`#minecraft:campfires`、`#farmersdelight:cabinets/wooden`……）展开写成员；只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
+照写 `#`（`farmersdelight:heat_sources` 引 `#farmersdelight:tray_heat_sources`；方块标签里的 `#` 引擎也展开，3.10 实机：反查 `heat_sources`
+是炉灶、营火、灵魂营火、火、灵魂火、熔岩、流动的熔岩、岩浆块 8 个，营火按方块问同时带 `heat_sources` 和 `tray_heat_sources`），引的是这边没有的（`#minecraft:campfires`、`#farmersdelight:cabinets/wooden`……）展开写成员；只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
 
 方块标签有七个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
 热源的名单 `CanProvideHeatBlockList` 在 `linkage.md` 的接口里，另外六张不在，别的模组要加进来就用标签。
 
 | 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
 | --- | --- | --- |
-| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火 |
+| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火（JE 还有熔岩炼药锅：基岩版是炼药锅的状态，按状态认） |
 | `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
 | `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
 | `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
@@ -116,7 +121,8 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 
 - `common:mushrooms` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
-- 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。
+- 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。别的模组的蛋登记进它就行：`netease_tags` 的 `identifier` 写
+  `minecraft:egg`（3.10 实机：引擎把它并进原版标签，反查、按物品问都有它；工作台自检里蛋那一格放它，蛋糕、南瓜派、烤鸡、鸡蛋面团都做出来了）。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 
 <!-- gen_tags: 词表开始（tools/gen_tags.py 从 Shared/Data/Tags.py 生成，别手改） -->

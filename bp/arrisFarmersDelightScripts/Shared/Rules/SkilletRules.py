@@ -7,6 +7,7 @@ SkilletEvents.playSkilletAttackSound / hurtEnemy）、SkilletBlockEntity.skillet
 import math
 import struct
 
+from .HeatSources import CAULDRON
 from .MobLoot import enchantLevel
 
 SKILLET_ITEM = "arris:skillet_item"
@@ -71,12 +72,15 @@ def heatNeighbourhood(footPos):
     return [(x + dx, y + dy, z + dz) for dx in (-1, 0, 1) for dy in (-1, 0, 1) for dz in (-1, 0, 1)]
 
 
-def nearHeat(footPos, blockNameAt, heatNames, onFire=False):
-    """JE isPlayerNearHeatSource：着火，或四周 3x3x3 里有热源方块。只看方块（JE 看方块标签，不看营火 / 炉灶点没点着）。"""
+def nearHeat(footPos, blockNameAt, heatNames, onFire=False, lavaAt=None):
+    """JE isPlayerNearHeatSource：着火，或四周 3x3x3 里有热源方块。只看方块（JE 看方块标签，不看营火 / 炉灶点没点着）。
+    JE 标签里的熔岩炼药锅在基岩版是盛着熔岩的炼药锅：给了 lavaAt(pos) 时，那一格是炼药锅就再问它盛没盛着熔岩
+    （服务端读状态、客户端读 aux：HeatSources.holdsLava / holdsLavaAux）。"""
     if onFire:
         return True
     for pos in heatNeighbourhood(footPos):
-        if blockNameAt(pos) in heatNames:
+        name = blockNameAt(pos)
+        if name in heatNames or (lavaAt is not None and name == CAULDRON and lavaAt(pos)):
             return True
     return False
 

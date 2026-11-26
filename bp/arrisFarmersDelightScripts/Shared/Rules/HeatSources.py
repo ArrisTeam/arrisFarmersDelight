@@ -10,6 +10,9 @@ JE：方块标签 farmersdelight:heat_sources（HeatableBlockEntity.isHeated：�
 - 手持煎锅"身边有没有热源"（JE 的 isPlayerNearHeatSource 只看方块标签、不看点没点着；服务端 SkilletHand、客户端 Input 同一条规则）：
   名单 ∪ 标签，不看状态（nearHeat / NEAR）——和名单里的营火现在的算法一样（营火在名单里，熄了也算）。
 - 传热方块（conducts：JE 的 farmersdelight:heat_conductors）：名单 HeatConductorList ∪ 这个方块标签；锅 / 煎锅下面是它时看再下面一格。
+- JE 标签里的熔岩炼药锅（minecraft:lava_cauldron）：3.10 实机里它不是一个方块，是炼药锅 minecraft:cauldron 的状态 cauldron_liquid = lava
+  （SetBlockNew("minecraft:lava_cauldron") 返回 True，放出来的却是盛水、0 级的 minecraft:cauldron），方块标签表达不了，按状态认：
+  锅 / 煎锅下面（Server/Helpers/Heat）和手持煎锅（服务端 SkilletHand 读状态，客户端 Input 读不到状态、按 aux 认）都用 holdsLava。
 托盘（Server/Helpers/Heat.ShelfBlockSet ∪ farmersdelight:tray_heat_sources）在 Heat.py 里并。
 """
 from ..Data import Tags
@@ -18,6 +21,8 @@ from . import ItemTags
 
 _TRUE = (True, 1, "true", "True")
 _FALSE = (False, 0, "false", "False")
+CAULDRON = "minecraft:cauldron"
+_LAVA = 1               # cauldron_liquid 在 aux 里的值（水 0、熔岩 1）
 
 
 def _litKey(key):
@@ -48,8 +53,22 @@ def sourceByTag(blockName, states):
     return isLit(current) if hasLitState(current) else True
 
 
+def holdsLava(states):
+    """炼药锅盛着熔岩（JE 的熔岩炼药锅）：cauldron_liquid 是 lava，而且锅里有东西（fill_level > 0，舀空了的不算）。states 是服务端读到的方块状态。"""
+    states = states if isinstance(states, dict) else {}
+    return states.get("cauldron_liquid") == "lava" and (states.get("fill_level") or 0) > 0
+
+
+def holdsLavaAux(aux):
+    """同上，按方块的 aux 认（客户端读不到方块状态，GetBlock 只给名字和 aux）：aux = fill_level（低 3 位）+ 8 × cauldron_liquid
+    （3.10 实机：SetBlockStates 成熔岩、6 级之后 aux 是 14）。"""
+    if isinstance(aux, bool) or not isinstance(aux, int):
+        return False
+    return (aux >> 3) == _LAVA and (aux & 7) > 0
+
+
 def nearHeat(blockName):
-    """手持煎锅身边的热源方块：名单里的，或带热源标签的（不看点没点着）。"""
+    """手持煎锅身边的热源方块：名单里的，或带热源标签的（不看点没点着）。盛着熔岩的炼药锅要看状态，名字认不出（SkilletRules.nearHeat 的 lavaAt）。"""
     if not blockName:
         return False
     return blockName in CanProvideHeatBlockList or ItemTags.blockHas(blockName, Tags.HEAT_SOURCES)

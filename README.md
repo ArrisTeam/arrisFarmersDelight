@@ -35,7 +35,7 @@
 | **烂番茄抛射物** | `arris:rotten_tomato` 可投掷，扔出去和砸中都有声音 |
 | **联动接口（给别的模组作者）** | 农夫乐事加载完时广播 ready 事件，交出接口对象 `ext`：登记、查询、删除厨锅 / 砧板 / 煎烤配方，配料能写标签。见 [docs/EXTENSION-API.md](docs/EXTENSION-API.md) |
 | **配方 JSON** | 不写代码也能加配方：在自己的行为包里放 `farmersdelight_recipes/` 目录，写法照 JE 农夫乐事的配方 JSON。见 [docs/RECIPE-JSON.md](docs/RECIPE-JSON.md) |
-| **标签（netease_tags）** | 农夫乐事登记了一套 `common:` 标签（番茄、米、生肉、刀、热源……），别的模组把自己的东西登记进同名标签，双方就互认（网易 3.10 起）。见 [docs/TAGS.md](docs/TAGS.md) |
+| **标签（netease_tags）** | 农夫乐事登记了一套 `common:` 标签（番茄、米、生肉、刀……）和 JE 农夫乐事自己的 `farmersdelight:` 标签（热源、菜的分类……），名字照 JE；别的模组把自己的东西登记进同名标签，双方就互认（网易 3.10 起）。见 [docs/TAGS.md](docs/TAGS.md) |
 | **旧联动接口** | `compFactory.CreateModAttr("arris")` 交出的 3 个函数照常可用，供别的模组往配方、刀、热源等表里追加；新功能只加在新接口里。见 [linkage.md](linkage.md) |
 | **JEI 联动** | 可选 — 若安装外部 Arris JEI 子 MOD，则自动注册厨锅 / 砧板 / 煎锅 / 炉灶 4 类配方视图；联动着沉浸式交互前置、砧板站点开着时另有第 5 类「砧板摆盘」 |
 | **机械动力联动** | 可选 — 若一并安装机械动力（arrisCreate），农夫乐事的作物和食材能进它的石磨、搅拌、灌注配方；土豆加农炮认农夫乐事的七种弹药（卷心菜、番茄、洋葱、烂番茄、南瓜片、整个的派、派和蛋糕的切片） |
@@ -60,9 +60,9 @@ arrisFarmersDelight/
 │   │   ├── dolorContainer/                  # 容器界面库（dolorContainer 工程的 tools/vendor.py 拷入，请勿修改），dolorLayouts.py 是布局编译产物
 │   │   └── QuModLibs/                       # 框架（arrisCreate kit 的加固精简版，请勿修改）
 │   ├── netease_blocks/                      # 146 个自定义方块 JSON
-│   ├── netease_items_beh/                   # 106 个物品行为 JSON
+│   ├── netease_items_beh/                   # 105 个物品行为 JSON
 │   ├── netease_tags/                        # 标签：一个标签一个文件（tools/gen_tags.py 生成，词表见 docs/TAGS.md）
-│   ├── recipes/                             # 186 个合成配方 JSON
+│   ├── recipes/                             # 137 个配方 JSON（工作台、熔炉 / 营火、锻造台）
 │   ├── netease_enchants/                    # 自定义魔咒：背刺（资源包里也有一份）
 │   ├── netease_tab/                         # 创造栏分类
 │   ├── netease_features/ netease_feature_rules/  # 世界生成（野生作物、蘑菇群落等）

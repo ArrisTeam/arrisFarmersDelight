@@ -52,12 +52,14 @@ def _offhandName():
 
 def _nearHeat():
     """身边 3x3x3 里有没有热源方块（和服务端同一条规则 HeatSources.nearHeat：名单或热源标签，不看点没点着——客户端本来也读不到方块状态；
+    盛着熔岩的炼药锅服务端读状态认，这里读不到状态，按方块的 aux 认（HeatSources.holdsLavaAux）；
     客户端读不到"着火"，那种情况只由服务端认）。"""
     footPos = compFactory.CreatePos(playerId).GetFootPos()
     if not footPos:
         return False
     blockInfo = compFactory.CreateBlockInfo(levelId)
-    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], HeatSources.NEAR)
+    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], HeatSources.NEAR, False,
+                    lambda pos: HeatSources.holdsLavaAux((blockInfo.GetBlock(pos) or (None, None))[1]))
 
 
 def _carryingSkillet():

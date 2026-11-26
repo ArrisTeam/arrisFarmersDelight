@@ -1,36 +1,39 @@
 # -*- coding: utf-8 -*-
 """McdkCraftTest - 工作台合成的游戏内自检（服务端）：测试函数，仅供 MCDK-MCP 的 execute_code / 开发调试调用
 
-不会自动运行，没有 RPC 端点。合成要客户端点结果格（mc_input 点 3×3 右边的结果格；潜行点 = 一次做完），这里摆场景、记录、判定：
+不会自动运行，没有 RPC 端点。合成要客户端点结果格（mc_input 点 3×3 右边的结果格；潜行点 = 一次做完），这里摆场景、记录、判定。
+工作台界面要先开着：在玩家旁边放一个工作台方块，客户端投递右键打开（mcdk_test_craft_open 不替你开：OpenWorkBench 在 2026-11-26 的 3.10 里
+返回 True 但界面没开，1 秒后最上层还是 hud_screen）。投递点结果格之前先连发三步 move（间隔 120 ms），悬停才落到结果格上（只发一步时悬停
+留在界面当前选中的格子上，点下去会把那一格的原料拿到鼠标上，之后结果就取不走了；2026-11-26 实机：窗口客户区 960x562、界面 480x283 时
+结果格在界面坐标 (362.9, 99.5)）。服务端摆的格子，开界面后第一次摆客户端不出结果，所以摆料都摆两遍。
     from arrisFarmersDelightScripts.Server.Debug import McdkCraftTest as T
-    T.mcdk_test_craft_open()             给第一个玩家打开工作台界面（不依赖方块）
-    T.mcdk_test_craft_setup("milk")      摆好这个用例的原料、清空记录（界面要已经开着）
+
+手写的几个用例（CASES：照 JE 的合成剩余物，空了的那格放回剩余物、没空就进背包；前置包在场时砧板菜被拦、切片拼回整个派不拦）：
+    T.mcdk_test_craft_setup("milk")      摆好这个用例的原料、清空记录
     （客户端点结果格）
     T.mcdk_test_craft_check("milk")      核对：事件发没发 / 被没被取消、合成后格子里和背包里的剩余物
-用例见 CASES：照 JE 的合成剩余物（空了的那格放回剩余物，没空就进背包）、前置包在场时砧板菜被拦而切片拼回整个派不拦。
 探针排在所有处理函数前面，被取消的合成也记得到。会改玩家的合成格和鼠标上拿着的东西，check 后清掉。
-用 mc_input 点的时候（实测 3.10）：服务端摆的格子，开界面后第一次摆客户端不出结果，所以 setup 摆两遍；点之前先发几步 move
-把指针挪到结果格上（不挪的话点击落在界面当前选中的格子上，会把原料拿到鼠标上，之后结果就取不走了）。
 
-写了标签的工作台配方逐份真做一遍（2026-11-26；表是 tools/gen_crafts.py 生成的 Server/Debug/CraftCases.py，31 份配方）：
-    T.mcdk_test_craft_cases()            用例表：每份两例，"base" 标签格取第一个成员（农夫乐事自己的 / 原版的），"swap" 换另一个成员
-                                         （引擎现在的成员，别的包并进标签的也算，挑最后一个不一样的；标签只有一个成员时 same 为真）；
-                                         expect 是做一份之后合成格 + 背包里该有的全部东西（成品 + 剩下的容器）
-    T.mcdk_test_craft_open()             打开工作台界面
-    T.mcdk_test_craft_put(3)             清空合成格、鼠标上的东西和背包，把第 3 例的料一格一个摆进 3×3（行优先；摆两遍，同上）
-    （客户端投递一次 Shift 点成品格）
-    T.mcdk_test_craft_check(3)           读合成格 + 背包，和 expect 比（missing 少了的、extra 多了的），然后清掉合成格
-有序配方的容器是 result 数组写的；无序配方按放进去的物品查 Remainders（Server/CraftReturns 补还），别的包并进标签的东西不在表里就不还。
+写了标签的工作台配方逐份真做一遍（31 份配方 62 例，用例怎么来的见 Server/Debug/CraftCaseKit）：
+    T.mcdk_test_craft_cases()            用例表：每例的 grid、expect（做一份之后合成格 + 背包里该有的全部东西）、same（swap 换不了成员，可以跳过）、
+                                         dish（料正好是砧板上某道菜的一条配方）、blocked（dish 而且工作台的拦截在：这一例该被拦）
+    T.mcdk_test_craft_put(3)             清空合成格、鼠标上的东西和背包，把第 3 例的料一格一个摆进 3×3（行优先）
+    （客户端投递 Shift 点结果格）
+    T.mcdk_test_craft_check(3)           点过隔 0.3 秒再调：读合成格 + 背包和预期比（missing 少了的、extra 多了的），然后清掉合成格
+量配方本身要不带前置包跑。装着前置包、砧板站点登上了时工作台拦砧板菜（Compat/Diegesis/DishCrafts）：blocked 的那些例子 check 把"被拦"当预期——
+料原样留在格子里、背包里什么都没多、合成事件来过而且被取消了；别的包并进标签的东西不在砧板的菜谱表里，不拦。
+put 会清空玩家整个背包：在用户的世界里跑之前先把背包存下来，跑完还原。
+2026-11-26 实机（第十一轮）：不带前置包 54 例全过（另 8 例 same 跳过）；带前置包 36 例被拦，标签格换成别的包的番茄的照常做出来。
 """
-from . import CraftCases
+from . import CraftCaseKit as Kit
 from ..EventRegistry import registerHandler
 from ..Helpers.Engine import compFactory, levelId, serverApi, ItemPosType
-from ...Shared.Data import Remainders
-from ...Shared.Rules import Crafting, ItemTags
+from ...Shared.Rules import Crafting
 
 BENCH = tuple(range(32, 41))         # PlayerUISlot 的 3×3
 CURSOR = 0                           # PlayerUISlot.CursorSelected：鼠标上拿着的东西
 WATCH = ("minecraft:bucket", "minecraft:glass_bottle", "minecraft:bowl", "minecraft:water_bucket")
+OPEN_HOW = "OpenWorkBench 在 3.10 里返回 True 但不开界面：在玩家旁边放一个工作台方块，客户端投递右键打开"
 _log = []
 
 # 用例：grid 按 3×3 从左上起一格一叠（None 空一格）；点一次结果格（shift = 潜行点，一次做完）之后应该是：
@@ -111,16 +114,12 @@ def _fill(playerId, stacks):
 
 
 def mcdk_test_craft_open():
-    """测试函数：给第一个玩家打开工作台界面，清空记录。"""
-    playerId = _player()
-    del _log[:]
-    if playerId is None:
-        return {"case": "craft_open", "ok": False, "error": "no player"}
-    return {"case": "craft_open", "ok": bool(compFactory.CreateBlockInfo(playerId).OpenWorkBench())}
+    """测试函数：不替你开工作台界面（OpenWorkBench 在 2026-11-26 的 3.10 里返回 True 但界面没开），只把怎么开交回去。"""
+    return {"case": "craft_open", "ok": False, "error": OPEN_HOW}
 
 
 def mcdk_test_craft_setup(case):
-    """测试函数：摆好用例的原料（工作台界面要已经开着：先调 mcdk_test_craft_open，隔一刻再调这个），清空记录。"""
+    """测试函数：摆好用例的原料（工作台界面要已经开着：放一个工作台方块、投递右键打开，隔一刻再调这个），清空记录。"""
     playerId = _player()
     del _log[:]
     _fill(playerId, CASES[case]["grid"])
@@ -131,7 +130,7 @@ def mcdk_test_craft_setup(case):
 
 def mcdk_test_craft_check(case):
     """测试函数：点过结果格之后核对这个用例，返回结构化结果，并清掉合成格。case 是数（mcdk_test_craft_cases 的第几例）时
-    读合成格 + 背包和 expect 比；是名字（CASES 的键）时照旧读事件记录。"""
+    读合成格 + 背包和预期比；是名字（CASES 的键）时照旧读事件记录。"""
     if isinstance(case, int) and not isinstance(case, bool):
         return _checkIndexed(case)
     playerId, want = _player(), CASES[case]
@@ -152,48 +151,6 @@ def mcdk_test_craft_check(case):
     return result
 
 
-def _members(tag):
-    """标签现在的成员（引擎的，别的包并进来的也算）；引擎答不出时用生成表里抄的静态成员。"""
-    return tuple(ItemTags.itemsOf(tag)) or tuple(CraftCases.MEMBERS.get(tag, ()))
-
-
-def _pick(cell, avoid=None):
-    """格子里放什么：物品就是它；"#标签" 取第一个成员，给了 avoid 就挑最后一个不一样的（没有就还是 avoid）。"""
-    if cell is None or not cell.startswith("#"):
-        return cell
-    members = _members(cell[1:])
-    if avoid is None:
-        return members[0] if members else None
-    others = [name for name in members if name != avoid]
-    return others[-1] if others else avoid
-
-
-def _expected(recipe, items):
-    """做一份之后合成格 + 背包里该有的：成品，加上剩下的容器（有序配方是 result 数组写的；无序配方按放进去的物品查 Remainders，keeps 原样留下）。"""
-    want = {recipe["result"][0]: recipe["result"][1]}
-    extras = list(recipe["extras"])
-    if recipe["kind"] == "shapeless":
-        for cell, name in zip(recipe["grid"], items):
-            left = name if name is not None and cell in recipe["keeps"] else Remainders.craftRemainderOf(name)
-            if name is not None and left:
-                extras.append((left, 1))
-    for name, count in extras:
-        want[name] = want.get(name, 0) + count
-    return want
-
-
-def _cases():
-    found = []
-    for recipe in CraftCases.RECIPES:
-        base = [_pick(cell) for cell in recipe["grid"]]
-        swap = [_pick(cell, chosen) for cell, chosen in zip(recipe["grid"], base)]
-        for label, items in (("base", base), ("swap", swap)):
-            found.append({"index": len(found), "source": recipe["source"], "variant": label, "kind": recipe["kind"],
-                          "grid": items, "expect": _expected(recipe, items), "same": label == "swap" and swap == base,
-                          "unresolved": [cell for cell, name in zip(recipe["grid"], items) if cell is not None and name is None]})
-    return found
-
-
 def _inventory(playerId):
     found = {}
     for stack in compFactory.CreateItem(playerId).GetPlayerAllItems(ItemPosType.INVENTORY, False) or []:
@@ -210,11 +167,19 @@ def _clearInventory(playerId):
             item.SetInvItemNum(slot, 0)
 
 
+def _cases():
+    vetoed = Kit.vetoActive()
+    found = Kit.cases()
+    for case in found:
+        case["blocked"] = bool(case["dish"] and vetoed)
+    return found
+
+
 def mcdk_test_craft_cases():
-    """测试函数：写了标签的工作台配方的用例表（每份 base / swap 两例）；unresolved 非空是标签取不到成员。"""
+    """测试函数：写了标签的工作台配方的用例表（每份 base / swap 两例）；unresolved 非空是标签取不到成员，vetoed 是工作台拦砧板菜的拦截在不在。"""
     cases = _cases()
     return {"case": "craft_cases", "ok": bool(cases) and not [case for case in cases if case["unresolved"]], "count": len(cases),
-            "cases": cases}
+            "vetoed": Kit.vetoActive(), "cases": cases}
 
 
 def mcdk_test_craft_put(index):
@@ -226,19 +191,22 @@ def mcdk_test_craft_put(index):
     _fill(playerId, stacks)
     done = _fill(playerId, stacks)
     return {"case": "craft_put:%d" % index, "ok": bool(done) and all(done), "source": case["source"], "variant": case["variant"],
-            "grid": _grid(playerId), "expect": case["expect"]}
+            "blocked": case["blocked"], "grid": _grid(playerId), "expect": case["expect"]}
 
 
 def _checkIndexed(index):
+    """被拦的一例：料原样留在格子里、背包里什么都没多，而且合成事件来过、被取消了（没点到结果格时也是料都在，但没有事件，不算过）。"""
     playerId, case = _player(), _cases()[index]
     got = _inventory(playerId)
     for name, count in _grid(playerId).values():
         got[name] = got.get(name, 0) + count
-    want = case["expect"]
+    want = Kit.ingredients(case["grid"]) if case["blocked"] else case["expect"]
     missing = dict((name, count - got.get(name, 0)) for name, count in want.items() if got.get(name, 0) < count)
     extra = dict((name, count - want.get(name, 0)) for name, count in got.items() if count > want.get(name, 0))
+    cancelled = any(entry.get("cancel") for entry in _log)
     _fill(playerId, [])
-    return {"case": "craft_check:%d" % index, "ok": not missing and not extra, "source": case["source"], "variant": case["variant"],
+    return {"case": "craft_check:%d" % index, "ok": not missing and not extra and (cancelled or not case["blocked"]),
+            "source": case["source"], "variant": case["variant"], "blocked": case["blocked"], "cancelled": cancelled,
             "got": got, "expect": want, "missing": missing, "extra": extra, "events": len(_log)}
 
 

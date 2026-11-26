@@ -4,8 +4,9 @@
 
 heat_sources = 岩浆块、熔岩炼药锅、炉灶、tray_heat_sources（熔岩、营火、火）；带 LIT 状态的要点着才算。
 heat_conductors = 漏斗：正下方是它时改看再下面一格。支架（托盘）只认正下方那一格（CookingPotBlock.getTrayState、SkilletBlock，tray_heat_sources）。
-基岩版的对应：岩浆块 minecraft:magma、熔岩炼药锅是 cauldron 的 cauldron_liquid = lava（引擎里没有 lava_cauldron，Strata 知识库的方块表里 cauldron
-有 fill_level 和 cauldron_liquid = water / lava / powder_snow 两个状态）、营火的 LIT 是 extinguished 取反、炉灶的 LIT 是两个方块。引擎是 fakeengine.py 里的假的。
+基岩版的对应：岩浆块 minecraft:magma、熔岩炼药锅是 cauldron 的 cauldron_liquid = lava（3.10 实机：SetBlockNew("minecraft:lava_cauldron") 返回 True，
+放出来的是盛水、0 级的 minecraft:cauldron；SetBlockStates 成熔岩、6 级之后 aux 14）、营火的 LIT 是 extinguished 取反、炉灶的 LIT 是两个方块。
+引擎是 fakeengine.py 里的假的。
 """
 from __future__ import print_function
 
@@ -16,6 +17,7 @@ import skilletkit
 world = skilletkit.extend(fakeengine.install())       # extend 补上 reset 和方块实体数据的假对象
 Heat = fdtest.load("Server.Helpers.Heat")
 Cooking = fdtest.load("Shared.Data.Cooking")
+HeatSources = fdtest.load("Shared.Rules.HeatSources")
 
 POT, BELOW, FURTHER = (10, 65, 10), (10, 64, 10), (10, 63, 10)
 HOPPER, STONE = "minecraft:hopper", "minecraft:stone"
@@ -67,6 +69,20 @@ def testALavaCauldronIsACauldronHoldingLavaNotABlockOfItsOwn():
     assert Heat.IsHeatSource(BELOW, 0, "minecraft:cauldron") is True, "给了方块名也要再读状态"
     world.setBlock(BELOW[0], BELOW[1], BELOW[2], "minecraft:cauldron", states=None)
     assert Heat.IsHeatSource(BELOW, 0) is False, "读不到状态：不热"
+
+
+def testTheServerReadsTheCauldronsStatesAndTheClientItsAuxAndBothAgree():
+    """服务端读状态（HeatSources.holdsLava，锅下面和手持煎锅都用），客户端读不到状态、按 aux 认（holdsLavaAux，手持煎锅那一下吃不吃）：
+    aux = fill_level（低 3 位）+ 8 × cauldron_liquid（水 0、熔岩 1）；3.10 实机熔岩、6 级是 14。两边对同一个炼药锅的回答要一样。"""
+    cases = [({"cauldron_liquid": "lava", "fill_level": 6}, 14, True), ({"cauldron_liquid": "lava", "fill_level": 1}, 9, True),
+             ({"cauldron_liquid": "lava", "fill_level": 0}, 8, False), ({"cauldron_liquid": "water", "fill_level": 6}, 6, False),
+             ({"cauldron_liquid": "water", "fill_level": 0}, 0, False)]
+    for states, aux, hot in cases:
+        assert HeatSources.holdsLava(states) is hot and HeatSources.holdsLavaAux(aux) is hot, (states, aux)
+        _fresh()
+        _put(BELOW, ("minecraft:cauldron", states))
+        assert Heat.HoldsLava(BELOW, 0) is hot and Heat.IsHeatSource(BELOW, 0) is hot, states
+    assert HeatSources.holdsLava(None) is False and HeatSources.holdsLavaAux(None) is False and HeatSources.holdsLavaAux(True) is False
 
 
 def testAHopperPassesTheHeatOfTheBlockBelowItUp():
