@@ -361,7 +361,7 @@ def OnServerSkilletBlockUse(args):
   - 接口在、版本比它低：`outdated`，一步不跑；
   - 找不到：服务端导入时找一次（前置包的服务端接口是纯 Python，早于它的系统导入也安全），`LoadServerAddonScriptsAfter` 里再找最后一次（前置包比本包后加载时）；客户端只在
     `LoadClientAddonScriptsAfter` 里找（前置包的客户端接口会带进它自己的 QuModLibs，更早导入不安全）；最后一次还没有就是 `standalone`；
-  - 接口模块导入出错（装坏了、版本混了）记一条日志、当它没装；判定只做一次，步骤也只跑一次。
+  - 接口模块导入出错（装坏了、版本混了）经 `Compat/OtherMods` 记一条日志（同一个模块只记一次）、当它没装（见「引擎坑」里 `ImportModule` 那一条）；判定只做一次，步骤也只跑一次。
 - **步骤表**（`ServerSteps.py` / `ClientSteps.py`，只放数据，`Steps.py` 执行）：一项 `(步骤名, "相对脚本根的模块路径:函数名", 条件或 None)`，一个站点一步，顺序是原来登记的顺序
   （砧板 `board`、厨锅 `pot`、煎锅 `pan`、炉灶 `grill`），最后一步 `table` 不是本包的站点（见“合成与合成剩余物”最后一段：前置包的原版工作台站点上登记本包的规则）；
   条件是接口上的可选功能旗（炉灶要 `FACING_HOOK`），接口没有这一步就 `skipped`、连模块都不导入。步骤函数（`BoardServerLink.link(ctx)` 这一类）
@@ -1074,7 +1074,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 
 - 接上：`Compat/Advancements/AdvBoot`（`modMain.py` 里 `MOD.Server`）在导入时（引擎加载期）在本包的加载器系统上听成就系统的
   `("dolorAdvancements", "ExtensionApi", "ServerApiReady")`（它 README 的"方法一"），事件里的 `api` 就是它的 `dolorAdvancementsScripts.Api.Server`；
-  它的系统已经在（热重载以后）就 `ImportModule` 晚接一次（照 `Compat/Create/PotatoCannonAmmo`）。监听不挂在 `Server/ExtensionSystem`：那个系统只用来广播本包自己的 ready。
+  它的系统已经在（热重载以后，或者它比本包先加载完）就 `ImportModule` 晚接一次（照 `Compat/Create/PotatoCannonAmmo`；经 `Compat/OtherMods`，它的接口导入出错时
+  不漏出 AdvBoot 的导入，见「引擎坑」）。监听不挂在 `Server/ExtensionSystem`：那个系统只用来广播本包自己的 ready。
   没装成就系统：事件不来，只多了一个空监听；处理函数、`Deeds` 的订阅、背包事件的监听全是接上以后才挂的（`AdvBridge.attach`），平时零开销。
 - 节点：`Shared/Data/Advancements.NODES`，ID 是 JE 的 `farmersdelight:main/<名字>`，父子、框、隐藏、弹窗、全服播报、经验奖励照 JE 的 json，标题和描述照抄 JE 官方中文
   （`zh_cn.json`），图标换成本包的物品；根节点的背景是基岩原版资源包的 `textures/blocks/brick`（JE 用砖块贴图，16x16，和成就系统自带的背景一样大）。
@@ -1219,6 +1220,16 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   `tests/test_player_text_colons.py` 守着两条：没有全角冒号（上面这些加物品 / 方块的 JSON 都查）；英文冒号后面是空格、换行或句末（语言文件、`Tips`、`PotItem`、`statusText`、成就文字、指南书查；
   物品 / 方块的 JSON 不查，悬停说明里有 `05:00` 这样的时间）。第二条先去掉 `§x` 颜色码，只放过三种写法里面的冒号：物品 / 方块 / 标签的 ID（`arris:x`，命名空间在测试里写死几个）、网址、时间；
   要加例外就往测试里的 `SHAPES` 加一种写法，不要整类放过。已经拆下来、带着旧写法悬停文字（`装有3份：`）的厨锅物品：悬停文字是拆锅时写在物品上的，没有代码按这段文字认东西（锅里的菜靠 `extraId` 认），旧物品保持旧写法，再放下、拆一次才换成新的。
+- 引擎的 `ImportModule`（`serverApi` / `clientApi` 各一个）：模块不存在时返回 `None`（官方文档只写了这一条）；**模块在、它自己导入时出错，不返回 `None`，而是把那个异常原样抛给调用的人**
+  （3.10 实机，2026-11-26 另一个会话量到：森罗物语的一个接口模块导入时 `ImportError`，一路抛进了前置包内容包的服务端入口模块，那个入口没导入成、端点全没了）。
+  所以本包取别的模组的模块一律经 `Compat/OtherMods.find(引擎的 ImportModule, 路径)`：接住异常，打一行日志（哪个模块）连同调用栈，返回 `None`，调用的地方照它原来"没装"的那条路走；
+  同一个名字只打一次日志（JEI 每类配方各取一次、四个站点各取一次声明模块），之后照样再取（它可能只是那一次没导入成，不记成永远没装）。取门面时才导入自己模块的那种调用
+  （机械动力的 `getExtensionApi` 到这时才 `from ._facade import`）经 `OtherMods.call`，一样处理。用到的地方：前置包的接口（`Presence`）、声明模块（`Compat/Diegesis/SchemaKit`，
+  四个站点的 `View.register`：拿不到就不登记、这一步 skipped）、原版工作台的两个登记口（`TableHooksLink` / `TableClientLink`）、机械动力的 RecipeApi（`CreateRecipes`）和门面
+  （`PotatoCannonAmmo`，两端的入口导入时就取）、成就系统的接口（`AdvBoot`，导入时就可能晚接）、arrisJei（`Compat/Jei/Registry`）；游戏里看哪些没取到：`OtherMods.failures()`。
+  `Server/`、`Client/` 不导入 `Compat`，那两层现在只有游戏内自检（`Debug/`）取别的模组的模块。测试 `tests/test_other_mods*.py`（四种回答：抛 `ImportError`、抛别的异常、`None`、正常的模块）。
+  QuModLibs 的加载器（`QuModLibs/Systems/Loader/Server.py` / `Client.py` 的 `regSystemInit`，照代码读的）按 `modMain.py` 登记的顺序导入入口模块，每个单独 `try`：一个入口导入失败只记一条
+  "系统文件错误"，不连累排在后面的入口；但它自己只做了一半——出错之前挂上的监听、登记的东西留着，之后的没做，这个入口也不会再导一次。
 
 ## 新增内容的清单
 
@@ -1286,6 +1297,9 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
   `test_presence_steps.py`（步骤执行器：出错 / 跳过 / 条件；两张表每个目标都存在）、`test_presence_boots.py`（真的入口和步骤模块，站点的 `register` 换成记账的：一个站点一步、连带的东西、关了的站点两端一致）、
   `test_presence_standalone.py`（没装 / 太旧时 `sys.modules` 里没有站点模块、没有它们的监听和端点；装了才有）、`test_presence_notice.py`（前置包太旧的提醒：三次、隔 8 秒、`str`）、
   `test_handson_options_gate.py`（没联动时每个取值函数说 HoD 不在、厨锅 / 煎锅 / 炉灶走农夫乐事原样、不写"做过几份"）。要站点和 HoD 配置照常生效的假引擎小工具（`optkit`、`potfake`、`panclient`、`boardclient`）开头 `linkkit.link()`。
+- 取别的模组的模块（`Compat/OtherMods`，见「引擎坑」）：`otherkit.py`（假的 `ImportModule`、四种回答、截住打印数日志和调用栈）；`test_other_mods.py`（`find` / `call` 本身、`Presence`）、
+  `test_other_mods_entries.py`（成就系统、土豆加农炮的两个入口重新导入，机械动力的配方和 JEI 的事件）、`test_other_mods_links.py`（原版工作台的两个登记口，用 `linkkit`）、
+  `test_other_mods_views.py`（四个站点取前置包的声明模块，用 `bootkit`，要前置包）。
 - 煎锅 / 炉灶上东西朝上那面的熟色：`test_frying_tint.py`（`FryingTint`：表里真的颜色、肉和鱼、没有颜色不染、叠层的 (q, a) 叠回 c）、
   `test_top_overlay.py`（`TopOverlay`：粒子的轴和掉落物的轴对上、平躺只转 y、斜着扣着不给、`Rz·Ry·Rx` 分解、抬高的上下界、余量不为 0（实机：0 会被顶面整块吃掉）、
   停稳两个游戏刻），这两个不要前置包；
