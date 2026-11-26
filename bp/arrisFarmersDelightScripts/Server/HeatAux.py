@@ -8,8 +8,10 @@ Shared/Rules/HeatStates.auxSet），表同步把两张表一起发给客户端�
 什么时候算：表同步每次算差异之前（Server/TableSync._refresh：玩家进服、之后每 5 秒一次、ext.recipes.syncToClients），只算条件变了的方块
 （新写进来的、换了条件的；一个方块的同一份条件只算一次），所以服务端新写的条件最晚约 5 秒后连同 aux 集合一起到客户端。
 引擎一个状态也问不出来（接口没有、方块不认识、调用抛异常）：表里原来的不动（熔岩炼药锅有静态的初值），打一行日志，条件不变就不再问。
-GetBlockStatesFromAuxValue 对空号、越界的 aux 给什么没在游戏里量过（官方文档只说"异常时为 None"）：None、{}、抛异常、夹回 / 绕回某个有效值
-都当"这个 aux 没有方块"；游戏内自检 Server/Debug/McdkHeatTest 把原始返回值列出来。
+GetBlockStatesFromAuxValue 对空号、越界的 aux（3.10 实机，2026-11-26，炼药锅）：空号 7、15 和越界的 23 以上给的都是缺省状态
+{"cauldron_liquid": "water", "fill_level": 0}，不是 None、不抛异常——HeatStates.auxSet 把和前面重复的状态当"这个 aux 没有方块"，算出来正是
+熔岩 1–6 级 = aux 9–14（问 46 次），写表成功；进服时问这 46 次，错误日志是空的。None、{}、抛异常也照样当没有方块（别的方块、别的版本）。
+游戏内自检 Server/Debug/McdkHeatTest 把原始返回值列出来。
 """
 import copy
 
@@ -26,7 +28,7 @@ def reader(blockName):
     def read(aux):
         try:
             return compFactory.CreateBlockState(levelId).GetBlockStatesFromAuxValue(blockName, aux)
-        except Exception:  # noqa: BLE001 - 越界的 aux 引擎怎么答没量过：抛了也只当这个 aux 没有方块
+        except Exception:  # noqa: BLE001 - 3.10 越界不抛（给缺省状态）；别的版本 / 别的方块抛了也只当这个 aux 没有方块
             return None
     return read
 

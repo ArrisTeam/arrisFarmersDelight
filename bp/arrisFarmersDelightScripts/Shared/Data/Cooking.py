@@ -57,7 +57,7 @@ HeatSourceStateDict = {
 # 上面那张表派生的：每个写了条件的方块，满足条件的 aux。客户端读不到方块状态（GetBlock 只给名字和 aux），手持煎锅"身边有没有热源"按它判
 # （HeatSources.heatsByAux；写了条件、这里却没有这个方块的当不热）。服务端照引擎的 GetBlockStatesFromAuxValue 重算（Server/HeatAux，
 # 每次表同步算差异之前），经表同步发给客户端；这里是同步到之前的初值：熔岩炼药锅 1–6 级，aux = fill_level + 8 × cauldron_liquid 的序号，
-# 熔岩是 1（3.10 实机：服务端熔岩 6 级读到 aux 14）
+# 熔岩是 1（3.10 实机 2026-11-26：服务端照引擎算出来也是 9–14；熔岩 1 级、6 级的 aux 两端读到的都是 9 / 14）
 HeatSourceAuxDict = {
     "minecraft:cauldron": [9, 10, 11, 12, 13, 14],
 }

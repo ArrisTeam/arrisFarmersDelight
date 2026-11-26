@@ -26,6 +26,9 @@ mcdk_test_heat_probe(x, y, z)：读第一个玩家所在维度里 (x, y, z) 那�
 看什么：raw 里 aux 7、15、23（fill_level 的空号）和 24 以上（越界）引擎给的是什么（HeatStates.auxSet 当"没有方块"的只有 None、{}、不是字典、
 和前面重复的状态）；computed["aux"] 是不是 [9, 10, 11, 12, 13, 14]、asked 问了几个；read 里熔岩两格 aux 是不是 9 / 14、heat_source / near_cell /
 near_heat 是真，空的、盛水的是假；客户端那边 block 的 aux 和服务端一样、near_heat 一样。
+3.10 实机（2026-11-26，单机）：raw 是 0–6 水 0–6 级、8–14 熔岩 0–6 级、16–22 细雪 0–6 级，空号 7、15 和越界的 23 以上（到 40）都是缺省状态
+{"cauldron_liquid": "water", "fill_level": 0}（不是 None、不抛异常）；computed 是 [9..14]（asked 46、top 22）；四格的 aux 两端都是 0 / 6 / 9 / 14，
+两端的判断四格一致（空的、盛水的不算，熔岩 1 级、6 级算），两边 ok。
 """
 import math
 

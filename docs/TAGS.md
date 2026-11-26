@@ -74,7 +74,8 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基岩版没有这个方块（3.10 实机：`minecraft:lava_cauldron` 放出来的是盛水、0 级的
 `minecraft:cauldron`），熔岩炼药锅是炼药锅盛着熔岩的状态（`cauldron_liquid` = `lava`）。所以这边的标签里写的是炼药锅 `minecraft:cauldron`，
 另带一条**状态条件**：`cauldron_liquid` 是 `lava`、`fill_level` 至少是 1。盛着熔岩的炼药锅上面的锅、煎锅会热，站在它旁边能手持煎锅，
-空的、盛水的、盛粉雪的炼药锅都不热，和 JE 一样。别的模组按这个标签认热源时，炼药锅也要看这两个状态。
+空的、盛水的、盛粉雪的炼药锅都不热，和 JE 一样（3.10 实机：厨锅放在熔岩 6 级的炼药锅上热、放在盛水的上面不热，把熔岩改成 0 级后凉了）。
+别的模组按这个标签认热源时，炼药锅也要看这两个状态。
 往这个标签里写 `minecraft:lava_cauldron` 不起作用：世界里没有叫这个名字的方块（方块标签的成员名引擎不校验，3.10 实机；会不会往日志里记一条没量过）。
 
 状态条件（农夫乐事的表 `Shared/Data/Cooking.HeatSourceStateDict`）：一个方块的几条条件都满足才算热，每条写一个值（相等）、一组值（是其中之一）
@@ -220,7 +221,8 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
   `{"input": 原料名, "output": 产物名}`，比如生牛肉 → `[{'input': 'minecraft:beef', 'output': 'minecraft:cooked_beef'}]`。
   农夫乐事照这个读，也认别的写法（`result`、带 aux 的名字、字典），留着给别的版本；认不出来的就当没有这条配方。
 - 方块的状态只有服务端读得到：客户端判断热源时不看点没点着；写了状态条件的方块（炼药锅）客户端只读得到方块附加值（aux），
-  按服务端照条件算好、随表同步发来的 aux 判，还没发到时当不热。服务端熔岩炼药锅 6 级读到的 aux 是 14（3.10 实机）；客户端读到的炼药锅 aux
-  和服务端是不是同一个值、`GetBlockStatesFromAuxValue` 对没有方块的 aux 给什么，都还没在游戏里量过。
+  按服务端照条件算好、随表同步发来的 aux 判，还没发到时当不热。3.10 实机：空的、盛水 6 级、熔岩 1 级、熔岩 6 级的炼药锅，客户端 `GetBlock`
+  读到的 aux 是 0 / 6 / 9 / 14，和服务端一样，两端判得一样；`GetBlockStatesFromAuxValue` 对没有方块的 aux（空号、越界）给的是缺省状态
+  （盛水、0 级），不是 None，农夫乐事把和前面重复的状态当没有方块，算出熔岩 1–6 级 = aux 9–14。
 - 原版方块要先登记右键事件，拿刀右键时才切得到。农夫乐事只登记了蛋糕和插蜡烛的蛋糕，所以 `farmersdelight:drops_cake_slice`
   里再加原版方块不起作用；别的模组的自定义方块不用登记。

@@ -12,8 +12,10 @@
 所以服务端按条件列出满足条件的 aux（auxSet，引擎的 GetBlockStatesFromAuxValue 当 read）给客户端（Shared/Data/Cooking.HeatSourceAuxDict）。
 aux 的来历（Strata 引擎研究 kb/engine/bp/10_blocks/types/states_permutations.md §2）：各状态按位拼起来，每个状态占 ⌈log₂(值个数)⌉ 位，
 值个数不是 2 的幂时有几个位组合没有方块——炼药锅的 fill_level 有 7 个值（0–6），aux 7、15、23 是空号；熔岩（cauldron_liquid 的第 2 个值）
-是 8 + fill_level（3.10 实机：服务端熔岩 6 级读到 14）。所以问到空号不能停（停在 7 就漏了熔岩的 9–14），怎么停见 auxSet。
-引擎对空号、越界的 aux 给什么没在游戏里量过：None、{}、不是字典、和前面某个 aux 一模一样的状态（夹回 / 绕回）都当"这个 aux 没有方块"。
+是 8 + fill_level。所以问到空号不能停（停在 7 就漏了熔岩的 9–14），怎么停见 auxSet。
+3.10 实机（2026-11-26，炼药锅）：GetBlockStatesFromAuxValue 给 0–6 水 0–6 级、8–14 熔岩 0–6 级、16–22 细雪 0–6 级；空号（7、15）和越界（23 以上，
+问到 40）给的都是缺省状态 {"cauldron_liquid": "water", "fill_level": 0}——不是 None、不是空、不抛异常。所以"和前面某个 aux 一模一样的状态"
+当"这个 aux 没有方块"是必须的（这样算出来正是 9–14：问 46 次，最大的有效 aux 22）；None、{}、不是字典也照样当没有方块（别的方块、别的版本）。
 """
 from .TableWire import INT_TYPES, TEXT, toStr
 
@@ -143,7 +145,7 @@ def auxSet(read, conditions, limit=LIMIT):
     返回 {"aux": 升序的列表, "top": 问出过状态的最大 aux（一个都没有是 -1）, "asked": 问了几个 aux}。
     停：问到 limit；或者问到 max(MIN_SCAN, 2 × (top + 1)) 还没有新的有效 aux。按位拼的 aux 里，一个有效 aux 后面的下一个有效 aux
     一定比 2 × (它 + 1) 小（低位的几个状态都满了才进位到上一个状态，而低位的最大值至少占了它那几位的一半），所以中间的空号不会让它漏掉；
-    引擎越界之后一直给 None / {} / 前面出现过的状态时，也停在这里。"""
+    引擎越界之后一直给 None / {} / 前面出现过的状态时，也停在这里（3.10 实机给的是缺省状态，和 aux 0 的一样，见模块说明）。"""
     found, seen, top, asked = [], set(), -1, 0
     for aux in range(limit):
         if aux >= max(MIN_SCAN, 2 * (top + 1)):

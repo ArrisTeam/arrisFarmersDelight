@@ -8,7 +8,8 @@
     from arrisFarmersDelightScripts.Client.Debug import McdkHeatTest as C
     return C.mcdk_test_heat_cauldron_client()             # 玩家没动过：按自己脚下那一格算四格的位置
     return C.mcdk_test_heat_cauldron_client((x, y, z))    # 动过了：传服务端 mcdk_test_heat_cauldron_place 返回的 origin
-怎么摆、怎么清、看什么：服务端那个文件的说明。
+怎么摆、怎么清、看什么：服务端那个文件的说明。3.10 实机（2026-11-26，单机）：客户端 GetBlock 给四个炼药锅的 aux 是 0 / 6 / 9 / 14，和服务端
+GetBlockNew 的一样；按 aux 判的、站在旁边的 near_heat 都和服务端一致（空的、盛水的不算，熔岩 1 级、6 级算）。
 """
 import math
 

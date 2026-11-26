@@ -531,8 +531,12 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
   `Server/TableSync` 每次算差异之前先让它跟上（条件变了的才重算），条件表和它随表同步一起到客户端（契约之外的两张，见「联动契约与客户端的表」）。
   aux 是各状态按位拼的（Strata 引擎研究 `states_permutations.md` §2：每个状态占 ⌈log₂(值个数)⌉ 位，值个数不是 2 的幂时有空号——炼药锅的 aux 7、15、23），
   所以问到空号不停，问到"最大的有效 aux 加一的两倍"（至少 16、最多 1024）还没有新的才停；空号、越界给 None、`{}`、抛异常、和前面重复的状态都当没有方块。
+  3.10 实机（2026-11-26，单机）：`GetBlockStatesFromAuxValue("minecraft:cauldron", aux)` 给 0–6 水 0–6 级、8–14 熔岩 0–6 级、16–22 细雪 0–6 级；
+  空号（7、15）和越界（23 以上，问到 40）给的都是缺省状态 `{"cauldron_liquid": "water", "fill_level": 0}`——不是 None、不是空、不抛异常，
+  所以"和前面重复的状态当没有方块"这一条是必须的；照它算出来正是 9–14（问 46 次、最大的有效 aux 22），写表成功；进服时问这 46 次，错误日志是空的。
   炼药锅那一条有静态初值（熔岩 1–6 级 = aux 9–14：aux = `fill_level` + 8 × `cauldron_liquid` 的序号，熔岩是 1），同步到之前客户端也能判；
-  引擎一个状态也问不出来时表不动、打一行日志。两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`）。客户端读到的炼药锅 aux 没在游戏里读过（上面的 14 是服务端读的）。
+  引擎一个状态也问不出来时表不动、打一行日志。两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`；3.10 实机：客户端 `GetBlock` 给空的、盛水 6 级、
+  熔岩 1 级、熔岩 6 级四个炼药锅的 aux 是 0 / 6 / 9 / 14，和服务端 `GetBlockNew` 的一样，两端的判断四格一致）。
 - 状态变了怎么知道：邻居事件只来自相邻的方块，正下方变了（放漏斗、拆漏斗、点着 / 熄灭正下方的营火）有原来的处理函数（`OnCookingPotNeighborChanged`、`OnSkilletNeighborChanged`）；
   热源在漏斗再下面一格时那一格变了没有事件，`Server/HeatConduct.py` 对"正下方是漏斗"的锅 / 煎锅每 0.5 秒（真实时间，`Pacer`）重算一次，
   和存着的不一样就把一个"正下方变了"的 `BlockNeighborChangedServerEvent` 交给那两个处理函数（存状态、同步客户端、煎锅断热时重置计时，一个字不抄）。下面不是漏斗的什么都不查。
@@ -541,13 +545,17 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
   名单 / 标签里的方块写了条件、客户端没拿到 aux 集合当不热）、`tests/test_heat_aux.py`（服务端照假引擎算 aux）、`tests/test_heat_conduct.py`（真的 `Skillet` / `CookingPot`
   处理函数 + 假引擎）；两张表到客户端在 `test_table_sync.py` / `test_table_sync_server.py`，登记口在 `test_extension_registries.py`。
 
+实机核对过（3.10 单机，2026-11-26；自检 `Server/Debug/McdkHeatTest.mcdk_test_heat_cauldron_place / read / clear` + `Client/Debug/McdkHeatTest.mcdk_test_heat_cauldron_client`：
+摆空的、盛水 6 级、熔岩 1 级、熔岩 6 级四个炼药锅，先客户端、后服务端各读一遍，文件开头写着怎么调）：引擎对空号、越界 aux 的返回和算出的 aux 集合（见上）；
+四格的 aux 两端一样；锅下面（`IsHeatSource`）和手持煎锅身边（两端的 `nearHeat`）的判断两端一致，空的、盛水的不算，熔岩 1 级、6 级算；
+真的厨锅（`SetBlockNew` 放的 `arris:cooking_pot`）放在熔岩 6 级的炼药锅上 3 秒后 `heatEnable` 为真，放在盛水 6 级的上面为假，
+把那个熔岩炼药锅用 `SetBlockStates` 改成 `fill_level` 0，3 秒后锅凉了。
+
 待实机验证（离线 + 假引擎核对过，没进过游戏）：
 
-1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉；站在旁边手持煎锅煎得了。
-   方块状态的名字和值 2026-11-26 在游戏里读过（见上），锅放上去热不热、手持煎锅这两条路还没在游戏里走过。
-   自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_cauldron_place / read / clear` + `Client/Debug/McdkHeatTest.mcdk_test_heat_cauldron_client`
-   （摆空的、盛水的、熔岩 1 级、6 级四个炼药锅，先客户端、后服务端各读一遍；文件开头写着怎么调）。要量的：`GetBlockStatesFromAuxValue` 对空号（7、15、23）
-   和越界（24 起）的 aux 给什么、照它算出来的是不是 9–14；客户端 `GetBlock` 给炼药锅的 aux 和服务端是不是一样；两端的手持煎锅判断是不是一样。
+1. 熔岩炼药锅：用桶真去倒、真去舀（上面是直接改状态），站在旁边真按住右键手持煎锅煎一回（上面量的是两端的判断）；加了炼药锅以后
+   `farmersdelight:heat_sources` 的反查、`GetBlockTags("minecraft:cauldron")`；别的模组用 `ext.registerHeatSource(…, states=…)` 登记的方块，
+   客户端约 5 秒内拿到 aux 集合（探针包里没有带状态的方块）；第二个客户端。
 2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
    一格一格读的自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_probe(x, y, z)`（方块名、状态、`IsHeatSource`、`IsHeated`；锅 / 煎锅那一格再给存着的 `heatEnable` / `shelfEnable`，
    和 `Heat.IsHeated` 现算的对照），用法在文件开头的说明里。
@@ -1121,7 +1129,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 熔岩炼药锅 / 热源按方块状态判（2026-11-26，用户："热源标签可以支持一下方块状态判定"）：JE 的 `heat_sources` 里有 `minecraft:lava_cauldron`，
   基岩版没有这个方块（3.10 实机：`SetBlockNew("minecraft:lava_cauldron")` 放出来的是盛水、0 级的 `minecraft:cauldron`），它是炼药锅的状态 `cauldron_liquid` = lava。
   这边标签里写的是 `minecraft:cauldron`，另带状态条件（`cauldron_liquid` 是 lava、`fill_level` 至少 1；`Shared/Data/Cooking.HeatSourceStateDict`），
-  锅 / 煎锅下面、手持煎锅身边处处按条件判，玩起来和 JE 一样；按这个标签认热源的别的模组也要看这两个状态（TAGS.md「热源方块」）。
+  锅 / 煎锅下面、手持煎锅身边处处按条件判，玩起来和 JE 一样（3.10 实机：厨锅放在熔岩 6 级的炼药锅上热、放在盛水的上面不热，熔岩改成 0 级后凉了；
+  客户端按 aux 判和服务端一致，见「厨锅 / 煎锅下面的热源」）；按这个标签认热源的别的模组也要看这两个状态（TAGS.md「热源方块」）。
   别的模组自己的"一个方块 + 某个状态"的热源用新联动接口 `ext.registerHeatSource(方块名, states=...)` 登记（EXTENSION-API.md §6.1；见「厨锅 / 煎锅下面的热源」）。
   照 JE 往 `farmersdelight:heat_sources` 里写 `minecraft:lava_cauldron` 不起作用：世界里没有叫这个名字的方块（方块标签的成员名引擎不校验，
   3.10 实机；写了会不会往日志里记一条没量过）。
