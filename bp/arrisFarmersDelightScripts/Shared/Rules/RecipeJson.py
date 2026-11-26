@@ -7,6 +7,8 @@
 - 砧板 {"type": "farmersdelight:cutting", "ingredients": [一个配料], "tool": 工具, "result": [{"item", "count", "chance"}, ...]（1 到 4 个）}；
 - 营火 {"type": "minecraft:campfire_cooking", "ingredient": 物品, "result": 物品}（煎锅、炉灶、手持煎锅读的那张表，只认物品）。
 配料：{"item": 名, "data": aux}、{"tag": 标签名}，或它们的列表（一格几个选项）；物品也可以直接写成字符串 "ns:name" / "#标签名"。
+照机械动力也认的写法：字符串 "ns:name:aux"（带 aux 的简写）、物品字典里的 "id"（当 "item"，JE 1.20.5 起的写法）、"cookingTime" / "cooking_time"
+（当 "cookingtime"）。物品名只能有一个冒号：别的多冒号写法报错，不会被当成一个永远配不上的物品名收下。
 JE 的标签名（forge:...）照 aliases（Shared/Data/Tags.JE_NAMES 反过来查）换成 common: 名，认不出的标签名原样用（别的模组可能登记了它）。
 工具：JE 的 {"type": "farmersdelight:tool_action", "action": "knife_dig"} 这类、{"tag": "forge:tools/knives"} 这类、{"item": 名}，或它们的列表。
 "id"、"recipe_book_tab"、"group"、"sound" 这些不管（id 由调用的人处理）。
@@ -34,6 +36,7 @@ TOOL_TAGS = {"forge:tools/knives": "knife", "farmersdelight:tools/knives": "knif
              "forge:shears": "shears"}
 MOST_SLOTS = 6
 MOST_RESULTS = 4
+COOKING_TIME_KEYS = ("cookingtime", "cookingTime", "cooking_time")   # JE 的写法在前；后两种照机械动力（驼峰、蛇形都认）
 
 try:
     _TEXT = (str, unicode)  # noqa: F821 - py2
@@ -81,18 +84,28 @@ def _number(value, default, what):
 
 def _name(value, what):
     value = text(value)
-    if not isinstance(value, str) or ":" not in value or " " in value or value.startswith("#"):
-        raise _Bad("%s 要是 ns:name 这样的物品名，给的是 %r" % (what, value))
+    if not isinstance(value, str) or value.count(":") != 1 or " " in value or value.startswith("#"):
+        raise _Bad("%s 要是 ns:name 这样的物品名（一个冒号；带 aux 写 \"data\" 或 \"ns:name:aux\"），给的是 %r" % (what, value))
     return value
 
 
+def shorthand(value):
+    """"ns:name:aux"（机械动力的带 aux 简写）-> ("ns:name", aux)；不是这种写法是 None。"""
+    parts = text(value).split(":") if isinstance(value, _TEXT) else ()
+    if len(parts) == 3 and all(parts) and parts[2].isdigit():
+        return "%s:%s" % (parts[0], parts[1]), int(parts[2])
+    return None
+
+
 def _stack(value, what):
-    """{"item": 名, "data": aux, "count": 个数} 或 "ns:name" -> (名, aux, 个数)。"""
+    """{"item" 或 "id": 名, "data": aux, "count": 个数}、"ns:name" 或 "ns:name:aux" -> (名, aux, 个数)。"""
     if isinstance(value, _TEXT):
-        return _name(value, what), 0, 1
-    if not isinstance(value, dict) or "item" not in value:
+        short = shorthand(value)
+        return (_name(short[0], what), short[1], 1) if short is not None else (_name(value, what), 0, 1)
+    if not isinstance(value, dict) or ("item" not in value and "id" not in value):
         raise _Bad('%s 要写成 {"item": 物品名}，给的是 %r' % (what, value))
-    return _name(value["item"], what), _int(value.get("data"), 0, what + " 的 data"), _int(value.get("count"), 1, what + " 的 count")
+    name = value["item"] if "item" in value else value["id"]
+    return _name(name, what), _int(value.get("data"), 0, what + " 的 data"), _int(value.get("count"), 1, what + " 的 count")
 
 
 def _option(value, aliases, what):
@@ -125,8 +138,16 @@ def _cooking(data, aliases):
     return {"type": "cooking", "slots": [_slot(entry, aliases, "第 %d 个配料" % (index + 1)) for index, entry in enumerate(ingredients)],
             "result": (name, aux), "count": max(1, count),
             "container": vessel,
-            "cookingTime": _int(data.get("cookingtime"), 200, "cookingtime"), "experience": _number(data.get("experience"), 0.0, "experience"),
+            "cookingTime": _int(_first(data, COOKING_TIME_KEYS), 200, "cookingtime"), "experience": _number(data.get("experience"), 0.0, "experience"),
             "text": text(data["text"]) if isinstance(data.get("text"), _TEXT) else None}
+
+
+def _first(data, keys):
+    """几种写法的键里第一个写了的值（照先后：JE 的写法优先）；都没写是 None。"""
+    for key in keys:
+        if data.get(key) is not None:
+            return data.get(key)
+    return None
 
 
 def _remainderOf(name):

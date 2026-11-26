@@ -299,7 +299,7 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 | `toJson()` | | 写成 JE 配方 JSON 的样子（带 `"id"`），可以存成 `farmersdelight_recipes/` 下的文件 |
 | `register()` | | 查格式、登记，返回 §4 的字典 |
 
-物品写 `"命名空间:名字"`（aux 0）或 `("命名空间:名字", aux)`，标签写 `"#标签名"`（标签没有 aux）。Builder 写出来的就是一份 JSON，
+物品写 `"命名空间:名字"`（aux 0）、`("命名空间:名字", aux)` 或 `"命名空间:名字:aux"`（机械动力的简写），标签写 `"#标签名"`（标签没有 aux）。Builder 写出来的就是一份 JSON，
 `register()` 和 `registerFromJson` 走同一条路：两种写法的规矩一模一样。
 
 写错了不抛异常：不认识的关键字、把数量写成位置参数（`ingredient("minecraft:carrot", 2)`）、`data` 用在标签或几个选项上、`count` 不是正整数，

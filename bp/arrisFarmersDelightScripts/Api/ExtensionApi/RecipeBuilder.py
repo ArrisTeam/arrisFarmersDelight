@@ -16,6 +16,7 @@ ingredientTag("标签名", count=1)；output(物品, count=1, data=0, chance=Non
 写错了（不认识的关键字、把数量当成位置参数……）不抛：记下来，register() 答 invalid_recipe（message 说哪里不对）。
 """
 from . import RecipeIds
+from ...Shared.Rules.RecipeJson import shorthand
 from ...Shared.Rules.TableWire import isInt
 
 ACTIONS = {"knife": "knife_dig", "axe": "axe_dig", "pickaxe": "pickaxe_dig", "shovel": "shovel_dig", "hoe": "hoe_dig", "shears": "shears_dig"}
@@ -32,14 +33,15 @@ except NameError:
 
 
 def option(value):
-    """一个选项（"ns:name" / (名, aux) / "#标签" / 已经是 JE 写法的字典）-> JE 写法（{"item", "data"} / {"tag"}）。"""
+    """一个选项（"ns:name" / "ns:name:aux" / (名, aux) / "#标签" / 已经是 JE 写法的字典）-> JE 写法（{"item", "data"} / {"tag"}）。"""
     if isinstance(value, dict):
         return dict(value)
     if isinstance(value, (tuple, list)) and len(value) == 2:
         return {"item": value[0], "data": value[1]} if value[1] else {"item": value[0]}
     if isinstance(value, _TEXT) and value.startswith("#"):
         return {"tag": value[1:]}
-    return {"item": value}
+    short = shorthand(value)
+    return option(short) if short is not None else {"item": value}
 
 
 def tool(value):

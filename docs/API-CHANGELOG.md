@@ -25,6 +25,9 @@
 - **Builder 认机械动力的写法**：`ingredient(..., data=aux, count=格数)`（只收关键字）、`ingredientTag(标签, count=1)`，`output(物品, count, data, chance)`、
   `container(物品, data)` 的参数次序和机械动力一样（`output` 的第三个位置参数是 `data`，概率写 `chance=`）；写法上的错不抛，`register()` 答
   `invalid_recipe` 并说哪里不对。见 EXTENSION-API.md §5.3。
+- **配方 JSON 照机械动力多认几种写法**：字符串 `"ns:name:aux"`（带 aux 的简写）、物品字典里的 `"id"`（当 `"item"`）、`"cookingTime"` /
+  `"cooking_time"`（当 `"cookingtime"`）；物品名只能有一个冒号，别的多冒号写法报 `invalid_recipe`（以前被当成一个永远配不上的物品名收下，
+  `cookingTime` 以前被忽略、照缺省 200 刻）。见 RECIPE-JSON.md §2、§3。
 - **配方以外的登记口**：`ext.registerKnife`、`ext.registerHeatSource`、`ext.registerStove`（点着的炉灶）、`ext.registerCompostable`。
   能力 `knives`、`heat_sources`、`stoves`、`compostables`（服务端）。见 EXTENSION-API.md §6。
 - **标签 `ext.tags`**：`has` / `itemsOf` / `tagsOf` / `blockHas` / `blocksOf` / `generation` / `names`，词表里每个标签的名字常量。

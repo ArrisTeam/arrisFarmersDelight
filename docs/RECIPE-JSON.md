@@ -59,9 +59,9 @@ mymod_bp/
 | --- | --- | --- |
 | `type` | 是 | `"farmersdelight:cooking"`（`"cooking"` 也认） |
 | `ingredients` | 是 | 1 到 6 个配料，一个是一格（写法见 §3）；锅里每件东西要分给一个收它的格，格子正好用完才配得上 |
-| `result` | 是 | `{"item": 物品名, "count": 一份出几个, "data": aux}`，`count`、`data` 可不写（1、0）；也可以直接写物品名字符串 |
+| `result` | 是 | `{"item": 物品名, "count": 一份出几个, "data": aux}`，`count`、`data` 可不写（1、0），`item` 也可以写成 `id`（JE 1.20.5 起的写法）；也可以直接写物品名字符串（§3） |
 | `container` | 否 | 盛这道菜要的容器 `{"item": 物品名}`。不写时照 JE 推：成品有合成剩余物（农夫乐事的剩余物表 `Shared/Data/Remainders.py`：碗装的菜剩碗、饮料剩玻璃瓶、奶桶剩桶……）就要它，没有就不要容器；别的模组的成品不在那张表里，要容器就写明 |
-| `cookingtime` | 否 | 一份煮多少刻（20 刻一秒），不写是 200 |
+| `cookingtime` | 否 | 一份煮多少刻（20 刻一秒），不写是 200。`cookingTime`、`cooking_time` 也认（照机械动力：驼峰、蛇形都行；几种都写了时 `cookingtime` 优先） |
 | `experience` | 否 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `text` | 否 | 农夫乐事加的：经典厨锅界面食谱格里的名字，搜索框按它搜。不写时：标题显示成品物品的显示名（界面所在那一端的语言；要不到时显示物品 ID），搜索框只能按物品 ID 搜到——想让玩家按名字搜到就写上 `text`。覆盖已有配方时不写：成品没变才沿用原来的名字，换了成品就当没写。`getRecipeById` 给的样子里只有写了的 `text` |
 | `id` | 否 | 配方 ID（§1） |
@@ -80,6 +80,11 @@ mymod_bp/
 | `{"tag": "common:tomato"}` | 现在带这个标签的任何物品（标签格不看 aux：带标签的物品哪个 aux 都收） |
 | `[配料, 配料, ...]` | 这一格的几个选项，任一个都行 |
 | `"mymod:tofu"`、`"#common:tomato"` | 字符串的简写，同上面两种 |
+| `"minecraft:potion:4"` | 带 aux 的简写（机械动力的写法），同 `{"item": "minecraft:potion", "data": 4}` |
+| `{"id": "mymod:tofu"}` | 同 `{"item": ...}`（JE 1.20.5 起的写法；成品、容器、砧板的产物里也认） |
+
+- 物品名只能有一个冒号（`命名空间:名字`）。别的多冒号写法（`{"item": "minecraft:potion:4"}`、`"a:b:c"`）报 `invalid_recipe`，
+  不会被当成一个永远配不上的物品名收下；带 aux 写 `"data"`，或者用上面的字符串简写。
 
 - 标签写农夫乐事词表里的 `common:` 名（[TAGS.md](TAGS.md)）。JE 农夫乐事、Forge 的标签名（`forge:raw_beef`、`forge:vegetables/tomato`……）
   按 TAGS.md 的对照表自动换成 `common:` 名，认不出的标签名原样用（可能是别的模组登记的标签）。
