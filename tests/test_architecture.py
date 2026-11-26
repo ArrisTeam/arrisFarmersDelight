@@ -109,6 +109,7 @@ PACKS = {
             "Compat/Diegesis/PanHold.py": {"forbid": {"Server"}, "engine": False},
             "Compat/Diegesis/GrillHold.py": {"forbid": {"Server"}, "engine": False},
             "Compat/Diegesis/PotView.py": {"forbid": {"Server"}, "engine": True},
+            "Compat/Diegesis/SchemaKit.py": {"forbid": {"Server"}, "engine": True},    # 四个站点的表现登记时取前置包的声明模块
             "Compat/Diegesis/PotPick.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotHud.py": {"forbid": {"Server"}, "engine": True},
             "Compat/Diegesis/PotScene.py": {"forbid": {"Server"}, "engine": True},

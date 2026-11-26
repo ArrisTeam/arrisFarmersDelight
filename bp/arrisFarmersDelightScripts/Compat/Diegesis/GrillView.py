@@ -19,9 +19,9 @@
 炉灶朝哪都对得上。
 开站时场景交给本人的有两样：从屏幕下沿飞来的起点、"我开着站点"（自己翻的不重复演）。
 """
-from . import BookSources, FlatSprites, GrillHold, StoveScenes, TouchFeel
+from . import BookSources, FlatSprites, GrillHold, SchemaKit, StoveScenes, TouchFeel
 from .GrillSpace import Space
-from ...Client.Engine import clientApi, compFactory, levelId, playerId
+from ...Client.Engine import compFactory, levelId, playerId
 from ...Shared.Rules import GrillStation as Rules, StoveCover, StoveFacing
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.HandsOn import StoveLayout
@@ -29,7 +29,6 @@ from ...Shared.Rules.HandsOn import StoveLayout
 CAMERA = {"pos": StoveLayout.CAMERA["pos"], "target": StoveLayout.CAMERA["target"], "fov": StoveLayout.CAMERA["fov"],
           "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
-SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
 
 
 class GrillViewMixin(object):
@@ -166,7 +165,9 @@ def register(api):
     if not Options.stove() or getattr(api, "API_VERSION", 0) < 2 or not getattr(api, "FACING_HOOK", False):
         return None
     behaviorClass = type("StoveBehavior", (GrillViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
-    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    kit = SchemaKit.of(api)
+    if kit is None:
+        return None                     # 拿不到前置包的声明模块（它导入出错时 OtherMods 打了日志）：不登记，这一步记 skipped
     api.registerBehavior(Rules.STATION_ID, Rules.STOVE_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit), canOpen=opensStation,
                          facing=facingOf)
     return behaviorClass

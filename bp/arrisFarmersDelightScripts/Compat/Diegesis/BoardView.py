@@ -11,7 +11,7 @@
 - 刀（工具）悬在食物上由本端画，这时内核画在光标上的那一份收起来（carrySize 缩成一个点，JE 的 setCarriedHidden）。
 点哪一下算什么在 Shared/Rules/BoardClick.py（离线测过）；触屏没有右键 / Shift，按住不动的菜单在 BoardHold.py（onHold）。坐标：站点像素随玩家所在一侧转，板面中心按方块朝向（FD 的板底座在 x 1..12，柄在旁边）换算。
 """
-from . import Arrival, BookSources, FlatSprites, TouchFeel
+from . import Arrival, BookSources, FlatSprites, SchemaKit, TouchFeel
 from . import BoardEffects, BoardFx, BoardHold
 from .BoardCutter import Cutter
 from .BoardDraw import Draw
@@ -20,15 +20,13 @@ from .BoardGlow import BoardGlow, placeable
 from .BoardInv import offhand, selectedSlot, typeOf
 from .BoardSeams import Seams
 from ...Client import BlockItems
-from ...Client.Engine import clientApi
 from ...Shared.Rules import BoardClick as Click
 from ...Shared.Rules import BoardStation as Rules
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules.HandsOn import BoardScene as Scene
 from ...Shared.Rules.HandsOn import Cutting
 
-SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
-CARRY_SIZE, CARRY_HIDDEN = 4.5, 0.01                    # 光标栈上的东西画多大（Diegesis 的缺省：板上没有槽节点，不改）；收起来时缩成一个点
+CARRY_SIZE, CARRY_HIDDEN = 4.5, 0.01                   # 光标栈上的东西画多大（Diegesis 的缺省：板上没有槽节点，不改）；收起来时缩成一个点
 
 
 class BoardViewMixin(object):
@@ -241,6 +239,8 @@ def register(api):
     if not Options.cuttingBoard() or getattr(api, "API_VERSION", 0) < Rules.MIN_API_VERSION:
         return None
     behaviorClass = type("CuttingBoardBehavior", (BoardViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
-    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    kit = SchemaKit.of(api)
+    if kit is None:
+        return None                     # 拿不到前置包的声明模块（它导入出错时 OtherMods 打了日志）：不登记，这一步记 skipped
     api.registerBehavior(Rules.STATION_ID, Rules.BOARD_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass

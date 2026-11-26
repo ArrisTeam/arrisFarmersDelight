@@ -20,10 +20,9 @@
 徽章和悬停提示在 PotHud.py，悬着的容器和它浸进汤里的动作在 PotOffer.py。坐标：站点像素随玩家所在一侧转，场景用锅自己的坐标（随方块朝向），
 两边经世界坐标换算。
 """
-from . import BookSources, FlatSprites, PotHold, PotPick, PotScenes, TouchFeel
+from . import BookSources, FlatSprites, PotHold, PotPick, PotScenes, SchemaKit, TouchFeel
 from .PotHud import PotHud
 from .PotOffer import PotOffer
-from ...Client.Engine import clientApi
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PotLookState
 from ...Shared.Rules import PotStation as Rules
@@ -31,8 +30,7 @@ from ...Shared.Rules.HandsOn import PotDrift, PotSpoonMotion
 
 CAMERA = {"pos": (8.0, 41.0, -21.0), "target": (8.0, 6.5, 8.0), "fov": 30.0, "keepWidth": 16.0 / 9.0}
 FLIGHT_SECONDS = 0.4
-SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / ControlSpec / SlotRules）
-SLOT_SIZE = 3.2                                    # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
+SLOT_SIZE = 3.2                                   # 锅里的料画多大（cooking_pot.json 槽节点的 size）：手上的东西到了锅口上也是它
 START_SPREAD, START_BOTTOM = 0.05, 0.97             # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 DOUBLE_CLICK = 0.25                                 # 双击：拿起之后这么久之内再按一下左键（FocusInput.DOUBLE_CLICK_MS）；前置包按输入方式给时（view.doubleSeconds，触屏 0.4）听它的
 
@@ -243,7 +241,9 @@ def register(api):
     if not Options.cookingPot():
         return None
     behaviorClass = type("CookingPotBehavior", (PotViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
-    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    kit = SchemaKit.of(api)
+    if kit is None:
+        return None                     # 拿不到前置包的声明模块（它导入出错时 OtherMods 打了日志）：不登记，这一步记 skipped
     api.registerBehavior(Rules.STATION_ID, Rules.POT_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit),
                          canOpen=PotScenes.opensStation)
     return behaviorClass

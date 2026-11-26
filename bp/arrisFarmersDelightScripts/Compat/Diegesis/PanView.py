@@ -17,15 +17,14 @@
 """
 import math
 
-from . import BookSources, FlatSprites, PanHold, PanScenes, TouchFeel
-from ...Client.Engine import clientApi, compFactory, levelId
+from . import BookSources, FlatSprites, PanHold, PanScenes, SchemaKit, TouchFeel
+from ...Client.Engine import compFactory, levelId
 from ...Shared.Rules import HandsOnOptions as Options
 from ...Shared.Rules import PanModelMath as Math
 from ...Shared.Rules import PanStation as Rules
 
 CAMERA = dict(Math.SCENE_CAMERA, keepWidth=16.0 / 9.0)
 FLIGHT_SECONDS = 0.4
-SCHEMA_MODULE = "arrisDiegesisScripts.Shared.Schema"   # 前置包的声明模块（StationSchema / SlotRules）
 START_SPREAD, START_BOTTOM = 0.05, 0.97                # 一次放进好几件：从屏幕底边一字排开飞进来（FromPlayer）
 MIN_API_VERSION = 2                                    # 托盘、光标栈随状态同步
 
@@ -223,6 +222,8 @@ def register(api):
     if not Options.skillet() or getattr(api, "API_VERSION", 0) < MIN_API_VERSION:
         return None
     behaviorClass = type("SkilletBehavior", (PanViewMixin, api.StationBehavior), FlatSprites.attrs(api, {"api": api}))
-    kit = getattr(api, "Schema", None) or clientApi.ImportModule(SCHEMA_MODULE)
+    kit = SchemaKit.of(api)
+    if kit is None:
+        return None                     # 拿不到前置包的声明模块（它导入出错时 OtherMods 打了日志）：不登记，这一步记 skipped
     api.registerBehavior(Rules.STATION_ID, Rules.PAN_BLOCKS, behaviorClass, schema=Rules.buildSchema(kit))
     return behaviorClass
