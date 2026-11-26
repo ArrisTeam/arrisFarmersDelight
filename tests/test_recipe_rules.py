@@ -88,7 +88,7 @@ def testPackItemsExist():
 def testTheReturnsTableIsUpToDateWithTheRecipes():
     tool = os.path.join(fdtest.ROOT, "tools", "gen_crafts.py")
     code = subprocess.call([sys.executable, tool, "--check"])
-    assert code == 0, "合成配方改了：py -3 tools/gen_crafts.py 重新生成 Shared/Data/CraftReturns.py"
+    assert code == 0, "合成配方改了：py -3 tools/gen_crafts.py 重新生成 Shared/Data/CraftReturns.py 和 Server/Debug/CraftCases.py"
 
 
 def _members(option):

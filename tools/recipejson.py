@@ -61,9 +61,21 @@ def _item(entry):
     return (entry, 0)
 
 
+def _gridOf(pattern, keys):
+    """有序配方摆进 3×3（靠左上角，行优先）：一格一个物品名 / "#标签"，空格是 None。"""
+    grid = []
+    for row in range(3):
+        line = pattern[row] if row < len(pattern) else ""
+        for column in range(3):
+            char = line[column] if column < len(line) else " "
+            grid.append(_item(keys[char])[0] if char != " " and char in keys else None)
+    return grid
+
+
 def read(path):
     """一个配方文件 -> dict(kind, identifier, result, count, ingredients [(物品名, aux)，一格一个], extras [(物品名, aux, 个数)]
-    有序配方 result 数组第二项起；无序的没有), source)；不是合成配方返回 None。"""
+    有序配方 result 数组第二项起；无序的没有), grid（摆进 3×3 的样子：有序照 pattern 靠左上角，无序从第一格起依次摆；None 空格）, source)；
+    不是合成配方返回 None。写标签的格子是 "#标签"。"""
     data = json.load(io.open(path, encoding="utf-8-sig"))
     for kind in ("minecraft:recipe_shapeless", "minecraft:recipe_shaped"):
         recipe = data.get(kind)
@@ -76,17 +88,19 @@ def read(path):
         if shaped:
             keys = recipe.get("key", {})
             ingredients = [_item(keys[char]) for row in recipe.get("pattern", []) for char in row if char in keys]
+            grid = _gridOf(recipe.get("pattern", []), keys)
         else:
             ingredients = []
             for entry in recipe.get("ingredients", []):
                 amount = int(entry.get("count", 1) or 1) if isinstance(entry, dict) else 1
                 ingredients.extend([_item(entry)] * amount)
+            grid = ([name for name, _aux in ingredients] + [None] * 9)[:9]
         extras = [(extra.get("item"), int(extra.get("data", 0) or 0), int(extra.get("count", 1) or 1))
                   for extra in results[1:] if shaped and isinstance(extra, dict) and extra.get("item")]
         return {"kind": "shaped" if shaped else "shapeless", "identifier": recipe["description"]["identifier"],
                 "result": first.get("item") if isinstance(first, dict) else first,
                 "count": int(first.get("count", 1) or 1) if isinstance(first, dict) else 1,
-                "ingredients": ingredients, "extras": extras, "source": os.path.basename(path)}
+                "ingredients": ingredients, "extras": extras, "grid": grid, "source": os.path.basename(path)}
     return None
 
 

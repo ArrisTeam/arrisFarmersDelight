@@ -11,10 +11,22 @@
 探针排在所有处理函数前面，被取消的合成也记得到。会改玩家的合成格和鼠标上拿着的东西，check 后清掉。
 用 mc_input 点的时候（实测 3.10）：服务端摆的格子，开界面后第一次摆客户端不出结果，所以 setup 摆两遍；点之前先发几步 move
 把指针挪到结果格上（不挪的话点击落在界面当前选中的格子上，会把原料拿到鼠标上，之后结果就取不走了）。
+
+写了标签的工作台配方逐份真做一遍（2026-11-26；表是 tools/gen_crafts.py 生成的 Server/Debug/CraftCases.py，31 份配方）：
+    T.mcdk_test_craft_cases()            用例表：每份两例，"base" 标签格取第一个成员（农夫乐事自己的 / 原版的），"swap" 换另一个成员
+                                         （引擎现在的成员，别的包并进标签的也算，挑最后一个不一样的；标签只有一个成员时 same 为真）；
+                                         expect 是做一份之后合成格 + 背包里该有的全部东西（成品 + 剩下的容器）
+    T.mcdk_test_craft_open()             打开工作台界面
+    T.mcdk_test_craft_put(3)             清空合成格、鼠标上的东西和背包，把第 3 例的料一格一个摆进 3×3（行优先；摆两遍，同上）
+    （客户端投递一次 Shift 点成品格）
+    T.mcdk_test_craft_check(3)           读合成格 + 背包，和 expect 比（missing 少了的、extra 多了的），然后清掉合成格
+有序配方的容器是 result 数组写的；无序配方按放进去的物品查 Remainders（Server/CraftReturns 补还），别的包并进标签的东西不在表里就不还。
 """
+from . import CraftCases
 from ..EventRegistry import registerHandler
 from ..Helpers.Engine import compFactory, levelId, serverApi, ItemPosType
-from ...Shared.Rules import Crafting
+from ...Shared.Data import Remainders
+from ...Shared.Rules import Crafting, ItemTags
 
 BENCH = tuple(range(32, 41))         # PlayerUISlot 的 3×3
 CURSOR = 0                           # PlayerUISlot.CursorSelected：鼠标上拿着的东西
@@ -118,7 +130,10 @@ def mcdk_test_craft_setup(case):
 
 
 def mcdk_test_craft_check(case):
-    """测试函数：点过结果格之后核对这个用例，返回结构化结果，并清掉合成格。"""
+    """测试函数：点过结果格之后核对这个用例，返回结构化结果，并清掉合成格。case 是数（mcdk_test_craft_cases 的第几例）时
+    读合成格 + 背包和 expect 比；是名字（CASES 的键）时照旧读事件记录。"""
+    if isinstance(case, int) and not isinstance(case, bool):
+        return _checkIndexed(case)
     playerId, want = _player(), CASES[case]
     entry = _log[-1] if _log else None
     result = {"case": "craft:" + case, "events": len(_log), "entry": entry}
@@ -135,6 +150,96 @@ def mcdk_test_craft_check(case):
     result.update(ok=all(checks.values()), checks=checks, after=after, gain=gain)
     _fill(playerId, [])
     return result
+
+
+def _members(tag):
+    """标签现在的成员（引擎的，别的包并进来的也算）；引擎答不出时用生成表里抄的静态成员。"""
+    return tuple(ItemTags.itemsOf(tag)) or tuple(CraftCases.MEMBERS.get(tag, ()))
+
+
+def _pick(cell, avoid=None):
+    """格子里放什么：物品就是它；"#标签" 取第一个成员，给了 avoid 就挑最后一个不一样的（没有就还是 avoid）。"""
+    if cell is None or not cell.startswith("#"):
+        return cell
+    members = _members(cell[1:])
+    if avoid is None:
+        return members[0] if members else None
+    others = [name for name in members if name != avoid]
+    return others[-1] if others else avoid
+
+
+def _expected(recipe, items):
+    """做一份之后合成格 + 背包里该有的：成品，加上剩下的容器（有序配方是 result 数组写的；无序配方按放进去的物品查 Remainders，keeps 原样留下）。"""
+    want = {recipe["result"][0]: recipe["result"][1]}
+    extras = list(recipe["extras"])
+    if recipe["kind"] == "shapeless":
+        for cell, name in zip(recipe["grid"], items):
+            left = name if name is not None and cell in recipe["keeps"] else Remainders.craftRemainderOf(name)
+            if name is not None and left:
+                extras.append((left, 1))
+    for name, count in extras:
+        want[name] = want.get(name, 0) + count
+    return want
+
+
+def _cases():
+    found = []
+    for recipe in CraftCases.RECIPES:
+        base = [_pick(cell) for cell in recipe["grid"]]
+        swap = [_pick(cell, chosen) for cell, chosen in zip(recipe["grid"], base)]
+        for label, items in (("base", base), ("swap", swap)):
+            found.append({"index": len(found), "source": recipe["source"], "variant": label, "kind": recipe["kind"],
+                          "grid": items, "expect": _expected(recipe, items), "same": label == "swap" and swap == base,
+                          "unresolved": [cell for cell, name in zip(recipe["grid"], items) if cell is not None and name is None]})
+    return found
+
+
+def _inventory(playerId):
+    found = {}
+    for stack in compFactory.CreateItem(playerId).GetPlayerAllItems(ItemPosType.INVENTORY, False) or []:
+        if stack and stack.get("count"):
+            name = stack.get("newItemName") or stack.get("itemName")
+            found[name] = found.get(name, 0) + stack["count"]
+    return found
+
+
+def _clearInventory(playerId):
+    item = compFactory.CreateItem(playerId)
+    for slot, stack in enumerate(item.GetPlayerAllItems(ItemPosType.INVENTORY, False) or []):
+        if stack and stack.get("count"):
+            item.SetInvItemNum(slot, 0)
+
+
+def mcdk_test_craft_cases():
+    """测试函数：写了标签的工作台配方的用例表（每份 base / swap 两例）；unresolved 非空是标签取不到成员。"""
+    cases = _cases()
+    return {"case": "craft_cases", "ok": bool(cases) and not [case for case in cases if case["unresolved"]], "count": len(cases),
+            "cases": cases}
+
+
+def mcdk_test_craft_put(index):
+    """测试函数：清空合成格、鼠标上的东西和背包，把第 index 例的料一格一个摆进 3×3（工作台界面要已经开着），清空记录。"""
+    playerId, case = _player(), _cases()[index]
+    del _log[:]
+    _clearInventory(playerId)
+    stacks = [(name, 1) if name else None for name in case["grid"]]
+    _fill(playerId, stacks)
+    done = _fill(playerId, stacks)
+    return {"case": "craft_put:%d" % index, "ok": bool(done) and all(done), "source": case["source"], "variant": case["variant"],
+            "grid": _grid(playerId), "expect": case["expect"]}
+
+
+def _checkIndexed(index):
+    playerId, case = _player(), _cases()[index]
+    got = _inventory(playerId)
+    for name, count in _grid(playerId).values():
+        got[name] = got.get(name, 0) + count
+    want = case["expect"]
+    missing = dict((name, count - got.get(name, 0)) for name, count in want.items() if got.get(name, 0) < count)
+    extra = dict((name, count - want.get(name, 0)) for name, count in got.items() if count > want.get(name, 0))
+    _fill(playerId, [])
+    return {"case": "craft_check:%d" % index, "ok": not missing and not extra, "source": case["source"], "variant": case["variant"],
+            "got": got, "expect": want, "missing": missing, "extra": extra, "events": len(_log)}
 
 
 def mcdk_test_craft_log():
