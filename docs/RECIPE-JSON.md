@@ -86,10 +86,10 @@ mymod_bp/
 - 物品名只能有一个冒号（`命名空间:名字`）。别的多冒号写法（`{"item": "minecraft:potion:4"}`、`"a:b:c"`）报 `invalid_recipe`，
   不会被当成一个永远配不上的物品名收下；带 aux 写 `"data"`，或者用上面的字符串简写。
 
-- 标签写农夫乐事词表里的 `common:` 名（[TAGS.md](TAGS.md)）。JE 农夫乐事、Forge 的标签名（`forge:raw_beef`、`forge:vegetables/tomato`……）
-  按 TAGS.md 的对照表自动换成 `common:` 名，认不出的标签名原样用（可能是别的模组登记的标签）。
+- 标签写农夫乐事词表里的 `common:` 名（[TAGS.md](TAGS.md)）。JE 的标签名（1.20.1 的 `forge:raw_beef`、`forge:vegetables/tomato`，
+  1.21 的 `c:foods/raw_beef`、`c:crops/tomato`……）按 TAGS.md 的对照表自动换成 `common:` 名，认不出的标签名原样用（可能是别的模组登记的标签）。
 - 一个标签此刻一个成员都没有时，那一格什么都不收，这条配方配不上；不报错。
-- 原版的蛋写 `{"tag": "minecraft:egg"}`（普通、蓝色、棕色三种都收）；JE 的 `forge:eggs` 也换成它。
+- 原版的蛋写 `{"tag": "minecraft:egg"}`（普通、蓝色、棕色三种都收）；JE 的 `forge:eggs`、`c:eggs` 也换成它。
 
 ---
 
@@ -116,7 +116,7 @@ mymod_bp/
 
 | `tool` 的写法 | 意思 |
 | --- | --- |
-| `{"type": "farmersdelight:tool_action", "action": "knife_dig"}`、`{"tag": "forge:tools/knives"}`、`{"tag": "common:knife"}` | 刀：农夫乐事认作刀的东西都行（`knifeList`、带 `common:knife` 或 `arris:knife` 标签的） |
+| `{"type": "farmersdelight:tool_action", "action": "knife_dig"}`、`{"tag": "forge:tools/knives"}`、`{"tag": "c:tools/knife"}`、`{"tag": "common:knife"}` | 刀：农夫乐事认作刀的东西都行（`knifeList`、带 `common:knife` 或 `arris:knife` 标签的） |
 | `"action": "axe_dig"` / `"axe_strip"`、`{"tag": "minecraft:axes"}` | 斧：原版的斧、物品类型是斧的 |
 | `"action": "pickaxe_dig"`、`{"tag": "minecraft:pickaxes"}` | 镐 |
 | `"action": "shovel_dig"`、`{"tag": "minecraft:shovels"}` | 锹 |

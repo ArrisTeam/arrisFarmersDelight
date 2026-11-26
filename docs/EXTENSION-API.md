@@ -322,8 +322,8 @@ recipes.createBuilder("mymod:cooking/potion_soup", "cooking") \
 ext.recipes.registerFromJson(文本或字典, recipeId=None)
 ```
 
-JE 农夫乐事写法的配方 JSON（[RECIPE-JSON.md](RECIPE-JSON.md)），物品名写网易的。ID 不给就用 JSON 里的 `"id"`。JE 的标签名（`forge:raw_beef`……）
-自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。文本、已经读出来的字典都收（机械动力的 `registerFromJson` 只收文本，那边得先 `json.dumps`）。
+JE 农夫乐事写法的配方 JSON（[RECIPE-JSON.md](RECIPE-JSON.md)），物品名写网易的。ID 不给就用 JSON 里的 `"id"`。JE 的标签名（1.20.1 的 `forge:raw_beef`、
+1.21 的 `c:foods/raw_beef`……）自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。文本、已经读出来的字典都收（机械动力的 `registerFromJson` 只收文本，那边得先 `json.dumps`）。
 
 没有批量登记的口（机械动力也没有）：一张字典表就一条一条交，记下没登记上的——成就系统 `registerAdvancements(列表)` 那种用法这样写：
 
@@ -415,8 +415,8 @@ ext.recipes.syncToClients(recipeTypes=None, recipeIds=None)   # 类型可以是�
 | `ext.registerStove(方块名)` | 这个方块是点着的炉灶（会烤上面的东西、站上去烫脚、炉灶站点认它），追加进 `StoveList`；方块要像农夫乐事的炉灶一样带方块实体 |
 | `ext.registerCompostable(物品名, 概率, aux=0)` | 这件物品能放进原版堆肥桶，概率是让桶升一层的百分数（大于 0、不超过 100），写进 `ComposterItemDict` |
 
-- **刀和热源优先用标签**：在你自己的 `netease_tags` 里把刀登记进 `common:knife`、热源方块登记进 `common:heat_source`
-  （要看点燃状态的登记进 `common:heat_source_lit`），见 TAGS.md。这几个登记口是给没法用标签的情况。
+- **刀和热源优先用标签**：在你自己的 `netease_tags` 里把刀登记进 `common:knife`、热源方块登记进 `farmersdelight:heat_sources`
+  （方块有点燃状态的——`lit` / `*:lit` / `extinguished`——点着才算，和 JE 一样），见 TAGS.md。这几个登记口是给没法用标签的情况。
 - 名字写 `命名空间:名字`；已经在表里的不重复加，照样返回 `ok`。返回 §4 的字典，`"id"` 是登记的名字。
 - 炉灶只登记点着的那个方块。熄灭的孪生方块、点火 / 灭火换方块这一套这一版不开。
 
@@ -430,8 +430,8 @@ tags.RAW_BEEF                                  # "common:raw_beef"：词表里�
 tags.has("mymod:steak", tags.RAW_BEEF)         # 这件物品带不带这个标签
 tags.itemsOf(tags.TOMATO)                      # 标签现在的全部成员（元组：农夫乐事词表里的在前，别的模组登记的接在后面）
 tags.tagsOf("mymod:steak")                     # 这件物品的全部标签（frozenset），可以给 aux
-tags.blockHas("mymod:hot_rock", tags.HEAT_SOURCE)
-tags.blocksOf(tags.HEAT_SOURCE)
+tags.blockHas("mymod:hot_rock", tags.HEAT_SOURCES)
+tags.blocksOf(tags.HEAT_SOURCES)
 tags.generation()                              # 答案可能变了就加一：按标签建了索引的，拿它判断要不要重建
 tags.names()                                   # 词表里的物品标签名，排好序
 ```

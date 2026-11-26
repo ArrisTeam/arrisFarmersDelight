@@ -42,6 +42,13 @@
 
 变更：
 
+- 标签词表照 JE 的约定定名（名字照 JE 1.21 的 `c:` 名、成员照 1.20.1，见 [TAGS.md](TAGS.md)「名字和成员照什么定」）：`common:mushroom` → `common:mushrooms`、
+  `common:bone` → `common:bones`、`common:fried_egg` → `common:cooked_egg`；两个热源标签 `common:heat_source`、`common:heat_source_lit` 合成 JE 的方块标签
+  `farmersdelight:heat_sources`（方块有点燃状态的要点着才算）；去掉没有成员的 `common:chili`；新增 `common:cooked_meat`、`common:leafy_green`；
+  `common:crops`、`common:seeds` 加上原版的作物、种子；几个标签照 JE 用 `#` 引别的标签（登记进 `common:tomato` 的番茄也就算蔬菜、作物）。
+  `ext.tags` 的名字常量跟着改，不留旧名：`HEAT_SOURCE`、`HEAT_SOURCE_LIT` → `HEAT_SOURCES`，`MUSHROOM` → `MUSHROOMS`，`BONE` → `BONES`，
+  `FRIED_EGG` → `COOKED_EGG`，去掉 `CHILI`；新增 `COOKED_MEAT`、`LEAFY_GREEN`。配方 JSON 里 JE 1.21 的 `c:` 标签名（`c:foods/raw_beef`、
+  `c:tools/knife`、`c:eggs`……）也认（RECIPE-JSON.md §3、§4）。
 - 厨锅配方的 `text`：经典厨锅界面的搜索框照 JEI 按成品、食材的显示名和物品 ID 搜（看界面的那一端自己的语言），不再只按 `text` 比；
   没写 `text` 的配方也按名字搜得到（EXTENSION-API.md §5.3、RECIPE-JSON.md §2）。
 - 农夫乐事自带的砧板 / 营火配方 ID 和原料绑死：用它登记（覆盖，或删掉以后加回来）时原料必须还是那一样，否则新的错误码 `input_mismatch`；
