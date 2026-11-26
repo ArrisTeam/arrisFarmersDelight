@@ -7,6 +7,22 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 词表以代码为准：`bp/arrisFarmersDelightScripts/Shared/Data/Tags.py`。`bp/netease_tags/` 下的文件和本文的词表都由 `py -3 tools/gen_tags.py` 从它生成，
 `tests/test_netease_tags.py` 核对文件是不是最新、成员是不是真的、和 JE 的标签对不对得上。
 
+## 名字和成员照什么定
+
+**名字照 JE 1.21，成员照 JE 1.20.1。** 名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走
+（Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
+
+- 名字是 `common:` 加 `c:` 名的最后一段，单复数照 JE。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
+  `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边也是：
+  `c:crops` → `common:crops`、`c:seeds` → `common:seeds`、`c:bones` → `common:bones`、`c:mushrooms` → `common:mushrooms`。
+- 最后一段只是材料名、单拿出来说不清是什么的，照机械动力的写法把类目的单数接在后面：`c:buckets/water` → `common:water_bucket`
+  （机械动力的 `c:plates/iron` → `common:iron_plate`、`c:flours/wheat` → `common:wheat_flour` 也是这样来的）。
+- JE 没有对应 `c:` 名的，照物品名：`common:rice_panicle`、`common:mutton_chops`、`common:tomato_seeds`。
+- JE 农夫乐事自己定义的标签，照 JE 的原名 `farmersdelight:<路径>`：`farmersdelight:heat_sources`、`farmersdelight:meals`……
+- 不用 `/` 分层，一个名字只有一段。
+- 成员照 1.20.1，1.21 有两处不同，这边不跟：1.21 的 `c:foods/vegetable` 多了金胡萝卜；`c:foods/raw_fish` 含河豚，
+  农夫乐事 1.21 自己的配方用的是去掉河豚的 `c:foods/safe_raw_fish`，和这边的 `common:raw_fish` 一样。
+
 ## 别的模组怎么加入
 
 在你自己的行为包里放 `netease_tags/` 目录，一个 JSON 一个标签，`type` 和 `identifier` 和农夫乐事的一样，`items` 里只写你自己的物品：
@@ -86,13 +102,12 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 
 ## 词表
 
-标签名是 `common:` 加小写、下划线连接的单数名词，对应 JE 的 `forge:` / `c:` 标签；物品名本身就是复数的照物品名（`tomato_seeds`、`mutton_chops`）。
-团队里已经在用的名字照用，其中有复数的（`common:crops`、`common:seeds`、`common:flowers`、机械动力的 `common:leaves`、`common:buttons`）；新起的名字用单数。
+名字怎么来的见开头「名字和成员照什么定」。团队里已经在用的名字照用：`common:crops`、`common:seeds`、`common:flowers`（机械动力附属）、
+`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。
 
-- `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
+- `common:mushrooms` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
 - 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
 - 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。
-- `farmersdelight:` 开头的是 JE 农夫乐事自己定义的标签，名字照 JE（见上一节），不按上面的单数规矩改。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 
 <!-- gen_tags: 词表开始（tools/gen_tags.py 从 Shared/Data/Tags.py 生成，别手改） -->
@@ -104,7 +119,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:rice_panicle` | 物品 | 稻穗 | — | `arris:rice_panicle` | — |
 | `common:cooked_rice` | 物品 | 米饭 | `forge:cooked_rice` | `arris:cooked_rice` | — |
 | `common:dough` | 物品 | 面团 | `forge:dough`、`forge:dough/wheat` | `arris:wheat_dough` | 厨锅的格子：饺子（Shared/Data/CookingPotRecipes 的 Slots）；砧板按标签切成 `arris:raw_pasta`（Shared/Data/Cutting.CuttingTagDict，Shared/Rules/CuttingStation.recipeOf） |
-| `common:fried_egg` | 物品 | 煎蛋 | `forge:cooked_eggs` | `arris:fried_egg` | — |
+| `common:cooked_egg` | 物品 | 做熟的蛋（煎蛋） | `forge:cooked_eggs` | `arris:fried_egg` | — |
 | `common:mutton_chops` | 物品 | 生羊排 | — | `arris:mutton_chops` | — |
 | `common:cooked_mutton_chops` | 物品 | 熟羊排 | — | `arris:cooked_mutton_chops` | — |
 | `common:knife` | 物品 | 刀 | `forge:tools/knives`、`farmersdelight:tools/knives` | `arris:flint_knife`、`arris:golden_knife`、`arris:iron_knife`、`arris:diamond_knife`、`arris:netherite_knife` | 是不是刀（Shared/Rules/Knives） |
@@ -122,7 +137,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:vegetable` | 物品 | 蔬菜（不含卷心菜） | `forge:vegetables` | `minecraft:beetroot`、`minecraft:carrot`、`arris:onion`、`minecraft:potato`、`arris:tomato` | 厨锅的格子：蔬菜面、蔬菜杂烩、填馅南瓜、卷心菜卷、鸡肉汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:cabbage` | 物品 | 卷心菜（含卷心菜叶） | `forge:crops/cabbage`、`forge:salad_ingredients`、`forge:salad_ingredients/cabbage` | `arris:cabbage`、`arris:cabbage_leaf` | 厨锅的格子：饺子、蔬菜面、卷心菜卷、鸡肉汤、蔬菜汤、南瓜汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:milk` | 物品 | 奶（奶桶、奶瓶） | `forge:milk` | `minecraft:milk_bucket`、`arris:milk_bottle` | 厨锅的格子：南瓜汤、洋葱汤、热可可、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:mushroom` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:mushrooms` | 物品 | 能吃的蘑菇 | `forge:mushrooms` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | 厨锅的格子：蔬菜面、卷心菜卷、大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:onion` | 物品 | 洋葱 | `forge:crops/onion`、`forge:vegetables/onion` | `arris:onion` | 厨锅的格子：炒饭、饺子、蔬菜杂烩、填馅南瓜、鱼肉炖、洋葱汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:carrot` | 物品 | 胡萝卜 | `forge:crops/carrot`、`forge:vegetables/carrot` | `minecraft:carrot` | 厨锅的格子：兔肉煲、炒饭、蔬菜面、牛肉炖、鸡肉汤、蔬菜汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:potato` | 物品 | 土豆 | `forge:crops/potato`、`forge:vegetables/potato` | `minecraft:potato` | 厨锅的格子：兔肉煲、填馅南瓜、牛肉炖、蔬菜汤、烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
@@ -131,7 +146,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `common:bread` | 物品 | 面包 | `forge:bread`、`forge:bread/wheat` | `minecraft:bread` | 厨锅的格子：洋葱汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:pasta` | 物品 | 生意面 | `forge:pasta`、`forge:pasta/raw_pasta` | `arris:raw_pasta` | 厨锅的格子：肉丸意面、羊排意面、蔬菜面、鱿鱼墨面、面条汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:berry` | 物品 | 浆果 | `forge:berries` | `minecraft:sweet_berries`、`minecraft:glow_berries` | 厨锅的格子：填馅南瓜（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:bone` | 物品 | 骨头 | `forge:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
+| `common:bones` | 物品 | 骨头 | `forge:bones` | `minecraft:bone` | 厨锅的格子：大骨汤（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:raw_cod` | 物品 | 生鳕鱼（含鱼片） | `forge:raw_fishes/cod` | `minecraft:cod`、`arris:cod_slice` | 厨锅的格子：烘焙鳕鱼炖（Shared/Data/CookingPotRecipes 的 Slots） |
 | `common:raw_salmon` | 物品 | 生鲑鱼（含鱼片） | `forge:raw_fishes/salmon` | `minecraft:salmon`、`arris:salmon_slice` | — |
 | `common:cooked_fish` | 物品 | 熟鱼（含熟鱼片） | `forge:cooked_fishes` | `minecraft:cooked_cod`、`arris:cooked_cod_slice`、`minecraft:cooked_salmon`、`arris:cooked_salmon_slice` | — |
@@ -162,7 +177,6 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `farmersdelight:mushroom_colony_growable_on` | 方块 | 蘑菇菌落在它上面才长 | `farmersdelight:mushroom_colony_growable_on` | `arris:rich_soil` | 蘑菇菌落长不长（Server/MushroomColony） |
 | `farmersdelight:drops_cake_slice` | 方块 | 拿刀右键切得下一片蛋糕的方块（插蜡烛的蛋糕） | `farmersdelight:drops_cake_slice` | `minecraft:candle_cake`、`minecraft:white_candle_cake`、`minecraft:orange_candle_cake`、`minecraft:magenta_candle_cake`、`minecraft:light_blue_candle_cake`、`minecraft:yellow_candle_cake`、`minecraft:lime_candle_cake`、`minecraft:pink_candle_cake`、`minecraft:gray_candle_cake`、`minecraft:light_gray_candle_cake`、`minecraft:cyan_candle_cake`、`minecraft:purple_candle_cake`、`minecraft:blue_candle_cake`、`minecraft:brown_candle_cake`、`minecraft:green_candle_cake`、`minecraft:red_candle_cake`、`minecraft:black_candle_cake` | 拿刀右键切蛋糕（Server/KnifeSlicing.cutsLikeACake） |
 | `minecraft:egg` | 物品（原版自带，不生成文件） | 蛋（原版自带的标签） | `forge:eggs` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg` | 厨锅的格子：炒饭、烘焙鳕鱼炖、面条汤、发光浆果蛋奶沙司（Shared/Data/CookingPotRecipes 的 Slots） |
-| `common:chili` | 物品（农夫乐事没有成员，不生成文件） | 辣椒 | — | — | — |
 | `common:fruit` | 物品（农夫乐事没有成员，不生成文件） | 水果 | — | — | — |
 | `common:wheat_flour` | 物品（农夫乐事没有成员，不生成文件） | 小麦粉（机械动力的） | — | — | — |
 <!-- gen_tags: 词表结束 -->

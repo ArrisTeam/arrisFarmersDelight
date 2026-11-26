@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "identifier": "common:mushroom",
+  "identifier": "common:mushrooms",
   "items": [
     "minecraft:brown_mushroom",
     "minecraft:red_mushroom"

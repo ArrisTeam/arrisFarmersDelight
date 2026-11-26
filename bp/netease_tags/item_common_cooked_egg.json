@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "identifier": "common:fried_egg",
+  "identifier": "common:cooked_egg",
   "items": [
     "arris:fried_egg"
   ]

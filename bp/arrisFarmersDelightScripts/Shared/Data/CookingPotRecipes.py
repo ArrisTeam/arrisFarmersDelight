@@ -57,11 +57,11 @@ def _dish(path, slots, **fields):
 
 _BEEF, _PORK, _CHICKEN, _MUTTON, _MEAT = _tag(Tags.RAW_BEEF), _tag(Tags.RAW_PORK), _tag(Tags.RAW_CHICKEN), _tag(Tags.RAW_MUTTON), _tag(Tags.RAW_MEAT)
 _FISH, _COD = _tag(Tags.RAW_FISH), _tag(Tags.RAW_COD)
-_CABBAGE, _VEGETABLE, _MUSHROOM, _MILK, _BERRY = (_tag(Tags.CABBAGE), _tag(Tags.VEGETABLE), _tag(Tags.MUSHROOM), _tag(Tags.MILK),
+_CABBAGE, _VEGETABLE, _MUSHROOM, _MILK, _BERRY = (_tag(Tags.CABBAGE), _tag(Tags.VEGETABLE), _tag(Tags.MUSHROOMS), _tag(Tags.MILK),
                                                   _tag(Tags.BERRY))
 _TOMATO, _ONION, _CARROT, _POTATO, _BEETROOT = (_tag(Tags.TOMATO), _tag(Tags.ONION), _tag(Tags.CARROT), _tag(Tags.POTATO),
                                                 _tag(Tags.BEETROOT))
-_RICE, _PASTA, _DOUGH, _BREAD, _BONE, _EGG = (_tag(Tags.RICE), _tag(Tags.PASTA), _tag(Tags.DOUGH), _tag(Tags.BREAD), _tag(Tags.BONE),
+_RICE, _PASTA, _DOUGH, _BREAD, _BONE, _EGG = (_tag(Tags.RICE), _tag(Tags.PASTA), _tag(Tags.DOUGH), _tag(Tags.BREAD), _tag(Tags.BONES),
                                               _tag(Tags.EGG))
 _MUSHROOMS = ["minecraft:brown_mushroom", "minecraft:red_mushroom"]      # JE 在这两格写的是物品，不是 #forge:mushrooms
 

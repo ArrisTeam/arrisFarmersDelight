@@ -63,7 +63,7 @@ def testTagsAreItemTagsWithTheVocabularyNames():
     assert tags.has("arris:minced_beef", tags.RAW_BEEF) and not tags.has("minecraft:carrot", tags.RAW_BEEF)
     assert tags.itemsOf(tags.EGG) == ("minecraft:egg", "minecraft:blue_egg", "minecraft:brown_egg")
     assert tags.RAW_BEEF in tags.tagsOf("minecraft:beef") and tags.blockHas("arris:stove", tags.HEAT_SOURCES)
-    assert "common:chili" in tags.names() and "common:raw_beef" in tags.names() and tags.names() == sorted(tags.names())
+    assert "common:fruit" in tags.names() and "common:chili" not in tags.names() and "common:raw_beef" in tags.names() and tags.names() == sorted(tags.names())
     assert isinstance(tags.generation(), int) and CLIENT.tags.has("arris:minced_beef", tags.RAW_BEEF)
 
 

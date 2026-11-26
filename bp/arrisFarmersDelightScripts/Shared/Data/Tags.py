@@ -5,9 +5,14 @@
 Shared/Rules/ItemTags 在没有引擎口（离线测试、Strata 沙箱、3.10 以前的引擎）或者口还没准备好（客户端进世界之前）时按这里作答，
 docs/TAGS.md 写的也是这里。
 
-命名：common: + 小写下划线的单数名词，对应 JE 的 forge: / c: 标签；物品本名就是复数的照物品名（tomato_seeds、mutton_chops）。
-团队里已经在用的名字照用、不另起（有的是复数，照旧）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags
-登记了原版的作物、种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
+命名（主会话 2026-11-26 定的，docs/TAGS.md 开头）：名字照 JE 1.21、成员照 JE 1.20.1（移植的基线 FD 1.3.4）。
+- common: + JE 1.21 的 c: 名的最后一段，单复数照 JE（c:crops/tomato -> tomato、c:foods/raw_beef -> raw_beef、c:tools/knife -> knife；
+  只有一层的类目名照 JE 用复数：c:crops -> crops、c:bones -> bones、c:mushrooms -> mushrooms）；
+- 最后一段只是材料名的，照机械动力把类目的单数接在后面（c:buckets/water -> water_bucket；机械动力的 c:plates/iron -> iron_plate、
+  c:flours/wheat -> wheat_flour）；JE 没有对应 c: 名的照物品名（rice_panicle、mutton_chops、tomato_seeds）；
+- JE 农夫乐事自己的标签照 JE 原名 farmersdelight:<路径>；不用 / 分层。
+团队里已经在用的名字照用（都和上面对得上）：common:crops、common:seeds、common:flowers（arrisCreateAdditions 用 netease_tags 登记了原版的作物、
+种子、花，它的生物质、种子油配方吃这几个标签）、common:dough、common:wheat_flour（机械动力的面团、小麦粉；所以没有 common:flour）。
 
 成员的规矩（网易 3.10 实机量过的，前置包工程 .planning/kaleidoscope/R4-netease-tags-engine.md）：
 - 只写农夫乐事自己的和原版的物品 / 方块：写别的模组的名字，对方没装时引擎一直刷 ERROR 日志；
@@ -25,7 +30,7 @@ RICE = "common:rice"
 RICE_PANICLE = "common:rice_panicle"
 COOKED_RICE = "common:cooked_rice"
 DOUGH = "common:dough"
-FRIED_EGG = "common:fried_egg"
+COOKED_EGG = "common:cooked_egg"
 MUTTON_CHOPS = "common:mutton_chops"
 COOKED_MUTTON_CHOPS = "common:cooked_mutton_chops"
 KNIFE = "common:knife"
@@ -43,7 +48,7 @@ RAW_FISH = "common:raw_fish"
 VEGETABLE = "common:vegetable"
 CABBAGE = "common:cabbage"
 MILK = "common:milk"
-MUSHROOM = "common:mushroom"
+MUSHROOMS = "common:mushrooms"
 # JE 农夫乐事的配方（厨锅、工作台、砧板）实际用到的标签，同一条命名规则补的
 ONION = "common:onion"
 CARROT = "common:carrot"
@@ -53,7 +58,7 @@ WHEAT = "common:wheat"
 BREAD = "common:bread"
 PASTA = "common:pasta"
 BERRY = "common:berry"
-BONE = "common:bone"
+BONES = "common:bones"
 RAW_COD = "common:raw_cod"
 RAW_SALMON = "common:raw_salmon"
 COOKED_FISH = "common:cooked_fish"
@@ -101,10 +106,9 @@ DROPS_CAKE_SLICE = "farmersdelight:drops_cake_slice"       # 拿刀右键切下�
 EGG = "minecraft:egg"
 
 # ---- 词表里有、农夫乐事没有成员的名字（不生成文件，docs/TAGS.md 列出来给别的模组用）----
-CHILI = "common:chili"
 FRUIT = "common:fruit"
 WHEAT_FLOUR = "common:wheat_flour"      # 机械动力的小麦粉
-WITHOUT_MEMBERS = (CHILI, FRUIT, WHEAT_FLOUR)
+WITHOUT_MEMBERS = (FRUIT, WHEAT_FLOUR)
 
 _KNIVES = ("arris:flint_knife", "arris:golden_knife", "arris:iron_knife", "arris:diamond_knife", "arris:netherite_knife")
 _RAW_BEEF = ("minecraft:beef", "arris:minced_beef")
@@ -126,7 +130,7 @@ ITEM_TAGS = {
     RICE_PANICLE: ("arris:rice_panicle",),
     COOKED_RICE: ("arris:cooked_rice",),
     DOUGH: ("arris:wheat_dough",),
-    FRIED_EGG: ("arris:fried_egg",),
+    COOKED_EGG: ("arris:fried_egg",),
     MUTTON_CHOPS: ("arris:mutton_chops",),
     COOKED_MUTTON_CHOPS: ("arris:cooked_mutton_chops",),
     KNIFE: _KNIVES,
@@ -144,7 +148,7 @@ ITEM_TAGS = {
     VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
     CABBAGE: ("arris:cabbage", "arris:cabbage_leaf"),                           # JE 不把卷心菜算进 forge:vegetables，单列
     MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-    MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
+    MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"),
     ONION: ("arris:onion",),
     CARROT: ("minecraft:carrot",),
     POTATO: ("minecraft:potato",),
@@ -153,7 +157,7 @@ ITEM_TAGS = {
     BREAD: ("minecraft:bread",),
     PASTA: ("arris:raw_pasta",),
     BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"),
-    BONE: ("minecraft:bone",),
+    BONES: ("minecraft:bone",),
     RAW_COD: _RAW_COD,
     RAW_SALMON: _RAW_SALMON,
     COOKED_FISH: _COOKED_COD + _COOKED_SALMON,
@@ -235,7 +239,7 @@ JE_NAMES = {
     RICE: ("forge:crops/rice", "forge:grain/rice", "forge:seeds/rice"),
     COOKED_RICE: ("forge:cooked_rice",),
     DOUGH: ("forge:dough", "forge:dough/wheat"),
-    FRIED_EGG: ("forge:cooked_eggs",),
+    COOKED_EGG: ("forge:cooked_eggs",),
     KNIFE: ("forge:tools/knives", "farmersdelight:tools/knives"),
     RAW_BEEF: ("forge:raw_beef",),
     RAW_PORK: ("forge:raw_pork",),
@@ -250,7 +254,7 @@ JE_NAMES = {
     VEGETABLE: ("forge:vegetables",),
     CABBAGE: ("forge:crops/cabbage", "forge:salad_ingredients", "forge:salad_ingredients/cabbage"),
     MILK: ("forge:milk",),
-    MUSHROOM: ("forge:mushrooms",),
+    MUSHROOMS: ("forge:mushrooms",),
     ONION: ("forge:crops/onion", "forge:vegetables/onion"),
     CARROT: ("forge:crops/carrot", "forge:vegetables/carrot"),
     POTATO: ("forge:crops/potato", "forge:vegetables/potato"),
@@ -259,7 +263,7 @@ JE_NAMES = {
     BREAD: ("forge:bread", "forge:bread/wheat"),
     PASTA: ("forge:pasta", "forge:pasta/raw_pasta"),
     BERRY: ("forge:berries",),
-    BONE: ("forge:bones",),
+    BONES: ("forge:bones",),
     RAW_COD: ("forge:raw_fishes/cod",),
     RAW_SALMON: ("forge:raw_fishes/salmon",),
     COOKED_FISH: ("forge:cooked_fishes",),

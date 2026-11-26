@@ -312,13 +312,13 @@ def testTheHeatTagIsTodaysHeatSources():
 def testTheBriefsMembers():
     """任务书里定下的几条（A 拿它们还原厨锅格子）。"""
     expect = {
-        Tags.TOMATO: ("arris:tomato",), Tags.DOUGH: ("arris:wheat_dough",), Tags.FRIED_EGG: ("arris:fried_egg",),
+        Tags.TOMATO: ("arris:tomato",), Tags.DOUGH: ("arris:wheat_dough",), Tags.COOKED_EGG: ("arris:fried_egg",),
         Tags.RAW_BEEF: ("minecraft:beef", "arris:minced_beef"), Tags.RAW_PORK: ("minecraft:porkchop", "arris:bacon"),
         Tags.RAW_CHICKEN: ("minecraft:chicken", "arris:chicken_cuts"), Tags.RAW_MUTTON: ("minecraft:mutton", "arris:mutton_chops"),
         Tags.RAW_FISH: ("minecraft:cod", "arris:cod_slice", "minecraft:salmon", "arris:salmon_slice", "minecraft:tropical_fish"),
         Tags.VEGETABLE: ("minecraft:beetroot", "minecraft:carrot", "arris:onion", "minecraft:potato", "arris:tomato"),
-        Tags.MUSHROOM: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
-        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONE: ("minecraft:bone",),
+        Tags.MUSHROOMS: ("minecraft:brown_mushroom", "minecraft:red_mushroom"), Tags.MILK: ("minecraft:milk_bucket", "arris:milk_bottle"),
+        Tags.BERRY: ("minecraft:sweet_berries", "minecraft:glow_berries"), Tags.BONES: ("minecraft:bone",),
         Tags.WATER_BUCKET: ("minecraft:water_bucket",),
     }
     for tag, members in expect.items():
