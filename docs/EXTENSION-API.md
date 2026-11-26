@@ -130,14 +130,15 @@ T2 → T5 的先后 2026-11-26 在游戏里核过：第三方在 ready 的处理
 
 ### 1.4 兜底：主动导入（兼容入口）
 
-实在接不到事件时，可以主动导入门面模块：
+实在接不到事件时，可以主动导入这个包，写法和机械动力的兜底一样（`ImportModule("arrisCreateScripts.Api.ExtensionApi").getExtensionApi(side)`）：
 
 ```python
-facadeModule = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade")   # 农夫乐事没装是 None
-ext = facadeModule.getExtensionApi("server") if facadeModule else None                         # 客户端写 "client"
+package = serverApi.ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi")   # 农夫乐事没装是 None
+ext = package.getExtensionApi("server") if package else None                      # 客户端写 "client"
 ```
 
-拿到的和 ready 载荷里的是同一个对象。**只在 `LoadServerAddonScriptsAfter` 之后用**（比如玩家进服时）：表同步的基线是农夫乐事服务端模块导入那一刻的表，
+拿到的和 ready 载荷里的是同一个对象。原来写在这里的 `ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi.Facade").getExtensionApi(side)`
+照旧能用（同一个对象）。导入这个包不会顺带拉起门面：门面到调 `getExtensionApi` 时才导入。**只在 `LoadServerAddonScriptsAfter` 之后用**（比如玩家进服时）：表同步的基线是农夫乐事服务端模块导入那一刻的表，
 在那之前登记的配方会被当成"本来就有"，不会同步给客户端（站点、书、JEI 不认它）。能监听事件就别用这条路。
 
 ### 1.5 农夫乐事没装时
@@ -191,6 +192,7 @@ ext = facadeModule.getExtensionApi("server") if facadeModule else None          
 | `recipe_client_sync` | 服务端 | `ext.recipes.syncToClients`（§5.8） |
 | `recipe_change_events` | 服务端 | `ext.recipes.onRecipesChanged`（§5.8） |
 | `cooking_match` | 两端 | `ext.recipes.matchCooking`（§5.7） |
+| `recipe_lookup` | 两端 | `ext.recipes.findRecipe`：一件东西在砧板 / 营火上按哪条配方做（§5.5） |
 | `knives` | 服务端 | `ext.registerKnife`（§6） |
 | `heat_sources` | 服务端 | `ext.registerHeatSource`（§6） |
 | `stoves` | 服务端 | `ext.registerStove`（§6） |
@@ -288,18 +290,31 @@ recipes.createBuilder("mymod:campfire_cooking/tofu", "campfire_cooking") \
 
 | 方法 | 用在 | 说明 |
 | --- | --- | --- |
-| `ingredient(*选项)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项 |
-| `output(物品, count=1, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出） |
-| `container(物品)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
+| `ingredient(*选项, count=1, data=None)` | 三类 | 加一格配料；给几个就是这一格的几个选项（任一个都行）。厨锅最多 6 格；砧板、营火只有一格、一个选项。两个关键字照机械动力：`data` 是 aux（只给一样写成 `"ns:name"` 的物品时），`count` 是几格（厨锅一格一件，`count=2` 是两格同样的；砧板、营火只能是 1）。数量、aux 只收关键字：位置参数都是这一格的选项 |
+| `ingredientTag(标签, count=1)` | 三类 | 机械动力的写法：加 `count` 格这个标签，和 `ingredient("#标签")` 一样（标签名写不写 `#` 都行） |
+| `output(物品, count=1, data=0, chance=None)` | 三类 | 成品。厨锅、营火一个（厨锅的 `count` 是一份出几个，营火不看）；砧板可以加几个（最多 4 个），`chance` 是概率（0 到 1，不写是必出）。参数的次序和机械动力一样：第三个位置参数是 `data`，概率写 `chance=` |
+| `container(物品, data=0)` | 厨锅 | 盛这道菜要的容器（JE 的 `container`）。不写时照 JE 推：成品在农夫乐事的剩余物表里（碗装的菜、饮料……）就要那个容器，没有就不要（RECIPE-JSON.md §2） |
 | `cookingTime(刻)` | 厨锅 | 一份煮多少刻（20 刻一秒），不写是 200 |
 | `experience(数)` | 厨锅 | 一份给多少经验，不写是 0（JE 的缺省） |
 | `tool(工具)` | 砧板 | `"knife"`、`"axe"`、`"pickaxe"`、`"shovel"`、`"hoe"`、`"shears"`，或 `"#标签"`、`"物品名"`、它们的列表（见 RECIPE-JSON.md §4） |
-| `text(名字)` | 厨锅 | 经典厨锅界面食谱格里的名字，搜索框按它搜。不写时：标题显示成品物品的显示名（界面所在那一端的语言；要不到时显示物品 ID），搜索框只能按物品 ID 搜到——想让玩家按名字搜到就写上 `text`。覆盖已有配方时不写：成品没变才沿用原来的名字，换了成品就当没写。`getRecipeById` 给的样子里只有写了的 `text` |
+| `text(名字)` | 厨锅 | 经典厨锅界面详情的标题，搜索框也拿它比。不写时标题显示成品物品的显示名（界面所在那一端的语言；要不到时显示物品 ID）。搜索框照 JEI 按成品和食材的显示名、物品 ID 搜（看界面的那一端自己的语言），写不写 `text` 都搜得到。覆盖已有配方时不写：成品没变才沿用原来的名字，换了成品就当没写。`getRecipeById` 给的样子里只有写了的 `text` |
 | `toJson()` | | 写成 JE 配方 JSON 的样子（带 `"id"`），可以存成 `farmersdelight_recipes/` 下的文件 |
 | `register()` | | 查格式、登记，返回 §4 的字典 |
 
-物品写 `"命名空间:名字"`（aux 0）或 `("命名空间:名字", aux)`，标签写 `"#标签名"`（标签没有 aux）。Builder 写出来的就是一份 JSON，
+物品写 `"命名空间:名字"`（aux 0）、`("命名空间:名字", aux)` 或 `"命名空间:名字:aux"`（机械动力的简写），标签写 `"#标签名"`（标签没有 aux）。Builder 写出来的就是一份 JSON，
 `register()` 和 `registerFromJson` 走同一条路：两种写法的规矩一模一样。
+
+写错了不抛异常：不认识的关键字、把数量写成位置参数（`ingredient("minecraft:carrot", 2)`）、`data` 用在标签或几个选项上、`count` 不是正整数，
+都记下来，`register()` 答 `invalid_recipe`，`message` 说哪里不对（客户端照旧先答 `server_only`）。照机械动力的手感写的：
+
+```python
+recipes.createBuilder("mymod:cooking/potion_soup", "cooking") \
+    .ingredient("minecraft:potion", data=4) \
+    .ingredientTag("common:tomato", count=2) \
+    .output("mymod:potion_soup", count=2) \
+    .register()
+# 等于 .ingredient(("minecraft:potion", 4)).ingredient("#common:tomato").ingredient("#common:tomato")
+```
 
 ### 5.4 registerFromJson
 
@@ -308,7 +323,19 @@ ext.recipes.registerFromJson(文本或字典, recipeId=None)
 ```
 
 JE 农夫乐事写法的配方 JSON（[RECIPE-JSON.md](RECIPE-JSON.md)），物品名写网易的。ID 不给就用 JSON 里的 `"id"`。JE 的标签名（`forge:raw_beef`……）
-自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。
+自动换成农夫乐事词表里的 `common:` 名（对照表在 TAGS.md）。文本、已经读出来的字典都收（机械动力的 `registerFromJson` 只收文本，那边得先 `json.dumps`）。
+
+没有批量登记的口（机械动力也没有）：一张字典表就一条一条交，记下没登记上的——成就系统 `registerAdvancements(列表)` 那种用法这样写：
+
+```python
+failed = []
+for recipe in RECIPES:                       # 一条一个 JE 写法的字典（也可以是从你自己的 JSON 读出来的）
+    answer = ext.recipes.registerFromJson(recipe)
+    if not answer["ok"]:
+        failed.append(answer)                # {"ok": False, "error": ..., "id": ..., "message": ...}
+if failed:
+    print("[mymod] 农夫乐事的配方有 %d 条没登记上：%r" % (len(failed), failed))
+```
 
 ### 5.5 查询
 
@@ -319,7 +346,14 @@ ext.recipes.getRecipeById("farmersdelight:cooking/beef_stew")
 #  "result": {"item": "arris:cookbeef_stew"}, "cookingtime": 200, "experience": 1.0, "container": {"item": "minecraft:bowl"},
 #  "text": "牛肉炖"}
 ext.recipes.getRecipesOfType("cutting")      # 这一类的全部，同样的样子；类型不认识是 []
+ext.recipes.findRecipe("cutting", "minecraft:cake")            # 这件东西放上砧板按哪条切；切不了是 None
+ext.recipes.findRecipe("campfire_cooking", "minecraft:beef")   # 煎锅、炉灶的表里它煎成什么；同样的样子
 ```
+
+`findRecipe(类型, 物品名, aux=0)`（能力 `recipe_lookup`，两端）照机械动力的 `findRecipe`，给自己的机器（自动切菜、自动煎）找农夫乐事的配方用：
+砧板先找原料正好是这件东西（物品名加 aux）的那条，再按标签（按标签名排，第一个收它的那条），和砧板自己认的一样；营火只查农夫乐事的表
+（`CanCookedFoodDict`；引擎自己的营火配方不在这里，煎锅、炉灶查不到这张表时才去问引擎，见 §5.1）。厨锅是几件一起放的，用 `matchCooking`（§5.7）；
+类型是 `cooking` 或认不出、物品名不是文字时是 `None`。
 
 给的是 JE 配方 JSON 的样子（带 `"id"`），改几个字段原样交回 `registerFromJson` 就是覆盖。删了的查不到（`None`）。
 兼容入口只写了物品写法的厨锅配方，`ingredients` 按它的第一种写法一格一样东西给。
@@ -449,3 +483,27 @@ def register(ext):
 **问：一个标签里没有成员会怎样？** 那一格什么都不收，这条配方配不上；不报错。等有模组登记了成员（或玩家装了那个模组）就能配。
 
 **问：为什么不像机械动力那样在 ready 之后冻结？** 农夫乐事的表从旧接口起就一直允许随时追加，表同步每 5 秒比一次；没有哪里要在某一刻之后才建好的缓存。
+
+---
+
+## 10. 从机械动力过来
+
+对接过机械动力（arrisCreate）扩展接口的，大部分照搬；不一样的地方：
+
+| 机械动力 | 农夫乐事 | 说明 |
+| --- | --- | --- |
+| `ListenForEvent("arrisCreate", "ExtensionApi", "ServerExtensionApiReady", ...)` | `ListenForEvent("arrisFarmersDelight", "ExtensionApi", "ServerExtensionApiReady", ...)` | 载荷一样：`extension`、`side`、`apiVersion`（§2） |
+| `ext.hasCapability`、`ext.hostVersion`、`ext.apiVersion` | 一样 | 能力名各是各的（§3） |
+| ready 的处理函数一返回就冻结 | 不冻结 | 表一直是活的，进服之后改了调 `syncToClients`（§1.3、§5.8） |
+| `ImportModule("arrisCreateScripts.Api.ExtensionApi").getExtensionApi(side)` | `ImportModule("arrisFarmersDelightScripts.Api.ExtensionApi").getExtensionApi(side)` | 兜底入口，写法一样（§1.4） |
+| 行为包的 `create_recipes/` | 行为包的 `farmersdelight_recipes/` | 一个文件一条、能写注释。没写 `id` 时机械动力落进 `create:<路径>`，这里取第一层目录当命名空间（RECIPE-JSON.md §1） |
+| `createBuilder(id, "milling")`、`ingredient(item, count, data)`、`ingredientTag(tag, count)`、`output(item, count, data, chance)`、`processingTime(t)` | `createBuilder(id, "cooking")`，`ingredient` / `ingredientTag` / `output` 的写法一样，时间是 `cookingTime(刻)` | 厨锅一格一件：`count=2` 是两格；位置参数是这一格的几个选项（§5.3） |
+| `register()` 返回配方对象，格式不对抛 `ValueError` | `register()` 返回 `{"ok", "error", "id"}`，从不抛 | 看 `ok`（§4） |
+| `registerFromJson(文本)`，失败返回 `None` | `registerFromJson(文本或字典)`，返回回答字典 | 字典不用先 `json.dumps`（§5.4） |
+| JSON 的 `results`、`processingTime` | 厨锅、营火写 `result`，砧板的 `result` 是列表；时间写 `cookingtime`（`cookingTime` 也认） | 照 JE 农夫乐事的写法（RECIPE-JSON.md） |
+| `"minecraft:wool:3"`、`{"id": ...}` | 一样认 | RECIPE-JSON.md §3 |
+| `getRecipeById` / `getRecipesOfType` 给配方对象 | 给 JE 配方 JSON 的样子（带 `"id"`） | 改几个字段交回 `registerFromJson` 就是覆盖（§5.5） |
+| `findRecipe(类型, 物品, data)` | `findRecipe(类型, 物品, aux)`：砧板、营火；厨锅用 `matchCooking` | §5.5、§5.7 |
+| `removeRecipe` 返回布尔，`removeAllOfType` | `removeRecipe` 返回回答字典；没有 `removeAllOfType` | 厨锅删了留墓碑（§5.6） |
+| 客户端调 `ext.recipes` 的任何方法抛 `RuntimeError` | 客户端能查；登记类的答 `server_only`，不抛 | 两端可以共用一份登记代码（§4） |
+| `syncToClients(类型, ID)`、`onRecipesChanged(handler)` | 一样 | 不调也会在 5 秒内补发（§5.8） |

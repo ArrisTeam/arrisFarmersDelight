@@ -4,9 +4,10 @@
 格子仍存在 netease:block_container 的 8 个引擎容器格里（0-5 食材，6 容器，7 成品）；烹饪、热源、预览格由
 Server/CookingPot.py 照旧在方块实体数据里推进，界面数据（热源、进度、预览）经 setStateReader 登记的读数函数在服务端读出。
 食谱照旧界面（rp/ui/arrisCookingPot.json）：左边是搜索框与食谱格，右边是选中食谱的详情。食谱格是算出的格子（库的 Choice，
-原版切石机的配方按钮，内容与手势见 PotRecipes）：按这位查看者的搜索词过滤后每道食谱的成品，点一格选中（发 pick，可预测），
-选中的那格换底格；详情是食材（几种写法时每 Book.VARIANT_SECONDS 秒换下一种，服务端按钟算）、容器、成品、标题和"添加食材"
-（挑写法见 PotFill）。搜索、选中都记在每位查看者各自的会话里。
+原版切石机的配方按钮，内容与手势见 PotRecipes）：在看界面的那一端按这位查看者的搜索词过滤（Shared/Rules/PotSearch，照 JEI、用这一端
+自己的显示名），点一格选中——发 pick(配方在表里的行号)，可预测；服务端只查这一行活着、形状对，不按搜索词判断任何事（联机时两端问到的
+显示名可以不一样）。详情是食材（几种写法时每 Book.VARIANT_SECONDS 秒换下一种，服务端按钟算）、容器、成品、标题和"添加食材"
+（挑写法见 PotFill）。搜索词、选中的行都记在每位查看者各自的会话里；换搜索词不清选中（被过滤掉的那道只是没有格子亮）。
 两端都导入本模块（界面模型两端各建一份，规则一样），所以顶层不碰引擎，只导入 dolorContainer 的纯逻辑部分。
 """
 import time
@@ -19,6 +20,8 @@ from ...dolorContainer.Std.Block import Common as BlockCommon
 from ...dolorContainer.Std.Decor import Decor
 from ...dolorContainer.Std.Slots import Display, Output
 from ..Rules import CookingPotBook as Book
+from ..Rules import PotSearch
+from ..Rules.TableWire import isInt
 from . import PotFill, PotRecipes
 
 MENU = "arris:cooking_pot"
@@ -29,10 +32,11 @@ BOOK = "book"
 RECIPES = "recipes"
 SPOON = "textures/ui/spoon"
 RECIPE_CELLS = PotRecipes.CELLS
-# 点食谱格的格号上限（线上校验用；实际范围看现在过滤出几道）。食谱格就有这么多格：下游模组追加的食谱都排得下，
-# 界面的控件按行回收（scroll_grid），不随格数变
-MAX_PICK = 4095
-RECIPE_CAPACITY = MAX_PICK + 1
+# 食谱格就有这么多格：下游模组追加的食谱都排得下，界面的控件按行回收（scroll_grid），不随格数变
+RECIPE_CAPACITY = 4096
+# pick 的参数是配方在 CookingPotRecipeList 里的行号（行只打墓碑、不删，站点和 matchIndex 也拿它当身份）；这里只是线上的范围校验，
+# 真正的校验是那一行活着、形状对（Book.recipeAt）
+MAX_ROW = 1 << 16
 # 开着的界面每这么多刻重读一次热源、进度、预览（它们由 Server/CookingPot.py 的 tick 在会话之外改；5 Hz，与烹饪的处理节拍一致），
 # 同时重算每位查看者的详情（写法轮换跟着变）
 DATA_EVERY = 4
@@ -105,9 +109,6 @@ class IngredientSlot(SlotType):
         return None
 
 
-_search = PotRecipes.searchOf
-
-
 def routes():
     """
     去向表与收集顺序：背包 Shift 点击先试容器格，再试食材格（两种格子各挑自己收的东西），最后换到背包的另一半；厨锅的格子转进合并背包。
@@ -123,7 +124,9 @@ def routes():
 
 
 def _pickedRecipe(viewer):
-    return Book.pickedRecipe(_search(viewer), viewer.get("picked", -1))
+    """选中的配方：每位查看者状态 picked 记的是表里的行号（-1 没选）；删掉了（墓碑）、形状不对的是 None。"""
+    picked = (viewer or {}).get("picked", -1)
+    return Book.recipeAt(picked) if isInt(picked) else None
 
 
 @Menus.register(MENU)
@@ -137,7 +140,8 @@ class CookingPotMenu(Menus.Menu):
         "bookResult": Data.Item(scope=Data.VIEWER),
         "bookTitle": Data.Lang(scope=Data.VIEWER),
     }
-    # picked 是食谱格里选中的格号（过滤后的序号，-1 没选）；pickedAt 是选中的时刻（服务端的钟，写法从这时起轮换）
+    # picked 是选中的配方在表里的行号（-1 没选；不是格号）；search 是搜索词（服务端只记着：客户端的预测靠它，应答会盖掉预测）；
+    # pickedAt 是选中的时刻（服务端的钟，写法从这时起轮换）
     viewerState = {"picked": Data.Int(), "search": Data.Text(), "pickedAt": Data.Float()}
 
     def define(self, s):
@@ -149,7 +153,7 @@ class CookingPotMenu(Menus.Menu):
                      Display(items=BOOK))
         s.collection(RECIPES, s.container("recipe_view", Containers.VIRTUAL, RECIPE_CAPACITY), 0, RECIPE_CAPACITY,
                      PotRecipes.RecipeChoice("pick", "picked"))
-        s.derive(RECIPES, PotRecipes.RecipeGrid())
+        s.derive(RECIPES, PotRecipes.RecipeGrid(s.side))
         s.player()
         s.routes(*routes())
 
@@ -179,25 +183,27 @@ class CookingPotMenu(Menus.Menu):
 
     # ---------------------------------------------------------------- 动作（服务端校验后执行）
 
-    @Actions.action("search", Schema.Text(Book.SEARCH_LIMIT, words=False))
+    @Actions.action("search", Schema.Text(PotSearch.SEARCH_LIMIT, words=False))
     def search(self, ctx, text):
-        _setSearch(ctx.viewer, text)
+        # 只记着（客户端的预测靠它：服务端的应答会盖掉预测，不记的话食谱格一应答就回到全部）；选中的是行号，换搜索词不清它
+        ctx.viewer["search"] = text
 
     @search.predicting
     def search(self, view, text):
-        # 客户端当场按新的字过滤食谱格（以服务端的应答为准）
-        _setSearch(view.viewer, text)
+        # 客户端当场按新的字过滤食谱格（用这一端的显示名，PotSearch）
+        view.viewer["search"] = text
 
-    @Actions.action("pick", Schema.Int(0, MAX_PICK))
-    def pick(self, ctx, index):
-        if index >= Book.shownCount(_search(ctx.viewer)):
+    @Actions.action("pick", Schema.Int(0, MAX_ROW))
+    def pick(self, ctx, row):
+        # 客户端发的是它点的那一格在它那一端过滤结果里的行号（PotRecipes.TapToPick）：服务端只查这一行活着、形状对
+        if Book.recipeAt(row) is None:
             raise Actions.Refused("no_recipe")
-        ctx.viewer["picked"] = index
+        ctx.viewer["picked"] = row
         ctx.viewer["pickedAt"] = _clock[0]()
 
     @pick.predicting
-    def pick(self, view, index):
-        view.viewer["picked"] = index
+    def pick(self, view, row):
+        view.viewer["picked"] = row
 
     @Actions.action("addFood")
     def addFood(self, ctx):
@@ -209,14 +215,3 @@ class CookingPotMenu(Menus.Menu):
         if recipe is None:
             raise Actions.Refused("no_recipe")
         PotFill.fill(ctx.ws, recipe, INGREDIENTS)
-
-
-def _setSearch(viewer, text):
-    """
-    换搜索词：选中项清掉（格号是过滤后的序号）。边打边提交的文本框在输入结束时总会再发一次（哪怕字没变；点食谱格、
-    点按钮都会让它失去焦点）：同样的字不动选中项，不然刚点中的食谱马上被清掉。
-    """
-    if text == viewer.get("search"):
-        return
-    viewer["search"] = text
-    viewer["picked"] = -1

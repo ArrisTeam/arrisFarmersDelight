@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""厨锅的 dolorContainer 界面模型（Shared/Menus/CookingPot.py、PotFill.py）：用库的纯逻辑部分在内存里跑，不碰引擎。
+"""厨锅的 dolorContainer 界面模型（Shared/Menus/CookingPot.py、PotRecipes.py、PotFill.py）：用库的纯逻辑部分在内存里跑，不碰引擎。
 
-两端各建一份界面模型；格子类型、两种界面档的 Shift 点击与双击收集、食谱格（算出的格子）、界面数据（详情的写法按注入的钟轮换）、
-动作（搜索、选食谱、添加食材）都照服务端的写法执行。
+两端各建一份界面模型；格子类型、两种界面档的 Shift 点击与双击收集、食谱格（算出的格子：客户端按这一端的搜索过滤，服务端给空）、
+选中的底格（按行号画）、点一格发的是行号、界面数据（详情的写法按注入的钟轮换）、动作（搜索、选食谱、添加食材）都照服务端的写法执行；
+两个客户端问到的显示名不一样时，各自搜到、点中的是同一道菜。
 """
 from __future__ import print_function
 
@@ -13,6 +14,9 @@ import time
 import fdtest
 
 Book = fdtest.load("Shared.Rules.CookingPotBook")
+Search = fdtest.load("Shared.Rules.PotSearch")
+Names = fdtest.load("Shared.Rules.ItemNames")
+PotRules = fdtest.load("Shared.Rules.CookingPot")
 PotMenu = fdtest.load("Shared.Menus.CookingPot")
 Recipes = fdtest.load("Shared.Data.CookingPotRecipes")
 Actions = fdtest.load("dolorContainer.Common.Actions")
@@ -141,10 +145,11 @@ def _refusal(menu, state, viewer):
 
 
 def _pick(menu, viewer, word, index):
-    """搜 word，再在过滤后的食谱格里点表里第 index 条。"""
+    """搜 word（这一端的食谱格里看得到表里第 index 条），再选中它：pick 的参数是行号。"""
     state = State(menu)
     assert _call(menu, state, viewer, "search", word) is True
-    assert _call(menu, state, viewer, "pick", Book.visibleRecipes(word).index(index)) is True
+    assert index in Search.rows(word), (word, index)
+    assert _call(menu, state, viewer, "pick", index) is True
 
 
 def _pickStew(menu, viewer):
@@ -169,10 +174,10 @@ def testBuildsOnBothSidesWithTheEightEngineSlots():
         assert not menu.clientState, "携带版的两页签没有了，客户端界面状态也就没有了"
 
 
-def testTheRecipeGridHoldsFarMoreThanTheTableAndEveryIndexItCanPick():
-    # 下游模组往食谱表里追加：食谱格不能悄悄只显示前几道（控件按行回收，格数多不费控件）
-    assert PotMenu.RECIPE_CAPACITY >= 512 and PotMenu.RECIPE_CAPACITY == PotMenu.MAX_PICK + 1
-    assert _menu().actions["pick"].fields[0].high == PotMenu.MAX_PICK
+def testTheRecipeGridHoldsFarMoreThanTheTableAndPickTakesARow():
+    # 下游模组往食谱表里追加：食谱格不能悄悄只显示前几道（控件按行回收，格数多不费控件）；pick 的参数是表里的行号（行只打墓碑不删）
+    assert PotMenu.RECIPE_CAPACITY >= 512
+    assert _menu().actions["pick"].fields[0].high == PotMenu.MAX_ROW >= PotMenu.RECIPE_CAPACITY
 
 
 def testOutputTakesNothingAndOtherSlotsTakeAnything():
@@ -406,22 +411,23 @@ def _grid(menu, viewer):
     return count, [ws.get((RECIPES, index)) for index in range(count + 1)]
 
 
-def testTheRecipeGridListsEveryResultInTableOrder():
-    for side in (Libs.SERVER, Libs.CLIENT):
-        menu = _menu(side)
-        count, cells = _grid(menu, _viewer(menu))
-        table = Recipes.CookingPotRecipeList
-        assert count == len(table)
-        assert [(cell["newItemName"], cell["newAuxValue"], cell["count"]) for cell in cells[:count]] == \
-            [(recipe["CookResult"][0], recipe["CookResult"][1], 1) for recipe in table]
-        assert cells[count] is None, "显示的格数之后是空的"
+def testTheRecipeGridListsEveryResultInTableOrderOnTheClientAndNothingOnTheServer():
+    menu = _menu(Libs.CLIENT)
+    count, cells = _grid(menu, _viewer(menu))
+    table = Recipes.CookingPotRecipeList
+    assert count == len(table)
+    assert [(cell["newItemName"], cell["newAuxValue"], cell["count"]) for cell in cells[:count]] == \
+        [(recipe["CookResult"][0], recipe["CookResult"][1], 1) for recipe in table]
+    assert cells[count] is None, "显示的格数之后是空的"
+    server = _menu()
+    assert _grid(server, _viewer(server)) == (0, [None]), "服务端不知道客户端过滤出了什么、也用不到：给空（客户端的格子客户端自己算）"
 
 
 def testTheRecipeGridFollowsTheSearchOfEachViewer():
-    menu = _menu()
+    menu = _menu(Libs.CLIENT)
     viewer = _viewer(menu)
     viewer["search"] = "蘑菇"
-    shown = Book.visibleRecipes("蘑菇")
+    shown = Search.rows("蘑菇")
     count, cells = _grid(menu, viewer)
     assert count == len(shown) and 0 < count < len(Recipes.CookingPotRecipeList)
     assert [cell["newItemName"] for cell in cells[:count]] == \
@@ -431,16 +437,30 @@ def testTheRecipeGridFollowsTheSearchOfEachViewer():
     assert _grid(menu, viewer) == (0, [None])
 
 
-def testTheRecipeGridIsAChoiceThatMarksThePickedCell():
-    menu = _menu()
+def _looks(menu, viewer, count):
+    slot = menu.structure.get(RECIPES).slot
+    ws = Rules.Workspace(State(menu, viewer=viewer), RULES)
+    return [slot.decorate(ws, (RECIPES, index), ws.get((RECIPES, index))).cell for index in range(count)]
+
+
+def testTheRecipeGridIsAChoiceThatMarksTheCellOfThePickedRow():
+    menu = _menu(Libs.CLIENT)
     slot = menu.structure.get(RECIPES).slot
     assert isinstance(slot, StdSlots.Choice) and (slot.select, slot.selected) == ("pick", "picked")
     assert slot.cells == PotMenu.RECIPE_CELLS == ("textures/ui/recipe_book_item_bg", "textures/ui/recipe_book_touch_cell_selected")
+    off, on = slot.cells
     viewer = _viewer(menu)
     viewer["picked"] = 2
-    ws = Rules.Workspace(State(menu, viewer=viewer), RULES)
-    looks = [slot.decorate(ws, (RECIPES, index), ws.get((RECIPES, index))).cell for index in range(4)]
-    assert looks == [slot.cells[0], slot.cells[0], slot.cells[1], slot.cells[0]], "选中的那格一直是选中的底格"
+    assert _looks(menu, viewer, 4) == [off, off, on, off], "没搜：第 2 格就是第 2 行，选中的那格一直是选中的底格"
+    viewer["search"] = u"测试"                      # 夹具三道：测试蘑菇煲（第 0 行）、测试卷、测试混合
+    shown = Search.rows(u"测试")
+    assert [Recipes.CookingPotRecipeList[row] for row in shown] == [STEW, WRAP, MIX]
+    viewer["picked"] = shown[2]
+    assert _looks(menu, viewer, 3) == [off, off, on], "picked 记的是行号：亮的是这一行在本端过滤结果里的那一格"
+    viewer["picked"] = 2
+    assert _looks(menu, viewer, 3) == [off, off, off], "选中的那一行被过滤掉了：哪格都不亮"
+    viewer["picked"] = -1
+    assert on not in _looks(menu, viewer, 3)
 
 
 class _Press(object):
@@ -448,11 +468,21 @@ class _Press(object):
         self.ref, self.position, self.data = ref, position, {}
 
 
-class _Gestures(object):
-    """客户端手势识别的最小替身：食谱格的手势用到的那几样（拖过 5 个单位算拖动，真的按屏幕像素算滚动的距离）。"""
+class _Workspace(object):
+    def __init__(self, viewer):
+        self.viewer = viewer
 
-    def __init__(self, menu):
+
+class _Gestures(object):
+    """客户端手势识别的最小替身：食谱格的手势用到的那几样（拖过 5 个单位算拖动，真的按屏幕像素算滚动的距离）；
+    viewer 是这一端显示的查看者状态（workspace().viewer）。"""
+
+    def __init__(self, menu, viewer=None):
         self.structure, self.calls, self.sounds, self.held, self.lastActionRef = menu.structure, [], [], None, None
+        self.viewer = viewer if viewer is not None else {}
+
+    def workspace(self):
+        return _Workspace(self.viewer)
 
     def forgetDoubleClick(self):
         pass
@@ -496,54 +526,114 @@ def testTouchPicksARecipeOnlyWhenTheFingerLiftsWithoutDragging():
         assert g.calls == [], (pointer, release)
 
 
+def testAPickSendsTheRowOfTheCellInThisSidesFilteredList():
+    """点一格发的是这一格在本端过滤结果里是表里的哪一行（不是格号）：服务端不过滤，只认行号。没有东西的格子什么都不发。"""
+    menu = _menu(Libs.CLIENT)
+    tap = menu.structure.get(RECIPES).slot.interaction
+    g = _Gestures(menu, {"search": u"测试"})            # 测试蘑菇煲、测试卷、测试混合
+    tap.press(g, (RECIPES, 1), Rules.PRIMARY, 0.0, (0, 0))
+    assert g.calls == [("pick", [Recipes.CookingPotRecipeList.index(WRAP)])], g.calls
+    g.calls = []
+    tap.touchPress(g, (RECIPES, 2), 0.0, (10, 10))
+    tap.holdRelease(g, g.held, (RECIPES, 2), 0.2)
+    assert g.calls == [("pick", [Recipes.CookingPotRecipeList.index(MIX)])], "触屏抬起也一样"
+    g.calls, g.sounds = [], []
+    tap.press(g, (RECIPES, 3), Rules.PRIMARY, 0.0, (0, 0))
+    assert g.calls == [] and g.sounds == [], "过滤结果只有三道：第 3 格没有东西，什么都不发"
+
+
 # ---------------------------------------------------------------- 动作
 
-def testSearchResetsTheSelectionAndTheClientPredictsIt():
+def testSearchKeepsTheSelectionAndTheClientPredictsIt():
+    """选中的是配方本身（行号）：换搜索词不清它（被过滤掉的那道只是没有格子亮），详情和"添加食材"不会因为打字消失。"""
     menu = _menu()
     viewer = _viewer(menu)
     state = State(menu)
     viewer.update(picked=3)
     assert _call(menu, state, viewer, "search", "汤") is True
-    assert (viewer["picked"], viewer["search"]) == (-1, "汤")
+    assert (viewer["picked"], viewer["search"]) == (3, "汤")
+    assert _call(menu, state, viewer, "search", "汤") is True and viewer["picked"] == 3, "输入结束时同样的字再发一次：照旧"
     predicted = _viewer(_menu(Libs.CLIENT))
     predicted.update(picked=3)
     menu.actions["search"].predict(menu, View(predicted), "汤")
-    assert (predicted["picked"], predicted["search"]) == (-1, "汤"), "字一变客户端的食谱格当场跟着变"
+    assert (predicted["picked"], predicted["search"]) == (3, "汤"), "字一变客户端的食谱格当场跟着变，选中不动"
 
 
-def testSearchWithTheSameTextKeepsTheSelection():
-    # 边打边提交的文本框在输入结束时总会再发一次（字没变也发；点食谱格或按钮时它失去焦点）：不能把刚选中的食谱清掉
+def testTheServerNeverFiltersByTheSearch():
+    """服务端只记着搜索词（客户端的预测靠它：应答会盖掉预测），不按它判断任何事：选中、详情、添加食材只看行号。"""
     menu = _menu()
     viewer = _viewer(menu)
     state = State(menu)
-    assert _call(menu, state, viewer, "search", "蘑菇") is True
-    assert _call(menu, state, viewer, "pick", 0) is True
-    assert _call(menu, state, viewer, "search", "蘑菇") is True   # 同样的字：什么都不动
-    assert viewer["picked"] == 0 and viewer["search"] == "蘑菇"
-    menu.actions["search"].predict(menu, View(viewer), "蘑菇")
-    assert viewer["picked"] == 0, "预测也一样"
-    assert _call(menu, state, viewer, "search", "蘑") is True   # 字变了才清掉选中
-    assert viewer["picked"] == -1
+    assert _call(menu, state, viewer, "search", u"绝对没有这道菜") is True
+    assert _call(menu, state, viewer, "pick", 0) is True and _details(menu, viewer)["bookResult"] == Book.resultOf(STEW)
+    state.put((HOTBAR, 0), _item("minecraft:red_mushroom", 2))
+    assert _call(menu, state, viewer, "addFood") is True and state.get(("ingredients", 1))["newItemName"] == "minecraft:red_mushroom"
 
 
-def testPickChecksTheIndexAgainstTheFilteredListAndRemembersWhen():
+def testPickTakesALiveRowAndRemembersWhen():
     clock = Clock(7.5)
     PotMenu.setClock(clock)
+    table = Recipes.CookingPotRecipeList
+    dead = {"Recipe": [[("test:dead", 0)]], "CookResult": ("test:dead", 0), "PushItem": [], "text": "x", "Disabled": True}
     try:
         menu = _menu()
         viewer = _viewer(menu)
         state = State(menu)
         assert _call(menu, state, viewer, "pick", 0) is True and (viewer["picked"], viewer["pickedAt"]) == (0, 7.5)
         clock.now = 9.0
-        assert _call(menu, state, viewer, "pick", len(Recipes.CookingPotRecipeList)) == "no_recipe"
+        assert _call(menu, state, viewer, "pick", len(table)) == "no_recipe"
         assert (viewer["picked"], viewer["pickedAt"]) == (0, 7.5), "被拒时不改"
-        _call(menu, state, viewer, "search", "绝对没有这道菜")
-        assert _call(menu, state, viewer, "pick", 0) == "no_recipe"
+        table.append(dead)
+        PotRules.rebuildIndex()
+        assert _call(menu, state, viewer, "pick", len(table) - 1) == "no_recipe", "删掉了（墓碑）：行还在，选不了"
+        assert _call(menu, state, viewer, "pick", table.index(MIX)) is True and viewer["picked"] == table.index(MIX)
     finally:
         PotMenu.setClock()
+        if dead in table:
+            table.remove(dead)
+            PotRules.rebuildIndex()
     predicted = _viewer(_menu(Libs.CLIENT))
     menu.actions["pick"].predict(menu, View(predicted), 4)
     assert predicted["picked"] == 4, "点食谱格当场显示成选中（以服务端为准）"
+
+
+def testTwoClientsWithDifferentNamesPickTheSameDish():
+    """主会话定的 A2：联机时两端问到的显示名可以不一样（语言不同）。两个客户端各按自己的语言搜、点中的格子不一样，发的是同一个行号，
+    服务端照这一行给详情。夹具菜没写 text，只能按显示名（或物品 ID）搜到。"""
+    table = Recipes.CookingPotRecipeList
+    tofu = {"Recipe": [[("test:bean", 0)]], "CookResult": ("test:tofu", 0), "PushItem": [], "text": "test:tofu"}
+    table.append(tofu)
+    PotRules.rebuildIndex()
+    row = table.index(tofu)
+    sent = []
+    try:
+        for names, word in (({("test:tofu", 0): "Tofu", ("test:bean", 0): "Soybean"}, u"soybean"),
+                            ({("test:tofu", 0): u"豆腐", ("test:bean", 0): u"黄豆"}, u"豆腐")):
+            Names.setPort(None)
+            Names.forget()
+            Names.setPort(lambda name, aux, names=names: names.get((name, aux)))
+            Search.forget()
+            client = _menu(Libs.CLIENT)
+            tap = client.structure.get(RECIPES).slot.interaction
+            g = _Gestures(client, {"search": word})
+            cell = Search.rows(word).index(row)
+            tap.press(g, (RECIPES, cell), Rules.PRIMARY, 0.0, (0, 0))
+            sent.append(g.calls[0])
+    finally:
+        table.remove(tofu)
+        PotRules.rebuildIndex()
+        Names.setPort(None)
+        Names.forget()
+        Search.forget()
+    assert sent == [("pick", [row]), ("pick", [row])], sent
+    table.append(tofu)
+    try:
+        server = _menu()
+        viewer = _viewer(server)
+        assert _call(server, State(server), viewer, "pick", row) is True
+        assert _details(server, viewer)["bookResult"]["newItemName"] == "test:tofu"
+    finally:
+        table.remove(tofu)
 
 
 def testAddFoodTakesTheFirstVariantWhenThePotIsEmpty():
@@ -710,21 +800,24 @@ def testRecipesWithTheWrongShapeAreIgnored():
     count = len(table)
     table.extend(broken)
     try:
-        shown = Book.visibleRecipes("")
+        shown = Search.rows("")
         assert shown == list(range(count))   # 形状不对的一条都不列
-        assert Book.visibleRecipes("没有") == [] and Book.recipeAt(count) is None
+        assert Search.rows("没有") == [] and Book.recipeAt(count) is None
         assert "test:broken" not in Book.ingredientNames() and 7 not in Book.vesselNames()
-        menu = _menu()
+        menu = _menu(Libs.CLIENT)
         assert _grid(menu, _viewer(menu))[0] == count, "食谱格也只列形状对的"
+        server = _menu()
+        assert _call(server, State(server), _viewer(server), "pick", count) == "no_recipe", "形状不对的行选不了"
     finally:
         del table[count:]
 
 
 def testActionsOnlyTakeValuesFromTheirSchema():
-    # 客户端只能发：搜索词（文字，限长）、食谱格的格号（整数范围）；添加食材不带任何参数（选了哪个只认服务端会话里记的）
+    # 客户端只能发：搜索词（文字，限长 32：带前缀的词放得下）、配方的行号（整数范围）；添加食材不带任何参数（选了哪个只认服务端会话里记的）
     menu = _menu()
     assert menu.actions["addFood"].fields == ()
     assert len(menu.actions["pick"].fields) == 1 and len(menu.actions["search"].fields) == 1
+    assert menu.actions["search"].fields[0].limit == Search.SEARCH_LIMIT == 32
     assert menu.actions["addFood"].predict is None, "添加食材等服务端的应答"
 
 

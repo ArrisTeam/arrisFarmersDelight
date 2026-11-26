@@ -65,10 +65,35 @@ def _entries(resource, baseDir):
     return sorted(set(path for path in listed if isinstance(path, _TEXT)))
 
 
+_MOST_ENTRIES = 4096   # files() 往下列子目录时最多看这么多条（引擎给的路径绕回来也不会转圈）
+
+
+def _below(resource, entry):
+    """往下列一层：条目是文件时引擎可能抛异常、给空的，都当它没有下一层（不打日志）。"""
+    try:
+        return [path for path in (resource.list_server_directory(entry) or ()) if isinstance(path, _TEXT)]
+    except Exception:  # noqa: BLE001 - 条目是个文件：没有下一层
+        return []
+
+
 def _listed(resource, baseDir):
-    """baseDir 下的 .json 路径，去重、排好序；列不出来是 None。"""
+    """baseDir 下（连子目录）的 .json 路径，去重、排好序；列不出来是 None。不是 .json 的条目再列一次，列得出东西就接着往下：成就系统
+    （arrisAdvancements 的 AdvancementServer._collectJsonPaths）记着 list_server_directory 不递归、专用服务器上只给一层；农夫乐事 2026-11-26
+    只在开发版游戏里量到过它递归，打包后、专用服务器上没量过。引擎本来就递归时结果不变（重复的去掉）。listing() 照旧只列一层。"""
     entries = _entries(resource, baseDir)
-    return None if entries is None else [path for path in entries if path.endswith(SUFFIX)]
+    if entries is None:
+        return None
+    found, seen, pending = set(), set(), list(entries)
+    while pending and len(seen) < _MOST_ENTRIES:
+        entry = pending.pop(0)
+        if entry in seen:
+            continue
+        seen.add(entry)
+        if entry.endswith(SUFFIX):
+            found.add(entry)
+        else:
+            pending.extend(_below(resource, entry))
+    return sorted(found)
 
 
 def listing(baseDir):

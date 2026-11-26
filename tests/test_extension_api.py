@@ -146,6 +146,23 @@ def testOnlyTheTwoSidesHaveAFacade():
                 raise AssertionError("%r 不是一端" % (bad,))
 
 
+def testThePackageOffersCreatesFallbackWithoutImportingTheFacade():
+    """主会话定的 A1-P7：包级的兜底入口，写法和机械动力一样（ImportModule("...Api.ExtensionApi").getExtensionApi(side)），拿到的和
+    Facade.getExtensionApi 的是同一个对象；包的 __init__ 顶层什么都不导入（别的模组导入本包里的 Events 拿常量时 Python 先执行它，不能顺带拉起门面）。"""
+    package = fdtest.load("Api.ExtensionApi")
+    for side in ("server", "client"):
+        assert package.getExtensionApi(side) is Facade.getExtensionApi(side), side
+    for bad in ("both", None):
+        try:
+            package.getExtensionApi(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("%r 不是一端" % (bad,))
+    tree = _tree("Api", "ExtensionApi", "__init__.py")
+    assert not [node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))], "顶层不导入：门面到调用时才导入"
+
+
 def testTheHostVersionIsTheVersionOfBothManifests():
     assert isinstance(Version.HOST_VERSION, tuple) and len(Version.HOST_VERSION) == 3
     assert all(type(part) is int and part >= 0 for part in Version.HOST_VERSION), Version.HOST_VERSION

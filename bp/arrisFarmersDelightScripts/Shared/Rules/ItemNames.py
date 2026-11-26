@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """ItemNames - 物品的显示名：界面用到时问引擎（两端各装一个口），要到了记住（双端，纯规则）
 
-经典厨锅界面里没写 text 的配方（JE 的配方 JSON 本来就没有 text）标题显示成品的显示名（CookingPotBook.titleOf）。只管显示：
-搜索框按两端同步过来的 text 比（CookingPotBook.matchesSearch）——显示名是各端自己问引擎的，联机时两端可能不一样（语言不同、
-专用服务器只给语言键），按它过滤，服务端认的格号和客户端看到的会对不上。
+经典厨锅界面里没写 text 的配方（JE 的配方 JSON 本来就没有 text）标题显示成品的显示名（CookingPotBook.titleOf）；搜索框在看界面的
+那一端按成品、食材的显示名比（PotSearch）。显示名是各端自己问引擎的，联机时两端可能不一样（语言不同、专用服务器只给语言键）：
+所以选中的是配方在表里的行号，服务端不按显示名判断任何事（Shared/Menus/CookingPot 的 pick）。
 引擎的 GetItemBasicInfo(名, aux)["itemName"] 进了世界之后两端都给显示名（utf-8 字节串，aux 也认）；物品没有语言条目时给的是键本身
 （item.xxx.name），物品不存在时整个返回 None；在 ready 广播那一刻服务端对自定义物品给的也是键（2026-11-26 实机）。
 所以不在登记时写进表里，界面用到时才问：
@@ -14,6 +14,7 @@
   要到的名字两端共用（同一个进程、同一种语言）。没装口（离线、沙箱）时什么都要不到。
 - nameOf(物品名, aux)：要到了的（是文字、不空、不是没翻出来的语言键）记住并返回；哪个口都要不到返回 None、不记，隔 RETRY_EVERY 次
   再问（世界还没进完时会要不到；物品真没有名字时也别每次都去问：选中那道菜的标题界面每次刷新都要）。
+- version()：名字的版本：装 / 卸口、新问到一个名字、forget() 时加一。按名字记着东西的（经典厨锅界面的搜索结果，PotSearch）拿它判断要不要重算。
 - forget()：测试用。
 """
 try:
@@ -24,9 +25,18 @@ except NameError:
 _KEY_HEADS = ("item.", "tile.")
 _KEY_TAIL = ".name"
 RETRY_EVERY = 16     # 要不到的名字，再问引擎之前先跳过这么多次（界面每次刷新都要标题）
-_state = {"ports": []}
+_state = {"ports": [], "version": 0}
 _names = {}          # (物品名, aux) -> 显示名（引擎给的原样：py2 是 utf-8 字节串）
 _skips = {}          # (物品名, aux) -> 再问之前还要跳过几次
+
+
+def _changed():
+    _state["version"] += 1
+
+
+def version():
+    """名字的版本：装 / 卸口、新问到一个名字、forget() 时加一（答案可能变了）；照旧要不到、读记着的都不变。"""
+    return _state["version"]
 
 
 def setPort(port):
@@ -35,12 +45,19 @@ def setPort(port):
         del _state["ports"][:]
     elif port not in _state["ports"]:
         _state["ports"].append(port)
+    _changed()
 
 
 def removePort(port):
     """卸下一个口（没装着的不管）。"""
     if port in _state["ports"]:
         _state["ports"].remove(port)
+        _changed()
+
+
+def ports():
+    """装着的口（拷贝，按装的先后）：游戏内自检看每个口在这个线程里各答什么。"""
+    return list(_state["ports"])
 
 
 def isLangKey(text):
@@ -76,6 +93,7 @@ def nameOf(name, aux=0):
         if answer is not None:
             _skips.pop(key, None)
             _names[key] = answer
+            _changed()
             return answer
     _skips[key] = RETRY_EVERY
     return None
@@ -85,3 +103,4 @@ def forget():
     """测试用：忘掉记着的名字和要不到的记录。"""
     _names.clear()
     _skips.clear()
+    _changed()

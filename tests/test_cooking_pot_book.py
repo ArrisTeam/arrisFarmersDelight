@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""厨锅经典界面的食谱规则（Shared/Rules/CookingPotBook.py）：搜索与食谱格、详情格与写法轮换、补食材的计划与试写法的先后。纯数据，不碰库。"""
+"""厨锅经典界面的食谱规则（Shared/Rules/CookingPotBook.py）：哪些行列出来、按行号取配方、详情格与写法轮换、补食材的计划与试写法的先后。
+纯数据，不碰库。搜索在 tests/test_pot_search.py（Shared/Rules/PotSearch.py）。"""
 from __future__ import print_function
 
 import io
@@ -50,42 +51,17 @@ def testEveryVariantFitsInTheIngredientSlots():
             assert 0 < len(variant) <= Book.INPUT_SLOTS, recipe["text"]
 
 
-def testEmptySearchShowsEveryRecipeInTableOrder():
-    assert Book.visibleRecipes("") == list(range(len(Recipes.CookingPotRecipeList)))
-    assert Book.visibleRecipes(None) == Book.visibleRecipes("")
-
-
-def testSearchMatchesTheRecipeNameAndKeepsTableOrder():
-    word = Recipes.CookingPotRecipeList[0]["text"][:3]   # 第一条食谱名的头一个字（utf-8 字节串 / 文字都一样）
-    found = Book.visibleRecipes(word)
-    assert found and found[0] == 0
-    assert found == sorted(found)
-    for index in found:
-        assert word in Recipes.CookingPotRecipeList[index]["text"]
-    assert Book.visibleRecipes("绝对没有这道菜") == []
-
-
-def testSearchToleratesUnicodeRecipeNamesFromDownstreamMods():
-    # 下游模组追加的食谱名可能是 unicode（py2 下与 utf-8 字节串的搜索词混着比较不能抛异常）；py3 里两者都是 str
-    recipe = {"Recipe": [[("test:a", 0)]], "CookResult": ("test:b", 0), "PushItem": [], "text": u"测试菜"}
-    Recipes.CookingPotRecipeList.append(recipe)
+def testEveryBuiltInRowIsShownAndARowIsItsOwnIdentity():
+    table = Recipes.CookingPotRecipeList
+    assert all(Book.isShown(recipe) for recipe in table), "农夫乐事自带的每一行都列"
+    assert [Book.recipeAt(index) for index in range(len(table))] == list(table), "行号就是配方的身份：选中的就是这一行"
+    assert Book.recipeAt(len(table)) is None and Book.recipeAt(-1) is None
+    dead = {"Recipe": [[("test:a", 0)]], "CookResult": ("test:b", 0), "PushItem": [], "text": "x", "Disabled": True}
+    table.append(dead)
     try:
-        index = len(Recipes.CookingPotRecipeList) - 1
-        assert index in Book.visibleRecipes("测试")
-        assert index in Book.visibleRecipes(u"测试")
-        assert index not in Book.visibleRecipes("蘑菇")
+        assert Book.recipeAt(len(table) - 1) is None and not Book.isShown(dead), "删掉了（墓碑）：行还在，选不了"
     finally:
-        Recipes.CookingPotRecipeList.remove(recipe)
-
-
-def testPickedRecipeIndexesTheFilteredList():
-    shown = Book.visibleRecipes("煲")
-    assert len(shown) >= 2
-    assert Book.pickedRecipe("煲", 1) is Recipes.CookingPotRecipeList[shown[1]]
-    assert Book.pickedRecipe("煲", -1) is None
-    assert Book.pickedRecipe("煲", len(shown)) is None
-    assert Book.recipeAt(len(Recipes.CookingPotRecipeList)) is None
-    assert Book.recipeAt(-1) is None
+        table.remove(dead)
 
 
 def testVariantWrapsAround():
@@ -110,42 +86,6 @@ def testBookCells():
     bare = {"Recipe": [[("test:a", 0)]], "CookResult": ("test:b", 1), "PushItem": [], "text": "x"}
     assert sorted(Book.bookCells(bare, 0)) == [0]   # 没有容器的食谱，容器格空着
     assert Book.resultOf(bare)["newAuxValue"] == 1
-
-
-def testGridCellsAreTheResultsOfTheFilteredRecipesInOrder():
-    table = Recipes.CookingPotRecipeList
-    cells = Book.gridCells("")
-    assert sorted(cells) == list(range(len(table))) == list(range(Book.shownCount("")))
-    assert [cells[slot]["newItemName"] for slot in range(len(table))] == [recipe["CookResult"][0] for recipe in table]
-    assert all(cell["count"] == 1 for cell in cells.values())
-    shown = Book.visibleRecipes("煲")
-    found = Book.gridCells("煲")
-    assert sorted(found) == list(range(len(shown))) == list(range(Book.shownCount("煲")))
-    assert [found[slot]["newItemName"] for slot in range(len(shown))] == [table[index]["CookResult"][0] for index in shown]
-    assert Book.gridCells("绝对没有这道菜") == {} and Book.shownCount("绝对没有这道菜") == 0
-
-
-def testSearchResultsAreRememberedUntilTheTableChanges():
-    # 界面画食谱格时每一格都来要一遍：同一个搜索词给同一个字典；表变长了、配方索引重建了（联动接口改表、客户端并表）就重算
-    first = Book.gridCells("")
-    assert Book.gridCells("") is first and Book.gridCells(u"") is first
-    shown = Book.visibleRecipes("")
-    shown.append(-1)   # 给出去的下标表是一份拷贝：用的人改了它，记着的不跟着变
-    assert -1 not in Book.visibleRecipes("")
-    recipe = {"Recipe": [[("test:a", 0)]], "CookResult": ("test:grid", 0), "PushItem": [], "text": u"测试格"}
-    Recipes.CookingPotRecipeList.append(recipe)
-    try:
-        grown = Book.gridCells("")
-        assert grown is not first and grown[len(first)]["newItemName"] == "test:grid"
-        assert len(Book.visibleRecipes("测试格")) == 1
-        recipe["text"] = u"改过的名字"   # 就地改了一行（客户端并表、联动接口加写法都是就地改，之后都重建索引）：重建之后才认
-        assert len(Book.visibleRecipes("测试格")) == 1
-        PotRules.rebuildIndex()
-        assert Book.visibleRecipes("测试格") == [] and len(Book.visibleRecipes("改过")) == 1
-    finally:
-        Recipes.CookingPotRecipeList.remove(recipe)
-        PotRules.rebuildIndex()
-    assert Book.gridCells("") == first
 
 
 def testTheShownVariantTurnsOncePerPeriodStartingWithTheFirst():

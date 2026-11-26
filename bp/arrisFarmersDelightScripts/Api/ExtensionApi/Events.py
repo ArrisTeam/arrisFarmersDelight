@@ -46,6 +46,7 @@ SERVER_CAPABILITIES = frozenset([
     "recipe_client_sync",        # ext.recipes.syncToClients（进服之后改了配方：现在就发给在线的玩家）
     "recipe_change_events",      # ext.recipes.onRecipesChanged（syncToClients 之后、开服读完行为包 JSON 之后调）
     "cooking_match",             # ext.recipes.matchCooking（只读：这几件东西在厨锅里做成什么）
+    "recipe_lookup",             # ext.recipes.findRecipe（只读：这件东西在砧板 / 营火上按哪条配方做，同机械动力的 findRecipe）
     "knives",                    # ext.registerKnife
     "heat_sources",              # ext.registerHeatSource
     "stoves",                    # ext.registerStove（点着的炉灶方块）
@@ -55,5 +56,6 @@ SERVER_CAPABILITIES = frozenset([
 CLIENT_CAPABILITIES = frozenset([
     "recipe_queries",            # 客户端读的是表同步过来的那一份
     "cooking_match",
+    "recipe_lookup",
     "item_tags",
 ])
