@@ -3,6 +3,7 @@
   "identifier": "farmersdelight:heat_sources",
   "items": [
     "minecraft:magma",
+    "minecraft:cauldron",
     "arris:stove",
     "#farmersdelight:tray_heat_sources"
   ]

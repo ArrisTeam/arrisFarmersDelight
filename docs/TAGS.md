@@ -71,11 +71,17 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 方块有"点没点着"这类状态的要点着才算，和 JE 一样（JE 是"带 LIT 状态的看 LIT"）：状态里有名字是 `lit` 或以 `:lit` 结尾的状态，值为真；
 或者有 `extinguished` 状态，值为假。没有这类状态的方块在标签里就算热，比如火、熔岩、岩浆块、农夫乐事点着的炉灶（点着和熄着是两个方块名，登记的是点着的那个）。
 
-JE 的这个标签里还有熔岩炼药锅。基岩版没有这个方块（3.10 实机：`minecraft:lava_cauldron` 放出来的是盛水、0 级的 `minecraft:cauldron`），
-熔岩炼药锅是炼药锅盛着熔岩的状态（`cauldron_liquid` = `lava`），标签表达不了，所以这边的标签里没有它，农夫乐事按状态认：
-盛着熔岩的炼药锅上面的锅、煎锅会热，站在它旁边能手持煎锅，和 JE 一样。往这个标签里写 `minecraft:lava_cauldron` 不起作用。
+JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基岩版没有这个方块（3.10 实机：`minecraft:lava_cauldron` 放出来的是盛水、0 级的
+`minecraft:cauldron`），熔岩炼药锅是炼药锅盛着熔岩的状态（`cauldron_liquid` = `lava`）。所以这边的标签里写的是炼药锅 `minecraft:cauldron`，
+另带一条**状态条件**：`cauldron_liquid` 是 `lava`、`fill_level` 至少是 1。盛着熔岩的炼药锅上面的锅、煎锅会热，站在它旁边能手持煎锅，
+空的、盛水的、盛粉雪的炼药锅都不热，和 JE 一样。别的模组按这个标签认热源时，炼药锅也要看这两个状态。
+往这个标签里写 `minecraft:lava_cauldron` 不起作用：世界里没有叫这个名字的方块（方块标签的成员名引擎不校验，3.10 实机；会不会往日志里记一条没量过）。
 
-手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）。
+状态条件（农夫乐事的表 `Shared/Data/Cooking.HeatSourceStateDict`）：一个方块的几条条件都满足才算热，每条写一个值（相等）、一组值（是其中之一）
+或 `{"min": n}` / `{"max": n}`（数值范围）。写了条件的方块处处按条件判：放在上面的锅、煎锅，手持煎锅身边，都判；方块在这个标签里、
+在 `CanProvideHeatBlockList` 里也一样；状态读不到、没有这个状态都算不满足。
+
+手持煎锅"身边有没有热源"只看方块，不看点没点着（和 JE 一样）；写了状态条件的照样按条件判。
 `linkage.md` 里往 `CanProvideHeatBlockList` 追加名字的办法照旧有效。
 
 ### 能煎烤什么
@@ -91,14 +97,14 @@ JE 的这个标签里还有熔岩炼药锅。基岩版没有这个方块（3.10 
 
 JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字；JE 用 `#` 引的标签这边也登记的
 照写 `#`（`farmersdelight:heat_sources` 引 `#farmersdelight:tray_heat_sources`；方块标签里的 `#` 引擎也展开，3.10 实机：反查 `heat_sources`
-是炉灶、营火、灵魂营火、火、灵魂火、熔岩、流动的熔岩、岩浆块 8 个，营火按方块问同时带 `heat_sources` 和 `tray_heat_sources`），引的是这边没有的（`#minecraft:campfires`、`#farmersdelight:cabinets/wooden`……）展开写成员；只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
+是炉灶、营火、灵魂营火、火、灵魂火、熔岩、流动的熔岩、岩浆块 8 个——这是加炼药锅之前量的，加了以后没反查过——营火按方块问同时带 `heat_sources` 和 `tray_heat_sources`），引的是这边没有的（`#minecraft:campfires`、`#farmersdelight:cabinets/wooden`……）展开写成员；只写农夫乐事自己的和原版的东西，JE 里别的模组的可选成员不写（`heat_conductors` 里机械动力的溜槽由机械动力自己登记）。
 
 方块标签有七个。农夫乐事读它们的地方都是"原来的名单 ∪ 标签"：名单原样留着，不在名单里、带了标签的方块也算。
 热源的名单 `CanProvideHeatBlockList` 在 `linkage.md` 的接口里，另外六张不在，别的模组要加进来就用标签。
 
 | 标签 | 方块在这个标签里时 | 农夫乐事登记的 |
 | --- | --- | --- |
-| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着，见上一节） | 岩浆块、炉灶、熔岩、营火、火（JE 还有熔岩炼药锅：基岩版是炼药锅的状态，按状态认） |
+| `farmersdelight:heat_sources` | 放在它上面的厨锅、煎锅会热（有点燃状态的要点着；写了状态条件的按条件，见上一节） | 岩浆块、炼药锅（盛着熔岩时：JE 的熔岩炼药锅）、炉灶、熔岩、营火、火 |
 | `farmersdelight:heat_conductors` | 厨锅、煎锅下面是它时，再看它下面一格是不是热源 | 漏斗 |
 | `farmersdelight:tray_heat_sources` | 放在它上面的厨锅、煎锅画托盘 | 熔岩、营火、火 |
 | `farmersdelight:compost_activators` | 有机肥周围 3×3×3 里每有一个，有机肥变成沃土就快一点 | 蘑菇、灰化土、菌丝、有机肥、沃土、沃土耕地、蘑菇菌落 |
@@ -186,7 +192,7 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 | `farmersdelight:mushroom_colonies` | 物品 | 蘑菇菌落 | `farmersdelight:mushroom_colonies` | `farmersdelight:mushroom_colonies` | `arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | — |
 | `farmersdelight:cabinets` | 物品 | 橱柜 | `farmersdelight:cabinets` | `farmersdelight:cabinets` | `arris:oak_cabinet`、`arris:spruce_cabinet`、`arris:birch_cabinet`、`arris:jungle_cabinet`、`arris:acacia_cabinet`、`arris:dark_oak_cabinet`、`arris:mangrove_cabinet`、`arris:cherry_cabinet`、`arris:bamboo_cabinet`、`arris:crimson_cabinet`、`arris:warped_cabinet` | — |
 | `farmersdelight:serving_containers` | 物品 | 盛饭菜的容器（碗、玻璃瓶、桶） | `farmersdelight:serving_containers` | `farmersdelight:serving_containers` | `minecraft:bowl`、`minecraft:glass_bottle`、`minecraft:bucket` | — |
-| `farmersdelight:heat_sources` | 方块 | 热源：给上面的锅 / 煎锅加热（有点燃状态的要点着） | `farmersdelight:heat_sources` | `farmersdelight:heat_sources` | `minecraft:magma`、`arris:stove`、`#farmersdelight:tray_heat_sources` | 热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看） |
+| `farmersdelight:heat_sources` | 方块 | 热源：给上面的锅 / 煎锅加热（有点燃状态的要点着；炼药锅要盛着熔岩） | `farmersdelight:heat_sources` | `farmersdelight:heat_sources` | `minecraft:magma`、`minecraft:cauldron`、`arris:stove`、`#farmersdelight:tray_heat_sources` | 热源（Shared/Rules/HeatSources；锅底下的有点燃状态要点着，手持煎锅身边的不看；写了状态条件的——炼药锅——处处按条件判，Shared/Data/Cooking.HeatSourceStateDict） |
 | `farmersdelight:heat_conductors` | 方块 | 把热传给上面一格的方块 | `farmersdelight:heat_conductors` | `farmersdelight:heat_conductors` | `minecraft:hopper` | 锅 / 煎锅下面是它时看再下面一格（HeatSources.conducts） |
 | `farmersdelight:tray_heat_sources` | 方块 | 锅 / 煎锅放在上面要画托盘的方块 | `farmersdelight:tray_heat_sources` | `farmersdelight:tray_heat_sources` | `minecraft:lava`、`minecraft:flowing_lava`、`minecraft:campfire`、`minecraft:soul_campfire`、`minecraft:fire`、`minecraft:soul_fire` | 锅 / 煎锅画不画托盘（Server/Helpers/Heat.RefreshHeat） |
 | `farmersdelight:compost_activators` | 方块 | 有机肥周围的催化剂 | `farmersdelight:compost_activators` | `farmersdelight:compost_activators` | `minecraft:brown_mushroom`、`minecraft:red_mushroom`、`minecraft:podzol`、`minecraft:mycelium`、`arris:organic_compost_stage0`、`arris:organic_compost_stage1`、`arris:organic_compost_stage2`、`arris:organic_compost_stage3`、`arris:rich_soil`、`arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist`、`arris:brown_mushroom_colony`、`arris:red_mushroom_colony` | 有机肥堆沤的概率（Server/OrganicCompost） |
@@ -211,6 +217,8 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 - 营火配方的返回值只在 3.10 上量过（2026-11-26，两端一样）：`GetRecipesByInput(名字, "campfire", aux, 1)` 返回一个列表，每条是
   `{"input": 原料名, "output": 产物名}`，比如生牛肉 → `[{'input': 'minecraft:beef', 'output': 'minecraft:cooked_beef'}]`。
   农夫乐事照这个读，也认别的写法（`result`、带 aux 的名字、字典），留着给别的版本；认不出来的就当没有这条配方。
-- 方块的状态只有服务端读得到：客户端判断热源时不看点没点着。
+- 方块的状态只有服务端读得到：客户端判断热源时不看点没点着；写了状态条件的方块（炼药锅）客户端只读得到方块附加值（aux），
+  按服务端照条件算好、随表同步发来的 aux 判，还没发到时当不热。服务端熔岩炼药锅 6 级读到的 aux 是 14（3.10 实机）；客户端读到的炼药锅 aux
+  和服务端是不是同一个值、`GetBlockStatesFromAuxValue` 对没有方块的 aux 给什么，都还没在游戏里量过。
 - 原版方块要先登记右键事件，拿刀右键时才切得到。农夫乐事只登记了蛋糕和插蜡烛的蛋糕，所以 `farmersdelight:drops_cake_slice`
   里再加原版方块不起作用；别的模组的自定义方块不用登记。

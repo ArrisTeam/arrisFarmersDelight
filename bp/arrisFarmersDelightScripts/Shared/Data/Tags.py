@@ -102,8 +102,9 @@ SERVING_CONTAINERS = "farmersdelight:serving_containers"
 # 农夫乐事自己的方块标签，名字照 JE 的 farmersdelight:<路径>。读的地方是"名单 ∪ 标签"：原来的名单原样留着，不在名单里的再看标签；
 # 这里的成员就是那张名单（测试核对两边一样，名单改了这里跟上、再跑 tools/gen_tags.py）
 # 热源照 JE 只有一个标签：在里面就算热，方块有"点没点着"这类状态（lit、*:lit、extinguished）的要点着（JE 的 HeatableBlockEntity：带 LIT 的看 LIT；
-# 规则在 Shared/Rules/HeatSources）。农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个
-HEAT_SOURCES = "farmersdelight:heat_sources"               # 给上面的锅 / 煎锅加热：Cooking.CanProvideHeatBlockList
+# 规则在 Shared/Rules/HeatSources）；写了状态条件的方块（Cooking.HeatSourceStateDict：炼药锅要盛着熔岩）只按条件判。
+# 农夫乐事点着和熄着的炉灶是两个方块名，登记的是点着的那个
+HEAT_SOURCES = "farmersdelight:heat_sources"               # 给上面的锅 / 煎锅加热：Cooking.CanProvideHeatBlockList + HeatSourceStateDict 里的方块
 HEAT_CONDUCTORS = "farmersdelight:heat_conductors"         # 把热传给上面一格（锅下面是它时看再下面一格）：Cooking.HeatConductorList
 TRAY_HEAT_SOURCES = "farmersdelight:tray_heat_sources"     # 锅 / 煎锅放在上面要画托盘：Server/Helpers/Heat.ShelfBlockSet
 COMPOST_ACTIVATORS = "farmersdelight:compost_activators"   # 有机肥堆沤的催化剂：Farming.COMPOST_ACTIVATORS
@@ -211,8 +212,9 @@ ITEM_TAG_FILES = {
 
 # 方块标签 → netease_tags 文件里写的成员
 BLOCK_TAG_FILES = {
-    # JE：岩浆块、熔岩炼药锅（基岩版是炼药锅的 cauldron_liquid 状态，没有这个方块名：Server/Helpers/Heat 另认）、炉灶、#tray_heat_sources
-    HEAT_SOURCES: ("minecraft:magma", "arris:stove", "#" + TRAY_HEAT_SOURCES),
+    # JE：岩浆块、熔岩炼药锅、炉灶、#tray_heat_sources。基岩版没有熔岩炼药锅这个方块名，它是炼药锅盛着熔岩的状态（cauldron_liquid = lava）：
+    # 这里写炼药锅，盛不盛熔岩按状态条件判（Cooking.HeatSourceStateDict；空的、盛水的炼药锅不热）
+    HEAT_SOURCES: ("minecraft:magma", "minecraft:cauldron", "arris:stove", "#" + TRAY_HEAT_SOURCES),
     HEAT_CONDUCTORS: ("minecraft:hopper",),               # JE 还有可选的 create:chute：别的模组的名字不写，机械动力那边登记
     # JE：熔岩、#minecraft:campfires、#minecraft:fire（基岩版熔岩是两个方块名）
     TRAY_HEAT_SOURCES: ("minecraft:lava", "minecraft:flowing_lava", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:fire",

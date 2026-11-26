@@ -10,7 +10,8 @@
      # 只引本包登记的同类标签；文件展开后就是静态表（Tags.ITEM_TAGS / BLOCK_TAGS），JE 的标签文件用 # 引了这边也有的标签的地方，这边也用 #
   2. 成员只有 arris: 和 minecraft: 的：arris: 的在本包的物品 / 方块定义里；minecraft: 的在本机最新游戏的原版创造目录（物品）/ blocks.json（方块）里
      （本机没装游戏时这一项跳过）
-  3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时）；热源标签就是现在的热源方块表；
+  3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时；JE 的熔岩炼药锅对到炼药锅 + 状态条件）；
+     热源标签就是现在的热源方块表加上写了状态条件的方块；
      一个 JE 物品标签名只对应一个标签（JE 配方的标签名 → 这里的名字，做别名表时不能有歧义）；准备好的探针在表里；没有成员的名字不生成文件
 """
 from __future__ import print_function
@@ -300,9 +301,10 @@ def _serverHeat():
     return fdtest.load("Server.Helpers.Heat")
 
 
-# 农夫乐事自己的方块标签（farmersdelight:）读的地方是"名单 ∪ 标签"：标签的成员就是那张名单（离线时和原来一样）
+# 农夫乐事自己的方块标签（farmersdelight:）读的地方是"名单 ∪ 标签"：标签的成员就是那张名单（离线时和原来一样）；
+# 热源另有写了状态条件的方块（Cooking.HeatSourceStateDict：炼药锅），它们也在标签里，不在旧契约那张"无条件"的名单里
 LISTED = {
-    Tags.HEAT_SOURCES: lambda: Cooking.CanProvideHeatBlockList,
+    Tags.HEAT_SOURCES: lambda: list(Cooking.CanProvideHeatBlockList) + list(Cooking.HeatSourceStateDict),
     Tags.HEAT_CONDUCTORS: lambda: Cooking.HeatConductorList,
     Tags.TRAY_HEAT_SOURCES: lambda: _serverHeat().ShelfBlockSet,
     Tags.COMPOST_ACTIVATORS: lambda: fdtest.load("Shared.Data.Farming").COMPOST_ACTIVATORS,
@@ -311,20 +313,27 @@ LISTED = {
     Tags.DROPS_CAKE_SLICE: lambda: fdtest.load("Shared.Data.Slicing").CANDLE_CAKES,
 }
 
-# JE 有、这边不写进标签的成员：熔岩炼药锅。3.10 实机里没有 minecraft:lava_cauldron 这个方块（SetBlockNew("minecraft:lava_cauldron") 返回 True，
-# 放出来的却是盛水、0 级的 minecraft:cauldron）；基岩版里它是炼药锅的状态 cauldron_liquid = lava（SetBlockStates 成熔岩、6 级之后 aux 14），
-# 方块标签表达不了，按状态认：状态条件表 Shared/Data/Cooking.HeatSourceStateDict 的一条，规则 Shared/Rules/HeatSources.heats
-BY_STATE = {Tags.HEAT_SOURCES: ("minecraft:lava_cauldron",)}
+# JE 标签里的方块、基岩版是"另一个方块 + 状态条件"的：熔岩炼药锅。3.10 实机里没有 minecraft:lava_cauldron 这个方块（SetBlockNew("minecraft:lava_cauldron")
+# 返回 True，放出来的却是盛水、0 级的 minecraft:cauldron）；基岩版里它是炼药锅的状态 cauldron_liquid = lava（SetBlockStates 成熔岩、6 级之后 aux 14）。
+# 所以 JE 的 minecraft:lava_cauldron 对到这边标签里的 minecraft:cauldron（JE_BLOCKS），盛不盛熔岩看状态条件表 Shared/Data/Cooking.HeatSourceStateDict
+# （规则 Shared/Rules/HeatSources.heats）：{JE 的名字: (这边的方块, 状态条件)}
+BY_STATE = {"minecraft:lava_cauldron": ("minecraft:cauldron", {"cauldron_liquid": "lava", "fill_level": {"min": 1}})}
+JE_BLOCKS.update((jeName, (name,)) for jeName, (name, _conditions) in BY_STATE.items())
 
 
 def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
-    """farmersdelight: 的方块标签：成员就是读的地方原来的那张名单；JE 标签文件里的成员（展开 #、换成基岩版的名字）都在里面，
-    别的模组的可选成员（create:chute）不写。名单改了：这里跟上，再跑 py -3 tools/gen_tags.py。"""
+    """farmersdelight: 的方块标签：成员就是读的地方原来的那张名单（热源再加上写了状态条件的方块）；JE 标签文件里的成员（展开 #、换成基岩版的名字，
+    熔岩炼药锅换成炼药锅 + 状态条件）都在里面，别的模组的可选成员（create:chute）不写。名单改了：这里跟上，再跑 py -3 tools/gen_tags.py。"""
     own = sorted(tag for tag in Tags.BLOCK_TAGS if tag.startswith("farmersdelight:"))
     assert own == sorted(LISTED), "每个 farmersdelight: 方块标签都对着一张名单"
     for tag in own:
         assert sorted(Tags.BLOCK_TAGS[tag]) == sorted(LISTED[tag]()), "%s 和它的名单不一样" % tag
         assert Tags.JE_NAMES[tag] == (tag,), "照 JE 的名字"
+    heats = fdtest.load("Shared.Rules.HeatSources").heats
+    for jeName, (name, conditions) in BY_STATE.items():
+        assert name in Tags.BLOCK_TAGS[Tags.HEAT_SOURCES] and Cooking.HeatSourceStateDict[name] == conditions, (jeName, name)
+    assert heats("minecraft:cauldron", lambda: {"cauldron_liquid": "lava", "fill_level": 6}) is True, "熔岩炼药锅按状态认"
+    assert heats("minecraft:cauldron", lambda: {"cauldron_liquid": "water", "fill_level": 6}) is False, "标签里有炼药锅，盛水的照样不热"
     if not os.path.isdir(JE_DATA):
         print("跳过：没有 JE 源码（.refs/FarmersDelight）")
         return
@@ -332,12 +341,11 @@ def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
     for tag in own:
         expanded = _jeTag(tag, "blocks", optional=optional)
         assert expanded is not None, tag
-        missing = sorted(set(expanded) - set(Tags.BLOCK_TAGS[tag]) - set(BY_STATE.get(tag, ())))
+        missing = sorted(set(expanded) - set(Tags.BLOCK_TAGS[tag]))
         assert not missing, "%s：JE 有、这边没有 %s" % (tag, missing)
-        assert set(BY_STATE.get(tag, ())) <= set(expanded), "%s：按状态认的成员 JE 的标签里得真有" % tag
     assert optional == ["create:chute"], optional
-    heats = fdtest.load("Shared.Rules.HeatSources").heats
-    assert heats("minecraft:cauldron", lambda: {"cauldron_liquid": "lava", "fill_level": 6}) is True, "熔岩炼药锅按状态认"
+    written = _json(os.path.join(JE_DATA, "farmersdelight", "tags", "blocks", "heat_sources.json"))["values"]
+    assert set(BY_STATE) <= set(written), "按状态认的成员 JE 的标签里得真有"
 
 
 CATEGORIES = ("meals", "snacks", "sweets", "drinks", "feasts", "pies", "wild_crops", "mushroom_colonies", "cabinets", "serving_containers")
@@ -361,12 +369,13 @@ def testFarmersDelightsCategoryItemTagsAreJavasFiles():
 
 
 def testTheHeatTagIsTodaysHeatSources():
-    """热源标签照 JE 只有一个（farmersdelight:heat_sources）= 现在的热源方块表（CanProvideHeatBlockList 导入时的样子）；营火点没点着看状态
-    （HeatSources 的规则），不再单列一个标签。"""
+    """热源标签照 JE 只有一个（farmersdelight:heat_sources）= 现在的热源方块表（CanProvideHeatBlockList 导入时的样子）加上写了状态条件的方块
+    （HeatSourceStateDict：炼药锅）；营火点没点着、炼药锅盛没盛熔岩看状态（HeatSources 的规则），不再单列一个标签。"""
     members = Tags.BLOCK_TAGS[Tags.HEAT_SOURCES]
-    assert sorted(members) == sorted(Cooking.CanProvideHeatBlockList)
-    assert {"minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma"} <= set(members)
+    assert sorted(members) == sorted(list(Cooking.CanProvideHeatBlockList) + list(Cooking.HeatSourceStateDict))
+    assert {"minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma", "minecraft:cauldron"} <= set(members)
     assert "arris:stove_extinguish" not in members, "熄着的炉灶不发热"
+    assert "minecraft:cauldron" not in Cooking.CanProvideHeatBlockList, "炼药锅只在盛着熔岩时热：不进旧契约那张不看状态的名单"
 
 
 def testTheBriefsMembers():
