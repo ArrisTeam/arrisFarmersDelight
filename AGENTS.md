@@ -69,7 +69,7 @@
 - 事件取消的字段不一样：`ServerBlockUseEvent` 用 `cancel`，`ServerItemUseOnEvent` 用 `ret`。点一下会同时来 ItemUseOn 和 BlockUse，按住右键每刻都来：交互的处理函数都过 `Helpers.Player.SetPlayerUsedCD`（0.2 秒），先处理的占住。
 - 物品在数据表里是 `(物品名, aux)`，运行时的物品字典用 `newItemName` / `newAuxValue` / `count`。创造模式别自己扣数量，用 `SetNotCreateItem`；给物品用 `GiveOrDropItem`（背包满了不丢东西）。
 - **单机时两端共用一份 `Shared` 模块**，而有些引擎接口跨线程调会静默返回 `None`：装在 `Shared` 里的引擎"口"要按端各存一个、挨个问、第一个不是 `None` 的算数，缓存只记真问到的答案。实机核对时先在客户端线程问、再在服务端线程问。
-- **取别的模组的模块一律经 `Compat/OtherMods.find`**（取门面时才导入它自己模块的那种调用经 `OtherMods.call`）：对方的模块在、它自己导入时出错，引擎的 `ImportModule` 不给 `None`，而是把异常原样抛给调用的人，不接住就带倒农夫乐事的入口模块（详见 `docs/ARCHITECTURE.md`「引擎坑」）。
+- **取别的模组的模块一律经 `Compat/OtherMods.find`**（取门面时才导入它自己模块的那种调用经 `OtherMods.call`）：对方的模块在、它自己导入时出错，引擎的 `ImportModule` 不给 `None`，而是把异常原样抛给调用的人，不接住就带倒农夫乐事的入口模块；对方装着但没有这个模块也是抛异常（`ImportError: No module named …`），`find` 安静地当没装（详见 `docs/ARCHITECTURE.md`「引擎坑」）。
 - 显示名在登记的时候问不到（自定义物品那时还只有语言键），显示的时候再问。联机时两端问到的名字可能不一样：凡是"客户端选了哪一个"都按身份（行号、ID）传，不按过滤后的序号。
 - **不整文件覆盖原版实体**：给原版动物加喂食 / 驯服物品走 `Server/AnimalFood.py`（读生效的实体定义，`AddActorComponent` 动态加组件，和别的模组的改动合并）。
 - 有序合成配方的容器写在 `result` 数组里；无序配方的由 `Server/CraftReturns.py` 补还，一次合成最多还一次、认不出配方就不还——动这条线先想清楚会不会刷物品。

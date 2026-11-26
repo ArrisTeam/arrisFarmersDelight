@@ -6,7 +6,8 @@ remove_crafting_recipes 开着）。书在客户端，不知道服务端拦了�
 这里用同一个条件——这一端 board 那一步登上了（ctx.done，BoardView.register 没说不）、remove_crafting_recipes 开着——给它客户端的登记口
 （clientApi.ImportModule(HOOKS)：addHidden，接口说明在前置包的 Vanilla/Client/TableBookHooks.py）登上"砧板菜不进书"。判法和否决同一套
 （Shared/Rules/DishStation：书里按成品 + 配方每格能放的料对得上砧板的某条配方，isDishRecipe；拦配方不拦成品，同一成品的别的配方照列）。
-前置包没有这个登记口（太旧、没装内容包，或者它导入出错——经 Compat/OtherMods 打一次日志）：skipped，和服务端 table 一步接口不在时一样；
+前置包没有这个登记口（旧版本，比如还没有 Vanilla/ 的：引擎抛 ImportError: No module named …，经 Compat/OtherMods 安静地当没有），
+或者它导入出错（经 Compat/OtherMods 打一次日志）：skipped，和服务端 table 一步接口不在时一样；
 登记口在、条件不满足：什么都不登（书照旧全列），记 ok。拒绝时给玩家看的话（带本包语言文件的键）在服务端那条否决里，前置包的客户端自己按玩家的语言查。
 """
 from . import SettingsClientLink, Steps
@@ -20,7 +21,7 @@ API_VERSION = 1                     # addHidden 从它的第 1 版起就有
 
 
 def hooks():
-    """前置包配方书的客户端登记口；没有（前置包太旧、没装内容包）、它导入出错或接口版本不够是 None。"""
+    """前置包配方书的客户端登记口；前置包里没有它（旧版本：引擎抛 ImportError，OtherMods 不出声）、它导入出错（OtherMods 打一次日志）或接口版本不够是 None。"""
     found = OtherMods.find(clientApi.ImportModule, HOOKS)
     return found if found is not None and getattr(found, "API_VERSION", 0) >= API_VERSION else None
 

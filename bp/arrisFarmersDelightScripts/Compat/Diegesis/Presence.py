@@ -28,7 +28,7 @@ class _Side(object):
     def __init__(self, side, steps, find, load):
         self.side = side
         self.steps = steps              # 这一端的步骤表
-        self.find = find                # find(模块路径) -> 模块，没有是 None：引擎的 ImportModule
+        self.find = find                # find(模块路径) -> 模块：引擎的 ImportModule（前置包没装是 None；会抛异常，所以经 OtherMods.find 调）
         self.load = load                # load(模块路径) -> 模块，导不到抛异常：QuModLibs 的 ImportModule，步骤用它导入本包自己的模块
         self.settled = False            # 判定过了（联动 / 太旧 / 没装）：之后的机会不再看
         self.apiVersion = None

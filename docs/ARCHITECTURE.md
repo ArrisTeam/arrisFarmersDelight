@@ -355,7 +355,8 @@ def OnServerSkilletBlockUse(args):
   一个进程又只联动它自己跑的那一端（单机两端同进程，两端都联动），所以任何一端联动了就是联动了；`whenDecided(side, callback)` 判定好了才调、已经判定了马上调、之后模式又变了带着新模式再调一次；
   `decide(side, 模式)` 只有 `Presence` 调。判定之前一律当没联动。
 - **判定**（`Compat/Diegesis/Presence.py`，两端共用、不碰引擎）：入口 `ServerBoot` / `ClientBoot` 在 `modMain.py` 里登记，导入时 `Presence.attach(side, 步骤表, listen=, find=, load=)`，
-  引擎的 `Listen`、找前置包接口用的 `ImportModule`（没有是 `None`）和步骤导入本包自己的模块用的 QuModLibs `ImportModule` 由入口交进去。
+  引擎的 `Listen`、找前置包接口用的 `ImportModule`（前置包没装是 `None`；`Presence` 经 `Compat/OtherMods.find` 调它，见「引擎坑」里 `ImportModule` 那一条）
+  和步骤导入本包自己的模块用的 QuModLibs `ImportModule` 由入口交进去。
   - 接口在、`API_VERSION` 不低于 `Presence.REQUIRED_API_VERSION`（3；前置包没有发过更低的版本，原来按站点分的 1 / 2 / 3 三个门槛并成这一个）：**先把模式拨到 `linked`，再跑步骤表**——
     站点自己的 `register` 问 `HandsOnOptions`，没联动时它说 HoD 不在（站点开关是假），不先拨的话每个站点都登记成"关了"；
   - 接口在、版本比它低：`outdated`，一步不跑；
@@ -635,18 +636,20 @@ JE 里原料自带"合成剩余物"（`Item.getCraftingRemainingItem`）：奶�
 （`DishStation.isDishCraft`）。切片拼回整个派（一种原料）、原版自己的南瓜派配方、创造模式从物品栏拿东西（合成格对不上）都不拦。
 
 前置包的原版工作台站点（它的内容包 `Vanilla/`：桌上摆料、脚本合成）不发引擎的合成事件，上面两条（补还剩余物、拦砧板菜）挂不上去，所以登到它的接口上
-（`Compat/Diegesis/TableHooksLink.py`，`serverApi.ImportModule("arrisDiegesisScripts.Vanilla.Server.TableHooks")`，接口说明在前置包的那个模块里，`API_VERSION` 1）：
+（`Compat/Diegesis/TableHooksLink.py`，经 `Compat/OtherMods.find` 取 `serverApi.ImportModule("arrisDiegesisScripts.Vanilla.Server.TableHooks")`，接口说明在前置包的那个模块里，`API_VERSION` 1）：
 - `table` 步骤（`TableServerLink`）登 `addRemainder(returns)`：成品对上 `Shared/Data/CraftReturns.py` 的无序配方就按 `Crafting.entryFor / returnsOf` 每份每格还一件、放回原格
   （前置包那边放不回进背包、再掉脚下），下游包在 `Food.shapedRecipeContainerDict` 登记的成品每份还一个（进背包）。
 - `board` 步骤在登 `DishCrafts` 的同一个条件下（砧板站点登上了、`remove_crafting_recipes` 开着）登 `addVeto(dishVeto)`：九格是砧板菜的某条配方就拒，
   给玩家看的话是 `Tips.DISH_ON_BOARD`（语言键 + 中文，前置包的客户端按玩家的语言查本包语言文件里的键；`rp/texts` 的中、英两份都有这个键）。
 - 那张工作台的配方书在客户端，不知道服务端拦了什么（前置包第 6 轮实机：砧板菜照样列出来，点了做才被拒）：客户端的 `table` 步骤（`TableClientLink`）
   用同一个条件——这一端 `board` 那一步登上了（步骤执行器的 `ctx.done`）、`remove_crafting_recipes` 开着——给它客户端的登记口
-  （`clientApi.ImportModule("arrisDiegesisScripts.Vanilla.Client.TableBookHooks")`，`API_VERSION` 1）登 `addHidden(hidden)`：书给每条配方的成品 + 每格能放的几种，
+  （经 `OtherMods.find` 取 `clientApi.ImportModule("arrisDiegesisScripts.Vanilla.Client.TableBookHooks")`，`API_VERSION` 1）登 `addHidden(hidden)`：书给每条配方的成品 + 每格能放的几种，
   `DishStation.isDishRecipe` 判是不是砧板菜的某条配方（料一件对一格、只看名字，和 `isDishCraft` 同一张表；拦配方不拦成品，切片拼回整个派照列）。
-- 接口不在（前置包太旧、没装它的内容包）或版本不够：都不登，那一端的 `table` 记成 `skipped`；接口在、条件不满足：什么都不登，记 `ok`。
+- 登记口取不到或版本不够：都不登，那一端的 `table` 记成 `skipped`；接口在、条件不满足：什么都不登，记 `ok`。取不到有两种：前置包旧得还没有这个模块
+  （还没有 `Vanilla/` 的版本：引擎抛 `ImportError: No module named Vanilla.Server.TableHooks`；有 `Vanilla/`、没有这个模块是 `No module named TableHooks`；客户端一样），
+  经 `OtherMods` 安静地当没有，这是正常配置；这个模块自己导入出错，`OtherMods` 打一次日志（见「引擎坑」里 `ImportModule` 那一条）。
   九格是前置包给的配方朝向的物品字典或 `None`，这两条规则只看有哪些原料。
-  测试：`tests/test_table_hooks_link.py`、`tests/test_table_client_link.py`（规则）、`tests/test_presence_boots.py`（哪一步登什么）。
+  测试：`tests/test_table_hooks_link.py`、`tests/test_table_client_link.py`（规则）、`tests/test_presence_boots.py`（哪一步登什么）、`tests/test_other_mods_links.py`（登记口取不到的几种）。
 
 实机核对过的引擎事实（3.10，`Server/Debug/McdkCraftTest.py`）：
 - `CraftItemOutputChangeServerEvent` 一次合成请求只发一次，这时 `GetPlayerUIItem` 读到的还是合成前的格子；下一刻每格已经扣掉。
@@ -1220,14 +1223,28 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
   `tests/test_player_text_colons.py` 守着两条：没有全角冒号（上面这些加物品 / 方块的 JSON 都查）；英文冒号后面是空格、换行或句末（语言文件、`Tips`、`PotItem`、`statusText`、成就文字、指南书查；
   物品 / 方块的 JSON 不查，悬停说明里有 `05:00` 这样的时间）。第二条先去掉 `§x` 颜色码，只放过三种写法里面的冒号：物品 / 方块 / 标签的 ID（`arris:x`，命名空间在测试里写死几个）、网址、时间；
   要加例外就往测试里的 `SHAPES` 加一种写法，不要整类放过。已经拆下来、带着旧写法悬停文字（`装有3份：`）的厨锅物品：悬停文字是拆锅时写在物品上的，没有代码按这段文字认东西（锅里的菜靠 `extraId` 认），旧物品保持旧写法，再放下、拆一次才换成新的。
-- 引擎的 `ImportModule`（`serverApi` / `clientApi` 各一个）：模块不存在时返回 `None`（官方文档只写了这一条）；**模块在、它自己导入时出错，不返回 `None`，而是把那个异常原样抛给调用的人**
-  （3.10 实机，2026-11-26 另一个会话量到：森罗物语的一个接口模块导入时 `ImportError`，一路抛进了前置包内容包的服务端入口模块，那个入口没导入成、端点全没了）。
-  所以本包取别的模组的模块一律经 `Compat/OtherMods.find(引擎的 ImportModule, 路径)`：接住异常，打一行日志（哪个模块）连同调用栈，返回 `None`，调用的地方照它原来"没装"的那条路走；
+- 引擎的 `ImportModule`（`serverApi` / `clientApi` 各一个，里面调 `importlib.import_module`）取一个模块有三种结果（3.10.0.467018 单机实机，2026-11-26，
+  服务端、客户端线程各量一遍，结果一样；官方文档"不存在返回 `None`"只对第一种成立）。
+  第一种，路径的第一段不是已加载的脚本根（那个模组没装、名字写错；连标准库的 `json.nothing` 也是）：返回 `None`，不抛。
+  第二种，**脚本根在、下面没有这个模块或子包：抛 `ImportError`，不给 `None`**。文字是 `No module named <缺的那一截>`：缺最后一段就是那一段
+  （取 `arrisJeiScripts.api.nothing` → `No module named nothing`），缺中间的包是从它起的整截（取 `arrisDiegesisScripts.NoSuchPkg.Thing` → `No module named NoSuchPkg.Thing`）。
+  对方装着、但版本旧、没有这个模块，就是这一种。
+  第三种，**模块在、它自己导入时出错：把那个异常原样抛给调用的人**，类型和文字都不变（量过四种：`from x import` 一个不存在的名字 → `ImportError: cannot import name …`、
+  模块里 `import` 一个不存在的模块 → `ImportError: No module named …`、顶层 `raise ValueError`、语法错 → `SyntaxError: invalid syntax (包.模块, line 6)`，都是 `Exception` 的子类）。
+  另一个会话先撞上的：森罗物语的一个接口模块导入时 `ImportError`，一路抛进了前置包内容包的服务端入口模块，那个入口没导入成、端点全没了。
+  模块里 `import` 一个不存在的模块，文字和第二种是同一种，区别只在缺的那个名字是不是所取路径的结尾。
+  同一个坏模块再取，它的模块体从头再跑一遍、再抛同样的异常（连取三次跑三遍）：失败的模块不留在 `sys.modules`，它出错之前导入成的别的模块留着、不重跑。
+  不会给导了一半的模块：只在第一次导入时出错的模块，第二次取到的是完整的。联机、专用服务器、打包发布以后的加载器没量过。
+  所以本包取别的模组的模块一律经 `Compat/OtherMods.find(引擎的 ImportModule, 路径)`，调用的地方都照它原来"没装"的那条路走：第一种原样给 `None`；
+  第二种（`OtherMods.isMissing`：`ImportError`、只有一个参数、文字正好是 `No module named T`、所取路径以 `.T` 结尾）也安静地返回 `None`——不打日志、不记进 `failures()`，
+  那是正常的配置，不是出错（比如新的农夫乐事配还没有 `Vanilla/` 的旧前置包：原版工作台的两个登记口取不到）；别的异常（第三种，包括文字是 `No module named X`、
+  `X` 却不是所取路径结尾的）接住，打一行日志（哪个模块）连同调用栈，返回 `None`。
   同一个名字只打一次日志（JEI 每类配方各取一次、四个站点各取一次声明模块），之后照样再取（它可能只是那一次没导入成，不记成永远没装）。取门面时才导入自己模块的那种调用
-  （机械动力的 `getExtensionApi` 到这时才 `from ._facade import`）经 `OtherMods.call`，一样处理。用到的地方：前置包的接口（`Presence`）、声明模块（`Compat/Diegesis/SchemaKit`，
+  （机械动力的 `getExtensionApi` 到这时才 `from ._facade import`）经 `OtherMods.call`：没有所取的路径，抛什么都照第三种。用到的地方：前置包的接口（`Presence`）、声明模块（`Compat/Diegesis/SchemaKit`，
   四个站点的 `View.register`：拿不到就不登记、这一步 skipped）、原版工作台的两个登记口（`TableHooksLink` / `TableClientLink`）、机械动力的 RecipeApi（`CreateRecipes`）和门面
-  （`PotatoCannonAmmo`，两端的入口导入时就取）、成就系统的接口（`AdvBoot`，导入时就可能晚接）、arrisJei（`Compat/Jei/Registry`）；游戏里看哪些没取到：`OtherMods.failures()`。
-  `Server/`、`Client/` 不导入 `Compat`，那两层现在只有游戏内自检（`Debug/`）取别的模组的模块。测试 `tests/test_other_mods*.py`（四种回答：抛 `ImportError`、抛别的异常、`None`、正常的模块）。
+  （`PotatoCannonAmmo`，两端的入口导入时就取）、成就系统的接口（`AdvBoot`，导入时就可能晚接）、arrisJei（`Compat/Jei/Registry`）；游戏里看哪些出过错：`OtherMods.failures()`。
+  `Server/`、`Client/` 不导入 `Compat`，那两层现在只有游戏内自检（`Debug/`）取别的模组的模块。测试 `tests/test_other_mods*.py`（五种回答：抛 `ImportError`、抛别的异常、`None`、
+  对方装着却没有这个模块、正常的模块）。
   QuModLibs 的加载器（`QuModLibs/Systems/Loader/Server.py` / `Client.py` 的 `regSystemInit`，照代码读的）按 `modMain.py` 登记的顺序导入入口模块，每个单独 `try`：一个入口导入失败只记一条
   "系统文件错误"，不连累排在后面的入口；但它自己只做了一半——出错之前挂上的监听、登记的东西留着，之后的没做，这个入口也不会再导一次。
 
@@ -1297,7 +1314,7 @@ FD_GAME_DIR=<不存在的目录>         照 CI 的样子跑：当本机没装�
   `test_presence_steps.py`（步骤执行器：出错 / 跳过 / 条件；两张表每个目标都存在）、`test_presence_boots.py`（真的入口和步骤模块，站点的 `register` 换成记账的：一个站点一步、连带的东西、关了的站点两端一致）、
   `test_presence_standalone.py`（没装 / 太旧时 `sys.modules` 里没有站点模块、没有它们的监听和端点；装了才有）、`test_presence_notice.py`（前置包太旧的提醒：三次、隔 8 秒、`str`）、
   `test_handson_options_gate.py`（没联动时每个取值函数说 HoD 不在、厨锅 / 煎锅 / 炉灶走农夫乐事原样、不写"做过几份"）。要站点和 HoD 配置照常生效的假引擎小工具（`optkit`、`potfake`、`panclient`、`boardclient`）开头 `linkkit.link()`。
-- 取别的模组的模块（`Compat/OtherMods`，见「引擎坑」）：`otherkit.py`（假的 `ImportModule`、四种回答、截住打印数日志和调用栈）；`test_other_mods.py`（`find` / `call` 本身、`Presence`）、
+- 取别的模组的模块（`Compat/OtherMods`，见「引擎坑」）：`otherkit.py`（假的 `ImportModule`、五种回答、截住打印数日志和调用栈）；`test_other_mods.py`（`find` / `isMissing` / `call` 本身、`Presence`）、
   `test_other_mods_entries.py`（成就系统、土豆加农炮的两个入口重新导入，机械动力的配方和 JEI 的事件）、`test_other_mods_links.py`（原版工作台的两个登记口，用 `linkkit`）、
   `test_other_mods_views.py`（四个站点取前置包的声明模块，用 `bootkit`，要前置包）。
 - 煎锅 / 炉灶上东西朝上那面的熟色：`test_frying_tint.py`（`FryingTint`：表里真的颜色、肉和鱼、没有颜色不染、叠层的 (q, a) 叠回 c）、
