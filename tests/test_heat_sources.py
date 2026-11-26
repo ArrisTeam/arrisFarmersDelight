@@ -60,29 +60,35 @@ def testWhatOnlyLooksLikeASourceDoesNotHeat():
 
 
 def testALavaCauldronIsACauldronHoldingLavaNotABlockOfItsOwn():
-    """没有 minecraft:lava_cauldron 这个方块：读的是 cauldron 的状态，所以光看名字（下游追加的热源名单那样）认不出它。"""
+    """没有 minecraft:lava_cauldron 这个方块：读的是 cauldron 的状态（状态条件表里的一条），所以光看名字（下游追加的热源名单那样）认不出它。"""
     _fresh()
     _put(BELOW, LAVA_CAULDRON)
     assert "minecraft:cauldron" not in Cooking.CanProvideHeatBlockList and "minecraft:lava_cauldron" not in Cooking.CanProvideHeatBlockList
+    assert Cooking.HeatSourceStateDict["minecraft:cauldron"] == {"cauldron_liquid": "lava", "fill_level": {"min": 1}}
     assert Heat.IsHeatSource(BELOW, 0) is True
     world.setBlock(BELOW[0], BELOW[1], BELOW[2], "minecraft:cauldron", states={"cauldron_liquid": "lava", "fill_level": 6})
     assert Heat.IsHeatSource(BELOW, 0, "minecraft:cauldron") is True, "给了方块名也要再读状态"
     world.setBlock(BELOW[0], BELOW[1], BELOW[2], "minecraft:cauldron", states=None)
-    assert Heat.IsHeatSource(BELOW, 0) is False, "读不到状态：不热"
+    assert Heat.IsHeatSource(BELOW, 0) is False and Heat.IsNearHeat(BELOW, 0) is False, "读不到状态：不热"
 
 
-def testTheServerReadsTheCauldronsStatesAndTheClientItsAuxAndBothAgree():
-    """服务端读状态（HeatSources.holdsLava，锅下面和手持煎锅都用），客户端读不到状态、按 aux 认（holdsLavaAux，手持煎锅那一下吃不吃）：
-    aux = fill_level（低 3 位）+ 8 × cauldron_liquid（水 0、熔岩 1）；3.10 实机熔岩、6 级是 14。两边对同一个炼药锅的回答要一样。"""
+def testTheServerReadsTheCauldronsStatesAndTheClientItsAuxAndAllAgree():
+    """一条规则（HeatSources）三个入口：服务端锅下面（IsHeatSource，看点燃状态）、手持煎锅身边（IsNearHeat，不看点燃状态）都读状态、按条件判；
+    客户端读不到状态，按 aux 查 HeatSourceAuxDict（heatsByAux，手持煎锅那一下吃不吃）：aux = fill_level（低 3 位）+ 8 × cauldron_liquid
+    （水 0、熔岩 1）；3.10 实机熔岩、6 级是 14。三处对同一个炼药锅的回答要一样，盛水的哪里都不算。"""
     cases = [({"cauldron_liquid": "lava", "fill_level": 6}, 14, True), ({"cauldron_liquid": "lava", "fill_level": 1}, 9, True),
              ({"cauldron_liquid": "lava", "fill_level": 0}, 8, False), ({"cauldron_liquid": "water", "fill_level": 6}, 6, False),
-             ({"cauldron_liquid": "water", "fill_level": 0}, 0, False)]
+             ({"cauldron_liquid": "water", "fill_level": 0}, 0, False), ({"cauldron_liquid": "powder_snow", "fill_level": 6}, 22, False)]
     for states, aux, hot in cases:
-        assert HeatSources.holdsLava(states) is hot and HeatSources.holdsLavaAux(aux) is hot, (states, aux)
+        for lit in (True, False):
+            assert HeatSources.heats("minecraft:cauldron", lambda: dict(states), lit) is hot, (states, lit)
+        assert HeatSources.heatsByAux("minecraft:cauldron", aux) is hot, aux
         _fresh()
         _put(BELOW, ("minecraft:cauldron", states))
-        assert Heat.HoldsLava(BELOW, 0) is hot and Heat.IsHeatSource(BELOW, 0) is hot, states
-    assert HeatSources.holdsLava(None) is False and HeatSources.holdsLavaAux(None) is False and HeatSources.holdsLavaAux(True) is False
+        assert Heat.IsHeatSource(BELOW, 0) is hot and Heat.IsNearHeat(BELOW, 0) is hot, states
+    for aux in (None, True, "14", 14.0, 15, -1):
+        assert HeatSources.heatsByAux("minecraft:cauldron", aux) is False, aux
+    assert HeatSources.heats("minecraft:cauldron", lambda: None) is False and HeatSources.heats(None, lambda: {}) is False
 
 
 def testAHopperPassesTheHeatOfTheBlockBelowItUp():

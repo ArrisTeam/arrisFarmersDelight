@@ -3,8 +3,8 @@
 
 JE SkilletItem.use / getUseDuration / onUseTick / releaseUsing / finishUsingItem：
 - 一只手煎锅、另一只手原料（JE 两只手都认；基岩版生肉放不进副手，常用的是煎锅放副手、原料拿主手，见 SkilletHandRules.skilletHand），
-  玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块：名单或热源标签，营火熄没熄不管，Shared/Rules/HeatSources.nearHeat；
-  JE 标签里的熔岩炼药锅在基岩版是盛着熔岩的炼药锅，读状态认，Helpers/Heat.HoldsLava；
+  玩家着火或脚下 3x3x3 里有热源才能开始（热源只看方块：名单或热源标签，营火熄没熄不管；写了状态条件的方块照条件判——
+  JE 标签里的熔岩炼药锅在基岩版是盛着熔岩的炼药锅；一格一格问 Helpers/Heat.IsNearHeat，规则在 Shared/Rules/HeatSources.heats；
   食物要有营火配方：CanCookedFoodDict，表里没有的问引擎的营火配方，Shared/Rules/Grilling）；
 - 煎一件的时间 = SkilletBlock.getSkilletCookingTime(营火配方 600 刻, 这把煎锅的火焰附加)：6 / 4 / 3 秒；
 - 另一只手没有能煎的食物：提示"用另一只手拿着原料！"；头泡在水里：提示"在水里可没法煎啊……"（潜行时不提示：潜行右键方块是放煎锅，
@@ -22,12 +22,12 @@ import random
 import time
 
 from .Helpers import Deeds
-from .Helpers.Engine import compFactory, levelId, Call, ItemPosType, GetBlockName, GetCarriedItem, ShowTip
+from .Helpers.Engine import compFactory, levelId, Call, ItemPosType, GetCarriedItem, ShowTip
 from .Helpers.Fx import ToAllPlayerPlaySound
-from .Helpers.Heat import HoldsLava
+from .Helpers.Heat import IsNearHeat
 from .Helpers.Player import GiveOrDropItem
 from ..Shared.Data import Tips
-from ..Shared.Rules import Grilling, HeatSources
+from ..Shared.Rules import Grilling
 from ..Shared.Rules import SkilletHandRules as Hand
 from ..Shared.Rules import SkilletRules as Rules
 
@@ -87,8 +87,7 @@ def _begin(playerId, now):
     dimensionId = compFactory.CreateDimension(playerId).GetEntityDimensionId()
     footPos = compFactory.CreatePos(playerId).GetFootPos()
     onFire = bool(compFactory.CreateAttr(playerId).IsEntityOnFire())
-    if not Rules.nearHeat(footPos, lambda pos: GetBlockName(pos, dimensionId), HeatSources.NEAR, onFire,
-                          lambda pos: HoldsLava(pos, dimensionId)):
+    if not Rules.nearHeat(footPos, lambda pos: IsNearHeat(pos, dimensionId), onFire):
         return
     result = Grilling.resultOf(food["newItemName"], food.get("newAuxValue") or 0) if food else None
     quiet = compFactory.CreatePlayer(playerId).isSneaking() is True

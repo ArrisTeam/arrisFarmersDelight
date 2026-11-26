@@ -44,35 +44,21 @@ def testHeatNeighbourhoodIsTheThreeByThreeByThreeAroundTheFeetBlock():
     assert (10, 65, -4) in Rules.heatNeighbourhood((10.5, 63.9995, -3.5))
 
 
-def testNearHeatLooksAtBlockNamesOnlyAndFireCounts():
-    heat = ["minecraft:campfire", "arris:stove"]
-    names = {(1, 64, 1): "arris:stove"}
-    near = lambda pos: names.get(pos, "minecraft:air")  # noqa: E731
-    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat) is True
-    assert Rules.nearHeat((1.5, 64.0, 3.5), near, heat) is False          # z 差 2 格
-    assert Rules.nearHeat((9.5, 64.0, 9.5), near, heat) is False
-    assert Rules.nearHeat((9.5, 64.0, 9.5), near, heat, onFire=True) is True
-    # 熄灭的营火名字不变：JE 只看标签，所以照样算（这里不读状态）
-    assert Rules.nearHeat((1.5, 64.0, 2.5), lambda pos: "minecraft:campfire", heat) is True
-
-
-def testNearHeatAsksWhetherACauldronHoldsLavaAndOnlyForCauldrons():
-    """JE 标签里的熔岩炼药锅在基岩版是炼药锅的状态：名字是 minecraft:cauldron 的那一格才去问 lavaAt（服务端读状态、客户端读 aux）。"""
-    heat = ["minecraft:campfire"]
-    names = {(1, 64, 1): "minecraft:cauldron", (0, 63, 1): "minecraft:stone"}
+def testNearHeatAsksTheCellsOfTheThreeByThreeByThreeAndFireCounts():
+    """每一格算不算热源由调用方说（两端各给各的 isHeat：服务端读状态、客户端读 aux，规则都是 Shared/Rules/HeatSources）。"""
+    hot = set([(1, 64, 1)])
     asked = []
 
-    def lavaAt(pos):
+    def isHeat(pos):
         asked.append(pos)
-        return lava[0]
+        return pos in hot
 
-    lava = [True]
-    near = lambda pos: names.get(pos, "minecraft:air")  # noqa: E731
-    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat, lavaAt=lavaAt) is True and asked == [(1, 64, 1)]
-    lava[0] = False
-    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat, lavaAt=lavaAt) is False, "盛水的、空的炼药锅不算"
-    assert Rules.nearHeat((1.5, 64.0, 2.5), near, heat) is False, "不给 lavaAt：只看名字，炼药锅认不出"
-    assert set(asked) == {(1, 64, 1)}, "别的方块不问"
+    assert Rules.nearHeat((1.5, 64.0, 2.5), isHeat) is True
+    del asked[:]
+    assert Rules.nearHeat((1.5, 64.0, 3.5), isHeat) is False and len(asked) == 27          # z 差 2 格：27 格都问过，都不是
+    assert Rules.nearHeat((9.5, 64.0, 9.5), isHeat) is False
+    del asked[:]
+    assert Rules.nearHeat((9.5, 64.0, 9.5), isHeat, onFire=True) is True and asked == [], "着火：不用看方块"
 
 
 def testAttackClockPicksStrongOrWeakByTheSkilletAttackDelay():

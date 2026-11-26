@@ -313,7 +313,7 @@ LISTED = {
 
 # JE 有、这边不写进标签的成员：熔岩炼药锅。3.10 实机里没有 minecraft:lava_cauldron 这个方块（SetBlockNew("minecraft:lava_cauldron") 返回 True，
 # 放出来的却是盛水、0 级的 minecraft:cauldron）；基岩版里它是炼药锅的状态 cauldron_liquid = lava（SetBlockStates 成熔岩、6 级之后 aux 14），
-# 方块标签表达不了，按状态认：锅 / 煎锅下面 Server/Helpers/Heat，手持煎锅 Server/SkilletHand、Client/Input（Shared/Rules/HeatSources.holdsLava）
+# 方块标签表达不了，按状态认：状态条件表 Shared/Data/Cooking.HeatSourceStateDict 的一条，规则 Shared/Rules/HeatSources.heats
 BY_STATE = {Tags.HEAT_SOURCES: ("minecraft:lava_cauldron",)}
 
 
@@ -336,7 +336,8 @@ def testFarmersDelightsOwnBlockTagsAreTheirListsAndCoverJava():
         assert not missing, "%s：JE 有、这边没有 %s" % (tag, missing)
         assert set(BY_STATE.get(tag, ())) <= set(expanded), "%s：按状态认的成员 JE 的标签里得真有" % tag
     assert optional == ["create:chute"], optional
-    assert fdtest.load("Shared.Rules.HeatSources").holdsLava({"cauldron_liquid": "lava", "fill_level": 6}) is True, "熔岩炼药锅按状态认"
+    heats = fdtest.load("Shared.Rules.HeatSources").heats
+    assert heats("minecraft:cauldron", lambda: {"cauldron_liquid": "lava", "fill_level": 6}) is True, "熔岩炼药锅按状态认"
 
 
 CATEGORIES = ("meals", "snacks", "sweets", "drinks", "feasts", "pies", "wild_crops", "mushroom_colonies", "cabinets", "serving_containers")

@@ -511,9 +511,10 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
   传热方块表 `HeatConductorList`（`Shared/Data/Cooking.py`，只有 `minecraft:hopper`）是新的，不在联动白名单里。
 - 熔岩炼药锅：引擎里没有 `lava_cauldron` 这个方块（2026-11-26 实机：`SetBlockNew("minecraft:lava_cauldron")` 返回 True，放出来的是盛水、0 级的
   `minecraft:cauldron`；`SetBlockStates({"cauldron_liquid": "lava", "fill_level": 6})` 之后 aux 14），熔岩炼药锅是炼药锅的状态，方块标签表达不了，
-  不能按名字进表，读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算；`Shared/Rules/HeatSources.holdsLava`，`Heat.HoldsLava`）。
-  手持煎锅照 JE 也认它（JE 的 `isPlayerNearHeatSource` 看的是同一个标签）：服务端 `SkilletHand` 读状态；客户端 `Input._nearHeat` 读不到方块状态
-  （`GetBlockStates` 只有服务端有），按 `GetBlock` 给的 aux 认（`HeatSources.holdsLavaAux`：aux = `fill_level` + 8 × `cauldron_liquid`，熔岩是 1），
+  不能按名字进表，读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算）——状态条件表 `Shared/Data/Cooking.HeatSourceStateDict`
+  的一条，"这一格算不算热源"都走 `Shared/Rules/HeatSources.heats`（条件怎么判在 `HeatStates`）。
+  手持煎锅照 JE 也认它（JE 的 `isPlayerNearHeatSource` 看的是同一个标签）：服务端 `SkilletHand` 一格一格问 `Heat.IsNearHeat`（读状态）；客户端 `Input._nearHeat` 读不到方块状态
+  （`GetBlockStates` 只有服务端有），按 `GetBlock` 给的 aux 查 `HeatSourceAuxDict`（`HeatSources.heatsByAux`；炼药锅是 aux = `fill_level` + 8 × `cauldron_liquid`，熔岩是 1），
   两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`）。客户端读到的炼药锅 aux 没在游戏里读过（上面的 14 是服务端读的）。
 - 状态变了怎么知道：邻居事件只来自相邻的方块，正下方变了（放漏斗、拆漏斗、点着 / 熄灭正下方的营火）有原来的处理函数（`OnCookingPotNeighborChanged`、`OnSkilletNeighborChanged`）；
   热源在漏斗再下面一格时那一格变了没有事件，`Server/HeatConduct.py` 对"正下方是漏斗"的锅 / 煎锅每 0.5 秒（真实时间，`Pacer`）重算一次，

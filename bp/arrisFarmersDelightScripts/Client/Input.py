@@ -50,16 +50,22 @@ def _offhandName():
     return item.get("newItemName") if item else None
 
 
-def _nearHeat():
-    """身边 3x3x3 里有没有热源方块（和服务端同一条规则 HeatSources.nearHeat：名单或热源标签，不看点没点着——客户端本来也读不到方块状态；
-    盛着熔岩的炼药锅服务端读状态认，这里读不到状态，按方块的 aux 认（HeatSources.holdsLavaAux）；
-    客户端读不到"着火"，那种情况只由服务端认）。"""
-    footPos = compFactory.CreatePos(playerId).GetFootPos()
+def _isHeat(blockInfo, pos):
+    """客户端这一格算不算手持煎锅身边的热源：GetBlock 给 (名字, aux)，HeatSources.heatsByAux 判（和服务端同一条规则：名单或热源标签，
+    不看点没点着——客户端本来也读不到方块状态；写了状态条件的方块，比如盛着熔岩的炼药锅，查服务端按条件算好的 aux）。"""
+    block = blockInfo.GetBlock(pos)
+    name, aux = (tuple(block) + (None, None))[:2] if isinstance(block, (list, tuple)) else (None, None)
+    return HeatSources.heatsByAux(name, aux)
+
+
+def _nearHeat(footPos=None):
+    """身边 3x3x3 里有没有热源方块（footPos 缺省是自己的脚；游戏内自检 Client/Debug/McdkHeatTest 给别的位置）。
+    客户端读不到"着火"，那种情况只由服务端认。"""
+    footPos = footPos or compFactory.CreatePos(playerId).GetFootPos()
     if not footPos:
         return False
     blockInfo = compFactory.CreateBlockInfo(levelId)
-    return nearHeat(footPos, lambda pos: (blockInfo.GetBlock(pos) or (None,))[0], HeatSources.NEAR, False,
-                    lambda pos: HeatSources.holdsLavaAux((blockInfo.GetBlock(pos) or (None, None))[1]))
+    return nearHeat(footPos, lambda pos: _isHeat(blockInfo, pos))
 
 
 def _carryingSkillet():
