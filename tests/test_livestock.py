@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # runner: both
-"""狗粮 / 马饲料的喂食、马驴骡的吸引、兔子被卷心菜吸引（Server/Livestock.py + Shared/Data/Mobs.py），用假引擎驱动。
+"""狗粮 / 马饲料的喂食、马驴骡的吸引、狼的讨食（Server/Livestock.py + Shared/Data/Mobs.py），用假引擎驱动。
+兔子被卷心菜吸引在 Server/AnimalFood.py（tests/test_animal_food.py）。
 
 期望值抄自 JE：
 - HorseFeedItem：马 / 骷髅马 / 僵尸马 / 驴 / 骡 / 羊驼（horse_feed_users），驯服的才行，回满血 + 速度 II 与跳跃提升 I 各 6000 刻；
@@ -73,9 +74,9 @@ def testTemptComponentsKeepTheVanillaItemsAndAddOurs():
         tempt = _json(table["minecraft:behavior.tempt"])
         assert tempt["priority"] == 5 and tempt["speed_multiplier"] == 1.2
         assert tempt["items"] == ["arris:horse_feed"] + vanillaHorse
-    rabbit = _json(Mobs.rabbitComponentsDict["minecraft:behavior.tempt"])
-    assert rabbit["priority"] == 3 and rabbit["speed_multiplier"] == 1
-    assert rabbit["items"] == ["golden_carrot", "carrot", "dandelion", "arris:cabbage", "arris:cabbage_leaf"]
+    # 兔子被卷心菜吸引改成运行时读定义追加（Server/AnimalFood.py，tests/test_animal_food.py），不再是写死的 JSON
+    assert not hasattr(Mobs, "rabbitComponentsDict") and "minecraft:rabbit" not in Mobs.livestockComponents
+    assert ("minecraft:behavior.tempt", "items", Mobs.RABBIT_FOOD) in Mobs.ANIMAL_FOOD["minecraft:rabbit"]
     beg = _json(Mobs.wolfComponentsDict["minecraft:behavior.beg"])
     assert beg["items"][0] == "arris:dog_food" and "bone" in beg["items"] and len(beg["items"]) == 23
     # JE 的狼对所有 isMeat 的食物讨食：农夫乐事的十种肉接在原版的后面
@@ -204,10 +205,8 @@ def testComponentsAreAddedToTheJeTemptedAnimals():
         world.components.clear()
         assert "arris:horse_feed" in _json(_addEntity(entityType)["minecraft:behavior.tempt"])["items"], entityType
     world.components.clear()
-    assert "arris:cabbage" in _json(_addEntity("minecraft:rabbit")["minecraft:behavior.tempt"])["items"]
-    world.components.clear()
     assert "arris:dog_food" in _json(_addEntity("minecraft:wolf")["minecraft:behavior.beg"])["items"]
-    for entityType in ("minecraft:cow", "minecraft:cat", "minecraft:trader_llama", "minecraft:pig"):
+    for entityType in ("minecraft:cow", "minecraft:cat", "minecraft:trader_llama", "minecraft:pig", "minecraft:rabbit"):
         world.components.clear()
         assert _addEntity(entityType) == {}, entityType
 

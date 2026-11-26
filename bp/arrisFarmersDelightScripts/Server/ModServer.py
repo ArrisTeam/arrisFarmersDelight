@@ -42,7 +42,7 @@ from . import TatamiMats  # noqa: F401
 from . import TatamiPairs  # noqa: F401
 from . import RopeFences  # noqa: F401
 from . import FoodEffects  # noqa: F401
-from . import Livestock  # noqa: F401
+from . import Livestock, AnimalFood  # noqa: F401
 from . import Tools  # noqa: F401
 from . import Backstabbing  # noqa: F401
 from . import KnifeSlicing  # noqa: F401
@@ -144,11 +144,6 @@ def _onItemUseAfter(args):
     dispatch("ItemUseAfterServerEvent", args, _itemName(args))
 
 
-@Listen("PlayerFeedEntityServerEvent")
-def _onPlayerFeedEntity(args):
-    dispatch("PlayerFeedEntityServerEvent", args, _itemName(args))
-
-
 @Listen("PlayerEatFoodServerEvent")
 def _onPlayerEatFood(args):
     dispatch("PlayerEatFoodServerEvent", args, _itemName(args))
@@ -169,6 +164,11 @@ def _onCraftItemOutputChange(args):
 @Listen("AddEntityServerEvent")
 def _onAddEntity(args):
     dispatch("AddEntityServerEvent", args, args.get("engineTypeStr"))
+
+
+@Listen("EntityDefinitionsEventServerEvent")      # 实体定义里的事件执行了（出生、长大、驯服……）：匹配键是事件名
+def _onEntityDefinitionsEvent(args):
+    dispatch("EntityDefinitionsEventServerEvent", args, args.get("eventName"))
 
 
 @Listen("EntityDieLoottableServerEvent")

@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # runner: py3
-"""原版文件的覆盖版（tools/gen_vanilla_overrides.py 生成）：猫、农民交易、流浪商人交易；以及对本机原版行为包的其它核对。
+"""原版文件的覆盖版（tools/gen_vanilla_overrides.py 生成）：农民交易、流浪商人交易；以及对本机原版行为包的其它核对。
 
-引擎里附加包的同路径文件整份替换原版，所以这三份是"原版整份拷来 + 只在列表末尾追加本模组内容"。这里守两件事：
-1. 追加的内容对（照 JE：猫被鳕鱼片 / 鲑鱼片吸引、驯服、繁殖、长大、治疗；农民收洋葱、番茄、卷心菜、稻米；
-   流浪商人卖卷心菜种子、番茄种子、稻米、洋葱）、交易表合乎引擎的加载规则（TRADING.md §1）、用到的物品都存在；
+引擎里附加包的同路径文件整份替换原版，所以这两份是"原版整份拷来 + 只在列表末尾追加本模组内容"。这里守两件事：
+1. 追加的内容对（照 JE：农民收洋葱、番茄、卷心菜、稻米；流浪商人卖卷心菜种子、番茄种子、稻米、洋葱）、
+   交易表合乎引擎的加载规则（TRADING.md §1）、用到的物品都存在；
 2. 找得到本机的原版行为包时，重新生成一遍和提交的文件逐字比对：原版随游戏升级变了就失败，提醒重新生成
    （找不到原版目录就跳过这一条；FD_VANILLA_BP 环境变量可以指定目录）。
+六种动物原来也是整文件覆盖，现在是运行时加组件（tests/test_animal_food.py），这里只查它们的物品都存在、实体文件不再覆盖。
 """
 from __future__ import print_function
 
@@ -21,7 +22,7 @@ import fdtest
 sys.path.insert(0, os.path.join(fdtest.ROOT, "tools"))
 import gen_vanilla_overrides as gen  # noqa: E402
 
-SLICES = ["arris:cod_slice", "arris:salmon_slice"]
+Mobs = fdtest.load("Shared.Data.Mobs")
 
 
 def _read(relPath):
@@ -45,31 +46,18 @@ def _tradeItems(table):
                     yield entry["item"]
 
 
-# ---- 猫 ----
+# ---- 动物不再整文件覆盖 ----
 
-def testCatKeepsItsIdentityAndGainsTheSlicesWhereverItUsesFishAndSalmon():
-    cat = _read("entities/cat.json")["minecraft:entity"]
-    assert cat["description"]["identifier"] == "minecraft:cat"
-    fishLists = []
-
-    def walk(node):
-        if isinstance(node, dict):
-            for value in node.values():
-                walk(value)
-        elif isinstance(node, list):
-            if "fish" in node and "salmon" in node:
-                fishLists.append(node)
-            for value in node:
-                walk(value)
-
-    walk(cat)
-    # 幼崽长大、成年繁殖、野猫驯服、野猫 / 驯服猫被吸引，共 5 张字符串列表
-    assert len(fishLists) == 5, len(fishLists)
-    for names in fishLists:
-        assert names[-2:] == SLICES, names
-    healable = cat["components"]["minecraft:healable"]["items"]
-    assert [entry["item"] for entry in healable] == ["fish", "salmon"] + SLICES
-    assert [entry["heal_amount"] for entry in healable[2:]] == [1, 1], "JE 按食物的营养值回血，鱼片都是 1"
+def testNoVanillaAnimalIsOverriddenAnyMore():
+    # 六种动物改成运行时加组件（Server/AnimalFood.py）：包里不再带同路径的实体文件，免得盖掉原版的更新、和别的包的覆盖抢
+    for entityType in sorted(Mobs.ANIMAL_FOOD):
+        path = os.path.join(fdtest.BP, "entities", entityType.split(":")[1] + ".json")
+        assert not os.path.exists(path), path
+    for path in glob.glob(os.path.join(fdtest.BP, "entities", "*.json")):
+        with io.open(path, encoding="utf-8-sig") as f:
+            identifier = json.load(f)["minecraft:entity"]["description"]["identifier"]
+        assert not identifier.startswith("minecraft:"), (path, identifier)
+    assert sorted(gen.OUTPUTS) == ["trading/economy_trades/farmer_trades.json", "trading/economy_trades/wandering_trader_trades.json"]
 
 
 # ---- 交易 ----
@@ -124,40 +112,19 @@ def testEveryModItemTheOverridesMentionExists():
     used = set()
     for relPath in ("trading/economy_trades/farmer_trades.json", "trading/economy_trades/wandering_trader_trades.json"):
         used.update(name for name in _tradeItems(_read(relPath)) if name.startswith("arris:"))
-    used.update(SLICES)
-    used.update(gen.CHICKEN_FOOD + gen.PIG_FOOD + gen.RABBIT_FOOD + gen.PARROT_FOOD + tuple(gen.WOLF_MEATS))
+    for patches in Mobs.ANIMAL_FOOD.values():
+        for _component, _field, extra in patches:
+            used.update(entry["item"] if isinstance(entry, dict) else entry for entry in extra)
     missing = sorted(name for name in used if name not in items)
     assert not missing, "物品 JSON 里找不到: %s" % missing
 
 
-def _lists(entity, path):
-    node = _read("entities/%s.json" % entity)["minecraft:entity"]
-    for key in path:
-        node = node[key]
-    return [entry["item"] if isinstance(entry, dict) else entry for entry in node]
-
-
-def testAnimalsKnowJavasFarmersDelightFood():
-    # JE：Chicken.FOOD_ITEMS += 卷心菜种子、番茄种子、稻米；Pig.FOOD_ITEMS += 卷心菜、番茄；Parrot.TAME_FOOD += 三种种子；
-    # 兔子 isFood 认卷心菜（crops/cabbage 标签）；狼吃 isMeat 的食物（FD 的十种肉，狗粮另由 Livestock 接管）
-    seeds = ["arris:cabbage_seeds", "arris:tomato_seeds", "arris:rice"]
-    groups = "component_groups"
-    for entity, adult, baby, food in (("chicken", "minecraft:chicken_adult", "minecraft:chicken_baby", seeds),
-                                      ("pig", "minecraft:pig_adult", "minecraft:pig_baby", ["arris:cabbage", "arris:tomato"]),
-                                      ("rabbit", "adult", "baby", ["arris:cabbage", "arris:cabbage_leaf"]),
-                                      ("wolf", "minecraft:wolf_adult", "minecraft:wolf_baby", list(gen.WOLF_MEATS))):
-        assert _lists(entity, (groups, adult, "minecraft:breedable", "breed_items"))[-len(food):] == food, entity
-        assert _lists(entity, (groups, baby, "minecraft:ageable", "feed_items"))[-len(food):] == food, entity
-    assert _lists("chicken", ("components", "minecraft:behavior.tempt", "items"))[-3:] == seeds
-    assert _lists("pig", ("components", "minecraft:behavior.tempt", "items"))[-2:] == ["arris:cabbage", "arris:tomato"]
-    assert _lists("parrot", (groups, "minecraft:parrot_wild", "minecraft:tameable", "tame_items"))[-3:] == seeds
-    heal = _read("entities/wolf.json")["minecraft:entity"]["components"]["minecraft:healable"]["items"][-10:]
-    assert [(entry["item"], entry["heal_amount"]) for entry in heal] == [(name, food * 2) for name, food in gen.WOLF_MEATS.items()]
+def testWolfBegsForTheSameMeatsItEats():
     import jefood
-    for name, food in gen.WOLF_MEATS.items():
+    for name, food in Mobs.WOLF_MEATS:
         assert jefood.FOODS[name.split(":")[1]][0] == food, name                # JE FoodValues 的饱食度（tests/jefood.py 抄的那份）
-    beg = json.loads(fdtest.load("Shared.Data.Mobs").wolfComponentsDict["minecraft:behavior.beg"])["items"]
-    assert beg[-10:] == list(gen.WOLF_MEATS) and "arris:dog_food" in beg
+    beg = json.loads(Mobs.wolfComponentsDict["minecraft:behavior.beg"])["items"]
+    assert beg[-10:] == list(Mobs.WOLF_FOOD) and "arris:dog_food" in beg
 
 
 # ---- 与本机原版逐字比对 ----
@@ -168,8 +135,7 @@ def testLivestockComponentsAreVanillaPlusOurItems():
     if vanilla is None:
         print("跳过：找不到本机原版行为包（FD_VANILLA_BP 可以指定）")
         return
-    extras = {"arris:horse_feed", "arris:dog_food", "arris:cabbage", "arris:cabbage_leaf"} | set(gen.WOLF_MEATS)
-    Mobs = fdtest.load("Shared.Data.Mobs")
+    extras = {"arris:horse_feed", "arris:dog_food"} | set(Mobs.WOLF_FOOD)
     checked = 0
     for entity, table in sorted(Mobs.livestockComponents.items()):
         with io.open(os.path.join(vanilla, "entities", entity.split(":")[1] + ".json"), encoding="utf-8-sig") as f:
@@ -185,7 +151,7 @@ def testLivestockComponentsAreVanillaPlusOurItems():
                 else:
                     assert ours[key] == theirs[key], (entity, name, key, ours[key], theirs[key])
             checked += 1
-    assert checked == 5, checked          # 马 / 驴 / 骡的 tempt、兔子的 tempt、狼的 beg
+    assert checked == 4, checked          # 马 / 驴 / 骡的 tempt、狼的 beg（兔子的 tempt 改成了运行时读定义追加，tests/test_animal_food.py）
 
 
 def testChestLootTableNamesAreRealVanillaFiles():
