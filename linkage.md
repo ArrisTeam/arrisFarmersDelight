@@ -173,6 +173,9 @@ JE 农夫乐事自己的 `farmersdelight:` 标签（菜、饮料、热源、传�
 - **刀**：在自己的 `netease_tags` 里把刀登记进 `common:knife`。物品 JSON 的 `minecraft:tags` 里写 `arris:knife`、往 `knifeList` 追加，都照旧有效。
 - **热源方块**：登记进 `farmersdelight:heat_sources`（和 JE 同名）；方块有点燃状态的（状态名是 `lit` / `*:lit`，或者 `extinguished`）
   要点着才给热，没有这类状态的放上去就热，见 TAGS.md。往 `CanProvideHeatBlockList` 追加照旧有效。
+  只在别的状态下才热的方块（像盛着熔岩的炼药锅：这个标签里的 `minecraft:cauldron` 只在 `cauldron_liquid` 是 `lava` 时热）用新联动接口登记状态条件：
+  `ext.registerHeatSource(方块名, states={...})`（[docs/EXTENSION-API.md](docs/EXTENSION-API.md) §6.1）。写了条件的方块哪里都按条件判，
+  在 `CanProvideHeatBlockList` 里的也一样；读这张表的下游请注意，炼药锅不在表里，它热不热要看状态。
 - **能煎的生肉**：写一份原版写法的营火配方（配方 JSON 的 `tags` 带 `campfire`）就行，煎锅、炉灶、手持煎锅都认，煎成配方里的东西。
   往 `CanCookedFoodDict` 追加照旧有效（食谱书、JEI 的煎锅 / 炉灶页只列这张表里的）。
 

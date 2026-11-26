@@ -286,7 +286,8 @@ def OnServerSkilletBlockUse(args):
   静态表 ∪ 引擎的答案，按标签 / 物品缓存；准备好的那一刻、装卸口、`refresh()` 时换代（`generation` 加一），按标签建了索引的地方据此重建
   （厨锅的 `PotRecipeTable` 准备好之前一个答案都不记，见下一节）。
 - **判断点**：`Shared/Rules/Knives`（是不是刀：`knifeList` ∪ `arris:knife` ∪ `common:knife`）、`HeatSources`（热源方块：`CanProvideHeatBlockList` ∪
-  JE 的 `farmersdelight:heat_sources`，有点燃状态的要点着）、`Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
+  JE 的 `farmersdelight:heat_sources`，有点燃状态的要点着；写了状态条件的方块——`HeatSourceStateDict`，炼药锅要盛着熔岩——只按条件判，见「厨锅 / 煎锅下面的热源」）、
+  `Grilling`（能煎烤什么：先查 `CanCookedFoodDict`，查不到问引擎的营火配方，自己也有一个口）；
   厨锅的标签格、砧板按标签的配方也问 `ItemTags`（见下一节）。
 - **自检**：两端的 `McdkTagsTest`（`Server/Debug`、`Client/Debug`：口准备好没有、词表每个标签引擎反查到的成员和静态表比、刀、营火配方的原始返回值和解析、
   热源标签；怎么调写在文件头）。
@@ -514,22 +515,39 @@ JE 的厨锅和煎锅都是 `HeatableBlockEntity`（FD 的 `isHeated`，java:15-
 
 - 热源表还是对外联动契约的 `CanProvideHeatBlockList`（一个字没改：岩浆块是 `minecraft:magma`，营火看 `extinguished` 状态，点着的 `arris:stove` 在表里、熄着的孪生方块不在）；
   传热方块表 `HeatConductorList`（`Shared/Data/Cooking.py`，只有 `minecraft:hopper`）是新的，不在联动白名单里。
-- 熔岩炼药锅：引擎里没有 `lava_cauldron` 这个方块（2026-11-26 实机：`SetBlockNew("minecraft:lava_cauldron")` 返回 True，放出来的是盛水、0 级的
-  `minecraft:cauldron`；`SetBlockStates({"cauldron_liquid": "lava", "fill_level": 6})` 之后 aux 14），熔岩炼药锅是炼药锅的状态，方块标签表达不了，
-  不能按名字进表，读状态：`cauldron_liquid` 是 lava 且 `fill_level` 大于 0（倒空了的不算）——状态条件表 `Shared/Data/Cooking.HeatSourceStateDict`
-  的一条，"这一格算不算热源"都走 `Shared/Rules/HeatSources.heats`（条件怎么判在 `HeatStates`）。
-  手持煎锅照 JE 也认它（JE 的 `isPlayerNearHeatSource` 看的是同一个标签）：服务端 `SkilletHand` 一格一格问 `Heat.IsNearHeat`（读状态）；客户端 `Input._nearHeat` 读不到方块状态
-  （`GetBlockStates` 只有服务端有），按 `GetBlock` 给的 aux 查 `HeatSourceAuxDict`（`HeatSources.heatsByAux`；炼药锅是 aux = `fill_level` + 8 × `cauldron_liquid`，熔岩是 1），
-  两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`）。客户端读到的炼药锅 aux 没在游戏里读过（上面的 14 是服务端读的）。
+- **热源按状态条件判**（2026-11-26，用户："热源标签可以支持一下方块状态判定"）：状态条件表 `Shared/Data/Cooking.HeatSourceStateDict`
+  （`{方块名: {状态名: 条件}}`，几条都满足才算；条件写一个值、一组值或 `{"min": n}` / `{"max": n}`，判法和登记时的写法在 `Shared/Rules/HeatStates`）。
+  "这一格算不算热源"只有一处规则 `Shared/Rules/HeatSources.heats`：方块写了条件就只按条件判，处处都判——锅 / 煎锅下面（`Heat.IsHeatSource`，`lit=True`）、
+  手持煎锅身边（服务端 `SkilletHand` 一格一格问 `Heat.IsNearHeat`，`lit=False`；JE 的手持煎锅不看 LIT，可熔岩炼药锅在 JE 是另一个方块，所以写明的条件要判）；
+  状态读不到、缺这个状态都算不满足；名单、标签里的方块写了条件也按条件判，不在名单、标签里的满足条件就算。没写条件的照旧：名单、标签，锅下面看 LIT，手持煎锅不看。
+  别的模组登记条件用新联动接口 `ext.registerHeatSource(方块名, states={...})`（`Api/ExtensionApi/Registries`，能力 `heat_source_states`，EXTENSION-API.md §6.1）：
+  只写条件表、不进 `CanProvideHeatBlockList`（那张是旧契约"不看状态的热源"，读它的下游会以为一直热）。条件表不在联动契约白名单里。
+- 熔岩炼药锅是条件表自带的一条：引擎里没有 `lava_cauldron` 这个方块（2026-11-26 实机：`SetBlockNew("minecraft:lava_cauldron")` 返回 True，放出来的是盛水、0 级的
+  `minecraft:cauldron`；`SetBlockStates({"cauldron_liquid": "lava", "fill_level": 6})` 之后 aux 14），熔岩炼药锅是炼药锅的状态。所以标签
+  `farmersdelight:heat_sources` 里写 `minecraft:cauldron`（不进 `CanProvideHeatBlockList`），条件 `{"cauldron_liquid": "lava", "fill_level": {"min": 1}}`（倒空了的不算）。
+- 客户端读不到方块状态（官方文档：`GetBlockStates` / `GetBlockStatesFromAuxValue` 只有服务端有；客户端只有 `GetBlock` 给 (名字, aux)，别的办法没找到）：
+  `Input._nearHeat` 一格一格按 aux 查 `HeatSourceAuxDict`（`HeatSources.heatsByAux`；写了条件、这里却没有这个方块的当不热）。
+  这张表由服务端 `Server/HeatAux` 算：对条件表里每个方块从 aux 0 往上问 `GetBlockStatesFromAuxValue`，满足条件的 aux 写进去（`HeatStates.auxSet`），
+  `Server/TableSync` 每次算差异之前先让它跟上（条件变了的才重算），条件表和它随表同步一起到客户端（契约之外的两张，见「联动契约与客户端的表」）。
+  aux 是各状态按位拼的（Strata 引擎研究 `states_permutations.md` §2：每个状态占 ⌈log₂(值个数)⌉ 位，值个数不是 2 的幂时有空号——炼药锅的 aux 7、15、23），
+  所以问到空号不停，问到"最大的有效 aux 加一的两倍"（至少 16、最多 1024）还没有新的才停；空号、越界给 None、`{}`、抛异常、和前面重复的状态都当没有方块。
+  炼药锅那一条有静态初值（熔岩 1–6 级 = aux 9–14：aux = `fill_level` + 8 × `cauldron_liquid` 的序号，熔岩是 1），同步到之前客户端也能判；
+  引擎一个状态也问不出来时表不动、打一行日志。两边对同一个炼药锅答得一样（`tests/test_heat_sources.py`）。客户端读到的炼药锅 aux 没在游戏里读过（上面的 14 是服务端读的）。
 - 状态变了怎么知道：邻居事件只来自相邻的方块，正下方变了（放漏斗、拆漏斗、点着 / 熄灭正下方的营火）有原来的处理函数（`OnCookingPotNeighborChanged`、`OnSkilletNeighborChanged`）；
   热源在漏斗再下面一格时那一格变了没有事件，`Server/HeatConduct.py` 对"正下方是漏斗"的锅 / 煎锅每 0.5 秒（真实时间，`Pacer`）重算一次，
   和存着的不一样就把一个"正下方变了"的 `BlockNeighborChangedServerEvent` 交给那两个处理函数（存状态、同步客户端、煎锅断热时重置计时，一个字不抄）。下面不是漏斗的什么都不查。
-- 测试：`tests/test_heat_sources.py`（JE 标签里每一种热源、看着像但不热的、漏斗传热、托盘只看正下方）、`tests/test_heat_conduct.py`（真的 `Skillet` / `CookingPot` 处理函数 + 假引擎）。
+- 测试：`tests/test_heat_sources.py`（JE 标签里每一种热源、看着像但不热的、漏斗传热、托盘只看正下方、三个入口对炼药锅答得一样）、
+  `tests/test_heat_states.py`（三种条件写法、登记时的写法、按 aux 列出满足条件的 aux：空号不停、越界怎么答都停得下）、`tests/test_heat_tags.py`（标签、
+  名单 / 标签里的方块写了条件、客户端没拿到 aux 集合当不热）、`tests/test_heat_aux.py`（服务端照假引擎算 aux）、`tests/test_heat_conduct.py`（真的 `Skillet` / `CookingPot`
+  处理函数 + 假引擎）；两张表到客户端在 `test_table_sync.py` / `test_table_sync_server.py`，登记口在 `test_extension_registries.py`。
 
 待实机验证（离线 + 假引擎核对过，没进过游戏）：
 
 1. 熔岩炼药锅：往炼药锅里倒一桶熔岩，上面放厨锅 / 煎锅，要热；用桶把熔岩舀走（炼药锅变空），要凉；站在旁边手持煎锅煎得了。
    方块状态的名字和值 2026-11-26 在游戏里读过（见上），锅放上去热不热、手持煎锅这两条路还没在游戏里走过。
+   自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_cauldron_place / read / clear` + `Client/Debug/McdkHeatTest.mcdk_test_heat_cauldron_client`
+   （摆空的、盛水的、熔岩 1 级、6 级四个炼药锅，先客户端、后服务端各读一遍；文件开头写着怎么调）。要量的：`GetBlockStatesFromAuxValue` 对空号（7、15、23）
+   和越界（24 起）的 aux 给什么、照它算出来的是不是 9–14；客户端 `GetBlock` 给炼药锅的 aux 和服务端是不是一样；两端的手持煎锅判断是不是一样。
 2. 漏斗：营火 / 炉灶 / 熔岩 / 岩浆块 / 熔岩炼药锅 → 漏斗 → 厨锅（再换煎锅），锅热、没有托盘；用水浇灭营火、铲子熄炉灶、拆掉火，约半秒内锅凉；再点着又热。
    一格一格读的自检：`Server/Debug/McdkHeatTest.mcdk_test_heat_probe(x, y, z)`（方块名、状态、`IsHeatSource`、`IsHeated`；锅 / 煎锅那一格再给存着的 `heatEnable` / `shelfEnable`，
    和 `Heat.IsHeated` 现算的对照），用法在文件开头的说明里。
@@ -1071,7 +1089,8 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 实机（2026-11-26，带成就系统的包）：`Server/Debug/McdkAdvTest.py` 接上了、21 个节点都登记了，脚本把能触发的都触发一遍全部推进（轮作 3 / 19、厨神当道 1 / 27），
 测完 revoke 掉了；真放营火、真放厨锅（`PlayerUseItemToPos`）进度完成，真种小麦种子轮作 +1（是放置事件还是种子那条兜底推进的没分开看），真往水里种稻米"倾斜稻根"完成。
 还没在游戏里走真路的：放盛宴 / 有机堆肥 / 煎锅；`AddEffectServerEvent` 里自定义效果的名字（自检是直接调处理函数的）；`PlayerEatFoodServerEvent` 对骨头汤这种喝的来不来；
-真扔烂番茄打袭击者；根节点的砖块背景显不显示。成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的），不支持多语言：英文客户端里也是中文。
+真扔烂番茄打袭击者；根节点的砖块背景显不显示。成就系统收 py2 里 utf-8 的中文标题（机械动力、森罗物语也是这么写的），不支持多语言：英文客户端里也是中文
+（用户 2026-11-26 定了"成就仅支持中文即可"，不再是待定）。
 `AdvBridge` 的处理函数只挂一次（attach 再来只换接口），效果事件按效果名匹配。
 
 ## 和 JE 的出入（2026-11-26 审计）
@@ -1085,15 +1104,13 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 村庄里的堆肥堆、村庄农田种上农夫乐事的作物（JE `VillageStructures`）：附加包加不进原版村庄的拼图池（网易有没有替代接口没核实）。
 - 进度（JE 21 条 advancements）：原版的进度界面附加包加不进去；装了团队的成就系统（arrisAdvancements）时 21 条都在它那里（见「成就系统联动」），
   不装就没有。和 JE 不一样的几处：根节点进游戏就给（JE 是背包第一次变化，实际上也是进游戏就给）；"嘘！去！"的袭击者里没有幻术师（基岩版没有）；
-  "采田艹加"只认右键摘熟了的绳子上的番茄（JE 是"对 0 级的绳上番茄用了东西"，摘完正好回 0 级，别的用法几乎碰不到）；标题和描述只有中文。
+  "采田艹加"只认右键摘熟了的绳子上的番茄（JE 是"对 0 级的绳上番茄用了东西"，摘完正好回 0 级，别的用法几乎碰不到）；标题和描述只有中文
+  （用户 2026-11-26 定了"成就仅支持中文即可"）。
 - 拿刀打人击退少 0.1（JE `KnifeItem`）：`DamageEvent` 只能开关击退，改不了大小（煎锅同一个问题，见"煎锅"一节）。
 - 帆布地毯不画挖掘裂纹（JE `HideBlockBreakProgressMixin`）：引擎没有按方块关掉裂纹的开关。
 - 滋养时饥饿条镀金、舒适时生命条滚动（JE 两个客户端叠层）：原版 HUD 的饥饿条 / 生命条附加包改不了。
 - 原版汤 / 南瓜派的提示（滋养时长、"可放置"）：附加包改不了原版物品的提示；六种盛宴的物品是方块物品，没有物品 JSON 可写 `netease:customtips`。
 - 刀的攻击伤害只能写整数（`netease:weapon.attack_damage` 是 int，加在玩家基础 1 点之上：总伤害取 JE 的向上取整）；发光浆果布丁的"发光"基岩没有；砧板拆解里的动力矿车基岩没有。
-- 熔岩炼药锅进不了热源标签（JE 的 `heat_sources` 里有 `minecraft:lava_cauldron`）：基岩版没有这个方块（3.10 实机：`SetBlockNew("minecraft:lava_cauldron")`
-  放出来的是盛水、0 级的 `minecraft:cauldron`），它是炼药锅的状态 `cauldron_liquid` = lava，方块标签表达不了。农夫乐事按状态认（锅 / 煎锅下面、
-  手持煎锅身边，见"厨锅 / 煎锅下面的热源"），玩起来和 JE 一样；别的模组照 JE 往 `farmersdelight:heat_sources` 里写 `minecraft:lava_cauldron` 不起作用。
 
 有意不做：
 - 帆布告示牌整套（34 个物品、68 个方块、34 个配方、编辑界面）：量大，单独估工作量。
@@ -1101,6 +1118,13 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - 物品和方块的英文名（英文客户端里是中文）：等做英文版时一起补。
 
 用户定了的：
+- 熔岩炼药锅 / 热源按方块状态判（2026-11-26，用户："热源标签可以支持一下方块状态判定"）：JE 的 `heat_sources` 里有 `minecraft:lava_cauldron`，
+  基岩版没有这个方块（3.10 实机：`SetBlockNew("minecraft:lava_cauldron")` 放出来的是盛水、0 级的 `minecraft:cauldron`），它是炼药锅的状态 `cauldron_liquid` = lava。
+  这边标签里写的是 `minecraft:cauldron`，另带状态条件（`cauldron_liquid` 是 lava、`fill_level` 至少 1；`Shared/Data/Cooking.HeatSourceStateDict`），
+  锅 / 煎锅下面、手持煎锅身边处处按条件判，玩起来和 JE 一样；按这个标签认热源的别的模组也要看这两个状态（TAGS.md「热源方块」）。
+  别的模组自己的"一个方块 + 某个状态"的热源用新联动接口 `ext.registerHeatSource(方块名, states=...)` 登记（EXTENSION-API.md §6.1；见「厨锅 / 煎锅下面的热源」）。
+  照 JE 往 `farmersdelight:heat_sources` 里写 `minecraft:lava_cauldron` 不起作用：世界里没有叫这个名字的方块（方块标签的成员名引擎不校验，
+  3.10 实机；写了会不会往日志里记一条没量过）。
 - 下界合金刀（2026-11-26）：和 JE 一样只有锻造台这一条，下界合金升级锻造模板 + 钻石刀 + 下界合金锭
   （`bp/recipes/arris_netherite_knife_smithing.json`，`minecraft:recipe_smithing_transform`）；原来工作台的"下界合金锭 + 木棍"删了。
   引擎收了这条锻造配方（按原料、按成品都查得到），在锻造台界面里真做过：第九轮用带锋利 III 的满耐久钻石刀做出了下界合金刀，附魔留着；
