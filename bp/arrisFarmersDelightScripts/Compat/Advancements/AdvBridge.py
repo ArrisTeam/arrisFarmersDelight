@@ -11,6 +11,8 @@ attach(接口模块, env) 由 AdvBoot 在成就系统的 ready 事件里（或�
   烂番茄打中（ProjectileDoHitEffectEvent）——这几个 ModServer 本来就转，这里在注册表上登记处理函数；
 - 玩法模块报的事（Server/Helpers/Deeds）：砧板切开一件、手持煎锅煎好一件、脚本替玩家放下方块、右键采摘。
 """
+import copy
+
 from ...Server.EventRegistry import registerHandler
 from ...Server.Helpers import Deeds
 from ...Shared.Data import Advancements as Data
@@ -111,7 +113,7 @@ def attach(module, env):
         print("[arrisFarmersDelight] 成就系统的接口不对（%r），不接" % (module,))
         return None
     _state["api"], _state["env"] = module, env
-    count = module.registerAdvancements([dict(node) for node in Data.NODES])
+    count = module.registerAdvancements(copy.deepcopy(Data.NODES))           # 给一份拷贝：它改了也碰不到表
     module.listenOnPlayerReady(onPlayerReady)
     _hook(env)
     print("[arrisFarmersDelight] 接上了成就系统：登记了 %d / %d 个进度节点" % (count or 0, len(Data.NODES)))

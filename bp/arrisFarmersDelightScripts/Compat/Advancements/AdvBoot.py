@@ -7,6 +7,8 @@ dolorAdvancementsScripts.Api.Server 模块。它在所有模组加载完以后�
 没装成就系统：事件不来、系统不在，这里只挂了一个空监听、问了一次引擎，什么都不做。接上以后做什么见 AdvBridge。
 监听挂在本包的加载器系统上，不挂在 Server/ExtensionSystem：那个系统只用来广播本包自己的 ready（要广播时才建、不挂监听）。
 """
+import traceback
+
 from ...QuModLibs.Server import ListenForEvent
 from ...QuModLibs.Systems.Loader.Server import LoaderSystem
 from ...Server.Helpers.Engine import compFactory, levelId, serverApi, ItemPosType, GetEngineTypeStr
@@ -42,16 +44,25 @@ class Env(object):
         ListenForEvent(eventName, None, func)
 
 
+def _attach(module):
+    """接上；成就系统那边出了错只打日志：引擎派发它的事件、导入本模块都不该被它带崩。"""
+    try:
+        AdvBridge.attach(module, Env)
+    except Exception:  # noqa: BLE001 - 别的模组的接口出错，不连累农夫乐事
+        print("[arrisFarmersDelight] 接成就系统时出错，不接")
+        traceback.print_exc()
+
+
 def hook(system):
     """在本包的加载器系统上听成就系统的 ready；它已经广播过（它的系统在）就当场晚接。"""
     if getattr(system, READY_METHOD, None) is None:
         def onReady(args):
-            AdvBridge.attach((args or {}).get("api"), Env)
+            _attach((args or {}).get("api"))
         onReady.__name__ = READY_METHOD
         setattr(system, READY_METHOD, onReady)
         system.ListenForEvent(NAMESPACE, SYSTEM_NAME, READY_EVENT, system, onReady)
     if AdvBridge.api() is None and serverApi.GetSystem(NAMESPACE, SYSTEM_NAME):
-        AdvBridge.attach(serverApi.ImportModule(API_MODULE), Env)
+        _attach(serverApi.ImportModule(API_MODULE))
 
 
 hook(LoaderSystem.getSystem())
