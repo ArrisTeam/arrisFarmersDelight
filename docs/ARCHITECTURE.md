@@ -297,7 +297,8 @@ def OnServerSkilletBlockUse(args):
 （`tests/test_extension_docs.py` 核对和 EXTENSION-API.md §3 的表一样）。`Api/` 只导入 `Shared/`：服务端要做的引擎的事（`syncToClients` 时现在就同步）
 由 `Server/ExtensionReady` 在广播之前经 `Recipes.provide(syncNow=…)` 交进去。服务端广播之后接着读行为包里的 `farmersdelight_recipes/**.json`
 （`Api/ExtensionApi/RecipeFiles.py` 定 ID、登记；跨包读文件的 `Server/Helpers/PackJson.py` 用引擎内部的 `server_resource`，经 `traceback.sys.modules` 取，
-2026-11-26 在游戏里核过：探针包里不写 id 的 JSON 读到了，能力名 `recipe_json_files` 因此登记，`Events.RECIPE_JSON_FILES_VERIFIED`），再调一次 `onRecipesChanged` 的处理函数；
+`files()` 自己往下列子目录——成就系统记着引擎的 `list_server_directory` 只给一层、专用服务器上不往下列就读不到，我们只在开发版游戏里量到过它递归，
+打包后、专用服务器上没量过；`listing()` 照旧只列一层。2026-11-26 在游戏里核过：探针包里不写 id 的 JSON 读到了，能力名 `recipe_json_files` 因此登记，`Events.RECIPE_JSON_FILES_VERIFIED`），再调一次 `onRecipesChanged` 的处理函数；
 `ExtensionReady.scanReport()` 给自检读这一次读了什么。
 
 **配方存在哪**：不另起存储，还是联动契约的那几张表（表同步、六个下游包、十几个读表的地方都建在上面），只加可选的键：
