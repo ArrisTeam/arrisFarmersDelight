@@ -493,14 +493,14 @@ JE 的厨锅拆下来菜还在锅里：战利品表的 `copy_meal` 把"盛出格
 成品格里的东西照常掉出来；创造模式拆不出物品；物品堆叠 1；方块 `strength(0.5F, 6.0F)`。这边（`Server/CookingPotItem.py` + `Shared/Rules/PotItem.py`）：
 
 - 方块的战利品表是空的（`air_loot.json`），厨锅物品由脚本在 `BlockRemoveServerEvent` 里掉：预览槽里煮好还没装碗的那叠菜记进物品字典的 `extraId`
-  （`arris_pot_meal|物品名|aux|份数`），悬停文字写进 `customTips`（JE 的"装有 N 份：" + 菜名，前面留着 `%name%%category%…` 那几个占位符）。
+  （`arris_pot_meal|物品名|aux|份数`），悬停文字写进 `customTips`（JE 的"装有 N 份:" + 菜名，冒号换成了英文的（见「引擎坑」），前面留着 `%name%%category%…` 那几个占位符）。
   玩家是创造模式时（`ServerPlayerTryDestroyBlockEvent` 记一笔）不掉；那一格这时是移动中的方块（活塞推着走）不算拆。
   和煎锅一样，命令 / 脚本把厨锅换掉也会掉一口锅（方块没了的事件里分不出是谁拆的）。
 - 拆锅时煮过几份还没领的经验在锅心（方块中心）弹出来（`OnCookingPotRemove` -> `PotContainer.awardExperience`，FD 的 `onRemove` 里 `getUsedRecipesAndPopExperience`）：
   不看是谁拆的，创造模式拆也弹；那一格是移动中的方块（活塞推着走）不算拆，记着的份数留着。
 - 放置：引擎放方块的时候看不到物品，所以放置前（`ServerEntityTryPlaceBlockEvent`，`ModServer` 新挂的监听）读手里那口锅的 `extraId` 记一笔，
   方块实体建好（`ServerPlaceBlockEntityEvent`）时写进预览槽；记录按位置、5 秒过期（放置被取消就作废）。
-- 实机核对过（3.10）：装着 3 份番茄酱的厨锅拆掉，背包里是一口带 `extraId` 和"装有3份：番茄酱"的厨锅，没有散落的番茄酱、没有多掉一口锅；
+- 实机核对过（3.10）：装着 3 份番茄酱的厨锅拆掉，背包里是一口带 `extraId` 和"装有3份:番茄酱"的厨锅，没有散落的番茄酱、没有多掉一口锅；
   右键放回去预览槽里还是 3 份。没核对的：活塞推厨锅（脚本摆的活塞没伸出来，没测成）、爆炸、悬停文字在界面里的样子。
 - 没做：JE 的 `FoodServingRecipe`（带着菜的厨锅和碗一起放进合成格直接盛出一份）——基岩版的合成结果由客户端按配方 JSON 算，按物品数据变的配方写不出来；
   物品上的份数条（`isBarVisible`）；空锅的悬停文字"空"（方块物品没有地方写缺省的悬停文字）。
@@ -1203,6 +1203,10 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - `OnScriptTickClient` 这类每帧事件引擎不带参数，处理函数写 `def f(args=None)`（Strata 沙箱 `script inspect` 抓到的）；`ItemPosType`：背包 0、副手 1、主手 2、盔甲 3。
 - Netease 没有"按住使用"的服务端事件（据引擎反编译，武器类物品的 `use` 不会 `startUsingItem`，没实机核），要知道玩家有没有按住右键只能让客户端报告
   （`RightClickBeforeClientEvent` / `RightClickReleaseClientEvent` + 每帧事件里的心跳，服务端对超时的当松手）。
+- 给玩家看的句子不用全角冒号"："：游戏的字体把全角标点画得窄、后面不留空，冒号后面的字会挤在一起。写英文冒号加一个空格（冒号后面空一格）；句末的冒号（后面是换行或字符串结束）只换成英文冒号，不加空格。
+  语言文件、服务端提示（`Shared/Data/Tips`）、界面上的句子（`DishStation.statusText`）、物品悬停文字（物品 JSON 的 `netease:customtips`、`PotItem` 写进 `customTips` 的那两句）、成就文字都算；
+  照 JE 翻译抄来的也一样换（JE 的 `zh_cn.json` 用全角冒号）。日志、`print`、接口的出错信息、注释、文档不算，不用改。
+  `tests/test_player_text_colons.py` 守着。已经拆下来、带着旧写法悬停文字（`装有3份：`）的厨锅物品：悬停文字是拆锅时写在物品上的，没有代码按这段文字认东西（锅里的菜靠 `extraId` 认），旧物品保持旧写法，再放下、拆一次才换成新的。
 
 ## 新增内容的清单
 

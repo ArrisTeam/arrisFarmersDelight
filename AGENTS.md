@@ -73,7 +73,7 @@
 - **不整文件覆盖原版实体**：给原版动物加喂食 / 驯服物品走 `Server/AnimalFood.py`（读生效的实体定义，`AddActorComponent` 动态加组件，和别的模组的改动合并）。
 - 有序合成配方的容器写在 `result` 数组里；无序配方的由 `Server/CraftReturns.py` 补还，一次合成最多还一次、认不出配方就不还——动这条线先想清楚会不会刷物品。
 - 完整不透明的方块才写吸光 15，其余写 0（网易缺省是不透明）；`tests/test_block_light.py` 里有表。
-- 给玩家看的字放 `rp/texts/*.lang`，有官方中文翻译的照 JE 的翻译；标签写 `%` 要写成 `%%`。
+- 给玩家看的字放 `rp/texts/*.lang`，有官方中文翻译的照 JE 的翻译；标签写 `%` 要写成 `%%`；给玩家看的句子不用全角冒号，写英文冒号加一个空格（句末的只换成英文冒号；照 JE 翻译抄的也一样换；游戏字体把全角标点画得窄、后面不留空；`tests/test_player_text_colons.py` 守着）。
 - `arris:item_display` / `arris:corpse_display` 这两个展示实体由 `Server/DisplayGuard.py` 护着，别拆。
 
 ## 7. 提交

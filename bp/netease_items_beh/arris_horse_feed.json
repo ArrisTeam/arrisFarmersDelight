@@ -4,7 +4,7 @@
         "components": {
             "minecraft:max_stack_size": 16,
             "netease:customtips": {
-                "value": "§7喂给已驯服的马时：\n§9 速度Ⅱ (05:00)\n 跳跃提升 (05:00)"
+                "value": "§7喂给已驯服的马时:\n§9 速度Ⅱ (05:00)\n 跳跃提升 (05:00)"
             }
         },
         "description": {

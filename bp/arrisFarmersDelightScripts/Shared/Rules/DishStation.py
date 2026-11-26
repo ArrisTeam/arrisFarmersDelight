@@ -181,7 +181,7 @@ def finishOf(dish):
 def statusText(data, nameOf=None):
     """站点数据 -> 摆盘时焦点界面底部的一行提示。data：layers（层的物品字典）、dish（做好的那叠）、ready（做成的菜名）。"""
     if data.get("dish"):
-        return "做好了：点一下砧板拿走"
+        return "做好了: 点一下砧板拿走"
     layers = data.get("layers") or []
     if not layers:
         return ""

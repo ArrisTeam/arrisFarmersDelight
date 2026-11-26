@@ -9,9 +9,9 @@ POT = "arris:cooking_pot"
 PREFIX = "arris_pot_meal"
 SEPARATOR = "|"
 MOST = 64
-# JE 的 tooltip.farmersdelight.cooking_pot.single_serving / many_servings
-TIP_ONE = "装有1份："
-TIP_MANY = "装有%d份："
+# JE 的 tooltip.farmersdelight.cooking_pot.single_serving / many_servings；冒号是英文的（游戏字体把全角冒号画得窄，tests/test_player_text_colons.py 守着）
+TIP_ONE = "装有1份:"
+TIP_MANY = "装有%d份:"
 # netease 的 customTips 是整段悬停文字：前面这几个占位符是物品原来的名字、分类、附魔、攻击伤害
 TIP_HEAD = "%name%%category%%enchanting%%attack_damage%"
 

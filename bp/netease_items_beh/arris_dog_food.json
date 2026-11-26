@@ -8,7 +8,7 @@
                 "using_converts_to": "minecraft:bowl"
             },
             "netease:customtips": {
-                "value": "§7喂给已驯服的狗时：\n§9 速度 (05:00)\n 力量 (05:00)\n 抗性提升 (05:00)"
+                "value": "§7喂给已驯服的狗时:\n§9 速度 (05:00)\n 力量 (05:00)\n 抗性提升 (05:00)"
             },
             "minecraft:max_stack_size": 16,
             "minecraft:use_duration": 32

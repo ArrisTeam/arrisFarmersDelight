@@ -68,8 +68,9 @@ def testForeignOrBrokenExtraIdsCarryNoMeal():
 
 def testTheTooltipFollowsJava():
     # 引擎（py2）给的物品名是 utf-8 字节串，这里的字面量在 py2 下也是字节串：别混进 unicode
-    assert Rules.tipsOf("番茄酱", 1).endswith("§7装有1份：§r\n番茄酱")
-    assert "§7装有3份：§r\n番茄酱" in Rules.tipsOf("番茄酱", 3)
+    # 句子是 JE 的，只有冒号换成了英文的（句末，后面不加空格：游戏字体把全角冒号画得窄；test_player_text_colons 守着）
+    assert Rules.tipsOf("番茄酱", 1).endswith("§7装有1份:§r\n番茄酱")
+    assert "§7装有3份:§r\n番茄酱" in Rules.tipsOf("番茄酱", 3)
     assert Rules.tipsOf("番茄酱", 3).startswith("%name%%category%%enchanting%%attack_damage%"), "原来的名字那几行要留着"
     item = Rules.itemOf(SAUCE, "番茄酱")
     assert item["newItemName"] == "arris:cooking_pot" and item["count"] == 1 and item["extraId"] == Rules.extraIdOf(SAUCE)
@@ -93,7 +94,7 @@ def testBreakingThePotDropsItWithItsMeal():
     assert len(world.spawned) == 1
     item, dimension, where = world.spawned[0]
     assert item["newItemName"] == "arris:cooking_pot" and Rules.mealOf(item["extraId"]) == SAUCE
-    assert "装有3份：" in item["customTips"] and where == (3.5, 64.5, 5.5)
+    assert "装有3份:" in item["customTips"] and where == (3.5, 64.5, 5.5)
     assert data["previewItemSlot"] == [{}], "菜跟着锅走了，方块里不再留一份"
 
 
