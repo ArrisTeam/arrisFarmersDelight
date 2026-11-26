@@ -17,6 +17,7 @@
    只导入它们自己这一组、Shared 的 HandsOnMode、QuModLibs 和客户端入口要的 Client/Engine——站点模块在步骤里才导入，没装前置包时它们连同它们的 @Listen / @AllowCall 一个也不会被导入
 8. 绝对导入只许引擎（mod.*）、本包自己（脚本根的包名）和在游戏里导入过的标准库模块（ENGINE_STDLIB）：引擎的 Python 是删减过的（没有 numbers 这些），
    离线的 CPython 什么都有，用了没有的模块测试照样过、进游戏整条导入链就断。这一条连拷入的 dolorContainer、生成的 dolorLayouts.py 一起查（它们也在游戏里跑），只有 QuModLibs 不查
+9. 取别的模组的模块经 Compat/OtherMods（find / call）：脚本里不直接调 ImportModule（引擎的、QuModLibs 的都算；当参数交出去不算），游戏内自检（Debug/）不查
 """
 from __future__ import print_function
 
@@ -404,6 +405,24 @@ def testImportsOnlyModulesTheEnginesPythonHas():
                     if top not in ("mod", own) and top not in ENGINE_STDLIB:
                         problems.append("%s/%s:%d 导入了 %s：引擎的 Python 里%s（ENGINE_STDLIB）" % (
                             pack, relPath, node.lineno, name, "没有这个模块" if top in ENGINE_MISSING else "没验过有没有"))
+    assert not problems, "\n".join(problems)
+
+
+def testOtherModsModulesAreTakenThroughOtherMods():
+    """规则 9：引擎的 ImportModule 在对方的模块导入出错时不给 None，而是把异常原样抛给调用的人（3.10 实机），直接调它，别的模组的错就带倒本包
+    （docs/ARCHITECTURE.md「引擎坑」）。所以脚本里不直接调名叫 ImportModule 的东西（serverApi.ImportModule(...)、api.ImportModule(...)、
+    QuModLibs 的 ImportModule(...)），一律交给 Compat/OtherMods.find；把它当参数交出去（OtherMods.find、Presence 的 find / load）不算。"""
+    problems = []
+    for pack, relPath, path, source in _allSources():
+        if "/Debug/" in "/" + relPath:
+            continue
+        for node in ast.walk(ast.parse(source)):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name == "ImportModule":
+                problems.append("%s/%s:%d 直接调了 ImportModule：经 Compat/OtherMods.find 取" % (pack, relPath, node.lineno))
     assert not problems, "\n".join(problems)
 
 
