@@ -9,8 +9,15 @@ JE 农夫乐事自己定义的标签照 JE 的名字登记成 `farmersdelight:` 
 
 ## 名字和成员照什么定
 
-**名字照 JE 1.21，成员照 JE 1.20.1。** 名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走
-（Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
+**团队的烹饪原料标签以森罗物语厨房定的 18 个为准。** 森罗物语厨房网易版 2026-11-26 的提交 `2df8e1c` 在它的行为包里登记了 18 个物品标签，
+名字平铺、单数：`common:beef`、`chicken`、`chili`、`dough`、`egg`、`fish`、`flour`、`lamb`、`lettuce`、`meat`、`meatball`、`mushroom`、`noodle`、
+`pork`、`rice`、`seed`、`tomato`、`vegetable`，它的汤锅、炒锅的模糊配方按这些标签收料。这些是"粗"的类：生的熟的都算（`common:beef` 里有生牛肉、
+熟牛肉、生熟牛杂），`common:egg` 里有三种鸡蛋、海龟蛋、嗅探兽蛋和煎蛋。同一个概念用规范的名字；农夫乐事的东西照 JE 登记进对应的粗标签，
+两个模组就能用对方的原料（下面「和森罗物语的标签对照」）。
+
+**农夫乐事另有按 JE 配方需要的细标签：名字照 JE 1.21，成员照 JE 1.20.1。** JE 农夫乐事的配方把生的熟的分开、牛猪鸡羊分开，
+这边的厨锅、工作台、砧板照 JE 读这些细标签，不读粗标签；鸡蛋格子照旧读原版的 `minecraft:egg`（规范的 `common:egg` 里有海龟蛋和煎蛋，不能拿来做蛋糕）。
+细标签的名字跟着 NeoForge 和 Fabric 从 1.21 起统一的 `c:` 标签走；成员跟着这边移植的版本走（Farmer's Delight 1.3.4 / Minecraft 1.20.1，`forge:` 标签）。
 
 - 名字是 `common:` 加 `c:` 名的最后一段，一律单数。`c:` 的写法是"复数的类目 / 单数的名字"：`c:crops/tomato` → `common:tomato`、
   `c:foods/raw_beef` → `common:raw_beef`、`c:tools/knife` → `common:knife`；只有一层的类目名在 JE 里是复数，这边照团队的规范写单数：
@@ -96,6 +103,111 @@ JE 的这个标签里还有熔岩炼药锅（`minecraft:lava_cauldron`）。基�
 基岩版的三种蛋（鸡蛋、蓝色鸡蛋、棕色鸡蛋，原版标签 `minecraft:egg` 的成员）一视同仁：都能在煎锅上煎成煎蛋，只煎一面，炉灶站点的烤架不收，
 熔炉、烟熏炉、营火也收（JE 只有一种蛋）。工作台配方里 JE 写 `#forge:eggs` 的四样（蛋糕、南瓜派、烤鸡、鸡蛋面团）写的是 `minecraft:egg` 标签，三种蛋都收。
 
+## 和森罗物语的标签对照
+
+团队的烹饪原料标签规范是森罗物语厨房网易版（下面简称森罗）2026-11-26 的提交 `2df8e1c` 登记的 18 个标签。下表是两边各登记了什么：
+两个模组都装着时，引擎把同名标签两边的成员并起来，`#` 引的标签再展开。"森罗登记的"照它 `kaleidoscope_cookery_bp/netease_tags/` 的文件抄，
+"农夫乐事登记的"就是词表（测试核对这一列）。
+
+| 标签 | 森罗登记的 | 农夫乐事登记的 | JE 里对应的标签 |
+| --- | --- | --- | --- |
+| `common:beef` | `minecraft:beef`、`minecraft:cooked_beef`、`kaleidoscope_cookery:raw_cow_offal`、`kaleidoscope_cookery:cooked_cow_offal` | `#common:raw_beef`、`#common:cooked_beef` | `forge:raw_beef` 和 `forge:cooked_beef` 合起来（JE 森罗的配方只收生的） |
+| `common:chicken` | `minecraft:chicken`、`minecraft:cooked_chicken` | `#common:raw_chicken`、`#common:cooked_chicken` | `forge:raw_chicken` 和 `forge:cooked_chicken` |
+| `common:chili` | `kaleidoscope_cookery:red_chili`、`kaleidoscope_cookery:green_chili` | — | `forge:crops/chilipepper` |
+| `common:dough` | `kaleidoscope_cookery:raw_dough` | `arris:wheat_dough` | `forge:dough` |
+| `common:egg` | `minecraft:egg`、`minecraft:blue_egg`、`minecraft:brown_egg`、`minecraft:turtle_egg`、`minecraft:sniffer_egg`、`kaleidoscope_cookery:fried_egg` | `#common:cooked_egg` | JE 森罗的 `forge:eggs`（它把自己的煎蛋放了进去） |
+| `common:fish` | `minecraft:cod`、`minecraft:salmon`、`minecraft:cooked_cod`、`minecraft:cooked_salmon`、`minecraft:tropical_fish`、`kaleidoscope_cookery:sashimi` | `#common:raw_fish`、`#common:cooked_fish` | `forge:raw_fishes` 和 `forge:cooked_fishes` |
+| `common:flour` | `kaleidoscope_cookery:flour` | — | `forge:flour` |
+| `common:lamb` | `minecraft:mutton`、`minecraft:cooked_mutton`、`kaleidoscope_cookery:raw_lamb_chops`、`kaleidoscope_cookery:cooked_lamb_chops` | `#common:raw_mutton`、`#common:cooked_mutton` | `forge:raw_mutton` 和 `forge:cooked_mutton` |
+| `common:lettuce` | `kaleidoscope_cookery:lettuce` | — | `forge:crops/lettuce` |
+| `common:meat` | `#common:beef`、`#common:chicken`、`#common:lamb`、`#common:pork`、`minecraft:rabbit`、`kaleidoscope_cookery:raw_cut_small_meats` | — | 没有单个对应的（JE 森罗的 `forge:raw_meats` 还含鱼） |
+| `common:meatball` | `kaleidoscope_cookery:raw_meatball`、`kaleidoscope_cookery:cooked_meatball` | — | 没有（JE 森罗的配方写物品） |
+| `common:mushroom` | `minecraft:red_mushroom`、`minecraft:brown_mushroom` | `minecraft:brown_mushroom`、`minecraft:red_mushroom` | `forge:mushrooms` |
+| `common:noodle` | `kaleidoscope_cookery:raw_noodles` | `#common:pasta` | 没有（JE 森罗的配方写物品） |
+| `common:pork` | `minecraft:porkchop`、`minecraft:cooked_porkchop`、`kaleidoscope_cookery:raw_pork_belly`、`kaleidoscope_cookery:cooked_pork_belly` | `#common:raw_pork`、`#common:cooked_pork` | `forge:raw_pork` 和 `forge:cooked_pork` |
+| `common:rice` | `kaleidoscope_cookery:rice` | `arris:rice` | `forge:crops/rice`、`forge:grain/rice` |
+| `common:seed` | `minecraft:wheat_seeds`、`minecraft:pumpkin_seeds`、`minecraft:melon_seeds`、`minecraft:beetroot_seeds`、`minecraft:torchflower_seeds`、`minecraft:pitcher_pod`、`kaleidoscope_cookery:rice` | `#common:cabbage_seeds`、`#common:rice`、`#common:tomato_seeds` | `forge:seeds` |
+| `common:tomato` | `kaleidoscope_cookery:tomato` | `arris:tomato` | `forge:crops/tomato` |
+| `common:vegetable` | `#common:tomato`、`#common:lettuce`、`#common:chili`、`minecraft:carrot`、`minecraft:potato`、`minecraft:beetroot` | `#common:beetroot`、`#common:carrot`、`#common:onion`、`#common:potato`、`#common:tomato` | `forge:vegetables` |
+
+### 农夫乐事登记进去的依据
+
+依据都在 JE 的源码里：JE 农夫乐事 1.3.4 的 `data/ItemTags.java`（`src/main/java/vectorwing/farmersdelight/` 下），JE 森罗物语厨房（1.20.1，
+源码快照 `1d935a2c`）的 `datagen/tag/TagItem.java`（`src/main/java/com/github/ysbbbbbb/kaleidoscopecookery/` 下）和它生成的配方
+（`src/generated/resources/data/kaleidoscope_cookery/recipes/`），以及两个 JE 兼容模组 Kaleidoscope Compat 2.9.7、Kaledelights Compat 1.3.9 的数据。
+
+- **牛、鸡、羊、猪、鱼**：JE 森罗的模糊配方收 `#forge:raw_beef`、`#forge:raw_chicken`、`#forge:raw_mutton`、`#forge:raw_pork`、`#forge:raw_fishes`
+  （如 `flex_pot/braised_beef.json:8`、`flex_pot/spicy_chicken.json:8`、`flex_pot/crystal_lamb_chop.json:11`、`flex_pot/sweet_and_sour_pork.json:8`、
+  `flex_pot/oil_splashed_fish.json:8`），JE 农夫乐事把牛肉末、鸡块、羊排、培根、鳕鱼片、鲑鱼片登记在同样的标签里（`ItemTags.java:227-235`），
+  所以 JE 里森罗的这些菜本来就收农夫乐事的生肉、生鱼片。网易版森罗把熟的也算了进来（它的 `common:beef` 里有熟牛肉、熟牛杂，就是 JE 森罗登记在
+  `forge:cooked_beef` 的那两样，`TagItem.java:186`），农夫乐事就把 JE 里同在 `forge:cooked_*` 的熟的也放进来：牛肉饼、熟鸡块、熟猪排、熟培根、熟羊排
+  （`ItemTags.java:187-190`），熟鳕鱼片、熟鲑鱼片（`ItemTags.java:193-195`）。写法是 `#` 嵌生、熟两个细标签，别的模组登记进细标签的东西也跟着算。
+  - 培根算猪肉，火腿不算：JE 的 `forge:raw_pork` 是猪排和培根（`ItemTags.java:229`），`forge:cooked_pork` 是熟猪排和熟培根（`ItemTags.java:189`），
+    火腿、熏火腿 JE 没放进任何肉的标签。
+  - 鱼片、热带鱼算鱼，河豚不算：`forge:raw_fishes` 是鳕鱼和鳕鱼片、鲑鱼和鲑鱼片、热带鱼（`ItemTags.java:232-235`），没有河豚；森罗的 `common:fish` 也没有。
+- **蛋**（`#common:cooked_egg`，就是煎蛋）：JE 森罗把自己的煎蛋放进 `forge:eggs`（`TagItem.java:159`），它的番茄炒蛋、蛋炒饭这些收 `#forge:eggs`
+  （`flex_pot/scramble_egg_with_tomatoes.json:8`）；两个模组的煎蛋是同一种东西：Kaleidoscope Compat 的合并表里有农夫乐事的煎蛋
+  （`packs/unite_farmersdelight/data/kaleidoscope_cookery/tags/item/united.json:4`）。JE 农夫乐事的煎蛋在 `forge:cooked_eggs`（`ItemTags.java:191`），
+  所以这边嵌的是"做熟的蛋"这个细标签，别的模组登记进 `common:cooked_egg` 的也跟着算蛋。农夫乐事自己的鸡蛋格子照旧读 `minecraft:egg`。
+- **种子**（卷心菜种子、米、番茄种子）：JE 森罗的腊八粥收 `#forge:seeds`（`flex_stockpot/laba_congee.json:12`），JE 农夫乐事的 `forge:seeds`
+  就是这三样（`ItemTags.java:240-243`）。原版的种子森罗登记了，农夫乐事不重复写。复数的 `common:seeds` 是机械动力附属在用的名字，照旧登记。
+- **面条**（`#common:pasta`，生意面）：**JE 里没有直接依据。** JE 森罗的牛肉面、羊肉烩面、热干面、乌冬面写的是物品 `kaleidoscope_cookery:raw_noodles`
+  （如 `flex_stockpot/beef_noodle.json:15`），不是标签；两个兼容模组也没把农夫乐事的生意面和森罗的生面条当成一种（Kaledelights Compat 给农夫乐事厨锅
+  写的乌冬面照样写 `kaleidoscope_cookery:raw_noodles`：`data/farmersdelight/recipe/cooking/kk_udon_noodle_cooked_eggs.json:22`）。
+  这是网易版这边的约定（2026-11-26 定的）：森罗的面条菜认农夫乐事的生意面。
+- **蘑菇、番茄、米、面团、蔬菜**：本来就同名，两边的成员引擎合并。JE 里这几样也是两个模组共用同一个 `forge:` 标签
+  （`forge:mushrooms`、`forge:crops/tomato`、`forge:crops/rice`、`forge:dough`、`forge:vegetables`）。
+- **没登记的五个**：辣椒、面粉、生菜、肉丸农夫乐事没有，JE 里也没有把农夫乐事的东西算进去的依据：JE 森罗的 `forge:crops/lettuce` 只有生菜
+  （`TagItem.java:164`），Kaleidoscope Compat 的 `c:crops/lettuce` 只加了 Farm & Charm 的生菜（`packs/compat/data/c/tags/item/crops/lettuce.json:4`），
+  Kaledelights Compat 的配方里生菜写 `c:crops/lettuce`（如 `data/farmersdelight/recipe/cooking/kk_beef_meatball_soup.json:19`）、
+  卷心菜写 `c:crops/cabbage`（如 `data/kaleidoscope_cookery/recipe/stockpot/dumplings.json:15`），卷心菜不当生菜用；`forge:flour` 只有森罗的面粉（`TagItem.java:216`）；肉丸 JE 森罗写物品。肉（`common:meat`）森罗自己的文件用 `#` 引了牛、鸡、羊、猪四个，
+  农夫乐事的肉登记进那四个就跟着进去了，不用再登记。
+
+### 给森罗那边的建议：森罗的东西进农夫乐事的配方
+
+农夫乐事的配方读的是细标签。森罗把自己的东西登记进下面这些标签，农夫乐事这边一行不用改就认（只写森罗自己的物品）。依据是 JE 森罗把它放进的
+`forge:` 标签，就是农夫乐事读的那个（`TagItem.java` 的行号）。
+
+| 森罗的东西 | 登记进 | 农夫乐事哪里因此能用上它 | JE 依据 |
+| --- | --- | --- | --- |
+| `kaleidoscope_cookery:raw_cow_offal` | `common:raw_beef` | 厨锅：饺子、牛肉炖；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_beef`（`:194`） |
+| `kaleidoscope_cookery:raw_pork_belly` | `common:raw_pork` | 厨锅：饺子、南瓜汤、面条汤；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_pork`（`:196`） |
+| `kaleidoscope_cookery:raw_lamb_chops` | `common:raw_mutton` | 厨锅：羊排意面；经 `common:raw_meat`：卷心菜卷、狗粮 | `forge:raw_mutton`（`:197`） |
+| `kaleidoscope_cookery:cooked_cow_offal` | `common:cooked_beef` | 工作台：填馅马铃薯；经 `common:cooked_meat`：烧烤串 | `forge:cooked_beef`（`:186`） |
+| `kaleidoscope_cookery:cooked_pork_belly` | `common:cooked_pork` | 经 `common:cooked_meat`：烧烤串 | `forge:cooked_pork`（`:187`） |
+| `kaleidoscope_cookery:cooked_lamb_chops` | `common:cooked_mutton` | 工作台：羊肉卷饼、牧羊人派；经 `common:cooked_meat`：烧烤串 | `forge:cooked_mutton`（`:188`） |
+| `kaleidoscope_cookery:sashimi` | `common:raw_fish` | 厨锅：鱿鱼墨面、卷心菜卷、鱼肉炖 | `forge:raw_fishes/tropical_fish`，引进 `forge:raw_fishes`（`:199`、`:203-205`） |
+| `kaleidoscope_cookery:fried_egg` | `common:cooked_egg` | 工作台：培根蛋、夹蛋三明治 | `forge:cooked_eggs`（`:189`） |
+| 四把菜刀 `kaleidoscope_cookery:iron_kitchen_knife` 等 | `common:knife` | 认作刀的地方都认（见上面「刀」） | `forge:tools/knives`、`farmersdelight:tools/knives`（`:53-62`） |
+| 炉灶（方块 `kaleidoscope_cookery:kaleidoscope_cookery_stove`） | 方块标签 `farmersdelight:heat_sources` | 放在上面的厨锅、煎锅会热（它的 `kaleidoscope_cookery:lit` 是点燃状态，点着才热） | JE 森罗生成的 `data/farmersdelight/tags/blocks/heat_sources.json:3` |
+| `kaleidoscope_cookery:cooked_rice` | `common:cooked_rice` | 农夫乐事现在不读（JEI 里算同一类） | `forge:cooked_rice`（`:190`） |
+| `kaleidoscope_cookery:tomato_seed` | `common:tomato_seeds` | 不读 | `forge:seeds/tomato`（`:180`） |
+| `kaleidoscope_cookery:rice_panicle`、`raw_lamb_chops`、`cooked_lamb_chops` | `common:rice_panicle`、`common:mutton_chops`、`common:cooked_mutton_chops` | 不读 | 同一种东西：Kaleidoscope Compat 的合并表（上面那个 `united.json`） |
+| 番茄、辣椒、生菜、米；四种种子 | `common:crops`；`common:seeds` | 农夫乐事不读（机械动力附属读） | `forge:crops`（`:166-169`）、`forge:seeds`（`:152-158`） |
+
+森罗自己的 `common:seed` 现在只有原版种子和米；JE 森罗的 `forge:seeds` 还有它的番茄、辣椒、生菜种子和野生稻（`TagItem.java:152-158`），要不要补由森罗定。
+
+JE 有、这边不建议的：
+
+- 森罗的煎蛋、海龟蛋进原版的 `minecraft:egg`：JE 森罗把它们放进 `forge:eggs`（`TagItem.java:159`、`:198`），而 JE 农夫乐事的蛋糕、南瓜派、烤鸡、
+  鸡蛋面团、炒饭这些按 `forge:eggs` 收蛋，于是 JE 里能拿煎蛋做蛋糕。这边的鸡蛋格子只收三种鸡蛋，不建议。
+- 森罗的碎肉 `raw_cut_small_meats` 进 `common:raw_meat`：JE 里它在森罗的 `forge:raw_meats`（复数，`TagItem.java:207-214`），农夫乐事读的是
+  `forge:raw_meat`（单数，`ItemTags.java:219-224`），是两个标签，JE 里农夫乐事的卷心菜卷、狗粮不收它。
+- 生菜进 `common:leafy_green`（沙拉、三明治和几道汤用的叶菜）、生面条进 `common:pasta`：JE 里都没有依据（JE 森罗没把生菜放进 `forge:salad_ingredients`，
+  生面条不在 `forge:pasta`），要不要由团队定。
+
+JE 森罗另外还认农夫乐事的东西，网易版要森罗那边改（农夫乐事不用动）：
+
+- 菜刀：JE 森罗的 `kaleidoscope_cookery:kitchen_knife` 可选地含 `#farmersdelight:tools/knives`（`TagItem.java:43-47`），农夫乐事的刀能当菜刀用。网易版：判断时也认 `common:knife`。
+- 热源：JE 森罗"没有点燃状态的热源"含 `#farmersdelight:heat_sources`（生成的 `data/kaleidoscope_cookery/tags/blocks/heat_source_blocks_without_lit.json:7`）。
+  网易版：也按方块标签 `farmersdelight:heat_sources` 认（见上面「热源方块」）。
+- 水稻种在农夫乐事的沃土耕地上：`rice_plantable` 含农夫乐事的沃土耕地（生成的 `data/kaleidoscope_cookery/tags/blocks/rice_plantable.json:4`）。
+  网易版的沃土耕地是 `arris:rich_soil_farmland`、`arris:rich_soil_farmland_moist` 两个方块。
+- 盖饭认农夫乐事的米饭：`forge:cooked_rice` 可选地含农夫乐事的米饭（`TagItem.java:190-192`）。网易版：读 `common:cooked_rice`，农夫乐事的米饭在里面。
+- 卷心菜算蔬菜：`forge:vegetables` 可选地含 `#forge:crops/cabbage`（`TagItem.java:177`，注释"兼容农夫乐事卷心菜"）。网易版：森罗的 `common:vegetable`
+  写上 `#common:cabbage`（农夫乐事的卷心菜、卷心菜叶）；这样农夫乐事的蔬菜格子也收卷心菜，和 JE 两个模组都装时一样。没装农夫乐事时这个 `#`
+  引的是没人登记的标签，引擎怎么处理（报不报错、记不记日志）没量过。
+
 ## JE 农夫乐事自己的标签（farmersdelight:）
 
 JE 农夫乐事自己定义的标签，这边照 JE 的名字登记成 `farmersdelight:<路径>`。成员照 JE 的标签文件换成这边的名字；JE 用 `#` 引的标签这边也登记的
@@ -126,11 +238,13 @@ JE 的刀标签 `farmersdelight:tools/knives` 就是这边的 `common:knife`，�
 ## 词表
 
 名字怎么来的见开头「名字和成员照什么定」。团队里已经在用的名字照用：`common:crops`、`common:seeds`、`common:flowers`（机械动力附属）、
-`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。
+`common:dough`、`common:wheat_flour`（机械动力），都和那条规则对得上。团队烹饪原料规范里农夫乐事登记的 13 个也在下表里
+（粗标签的"意思"一列写着"团队规范的粗标签"），没登记的 5 个见「和森罗物语的标签对照」。
 
 - `common:mushroom` 是能吃的蘑菇（红蘑菇、棕蘑菇），和机械动力的 `common:mushroom_block`（蘑菇方块）不是一回事。
-- 小麦粉用机械动力的 `common:wheat_flour`，没有 `common:flour`。
-- 鸡蛋用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋），不另起。别的模组的蛋登记进它就行：`netease_tags` 的 `identifier` 写
+- 小麦粉：机械动力登记的是 `common:wheat_flour`，规范里的面粉是 `common:flour`（森罗物语的面粉），两个名字；农夫乐事没有面粉，两个都不登记。
+- 农夫乐事的鸡蛋格子用原版自带的 `minecraft:egg`（鸡蛋、蓝色鸡蛋、棕色鸡蛋）。规范的 `common:egg` 是更粗的"蛋"，农夫乐事只把煎蛋登记进去、自己不读它。
+  别的模组的鸡蛋登记进 `minecraft:egg` 就行：`netease_tags` 的 `identifier` 写
   `minecraft:egg`（3.10 实机：引擎把它并进原版标签，反查、按物品问都有它；工作台自检里蛋那一格放它，蛋糕、南瓜派、烤鸡、鸡蛋面团都做出来了）。
 - 农夫乐事没有成员的名字只在下表里列着，不生成文件，别的模组可以往里登记。
 

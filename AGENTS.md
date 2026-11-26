@@ -59,7 +59,7 @@
 
 - **旧联动契约** `S/Api/LegacyModAttr.py`：三个函数 + 白名单里的 25 张表，下游的乐事附属包拿的是表的活引用。只加不改，`tests/test_legacy_modattr_contract.py` 必须是绿的，新东西不往这里加。
 - **新联动接口** `S/Api/ExtensionApi/`：农夫乐事加载完广播 ready 事件，交出 `ext`（配方的登记 / 查询 / 覆盖 / 删除、刀 / 热源 / 炉灶 / 堆肥的登记口、标签查询）；别的行为包还可以放 `farmersdelight_recipes/**.json`（JE 农夫乐事写法的配方）。文档 `docs/EXTENSION-API.md`、`RECIPE-JSON.md`、`COMPATIBILITY.md`、`API-CHANGELOG.md`；能力名只在实现、测试、文档都齐了才加（`tests/test_extension_docs.py` 核对文档和代码）。
-- **标签**（`bp/netease_tags/`，词表 `S/Shared/Data/Tags.py`，说明 `docs/TAGS.md`）：`common:` 的名字照 JE 1.21 的 `c:` 约定取最后一段，嵌套照 JE 用 `#` 引用；农夫乐事自己的用 JE 原名 `farmersdelight:`。凡是"按标签认"的判断都走 `S/Shared/Rules/ItemTags.py`。
+- **标签**（`bp/netease_tags/`，词表 `S/Shared/Data/Tags.py`，说明 `docs/TAGS.md`）：团队的烹饪原料标签以森罗物语厨房定的 18 个平铺、单数的 `common:` 标签为准（`Tags.COOKING_STANDARD`），农夫乐事的东西登记进去、自己的配方不读它们；农夫乐事按 JE 配方要的细标签，名字照 JE 1.21 的 `c:` 约定取最后一段、一律单数，嵌套照 JE 用 `#` 引用；农夫乐事自己的用 JE 原名 `farmersdelight:`。凡是"按标签认"的判断都走 `S/Shared/Rules/ItemTags.py`。
 - **配方存在契约表里**：厨锅的一行可以带 `Id`、`Slots`、`Disabled`（墓碑）；行只打墓碑、不删除，行号就是身份。表由 `Server/TableSync.py` 同步给客户端。
 - 存档里的东西（方块实体数据的键、方块状态名、物品名）改名等于丢档，别改。
 

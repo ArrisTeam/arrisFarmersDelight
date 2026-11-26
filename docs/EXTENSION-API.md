@@ -466,6 +466,9 @@ tags.names()                                   # 词表里的物品标签名，�
 
 农夫乐事所有"按标签认"的地方问的都是这一份答案。引擎的标签读不全时（远端客户端进世界之前）按农夫乐事的词表答，`generation()` 变了说明答案可能变了。
 
+名字常量是标签名冒号后那段的大写（`common:raw_beef` → `RAW_BEEF`、`farmersdelight:heat_sources` → `HEAT_SOURCES`）。例外两个：
+团队规范的 `"common:egg"` 叫 `ANY_EGG`（`EGG` 是原版的 `"minecraft:egg"`，农夫乐事的鸡蛋格子读它），农夫乐事的老标签 `"arris:knife"` 叫 `LEGACY_KNIFE`。
+
 ---
 
 ## 8. 最小模板

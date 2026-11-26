@@ -123,6 +123,8 @@ def testTagsAreItemTagsWithTheVocabularyNames():
         "common:beef", "common:pork", "common:fish", "common:noodle", "common:seed", "common:egg")
     assert tags.has("arris:beef_patty", tags.BEEF) and "common:egg" in tags.names() and not hasattr(tags, "COOKING_STANDARD")
     assert not [name for name in ("CHILI", "FLOUR", "LETTUCE", "MEAT", "MEATBALL") if hasattr(tags, name)], "规范里农夫乐事不登记的不给常量"
+    odd = sorted(name for name, value in vars(tags).items() if name.isupper() and value.split(":", 1)[1].upper() != name)
+    assert odd == ["ANY_EGG", "LEGACY_KNIFE"], "EXTENSION-API.md §7：常量名是冒号后那段的大写，例外就这两个（%s）" % odd
 
 
 if __name__ == "__main__":

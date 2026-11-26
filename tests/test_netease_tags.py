@@ -13,6 +13,8 @@
   3. 词表：成员和 JE 1.3.4 的 forge / farmersdelight 标签文件对得上（.refs 里有 JE 源码时；JE 的熔岩炼药锅对到炼药锅 + 状态条件）；
      热源标签就是现在的热源方块表加上写了状态条件的方块；
      一个 JE 物品标签名只对应一个标签（JE 配方的标签名 → 这里的名字，做别名表时不能有歧义）；准备好的探针在表里；没有成员的名字不生成文件
+  4. 团队烹饪原料标签的规范（森罗物语厨房网易版的 18 个，Tags.COOKING_STANDARD）：农夫乐事登记的粗标签只用 # 嵌自己的细标签，自己的配方不读粗标签；
+     docs/TAGS.md 的对照表和词表一致；本机有森罗的工程时（FD_KC_DIR，或者旁边的 KaleidoscopeCookeryNetease-main）对照表和它的文件一致
 """
 from __future__ import print_function
 
@@ -437,6 +439,54 @@ def testTheTeamStandard():
     reads = _docReads()
     for tag in COARSE:
         assert reads[tag] == "—", "%s：农夫乐事自己的配方不读粗标签（%s）" % (tag, reads[tag])
+
+
+def _codes(names):
+    return "、".join("`%s`" % name for name in names) if names else "—"
+
+
+def _standardRows():
+    """docs/TAGS.md「和森罗物语的标签对照」开头那张表：{标签: [森罗登记的, 农夫乐事登记的, JE 里对应的标签]}（到第一个小标题为止）。"""
+    with io.open(os.path.join(fdtest.ROOT, "docs", "TAGS.md"), encoding="utf-8") as handle:
+        text = handle.read()
+    section = text[text.index("## 和森罗物语的标签对照"):]
+    section = section[:section.index("\n### ")]
+    rows = [line for line in section.splitlines() if line.startswith("| `common:")]
+    return dict((cells[1].strip("` "), [cell.strip() for cell in cells[2:-1]]) for cells in (row.split("|") for row in rows))
+
+
+def testTheDocComparesTheStandardWithWhatWeRegister():
+    """docs/TAGS.md 的对照表：18 个规范标签各一行，"农夫乐事登记的"一列就是词表里写的（ITEM_TAG_FILES，含 #），没登记的写 —。"""
+    rows = _standardRows()
+    assert sorted(rows) == sorted(Tags.COOKING_STANDARD), sorted(rows)
+    for tag in Tags.COOKING_STANDARD:
+        assert len(rows[tag]) == 3, (tag, rows[tag])
+        assert rows[tag][1] == _codes(Tags.ITEM_TAG_FILES.get(tag, ())), (tag, rows[tag][1])
+
+
+# 森罗物语厨房网易版的工程（只读）：FD_KC_DIR 给了就只认它（指向不存在的目录 = 当作没有），没给就找本仓库旁边的（开发机上并排放在 AddOn/ 下）
+KC_DIR = os.environ.get("FD_KC_DIR") or os.path.join(os.path.dirname(fdtest.ROOT), "KaleidoscopeCookeryNetease-main")
+KC_TAGS = os.path.join(KC_DIR, "kaleidoscope_cookery_bp", "netease_tags")
+
+
+def testTheStandardIsKaleidoscopesOwnFiles():
+    """本机有森罗的工程时：它 netease_tags 里的 common: 物品标签就是规范的 18 个，对照表"森罗登记的"一列照它的文件抄（含先后）；
+    农夫乐事靠得上的一条：它的 common:meat 用 # 引了牛、鸡、羊、猪四个（农夫乐事的肉登记进那四个就算肉，所以 common:meat 不用登记）。
+    森罗改了规范时这里先红：对照表、词表、这条用例跟着改。"""
+    if not os.path.isdir(KC_TAGS):
+        print("跳过：本机没有森罗物语厨房的工程（%s；可以用 FD_KC_DIR 指定）" % KC_DIR)
+        return
+    found = {}
+    for name in sorted(os.listdir(KC_TAGS)):
+        if name.endswith(".json"):
+            doc = _json(os.path.join(KC_TAGS, name))
+            if doc.get("type") == "item" and doc.get("identifier", "").startswith("common:"):
+                found[doc["identifier"]] = doc["items"]
+    assert sorted(found) == sorted(Tags.COOKING_STANDARD), sorted(found)
+    rows = _standardRows()
+    for tag, items in found.items():
+        assert rows[tag][0] == _codes(items), (tag, rows[tag][0], items)
+    assert {"#" + tag for tag in (Tags.BEEF, Tags.CHICKEN, Tags.LAMB, Tags.PORK)} <= set(found["common:meat"]), found["common:meat"]
 
 
 if __name__ == "__main__":
