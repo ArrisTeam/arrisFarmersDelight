@@ -1204,9 +1204,11 @@ JE 依据：FD 1.3.4 的 BasketBlock / BasketBlockEntity / Basket、RopeBlock、
 - Netease 没有"按住使用"的服务端事件（据引擎反编译，武器类物品的 `use` 不会 `startUsingItem`，没实机核），要知道玩家有没有按住右键只能让客户端报告
   （`RightClickBeforeClientEvent` / `RightClickReleaseClientEvent` + 每帧事件里的心跳，服务端对超时的当松手）。
 - 给玩家看的句子不用全角冒号"："：游戏的字体把全角标点画得窄、后面不留空，冒号后面的字会挤在一起。写英文冒号加一个空格（冒号后面空一格）；句末的冒号（后面是换行或字符串结束）只换成英文冒号，不加空格。
-  语言文件、服务端提示（`Shared/Data/Tips`）、界面上的句子（`DishStation.statusText`）、物品悬停文字（物品 JSON 的 `netease:customtips`、`PotItem` 写进 `customTips` 的那两句）、成就文字都算；
+  语言文件、服务端提示（`Shared/Data/Tips`）、界面上的句子（`DishStation.statusText`）、物品悬停文字（物品 JSON 的 `netease:customtips`、`PotItem` 写进 `customTips` 的那两句）、成就文字、指南书（`Shared/Data/GuideBook`：分类名、标题、正文）都算；
   照 JE 翻译抄来的也一样换（JE 的 `zh_cn.json` 用全角冒号）。日志、`print`、接口的出错信息、注释、文档不算，不用改。
-  `tests/test_player_text_colons.py` 守着。已经拆下来、带着旧写法悬停文字（`装有3份：`）的厨锅物品：悬停文字是拆锅时写在物品上的，没有代码按这段文字认东西（锅里的菜靠 `extraId` 认），旧物品保持旧写法，再放下、拆一次才换成新的。
+  `tests/test_player_text_colons.py` 守着两条：没有全角冒号（上面这些加物品 / 方块的 JSON 都查）；英文冒号后面是空格、换行或句末（语言文件、`Tips`、`PotItem`、`statusText`、成就文字、指南书查；
+  物品 / 方块的 JSON 不查，悬停说明里有 `05:00` 这样的时间）。第二条先去掉 `§x` 颜色码，只放过三种写法里面的冒号：物品 / 方块 / 标签的 ID（`arris:x`，命名空间在测试里写死几个）、网址、时间；
+  要加例外就往测试里的 `SHAPES` 加一种写法，不要整类放过。已经拆下来、带着旧写法悬停文字（`装有3份：`）的厨锅物品：悬停文字是拆锅时写在物品上的，没有代码按这段文字认东西（锅里的菜靠 `extraId` 认），旧物品保持旧写法，再放下、拆一次才换成新的。
 
 ## 新增内容的清单
 
