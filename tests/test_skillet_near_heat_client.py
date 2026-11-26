@@ -90,6 +90,23 @@ def testAnotherModsBlockWithWrittenConditionsWaitsForItsAuxSet():
         auxes.pop("mymod:brazier", None)
 
 
+def testTheClientSelfTestReadsTheFourCauldrons():
+    """游戏内自检的客户端一半（Client/Debug/McdkHeatTest）：四格的位置和服务端那一半一样（脚下那一格往东 3、7、11、15），每格 GetBlock、
+    按 aux 判的、站在西边一格时的 nearHeat；熔岩的两格热，空的、盛水的不热。"""
+    selftest = fdtest.load("Client.Debug.McdkHeatTest")
+    blocks.clear()
+    for east, aux in ((3, 0), (7, 6), (11, 9), (15, 14)):
+        blocks[(east, 64, 0)] = ("minecraft:cauldron", aux)
+    result = selftest.mcdk_test_heat_cauldron_client()
+    assert result["ok"] is True and result["origin"] == (0, 64, 0) and result["table"] == [9, 10, 11, 12, 13, 14], result
+    assert result["cells"]["lava6"]["block"] == ["minecraft:cauldron", 14] and result["cells"]["lava6"]["near_heat"] is True
+    assert result["cells"]["water6"]["heats_by_aux"] is False and result["cells"]["empty"]["near_heat"] is False
+    blocks[(11, 64, 0)] = ("minecraft:cauldron", 1)                       # 熔岩 1 级那格客户端读到的 aux 不对
+    moved = selftest.mcdk_test_heat_cauldron_client([0, 64, 0])
+    assert moved["ok"] is False and moved["cells"]["lava1"]["ok"] is False and moved["cells"]["lava6"]["ok"] is True
+    blocks.clear()
+
+
 def testWhateverGetBlockReturnsTheCheckDoesNotRaise():
     for block in (None, (), ("minecraft:campfire",), ["minecraft:campfire", 0], "minecraft:campfire"):
         blocks.clear()
